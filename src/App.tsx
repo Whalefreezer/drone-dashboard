@@ -47,33 +47,49 @@ function App() {
       boxSizing: 'border-box'
     }}>
       <div style={{ marginRight: '20px' }}>
-        <RaceTime />
-        {lastRaceIndex !== -1
-          ? (
-            <>
-              Last:{" "}
-              <LapsView
-                key={races[lastRaceIndex].ID}
-                raceId={races[lastRaceIndex].ID}
-              />
-            </>
-          )
-          : null}
-        {currentRaceIndex !== -1
-          ? (
-            <>
-              Current:{" "}
-              <LapsView
-                key={races[currentRaceIndex].ID}
-                raceId={races[currentRaceIndex].ID}
-              />
-            </>
-          )
-          : null}
-        Next:{" "}
-        {raceSubset.map((race) => <LapsView key={race.ID} raceId={race.ID} />)}
-        {/* <pre>{JSON.stringify(eventData, null, 2)}</pre> */}
-        {/* <pre>{JSON.stringify(race, null, 2)}</pre> */}
+        {lastRaceIndex !== -1 && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '15px',
+            borderRadius: '8px',
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #333'
+          }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Last Race</h3>
+            <LapsView
+              key={races[lastRaceIndex].ID}
+              raceId={races[lastRaceIndex].ID}
+            />
+          </div>
+        )}
+        {currentRaceIndex !== -1 && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '15px',
+            borderRadius: '8px',
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #4a4a4a'
+          }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#fff' }}>Current Race</h3>
+            <RaceTime />
+            <LapsView
+              key={races[currentRaceIndex].ID}
+              raceId={races[currentRaceIndex].ID}
+            />
+          </div>
+        )}
+        <div style={{
+          marginBottom: '20px',
+          padding: '15px',
+          borderRadius: '8px',
+          backgroundColor: '#1a1a1a',
+          border: '1px solid #333'
+        }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Next Race</h3>
+          {raceSubset.map((race) => (
+            <LapsView key={race.ID} raceId={race.ID} />
+          ))}
+        </div>
       </div>
       <div style={{ marginLeft: '20px' }}>
         <Leaderboard />
@@ -118,61 +134,66 @@ function LapsView({ raceId }: { raceId: string }) {
 
   const round = roundData.find((r) => r.ID === race.Round);
 
-  // Calculate maxLaps by looking at all pilot's laps
-  const maxLaps = Math.max(
-    ...race.PilotChannels.map(pilotChannel => {
-      return race.Laps.filter(lap => {
-        const detection = race.Detections.find(d => lap.Detection === d.ID);
-        return detection && detection.Pilot === pilotChannel.Pilot;
-      }).length;
-    })
-  );
-
-  // Calculate fastest lap for each pilot in this race
-  const fastestLaps = new Map<string, number>();
-  race.PilotChannels.forEach(pilotChannel => {
+  // Calculate max laps by finding the highest lap count for any pilot
+  const maxLaps = race.PilotChannels.reduce((max, pilotChannel) => {
     const pilotLaps = race.Laps.filter(lap => {
       const detection = race.Detections.find(d => lap.Detection === d.ID);
-      // Get all valid laps for this pilot
-      const allPilotLaps = race.Laps.filter(l => {
-        const d = race.Detections.find(det => l.Detection === det.ID);
-        return d && d.Pilot === pilotChannel.Pilot && d.Valid;
-      });
-      // Exclude the first lap (holeshot) and invalid detections
-      return detection && 
-             detection.Pilot === pilotChannel.Pilot && 
-             detection.Valid &&
-             lap !== allPilotLaps[0];
-    });
-    if (pilotLaps.length > 0) {
-      const fastestLap = Math.min(...pilotLaps.map(lap => lap.LengthSeconds));
-      fastestLaps.set(pilotChannel.Pilot, fastestLap);
-    }
-  });
-
-  const rows: React.ReactNode[] = [];
+      return detection && detection.Pilot === pilotChannel.Pilot && detection.Valid;
+    }).length;
+    return Math.max(max, pilotLaps);
+  }, 0);
 
   // Create header row
   const headerRow: React.ReactNode[] = [
+    <th key="header-pos">Pos</th>,
     <th key="header-name">Name</th>,
     <th key="header-channel">Channel</th>
   ];
 
-  // Add lap headers (HS, L1, L2, etc.)
-  for (let i = 0; i < maxLaps; i++) {
-    headerRow.push(
-      <th key={`header-lap-${i}`}>
-        {i === 0 ? 'HS' : `L${i}`}
-      </th>
-    );
+  // Only add lap headers if there are laps
+  if (maxLaps > 0) {
+    for (let i = 0; i < maxLaps; i++) {
+      headerRow.push(
+        <th key={`header-lap-${i}`}>
+          {i === 0 ? 'HS' : `L${i}`}
+        </th>
+      );
+    }
   }
 
-  // Create pilot rows
+  // Create pilot rows with positions
+  const rows: React.ReactNode[] = [];
   for (const pilotChannel of race.PilotChannels) {
     const row: React.ReactNode[] = [];
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
     
+    // Add position
+    row.push(
+      <td key="pilot-position">
+        {maxLaps > 0 ? (
+          `${maxLaps - race.Laps.filter(lap => {
+            const detection = race.Detections.find(d => lap.Detection === d.ID);
+            return detection && detection.Pilot === pilotChannel.Pilot;
+          }).length + 1}${
+            maxLaps - race.Laps.filter(lap => {
+              const detection = race.Detections.find(d => lap.Detection === d.ID);
+              return detection && detection.Pilot === pilotChannel.Pilot;
+            }).length === 0 ? 'st' : 
+            maxLaps - race.Laps.filter(lap => {
+              const detection = race.Detections.find(d => lap.Detection === d.ID);
+              return detection && detection.Pilot === pilotChannel.Pilot;
+            }).length === 1 ? 'nd' : 
+            maxLaps - race.Laps.filter(lap => {
+              const detection = race.Detections.find(d => lap.Detection === d.ID);
+              return detection && detection.Pilot === pilotChannel.Pilot;
+            }).length === 2 ? 'rd' : 'th'
+          }`
+        ) : '-'}
+      </td>
+    );
+
+    // Add name and channel
     row.push(
       <td key="pilot-name">
         {pilot.Name}
@@ -193,8 +214,11 @@ function LapsView({ raceId }: { raceId: string }) {
     );
 
     // Add lap times with highlighting for fastest lap
-    const pilotFastestLap = fastestLaps.get(pilotChannel.Pilot);
-    const overallFastestLap = Math.min(...Array.from(fastestLaps.values()));
+    const fastestLap = race.Laps.filter(lap => {
+      const detection = race.Detections.find(d => lap.Detection === d.ID);
+      return detection && detection.Pilot === pilotChannel.Pilot;
+    }).reduce((min, lap) => Math.min(min, lap.LengthSeconds), Infinity);
+    const overallFastestLap = Math.min(...race.Laps.map(lap => lap.LengthSeconds));
 
     for (const lap of race.Laps) {
       const detection = race.Detections.find((d) => lap.Detection === d.ID)!;
@@ -205,8 +229,8 @@ function LapsView({ raceId }: { raceId: string }) {
         <td 
           key={lap.ID}
           style={{ 
-            backgroundColor: lap.LengthSeconds === pilotFastestLap && 
-                           pilotFastestLap === overallFastestLap 
+            backgroundColor: lap.LengthSeconds === fastestLap && 
+                           fastestLap === overallFastestLap 
               ? '#1a472a'
             : undefined 
           }}
