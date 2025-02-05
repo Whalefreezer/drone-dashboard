@@ -32,7 +32,7 @@ function App() {
     useEffect(() => {
       const interval = setInterval(() => {
         updateEventData();
-      }, 1000);
+      }, 10_000);
       return () => clearInterval(interval);
     }, [updateEventData]);
   }
@@ -140,14 +140,17 @@ function LapsView({ raceId }: { raceId: string }) {
   const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
+  const races = useAtomValue(racesAtom);
+  const currentRaceIndex = findIndexOfCurrentRace(races);
+  const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
 
   if (UPDATE) {
     useEffect(() => {
       const interval = setInterval(() => {
         updateRace();
-      }, 1000);
+      }, isCurrentRace ? 500 : 10_000);
       return () => clearInterval(interval);
-    }, [updateRace]);
+    }, [updateRace, isCurrentRace]);
   }
 
   const round = roundData.find((r) => r.ID === race.Round);
@@ -347,17 +350,23 @@ function RaceTime() {
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];
   const raceLength = secondsFromString(eventData[0].RaceLength); // "00:02:30"
-  const currentRaceStart = new Date(currentRace.Start).valueOf()/1000;
-  const currentRaceEnd = currentRaceStart + raceLength;
-
-  const [timeRemaining, setTimeRemaining] = useState(currentRaceEnd - new Date().valueOf());
+  
+  const [timeRemaining, setTimeRemaining] = useState(raceLength);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeRemaining(Math.max(0, currentRaceEnd - (new Date().valueOf()/1000)));
-    }, 100);
-    return () => clearInterval(interval);
-  }, [currentRaceEnd]);
+    // Only start countdown if race has started
+    if (currentRace.Start) {
+      const currentRaceStart = new Date(currentRace.Start).valueOf()/1000;
+      const currentRaceEnd = currentRaceStart + raceLength;
+
+      const interval = setInterval(() => {
+        setTimeRemaining(Math.max(0, currentRaceEnd - (new Date().valueOf()/1000)));
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
+      setTimeRemaining(raceLength);
+    }
+  }, [currentRace.Start, raceLength]);
 
   return <div style={{fontFamily: "monospace"}}>{timeRemaining.toFixed(1)}</div>;
 }
@@ -372,62 +381,66 @@ function Leaderboard() {
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
 
-  // Calculate fastest lap for each pilot across all races
+  // Calculate fastest lap and fastest 2 consecutive laps for each pilot across all races
   const overallFastestLaps = new Map<string, number>();
-  // Track which channel each pilot is using (from their most recent race)
+  const fastestConsecutiveLaps = new Map<string, number>();
   const pilotChannels = new Map<string, string>();
   
   races.forEach(race => {
     race.PilotChannels.forEach(pilotChannel => {
-      // Store channel assignment if we haven't seen this pilot yet
       if (!pilotChannels.has(pilotChannel.Pilot)) {
         pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
       }
 
+      // Get all valid laps for this pilot in this race
       const pilotLaps = race.Laps.filter(lap => {
         const detection = race.Detections.find(d => lap.Detection === d.ID);
-        // Get all valid laps for this pilot in this race
-        const allPilotLaps = race.Laps.filter(l => {
-          const d = race.Detections.find(det => l.Detection === det.ID);
-          return d && d.Pilot === pilotChannel.Pilot && d.Valid;
-        });
-        // Exclude the first lap (holeshot) and invalid detections
         return detection && 
                detection.Pilot === pilotChannel.Pilot && 
-               detection.Valid &&
-               lap !== allPilotLaps[0];
-      });
-      if (pilotLaps.length > 0) {
-        const fastestLap = Math.min(...pilotLaps.map(lap => lap.LengthSeconds));
+               detection.Valid;
+      }).sort((a, b) => a.LapNumber - b.LapNumber);
+
+      // Skip holeshot for single lap times
+      const racingLaps = pilotLaps.slice(1);
+      if (racingLaps.length > 0) {
+        const fastestLap = Math.min(...racingLaps.map(lap => lap.LengthSeconds));
         const currentFastest = overallFastestLaps.get(pilotChannel.Pilot);
         if (!currentFastest || fastestLap < currentFastest) {
           overallFastestLaps.set(pilotChannel.Pilot, fastestLap);
         }
       }
+
+      // Calculate fastest 2 consecutive laps (excluding holeshot)
+      if (racingLaps.length >= 2) {
+        let fastestConsecutive = Infinity;
+        for (let i = 0; i < racingLaps.length - 1; i++) {
+          const twoLapTime = racingLaps[i].LengthSeconds + racingLaps[i + 1].LengthSeconds;
+          fastestConsecutive = Math.min(fastestConsecutive, twoLapTime);
+        }
+        const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotChannel.Pilot);
+        if (!currentFastestConsecutive || fastestConsecutive < currentFastestConsecutive) {
+          fastestConsecutiveLaps.set(pilotChannel.Pilot, fastestConsecutive);
+        }
+      }
     });
   });
 
-  // Create entries for all pilots, including those without times
   const pilotEntries = pilots.map(pilot => ({
     pilot,
     time: overallFastestLaps.get(pilot.ID) || null,
+    consecutiveTime: fastestConsecutiveLaps.get(pilot.ID) || null,
     channel: pilotChannels.get(pilot.ID) ? 
       channels.find(c => c.ID === pilotChannels.get(pilot.ID)) : 
       null
   }));
 
-  // Sort pilots: those with times first (by time), then those without times (by channel)
   const sortedPilots = pilotEntries.sort((a, b) => {
     if (a.time === null && b.time === null) {
-      // If either pilot doesn't have a channel, sort them last
       if (!a.channel) return 1;
       if (!b.channel) return -1;
-      
-      // Sort by band first
       if (a.channel.ShortBand !== b.channel.ShortBand) {
         return a.channel.ShortBand.localeCompare(b.channel.ShortBand);
       }
-      // Then by channel number
       return a.channel.Number - b.channel.Number;
     }
     if (a.time === null) return 1;
@@ -445,6 +458,7 @@ function Leaderboard() {
             <th>Pilot</th>
             <th>Channel</th>
             <th>Best Lap</th>
+            <th>Best 2 Consecutive</th>
           </tr>
         </thead>
         <tbody>
@@ -472,6 +486,7 @@ function Leaderboard() {
                 ) : '-'}
               </td>
               <td>{entry.time !== null ? entry.time.toFixed(3) : '-'}</td>
+              <td>{entry.consecutiveTime !== null ? entry.consecutiveTime.toFixed(3) : '-'}</td>
             </tr>
           ))}
         </tbody>
