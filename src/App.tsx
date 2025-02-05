@@ -70,8 +70,26 @@ function App() {
             backgroundColor: '#1a1a1a',
             border: '1px solid #4a4a4a'
           }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#fff' }}>Current Race</h3>
-            <RaceTime />
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '10px'
+            }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Current Race</h3>
+              <div style={{ 
+                fontFamily: 'monospace',
+                fontSize: '24px',
+                color: '#00ff00',
+                backgroundColor: '#1e2a1e',
+                padding: '4px 12px',
+                borderRadius: '4px',
+                minWidth: '80px',
+                textAlign: 'right'
+              }}>
+                <RaceTime />
+              </div>
+            </div>
             <LapsView
               key={races[currentRaceIndex].ID}
               raceId={races[currentRaceIndex].ID}
@@ -246,8 +264,19 @@ function LapsView({ raceId }: { raceId: string }) {
   }
 
   return (
-    <div>
-      <div>{round?.RoundNumber}-{race.RaceNumber}</div>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+      <div style={{ 
+        fontSize: '24px', 
+        fontWeight: 'bold',
+        color: '#888',
+        minWidth: '60px',
+        textAlign: 'center',
+        padding: '8px',
+        backgroundColor: '#2a2a2a',
+        borderRadius: '4px'
+      }}>
+        {round?.RoundNumber}-{race.RaceNumber}
+      </div>
       <table style={{ border: "1px solid black", borderCollapse: "collapse" }}>
         <thead>
           <tr>{headerRow}</tr>
