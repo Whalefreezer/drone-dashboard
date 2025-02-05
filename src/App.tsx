@@ -214,11 +214,13 @@ function LapsView({ raceId }: { raceId: string }) {
     );
 
     // Add lap times with highlighting for fastest lap
-    const fastestLap = race.Laps.filter(lap => {
-      const detection = race.Detections.find(d => lap.Detection === d.ID);
-      return detection && detection.Pilot === pilotChannel.Pilot;
-    }).reduce((min, lap) => Math.min(min, lap.LengthSeconds), Infinity);
-    const overallFastestLap = Math.min(...race.Laps.map(lap => lap.LengthSeconds));
+    const fastestLap = race.Laps
+      .filter(lap => {
+        const detection = race.Detections.find(d => lap.Detection === d.ID);
+        return detection && detection.Pilot === pilotChannel.Pilot && lap.LapNumber > 0; // Exclude holeshot
+      })
+      .reduce((min, lap) => Math.min(min, lap.LengthSeconds), Infinity);
+    const overallFastestLap = Math.min(...race.Laps.filter(lap => lap.LapNumber > 0).map(lap => lap.LengthSeconds));
 
     for (const lap of race.Laps) {
       const detection = race.Detections.find((d) => lap.Detection === d.ID)!;
