@@ -158,7 +158,7 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
     return Math.min(lastRace + 1, sortedRaces.length - 1);
   }
 
-  return sortedRaces.length - 1;
+  return 0;
 }
 
 function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
