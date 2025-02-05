@@ -106,12 +106,39 @@ function LapsView({ raceId }: { raceId: string }) {
 
   const round = roundData.find((r) => r.ID === race.Round);
 
+  // Calculate maxLaps by looking at all pilot's laps
+  const maxLaps = Math.max(
+    ...race.PilotChannels.map(pilotChannel => {
+      return race.Laps.filter(lap => {
+        const detection = race.Detections.find(d => lap.Detection === d.ID);
+        return detection && detection.Pilot === pilotChannel.Pilot;
+      }).length;
+    })
+  );
+
   const rows: React.ReactNode[] = [];
 
+  // Create header row
+  const headerRow: React.ReactNode[] = [
+    <th key="header-name">Name</th>,
+    <th key="header-channel">Channel</th>
+  ];
+
+  // Add lap headers (HS, L1, L2, etc.)
+  for (let i = 0; i < maxLaps; i++) {
+    headerRow.push(
+      <th key={`header-lap-${i}`}>
+        {i === 0 ? 'HS' : `L${i}`}
+      </th>
+    );
+  }
+
+  // Create pilot rows
   for (const pilotChannel of race.PilotChannels) {
     const row: React.ReactNode[] = [];
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+    
     row.push(
       <td key="pilot-name">
         {pilot.Name}
@@ -130,6 +157,8 @@ function LapsView({ raceId }: { raceId: string }) {
         </div>
       </td>,
     );
+
+    // Add lap times
     for (const lap of race.Laps) {
       const detection = race.Detections.find((d) => lap.Detection === d.ID)!;
       if (detection.Pilot !== pilotChannel.Pilot) {
@@ -144,10 +173,13 @@ function LapsView({ raceId }: { raceId: string }) {
     <div>
       <div>{round?.RoundNumber}-{race.RaceNumber}</div>
       <table style={{ border: "1px solid black", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>{headerRow}</tr>
+        </thead>
         <tbody>
           <style>
             {`
-          td {
+          td, th {
             border: 1px solid black;
             padding: 4px;
           }
