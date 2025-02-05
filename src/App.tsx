@@ -103,7 +103,7 @@ function App() {
           backgroundColor: '#1a1a1a',
           border: '1px solid #333'
         }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Next Race</h3>
+          <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Next Races</h3>
           {raceSubset.map((race) => (
             <LapsView key={race.ID} raceId={race.ID} />
           ))}
@@ -249,10 +249,11 @@ function LapsView({ raceId }: { raceId: string }) {
         <td 
           key={lap.ID}
           style={{ 
-            backgroundColor: lap.LengthSeconds === fastestLap && 
-                           fastestLap === overallFastestLap 
-              ? '#1a472a'
-            : undefined 
+            backgroundColor: lap.LengthSeconds === overallFastestLap ? 
+              '#1a472a' : // Dark green for overall fastest
+              lap.LengthSeconds === fastestLap ? 
+              '#2a2a4a' : // Dark blue for personal best
+              undefined 
           }}
         >
           {lap.LengthSeconds.toFixed(3)}
