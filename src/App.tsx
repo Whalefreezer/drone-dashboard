@@ -380,13 +380,29 @@ function Leaderboard() {
   const races = useAtomValue(racesAtom);
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
+  const roundData = useAtomValue(roundsDataAtom);
 
-  // Calculate fastest lap and fastest 2 consecutive laps for each pilot across all races
-  const overallFastestLaps = new Map<string, number>();
-  const fastestConsecutiveLaps = new Map<string, number>();
+  // Track best times and their sources
+  interface BestTime {
+    time: number;
+    roundId: string;
+    raceNumber: number;
+    lapNumber: number;
+  }
+  interface ConsecutiveTime {
+    time: number;
+    roundId: string;
+    raceNumber: number;
+    startLap: number;
+  }
+  
+  const overallFastestLaps = new Map<string, BestTime>();
+  const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
   const pilotChannels = new Map<string, string>();
   
   races.forEach(race => {
+    const round = roundData.find(r => r.ID === race.Round);
+    
     race.PilotChannels.forEach(pilotChannel => {
       if (!pilotChannels.has(pilotChannel.Pilot)) {
         pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
@@ -403,23 +419,41 @@ function Leaderboard() {
       // Skip holeshot for single lap times
       const racingLaps = pilotLaps.slice(1);
       if (racingLaps.length > 0) {
-        const fastestLap = Math.min(...racingLaps.map(lap => lap.LengthSeconds));
+        const fastestLap = racingLaps.reduce((fastest, lap) => 
+          lap.LengthSeconds < fastest.LengthSeconds ? lap : fastest
+        );
+        
         const currentFastest = overallFastestLaps.get(pilotChannel.Pilot);
-        if (!currentFastest || fastestLap < currentFastest) {
-          overallFastestLaps.set(pilotChannel.Pilot, fastestLap);
+        if (!currentFastest || fastestLap.LengthSeconds < currentFastest.time) {
+          overallFastestLaps.set(pilotChannel.Pilot, {
+            time: fastestLap.LengthSeconds,
+            roundId: race.Round,
+            raceNumber: race.RaceNumber,
+            lapNumber: fastestLap.LapNumber
+          });
         }
       }
 
       // Calculate fastest 2 consecutive laps (excluding holeshot)
       if (racingLaps.length >= 2) {
-        let fastestConsecutive = Infinity;
+        let fastestConsecutive = { time: Infinity, startLap: 0 };
         for (let i = 0; i < racingLaps.length - 1; i++) {
           const twoLapTime = racingLaps[i].LengthSeconds + racingLaps[i + 1].LengthSeconds;
-          fastestConsecutive = Math.min(fastestConsecutive, twoLapTime);
+          if (twoLapTime < fastestConsecutive.time) {
+            fastestConsecutive = {
+              time: twoLapTime,
+              startLap: racingLaps[i].LapNumber
+            };
+          }
         }
+        
         const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotChannel.Pilot);
-        if (!currentFastestConsecutive || fastestConsecutive < currentFastestConsecutive) {
-          fastestConsecutiveLaps.set(pilotChannel.Pilot, fastestConsecutive);
+        if (!currentFastestConsecutive || fastestConsecutive.time < currentFastestConsecutive.time) {
+          fastestConsecutiveLaps.set(pilotChannel.Pilot, {
+            ...fastestConsecutive,
+            roundId: race.Round,
+            raceNumber: race.RaceNumber
+          });
         }
       }
     });
@@ -427,15 +461,15 @@ function Leaderboard() {
 
   const pilotEntries = pilots.map(pilot => ({
     pilot,
-    time: overallFastestLaps.get(pilot.ID) || null,
-    consecutiveTime: fastestConsecutiveLaps.get(pilot.ID) || null,
+    bestLap: overallFastestLaps.get(pilot.ID) || null,
+    consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
     channel: pilotChannels.get(pilot.ID) ? 
       channels.find(c => c.ID === pilotChannels.get(pilot.ID)) : 
       null
   }));
 
   const sortedPilots = pilotEntries.sort((a, b) => {
-    if (a.time === null && b.time === null) {
+    if (!a.bestLap && !b.bestLap) {
       if (!a.channel) return 1;
       if (!b.channel) return -1;
       if (a.channel.ShortBand !== b.channel.ShortBand) {
@@ -443,9 +477,9 @@ function Leaderboard() {
       }
       return a.channel.Number - b.channel.Number;
     }
-    if (a.time === null) return 1;
-    if (b.time === null) return -1;
-    return a.time - b.time;
+    if (!a.bestLap) return 1;
+    if (!b.bestLap) return -1;
+    return a.bestLap.time - b.bestLap.time;
   });
 
   return (
@@ -467,10 +501,15 @@ function Leaderboard() {
               border: 1px solid black;
               padding: 4px;
             }
+            .source-info {
+              font-size: 0.7em;
+              color: #666;
+              display: block;
+            }
           `}</style>
           {sortedPilots.map((entry, index) => (
             <tr key={entry.pilot.ID}>
-              <td>{entry.time !== null ? index + 1 : '-'}</td>
+              <td>{entry.bestLap ? index + 1 : '-'}</td>
               <td>{entry.pilot.Name}</td>
               <td>
                 {entry.channel ? (
@@ -485,8 +524,28 @@ function Leaderboard() {
                   </div>
                 ) : '-'}
               </td>
-              <td>{entry.time !== null ? entry.time.toFixed(3) : '-'}</td>
-              <td>{entry.consecutiveTime !== null ? entry.consecutiveTime.toFixed(3) : '-'}</td>
+              <td>
+                {entry.bestLap ? (
+                  <>
+                    {entry.bestLap.time.toFixed(3)}
+                    <span className="source-info">
+                      {roundData.find(r => r.ID === entry.bestLap!.roundId)?.RoundNumber}-
+                      {entry.bestLap.raceNumber}
+                    </span>
+                  </>
+                ) : '-'}
+              </td>
+              <td>
+                {entry.consecutiveLaps ? (
+                  <>
+                    {entry.consecutiveLaps.time.toFixed(3)}
+                    <span className="source-info">
+                      {roundData.find(r => r.ID === entry.consecutiveLaps!.roundId)?.RoundNumber}-
+                      {entry.consecutiveLaps.raceNumber}
+                    </span>
+                  </>
+                ) : '-'}
+              </td>
             </tr>
           ))}
         </tbody>
