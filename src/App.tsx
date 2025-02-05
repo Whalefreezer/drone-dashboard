@@ -15,7 +15,7 @@ import {
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
 
-const UPDATE = false;
+const UPDATE = true;
 
 function App() {
   // const eventData = useAtomValue(eventDataAtom);
@@ -39,6 +39,7 @@ function App() {
 
   return (
     <>
+      <RaceTime />
       {lastRaceIndex !== -1
         ? (
           <>
@@ -116,8 +117,17 @@ function LapsView({ raceId }: { raceId: string }) {
         {pilot.Name}
       </td>,
       <td key="pilot-channel">
-        {channel.ShortBand}
-        {channel.Number}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          {channel.ShortBand}
+          {channel.Number}
+          <ChannelSquare channelID={pilotChannel.Channel} />
+        </div>
       </td>,
     );
     for (const lap of race.Laps) {
@@ -171,6 +181,52 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
       </div>
     </div>
   );
+}
+
+function ChannelSquare(
+  { channelID, change }: { channelID: string; change?: boolean },
+) {
+  const eventData = useAtomValue(eventDataAtom);
+  const color =
+    eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
+  return (
+    <div
+      style={{
+        backgroundColor: color,
+        width: "10px",
+        height: "10px",
+        margin: "0 5px",
+      }}
+    >
+      {change ? "!" : ""}
+    </div>
+  );
+}
+
+function RaceTime() {
+  const eventData = useAtomValue(eventDataAtom);
+  const races = useAtomValue(racesAtom);
+  const currentRaceIndex = findIndexOfCurrentRace(races);
+  const currentRace = races[currentRaceIndex];
+  const raceLength = secondsFromString(eventData[0].RaceLength); // "00:02:30"
+  const currentRaceStart = new Date(currentRace.Start).valueOf()/1000;
+  const currentRaceEnd = currentRaceStart + raceLength;
+
+  const [timeRemaining, setTimeRemaining] = useState(currentRaceEnd - new Date().valueOf());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRemaining(Math.max(0, currentRaceEnd - (new Date().valueOf()/1000)));
+    }, 100);
+    return () => clearInterval(interval);
+  }, [currentRaceEnd]);
+
+  return <div style={{fontFamily: "monospace"}}>{timeRemaining.toFixed(1)}</div>;
+}
+
+function secondsFromString(time: string) {
+  const [hours, minutes, seconds] = time.split(":");
+  return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
 }
 
 export default App;

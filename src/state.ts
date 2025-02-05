@@ -103,11 +103,13 @@ export const roundsDataAtom = atom(async (get) => {
 
 export const racesAtom = atom(async (get) => {
   const event = await get(eventDataAtom);
-  const races = await Promise.all(event[0].Races.map(async (raceId) => {
+  let races = await Promise.all(event[0].Races.map(async (raceId) => {
     return await get(raceFamilyAtom(raceId));
   }));
+  races = races.filter(race => race.Valid)
 
   const rounds = await get(roundsDataAtom);
+
 
   orderRaces(races, rounds);
 
@@ -125,8 +127,11 @@ function orderRaces(races: Race[], rounds: Round[]) {
 }
 
 export function findIndexOfCurrentRace(sortedRaces: Race[]) {
-  const index = sortedRaces.findIndex((race) => {
+  const activeRace = sortedRaces.findIndex((race) => {
     if (!race.Valid) {
+      return false;
+    }
+    if (!race.Start || race.Start.startsWith("0")) {
       return false;
     }
     if (!race.End || race.End.startsWith("0")) {
@@ -134,10 +139,35 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
     }
   });
 
-  if (index === -1) {
-    return sortedRaces.length - 1;
+  if (activeRace !== -1) {
+    return activeRace
   }
-  return index;
+
+  const lastRace = findLastIndex(sortedRaces, (race) => {
+    if (!race.Valid) {
+      return false;
+    }
+
+    if (race.Start && !race.Start.startsWith("0") && race.End && !race.End.startsWith("0")) {
+      return true;
+    }
+    return false;
+  });
+
+  if (lastRace !== -1) {
+    return Math.min(lastRace + 1, sortedRaces.length - 1);
+  }
+
+  return sortedRaces.length - 1;
+}
+
+function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
+  for (let i = array.length - 1; i >= 0; i--) {
+    if (predicate(array[i])) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 export function findIndexOfLastRace(sortedRaces: Race[]) {
