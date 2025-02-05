@@ -133,14 +133,15 @@ function LapsView({ raceId }: { raceId: string }) {
   race.PilotChannels.forEach(pilotChannel => {
     const pilotLaps = race.Laps.filter(lap => {
       const detection = race.Detections.find(d => lap.Detection === d.ID);
-      // Get all laps for this pilot
+      // Get all valid laps for this pilot
       const allPilotLaps = race.Laps.filter(l => {
         const d = race.Detections.find(det => l.Detection === det.ID);
-        return d && d.Pilot === pilotChannel.Pilot;
+        return d && d.Pilot === pilotChannel.Pilot && d.Valid;
       });
-      // Exclude the first lap (holeshot)
+      // Exclude the first lap (holeshot) and invalid detections
       return detection && 
              detection.Pilot === pilotChannel.Pilot && 
+             detection.Valid &&
              lap !== allPilotLaps[0];
     });
     if (pilotLaps.length > 0) {
@@ -329,14 +330,15 @@ function Leaderboard() {
 
       const pilotLaps = race.Laps.filter(lap => {
         const detection = race.Detections.find(d => lap.Detection === d.ID);
-        // Get all laps for this pilot in this race
+        // Get all valid laps for this pilot in this race
         const allPilotLaps = race.Laps.filter(l => {
           const d = race.Detections.find(det => l.Detection === det.ID);
-          return d && d.Pilot === pilotChannel.Pilot;
+          return d && d.Pilot === pilotChannel.Pilot && d.Valid;
         });
-        // Exclude the first lap (holeshot)
+        // Exclude the first lap (holeshot) and invalid detections
         return detection && 
                detection.Pilot === pilotChannel.Pilot && 
+               detection.Valid &&
                lap !== allPilotLaps[0];
       });
       if (pilotLaps.length > 0) {
