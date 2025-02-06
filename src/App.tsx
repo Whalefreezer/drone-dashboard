@@ -1,6 +1,6 @@
 import "./App.css";
 // @deno-types="@types/react"
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import {
   channelsDataAtom,
@@ -13,9 +13,58 @@ import {
   roundsDataAtom,
 } from "./state.ts";
 import { useSetAtom } from "jotai";
-import { PilotChannel } from "./types.ts";
+import { PilotChannel, Race, Lap, Detection } from "./types.ts";
 
 const UPDATE = true;
+
+interface ProcessedLap {
+  id: string;
+  lapNumber: number;
+  lengthSeconds: number;
+  pilotId: string;
+  valid: boolean;
+  startTime: string;
+  endTime: string;
+}
+
+function preprocessRaceLaps(race: Race): ProcessedLap[] {
+  const { Laps: laps, Detections: detections } = race;
+  return laps
+    .map(lap => {
+      const detection = detections.find(d => lap.Detection === d.ID);
+      if (!detection) return null;
+      
+      return {
+        id: lap.ID,
+        lapNumber: lap.LapNumber,
+        lengthSeconds: lap.LengthSeconds,
+        pilotId: detection.Pilot,
+        valid: detection.Valid,
+        startTime: lap.StartTime,
+        endTime: lap.EndTime
+      };
+    })
+    .filter((lap): lap is ProcessedLap => lap !== null)
+    .sort((a, b) => a.lapNumber - b.lapNumber);
+}
+
+interface ValidLapsFilter {
+  processedLaps: ProcessedLap[];
+  pilotId: string;
+  excludeHoleshot?: boolean;
+}
+
+function getValidLapsForPilot({ 
+  processedLaps,
+  pilotId, 
+  excludeHoleshot = false 
+}: ValidLapsFilter): ProcessedLap[] {
+  return processedLaps.filter(lap => 
+    lap.pilotId === pilotId && 
+    lap.valid && 
+    (!excludeHoleshot || lap.lapNumber > 0)
+  );
+}
 
 function App() {
   // const eventData = useAtomValue(eventDataAtom);
@@ -101,6 +150,12 @@ function LapsView({ raceId }: { raceId: string }) {
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
 
+  // Add processed laps to component state
+  const processedLaps = useMemo(() => 
+    preprocessRaceLaps(race),
+    [race.Laps, race.Detections]
+  );
+
   if (UPDATE) {
     useEffect(() => {
       const interval = setInterval(() => {
@@ -114,9 +169,9 @@ function LapsView({ raceId }: { raceId: string }) {
 
   // Calculate max laps by finding the highest lap count for any pilot
   const maxLaps = race.PilotChannels.reduce((max, pilotChannel) => {
-    const pilotLaps = race.Laps.filter(lap => {
-      const detection = race.Detections.find(d => lap.Detection === d.ID);
-      return detection && detection.Pilot === pilotChannel.Pilot && detection.Valid;
+    const pilotLaps = getValidLapsForPilot({
+      processedLaps,
+      pilotId: pilotChannel.Pilot
     }).length;
     return Math.max(max, pilotLaps);
   }, 0);
@@ -144,9 +199,9 @@ function LapsView({ raceId }: { raceId: string }) {
   
   // Calculate completed laps for each pilot and sort them
   const pilotsWithLaps = race.PilotChannels.map(pilotChannel => {
-    const completedLaps = race.Laps.filter(lap => {
-      const detection = race.Detections.find(d => lap.Detection === d.ID);
-      return detection && detection.Pilot === pilotChannel.Pilot && detection.Valid;
+    const completedLaps = getValidLapsForPilot({
+      processedLaps,
+      pilotId: pilotChannel.Pilot
     }).length;
     return { pilotChannel, completedLaps };
   }).sort((a, b) => b.completedLaps - a.completedLaps); // Sort by completed laps descending
@@ -195,31 +250,34 @@ function LapsView({ raceId }: { raceId: string }) {
     );
 
     // Add lap times with highlighting for fastest lap
-    const fastestLap = race.Laps
-      .filter(lap => {
-        const detection = race.Detections.find(d => lap.Detection === d.ID);
-        return detection && detection.Pilot === pilotChannel.Pilot && lap.LapNumber > 0; // Exclude holeshot
-      })
-      .reduce((min, lap) => Math.min(min, lap.LengthSeconds), Infinity);
-    const overallFastestLap = Math.min(...race.Laps.filter(lap => lap.LapNumber > 0).map(lap => lap.LengthSeconds));
+    const fastestLap = getValidLapsForPilot({
+      processedLaps,
+      pilotId: pilotChannel.Pilot,
+      excludeHoleshot: true
+    }).reduce((min, lap) => Math.min(min, lap.lengthSeconds), Infinity);
+    const overallFastestLap = Math.min(...getValidLapsForPilot({
+      processedLaps,
+      pilotId: pilotChannel.Pilot,
+      excludeHoleshot: true
+    }).map(lap => lap.lengthSeconds));
 
-    for (const lap of race.Laps) {
-      const detection = race.Detections.find((d) => lap.Detection === d.ID)!;
-      if (detection.Pilot !== pilotChannel.Pilot) {
-        continue;
-      }
+    for (const lap of getValidLapsForPilot({
+      processedLaps,
+      pilotId: pilotChannel.Pilot,
+      excludeHoleshot: true
+    })) {
       row.push(
         <td 
-          key={lap.ID}
+          key={lap.id}
           className={
-            lap.LengthSeconds === overallFastestLap ? 
+            lap.lengthSeconds === overallFastestLap ? 
               'lap-fastest-overall' : 
-              lap.LengthSeconds === fastestLap ? 
+              lap.lengthSeconds === fastestLap ? 
                 'lap-personal-best' : 
                 undefined
           }
         >
-          {lap.LengthSeconds.toFixed(3)}
+          {lap.lengthSeconds.toFixed(3)}
         </td>
       );
     }
@@ -351,27 +409,29 @@ function Leaderboard() {
       }
 
       // Get all valid laps for this pilot in this race
-      const pilotLaps = race.Laps.filter(lap => {
-        const detection = race.Detections.find(d => lap.Detection === d.ID);
-        return detection && 
-               detection.Pilot === pilotChannel.Pilot && 
-               detection.Valid;
-      }).sort((a, b) => a.LapNumber - b.LapNumber);
+      const pilotLaps = getValidLapsForPilot({
+        processedLaps: preprocessRaceLaps(race),
+        pilotId: pilotChannel.Pilot
+      });
 
       // Skip holeshot for single lap times
-      const racingLaps = pilotLaps.slice(1);
+      const racingLaps = getValidLapsForPilot({
+        processedLaps: preprocessRaceLaps(race),
+        pilotId: pilotChannel.Pilot,
+        excludeHoleshot: true
+      });
       if (racingLaps.length > 0) {
         const fastestLap = racingLaps.reduce((fastest, lap) => 
-          lap.LengthSeconds < fastest.LengthSeconds ? lap : fastest
+          lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
         );
         
         const currentFastest = overallFastestLaps.get(pilotChannel.Pilot);
-        if (!currentFastest || fastestLap.LengthSeconds < currentFastest.time) {
+        if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
           overallFastestLaps.set(pilotChannel.Pilot, {
-            time: fastestLap.LengthSeconds,
+            time: fastestLap.lengthSeconds,
             roundId: race.Round,
             raceNumber: race.RaceNumber,
-            lapNumber: fastestLap.LapNumber
+            lapNumber: fastestLap.lapNumber
           });
         }
       }
@@ -380,11 +440,11 @@ function Leaderboard() {
       if (racingLaps.length >= 2) {
         let fastestConsecutive = { time: Infinity, startLap: 0 };
         for (let i = 0; i < racingLaps.length - 1; i++) {
-          const twoLapTime = racingLaps[i].LengthSeconds + racingLaps[i + 1].LengthSeconds;
+          const twoLapTime = racingLaps[i].lengthSeconds + racingLaps[i + 1].lengthSeconds;
           if (twoLapTime < fastestConsecutive.time) {
             fastestConsecutive = {
               time: twoLapTime,
-              startLap: racingLaps[i].LapNumber
+              startLap: racingLaps[i].lapNumber
             };
           }
         }
