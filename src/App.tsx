@@ -38,24 +38,11 @@ function App() {
   }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'space-between',
-      margin: '0 20px',
-      width: '100%',
-      maxWidth: '100vw',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{ marginRight: '20px' }}>
+    <div className="app-container">
+      <div className="races-container">
         {lastRaceIndex !== -1 && (
-          <div style={{
-            marginBottom: '20px',
-            padding: '15px',
-            borderRadius: '8px',
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #333'
-          }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Last Race</h3>
+          <div className="race-box last-race">
+            <h3>Last Race</h3>
             <LapsView
               key={races[lastRaceIndex].ID}
               raceId={races[lastRaceIndex].ID}
@@ -63,30 +50,10 @@ function App() {
           </div>
         )}
         {currentRaceIndex !== -1 && (
-          <div style={{
-            marginBottom: '20px',
-            padding: '15px',
-            borderRadius: '8px',
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #4a4a4a'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: '10px'
-            }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Current Race</h3>
-              <div style={{ 
-                fontFamily: 'monospace',
-                fontSize: '24px',
-                color: '#00ff00',
-                backgroundColor: '#1e2a1e',
-                padding: '4px 12px',
-                borderRadius: '4px',
-                minWidth: '80px',
-                textAlign: 'right'
-              }}>
+          <div className="race-box current-race">
+            <div className="race-header">
+              <h3>Current Race</h3>
+              <div className="race-timer">
                 <RaceTime />
               </div>
             </div>
@@ -96,20 +63,14 @@ function App() {
             />
           </div>
         )}
-        <div style={{
-          marginBottom: '20px',
-          padding: '15px',
-          borderRadius: '8px',
-          backgroundColor: '#1a1a1a',
-          border: '1px solid #333'
-        }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#888' }}>Next Races</h3>
+        <div className="race-box next-races">
+          <h3>Next Races</h3>
           {raceSubset.map((race) => (
             <LapsView key={race.ID} raceId={race.ID} />
           ))}
         </div>
       </div>
-      <div style={{ marginLeft: '20px' }}>
+      <div className="leaderboard-container">
         <Leaderboard />
       </div>
     </div>
@@ -122,15 +83,11 @@ function Race({ raceId }: { raceId: string }) {
   const round = roundData.find((r) => r.ID === race.Round);
 
   return (
-    <div style={{ border: "solid 1px orange" }}>
-      {/* Valid: {race?.Valid ? 'true':'false'}| */}
-      {/* Start: {race?.Start}| */}
-      {/* End: {race?.End}| */}
+    <div className="race">
       {round?.RoundNumber}-{race.RaceNumber}|
       {race.PilotChannels.map((pilotChannel) => (
         <PilotChannelView key={pilotChannel.ID} pilotChannel={pilotChannel} />
       ))}
-      {/* <pre>{JSON.stringify(race, null, 2)}</pre> */}
     </div>
   );
 }
@@ -254,13 +211,13 @@ function LapsView({ raceId }: { raceId: string }) {
       row.push(
         <td 
           key={lap.ID}
-          style={{ 
-            backgroundColor: lap.LengthSeconds === overallFastestLap ? 
-              '#1a472a' : // Dark green for overall fastest
+          className={
+            lap.LengthSeconds === overallFastestLap ? 
+              'lap-fastest-overall' : 
               lap.LengthSeconds === fastestLap ? 
-              '#2a2a4a' : // Dark blue for personal best
-              undefined 
-          }}
+                'lap-personal-best' : 
+                undefined
+          }
         >
           {lap.LengthSeconds.toFixed(3)}
         </td>
@@ -271,32 +228,15 @@ function LapsView({ raceId }: { raceId: string }) {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
-      <div style={{ 
-        fontSize: '24px', 
-        fontWeight: 'bold',
-        color: '#888',
-        minWidth: '60px',
-        textAlign: 'center',
-        padding: '8px',
-        backgroundColor: '#2a2a2a',
-        borderRadius: '4px'
-      }}>
+    <div className="laps-view">
+      <div className="race-number">
         {round?.RoundNumber}-{race.RaceNumber}
       </div>
-      <table style={{ border: "1px solid black", borderCollapse: "collapse" }}>
+      <table className="laps-table">
         <thead>
           <tr>{headerRow}</tr>
         </thead>
         <tbody>
-          <style>
-            {`
-          td, th {
-            border: 1px solid black;
-            padding: 4px;
-          }
-        `}
-          </style>
           {rows}
         </tbody>
       </table>
@@ -316,31 +256,30 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
     .ChannelColors[eventData[0].Channels.indexOf(pilotChannel.Channel)];
 
   return (
-    <div style={{ display: "flex", alignItems: "center" }}>
-      <div>
+    <div className="pilot-channel">
+      <div className="pilot-info">
         {pilot.Name} {channel.ShortBand}
         {channel.Number}
       </div>
-      <div style={{ backgroundColor: color, width: "10px", height: "10px" }}>
-      </div>
+      <div 
+        className="color-indicator"
+        style={{ backgroundColor: color }}
+      />
     </div>
   );
 }
 
 function ChannelSquare(
-  { channelID, change }: { channelID: string; change?: boolean },
+  { channelID, change }: { channelID: string; change?: boolean }
 ) {
   const eventData = useAtomValue(eventDataAtom);
   const color =
     eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
+  
   return (
     <div
-      style={{
-        backgroundColor: color,
-        width: "10px",
-        height: "10px",
-        margin: "0 5px",
-      }}
+      className="channel-square"
+      style={{ backgroundColor: color }}
     >
       {change ? "!" : ""}
     </div>
@@ -352,7 +291,7 @@ function RaceTime() {
   const races = useAtomValue(racesAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];
-  const raceLength = secondsFromString(eventData[0].RaceLength); // "00:02:30"
+  const raceLength = secondsFromString(eventData[0].RaceLength);
   
   const [timeRemaining, setTimeRemaining] = useState(raceLength);
 
@@ -371,7 +310,7 @@ function RaceTime() {
     }
   }, [currentRace.Start, raceLength]);
 
-  return <div style={{fontFamily: "monospace"}}>{timeRemaining.toFixed(1)}</div>;
+  return <div className="race-time">{timeRemaining.toFixed(1)}</div>;
 }
 
 function secondsFromString(time: string) {
@@ -486,9 +425,9 @@ function Leaderboard() {
   });
 
   return (
-    <div>
+    <div className="leaderboard">
       <h3>Fastest Laps Overall</h3>
-      <table style={{ border: "1px solid black", borderCollapse: "collapse" }}>
+      <table className="leaderboard-table">
         <thead>
           <tr>
             <th>Position</th>
@@ -499,28 +438,13 @@ function Leaderboard() {
           </tr>
         </thead>
         <tbody>
-          <style>{`
-            td, th {
-              border: 1px solid black;
-              padding: 4px;
-            }
-            .source-info {
-              font-size: 0.7em;
-              color: #666;
-              display: block;
-            }
-          `}</style>
           {sortedPilots.map((entry, index) => (
             <tr key={entry.pilot.ID}>
               <td>{entry.bestLap ? index + 1 : '-'}</td>
               <td>{entry.pilot.Name}</td>
               <td>
                 {entry.channel ? (
-                  <div style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}>
+                  <div className="channel-display">
                     {entry.channel.ShortBand}
                     {entry.channel.Number}
                     <ChannelSquare channelID={entry.channel.ID} />

@@ -39,3 +39,163 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-container {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 20px;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+.races-container {
+  margin-right: 20px;
+}
+
+.leaderboard-container {
+  margin-left: 20px;
+}
+
+.race-box {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+}
+
+.race-box h3 {
+  margin: 0 0 10px 0;
+  color: #888;
+}
+
+.current-race {
+  border-color: #4a4a4a;
+}
+
+.current-race h3 {
+  color: #fff;
+  margin: 0;
+}
+
+.race-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.race-timer {
+  font-family: monospace;
+  font-size: 24px;
+  color: #00ff00;
+  background-color: #1e2a1e;
+  padding: 4px 12px;
+  border-radius: 4px;
+  min-width: 80px;
+  text-align: right;
+}
+
+.laps-view {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.race-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #888;
+  min-width: 60px;
+  text-align: center;
+  padding: 8px;
+  background-color: #2a2a2a;
+  border-radius: 4px;
+}
+
+.laps-table {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+.laps-table td,
+.laps-table th {
+  border: 1px solid black;
+  padding: 4px;
+}
+
+/* Add these classes for the lap time highlighting */
+.lap-fastest-overall {
+  background-color: #1a472a; /* Dark green for overall fastest */
+}
+
+.lap-personal-best {
+  background-color: #2a2a4a; /* Dark blue for personal best */
+}
+
+.leaderboard {
+  padding: 10px;
+}
+
+.leaderboard-table {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+.leaderboard-table td,
+.leaderboard-table th {
+  border: 1px solid black;
+  padding: 4px;
+}
+
+.channel-display {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.source-info {
+  font-size: 0.7em;
+  color: #666;
+  display: block;
+}
+
+/* Race Component */
+.race {
+  border: solid 1px orange;
+}
+
+/* PilotChannelView Component */
+.pilot-channel {
+  display: flex;
+  align-items: center;
+}
+
+.pilot-info {
+  margin-right: 5px;
+}
+
+.color-indicator {
+  width: 10px;
+  height: 10px;
+}
+
+/* ChannelSquare Component */
+.channel-square {
+  width: 10px;
+  height: 10px;
+  margin: 0 5px;
+}
+
+/* RaceTime Component */
+.race-time {
+  font-family: monospace;
+}
+
+/* Additional utility classes */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
