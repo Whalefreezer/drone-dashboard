@@ -184,7 +184,19 @@ function LapsView({ raceId }: { raceId: string }) {
 
   // Create pilot rows with positions
   const rows: React.ReactNode[] = [];
-  for (const pilotChannel of race.PilotChannels) {
+  
+  // Calculate completed laps for each pilot and sort them
+  const pilotsWithLaps = race.PilotChannels.map(pilotChannel => {
+    const completedLaps = race.Laps.filter(lap => {
+      const detection = race.Detections.find(d => lap.Detection === d.ID);
+      return detection && detection.Pilot === pilotChannel.Pilot && detection.Valid;
+    }).length;
+    return { pilotChannel, completedLaps };
+  }).sort((a, b) => b.completedLaps - a.completedLaps); // Sort by completed laps descending
+
+  // Create rows based on sorted pilots
+  for (let i = 0; i < pilotsWithLaps.length; i++) {
+    const { pilotChannel, completedLaps } = pilotsWithLaps[i];
     const row: React.ReactNode[] = [];
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
@@ -193,23 +205,14 @@ function LapsView({ raceId }: { raceId: string }) {
     row.push(
       <td key="pilot-position">
         {maxLaps > 0 ? (
-          `${maxLaps - race.Laps.filter(lap => {
-            const detection = race.Detections.find(d => lap.Detection === d.ID);
-            return detection && detection.Pilot === pilotChannel.Pilot;
-          }).length + 1}${
-            maxLaps - race.Laps.filter(lap => {
-              const detection = race.Detections.find(d => lap.Detection === d.ID);
-              return detection && detection.Pilot === pilotChannel.Pilot;
-            }).length === 0 ? 'st' : 
-            maxLaps - race.Laps.filter(lap => {
-              const detection = race.Detections.find(d => lap.Detection === d.ID);
-              return detection && detection.Pilot === pilotChannel.Pilot;
-            }).length === 1 ? 'nd' : 
-            maxLaps - race.Laps.filter(lap => {
-              const detection = race.Detections.find(d => lap.Detection === d.ID);
-              return detection && detection.Pilot === pilotChannel.Pilot;
-            }).length === 2 ? 'rd' : 'th'
-          }`
+          (() => {
+            const position = i + 1; // Use array index + 1 for position
+            const suffix = position === 1 ? 'st' : 
+                          position === 2 ? 'nd' : 
+                          position === 3 ? 'rd' : 'th';
+            
+            return `${position}${suffix}`;
+          })()
         ) : '-'}
       </td>
     );
