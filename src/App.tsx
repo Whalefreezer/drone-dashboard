@@ -10,6 +10,7 @@ import {
   pilotsAtom,
   raceFamilyAtom,
   racesAtom,
+  RaceWithProcessedLaps,
   roundsDataAtom,
 } from "./state.ts";
 import { useSetAtom } from "jotai";
@@ -94,8 +95,6 @@ function getPositionWithSuffix(position: number): string {
 function LapsView({ raceId }: { raceId: string }) {
   const roundData = useAtomValue(roundsDataAtom);
   const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
-  const pilots = useAtomValue(pilotsAtom);
-  const channels = useAtomValue(channelsDataAtom);
   const races = useAtomValue(racesAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
@@ -111,32 +110,17 @@ function LapsView({ raceId }: { raceId: string }) {
 
   const round = roundData.find((r) => r.ID === race.Round);
 
-  // Calculate max laps by finding the highest lap count for any pilot
-  const maxLaps = race.PilotChannels.reduce((max, pilotChannel) => {
-    const pilotLaps = race.processedLaps.filter((lap) =>
-      lap.pilotId === pilotChannel.Pilot
-    ).length;
-    return Math.max(max, pilotLaps);
-  }, 0);
+  return (
+    <div className="laps-view">
+      <div className="race-number">
+        {round?.RoundNumber}-{race.RaceNumber}
+      </div>
+      <LapsTable race={race} />
+    </div>
+  );
+}
 
-  // Create header row
-  const headerRow: React.ReactNode[] = [
-    <th key="header-pos">Pos</th>,
-    <th key="header-name">Name</th>,
-    <th key="header-channel">Channel</th>,
-  ];
-
-    for (let i = 0; i < maxLaps; i++) {
-      headerRow.push(
-        <th key={`header-lap-${i}`}>
-          {i === 0 ? "HS" : `L${i}`}
-        </th>,
-      );
-  }
-
-  // Create pilot rows with positions
-  const rows: React.ReactNode[] = [];
-
+function LapsTable({ race }: { race: RaceWithProcessedLaps }) {
   // Calculate completed laps for each pilot and sort them
   const pilotsWithLaps = race.PilotChannels.map((pilotChannel) => {
     const completedLaps = race.processedLaps.filter((lap) =>
@@ -145,28 +129,84 @@ function LapsView({ raceId }: { raceId: string }) {
     return { pilotChannel, completedLaps };
   }).sort((a, b) => b.completedLaps - a.completedLaps);
 
-  // Create rows based on sorted pilots
-  for (let i = 0; i < pilotsWithLaps.length; i++) {
-    const { pilotChannel } = pilotsWithLaps[i];
-    const row: React.ReactNode[] = [];
-    const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+  // Get the actual number of columns needed
+  const maxLaps = Math.max(...race.processedLaps.map(lap => lap.lapNumber));
 
-    // Add position
-    row.push(
-      <td key="pilot-position">
-        {maxLaps > 0
-          ? getPositionWithSuffix(i + 1)
-          : "-"}
-      </td>,
+  return (
+    <table className="laps-table">
+      <LapsTableHeader maxLaps={maxLaps} />
+      <tbody>
+        {pilotsWithLaps.map((pilotData, index) => (
+          <LapsTableRow
+            key={pilotData.pilotChannel.ID}
+            pilotChannel={pilotData.pilotChannel}
+            position={index + 1}
+            maxLaps={maxLaps}
+            race={race}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function LapsTableHeader({ maxLaps }: { maxLaps: number }) {
+  const headerCells = [
+    <th key="header-pos">Pos</th>,
+    <th key="header-name">Name</th>,
+    <th key="header-channel">Channel</th>,
+  ];
+
+  for (let i = 0; i < maxLaps; i++) {
+    headerCells.push(
+      <th key={`header-lap-${i}`}>
+        {i === 0 ? "HS" : `L${i}`}
+      </th>,
     );
+  }
 
-    // Add name and channel
-    row.push(
-      <td key="pilot-name">
-        {pilot.Name}
-      </td>,
-      <td key="pilot-channel">
+  return (
+    <thead>
+      <tr>{headerCells}</tr>
+    </thead>
+  );
+}
+
+function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
+  pilotChannel: PilotChannel;
+  position: number;
+  maxLaps: number;
+  race: RaceWithProcessedLaps;
+}) {
+  const pilots = useAtomValue(pilotsAtom);
+  const channels = useAtomValue(channelsDataAtom);
+
+  const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
+  const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+
+  // Get racing laps (excluding holeshot)
+  const racingLaps = race.processedLaps.filter((lap) =>
+    lap.pilotId === pilotChannel.Pilot &&
+    !lap.isHoleshot
+  );
+
+  // Calculate fastest lap for this pilot
+  const fastestLap = racingLaps.length > 0
+    ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
+    : Infinity;
+
+  // Calculate overall fastest lap across all pilots
+  const overallFastestLap = Math.min(
+    ...race.processedLaps
+      .filter(lap => !lap.isHoleshot)  // Exclude holeshots
+      .map(lap => lap.lengthSeconds)
+  );
+
+  return (
+    <tr>
+      <td>{maxLaps > 0 ? getPositionWithSuffix(position) : "-"}</td>
+      <td>{pilot.Name}</td>
+      <td>
         <div
           style={{
             display: "flex",
@@ -178,27 +218,8 @@ function LapsView({ raceId }: { raceId: string }) {
           {channel.Number}
           <ChannelSquare channelID={pilotChannel.Channel} />
         </div>
-      </td>,
-    );
-
-    // Get racing laps (excluding holeshot)
-    const racingLaps = race.processedLaps.filter((lap) =>
-      lap.pilotId === pilotChannel.Pilot &&
-      lap.lapNumber > 0
-    );
-
-    // Calculate fastest laps
-    const fastestLap = racingLaps.length > 0
-      ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
-      : Infinity;
-
-    const overallFastestLap = Math.min(
-      ...racingLaps.map((lap) => lap.lengthSeconds),
-    );
-
-    // Add lap times with highlighting
-    for (const lap of racingLaps) {
-      row.push(
+      </td>
+      {racingLaps.map((lap) => (
         <td
           key={lap.id}
           className={lap.lengthSeconds === overallFastestLap
@@ -208,27 +229,9 @@ function LapsView({ raceId }: { raceId: string }) {
             : undefined}
         >
           {lap.lengthSeconds.toFixed(3)}
-        </td>,
-      );
-    }
-
-    rows.push(<tr key={pilotChannel.ID}>{row}</tr>);
-  }
-
-  return (
-    <div className="laps-view">
-      <div className="race-number">
-        {round?.RoundNumber}-{race.RaceNumber}
-      </div>
-      <table className="laps-table">
-        <thead>
-          <tr>{headerRow}</tr>
-        </thead>
-        <tbody>
-          {rows}
-        </tbody>
-      </table>
-    </div>
+        </td>
+      ))}
+    </tr>
   );
 }
 
@@ -341,7 +344,7 @@ function Leaderboard() {
       // Get racing laps (excluding holeshot)
       const racingLaps = race.processedLaps.filter((lap) =>
         lap.pilotId === pilotChannel.Pilot &&
-        lap.lapNumber > 0
+        !lap.isHoleshot
       );
 
       if (racingLaps.length > 0) {

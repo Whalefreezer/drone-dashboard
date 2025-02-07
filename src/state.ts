@@ -184,7 +184,7 @@ export function findIndexOfLastRace(sortedRaces: Race[]) {
   return -1;
 }
 
-interface RaceWithProcessedLaps extends Race {
+export interface RaceWithProcessedLaps extends Race {
   processedLaps: ProcessedLap[];
 }
 
@@ -196,6 +196,7 @@ interface ProcessedLap {
   valid: boolean;
   startTime: string;
   endTime: string;
+  isHoleshot: boolean;
 }
 
 export const raceFamilyAtom = atomFamily((raceId: string) =>
@@ -217,7 +218,8 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
           pilotId: detection.Pilot,
           valid: true,
           startTime: lap.StartTime,
-          endTime: lap.EndTime
+          endTime: lap.EndTime,
+          isHoleshot: detection.IsHoleshot
         };
       })
       .filter((lap): lap is ProcessedLap => lap !== null)
