@@ -266,3 +266,36 @@ export function useUpdate() {
     return () => clearInterval(interval);
   }, [update]);
 }
+
+export interface OverallBestTimes {
+  overallFastestLap: number;
+  pilotBestLaps: Map<string, number>;
+}
+
+export const overallBestTimesAtom = atom(async (get) => {
+  const races = await get(racesAtom);
+  
+  const overallBestTimes: OverallBestTimes = {
+    overallFastestLap: Infinity,
+    pilotBestLaps: new Map()
+  };
+
+  races.forEach(race => {
+    race.processedLaps.forEach(lap => {
+      if (!lap.isHoleshot) {
+        // Update overall fastest
+        if (lap.lengthSeconds < overallBestTimes.overallFastestLap) {
+          overallBestTimes.overallFastestLap = lap.lengthSeconds;
+        }
+        
+        // Update pilot's personal best
+        const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ?? Infinity;
+        if (lap.lengthSeconds < currentBest) {
+          overallBestTimes.pilotBestLaps.set(lap.pilotId, lap.lengthSeconds);
+        }
+      }
+    });
+  });
+
+  return overallBestTimes;
+});

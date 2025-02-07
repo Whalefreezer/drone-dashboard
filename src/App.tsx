@@ -12,6 +12,7 @@ import {
   racesAtom,
   RaceWithProcessedLaps,
   roundsDataAtom,
+  overallBestTimesAtom,
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -76,6 +77,7 @@ function App() {
       </div>
       <div className="leaderboard-container">
         <Leaderboard />
+        <Legend />
       </div>
     </div>
   );
@@ -180,6 +182,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
 }) {
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
+  const overallBestTimes = useAtomValue(overallBestTimesAtom);
 
   const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
   const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
@@ -207,30 +210,30 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
       <td>{maxLaps > 0 ? getPositionWithSuffix(position) : "-"}</td>
       <td>{pilot.Name}</td>
       <td>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
+        <div className="flex-row">
           {channel.ShortBand}
           {channel.Number}
           <ChannelSquare channelID={pilotChannel.Channel} />
         </div>
       </td>
-      {racingLaps.map((lap) => (
-        <td
-          key={lap.id}
-          className={lap.lengthSeconds === overallFastestLap
-            ? "lap-fastest-overall"
-            : lap.lengthSeconds === fastestLap
-            ? "lap-personal-best"
-            : undefined}
-        >
-          {lap.lengthSeconds.toFixed(3)}
-        </td>
-      ))}
+      {racingLaps.map((lap) => {
+        let className;
+        if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
+          className = "lap-overall-fastest";
+        } else if (lap.lengthSeconds === overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot)) {
+          className = "lap-overall-personal-best";
+        } else if (lap.lengthSeconds === overallFastestLap) {
+          className = "lap-fastest-overall";
+        } else if (lap.lengthSeconds === fastestLap) {
+          className = "lap-personal-best";
+        }
+        
+        return (
+          <td key={lap.id} className={className}>
+            {lap.lengthSeconds.toFixed(3)}
+          </td>
+        );
+      })}
     </tr>
   );
 }
@@ -479,6 +482,40 @@ function Leaderboard() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+      <div style={{ 
+        width: '16px', 
+        height: '16px', 
+        backgroundColor: color,
+        border: '1px solid #666' 
+      }}></div>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div style={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      padding: '8px', 
+      backgroundColor: '#222',
+      borderRadius: '4px',
+      marginBottom: '16px',
+      width: 'fit-content'
+    }}>
+      <LegendItem color="var(--overall-fastest-color)" label="Overall Fastest" />
+      <LegendItem color="var(--overall-personal-best-color)" label="Overall Personal Best" />
+      <LegendItem color="var(--fastest-lap-color)" label="Race Fastest" />
+      <LegendItem color="var(--personal-best-color)" label="Race Personal Best" />
     </div>
   );
 }

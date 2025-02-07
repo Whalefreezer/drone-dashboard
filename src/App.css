@@ -127,11 +127,11 @@
 
 /* Add these classes for the lap time highlighting */
 .lap-fastest-overall {
-  background-color: #1a472a; /* Dark green for overall fastest */
+  background-color: var(--fastest-lap-color);
 }
 
 .lap-personal-best {
-  background-color: #2a2a4a; /* Dark blue for personal best */
+  background-color: var(--personal-best-color);
 }
 
 .leaderboard {
@@ -198,4 +198,20 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+}
+
+:root {
+  --fastest-lap-color: #1a472a;  /* Dark green for race fastest */
+  --personal-best-color: #2a2a4a;  /* Dark blue for race personal best */
+  --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
+  --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
+}
+
+/* Add these new classes */
+.lap-overall-fastest {
+  background-color: var(--overall-fastest-color);
+}
+
+.lap-overall-personal-best {
+  background-color: var(--overall-personal-best-color);
 }
