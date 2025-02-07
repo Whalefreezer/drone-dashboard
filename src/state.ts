@@ -94,9 +94,9 @@ async function robustFetch(url: string): Promise<Response> {
   throw new Error("should not get here");
 }
 
-export const roundsDataAtom = atom(async (get) => {
+export const roundsDataAtom = atomWithRefresh(async (get) => {
   const eventId = await get(eventIdAtom);
-  const page = await fetch(`/api/events/${eventId}/Rounds.json`);
+  const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
   const json = await page.json();
   return json as Round[];
 });

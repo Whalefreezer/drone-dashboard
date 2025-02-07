@@ -17,23 +17,22 @@ import { PilotChannel } from "./types.ts";
 
 const UPDATE = true;
 
-
 function App() {
-  // const eventData = useAtomValue(eventDataAtom);
   const races = useAtomValue(racesAtom);
   const updateEventData = useSetAtom(eventDataAtom);
+  const updateRoundsData = useSetAtom(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
   const raceSubset = races.slice(currentRaceIndex + 1);
 
-  // const race = useAtomValue(raceFamilyAtom(eventData[0].Races[0]));
   if (UPDATE) {
     useEffect(() => {
       const interval = setInterval(() => {
         updateEventData();
+        updateRoundsData();
       }, 10_000);
       return () => clearInterval(interval);
-    }, [updateEventData]);
+    }, [updateEventData, updateRoundsData]);
   }
 
   return (
@@ -41,7 +40,9 @@ function App() {
       <div className="races-container">
         {lastRaceIndex !== -1 && (
           <div className="race-box last-race">
-            <h3>Last Race</h3>
+            <div className="race-header">
+              <h3>Last Race</h3>
+            </div>
             <LapsView
               key={races[lastRaceIndex].ID}
               raceId={races[lastRaceIndex].ID}
@@ -63,10 +64,13 @@ function App() {
           </div>
         )}
         <div className="race-box next-races">
-          <h3>Next Races</h3>
-          {raceSubset.map((race) => (
-            <LapsView key={race.ID} raceId={race.ID} />
-          ))}
+          <div className="race-header">
+            <h3>Next Races</h3>
+          </div>
+          {raceSubset.map((race) => <LapsView
+            key={race.ID}
+            raceId={race.ID}
+          />)}
         </div>
       </div>
       <div className="leaderboard-container">
@@ -75,7 +79,6 @@ function App() {
     </div>
   );
 }
-
 
 function LapsView({ raceId }: { raceId: string }) {
   const roundData = useAtomValue(roundsDataAtom);
@@ -99,7 +102,7 @@ function LapsView({ raceId }: { raceId: string }) {
 
   // Calculate max laps by finding the highest lap count for any pilot
   const maxLaps = race.PilotChannels.reduce((max, pilotChannel) => {
-    const pilotLaps = race.processedLaps.filter(lap => 
+    const pilotLaps = race.processedLaps.filter((lap) =>
       lap.pilotId === pilotChannel.Pilot
     ).length;
     return Math.max(max, pilotLaps);
@@ -109,7 +112,7 @@ function LapsView({ raceId }: { raceId: string }) {
   const headerRow: React.ReactNode[] = [
     <th key="header-pos">Pos</th>,
     <th key="header-name">Name</th>,
-    <th key="header-channel">Channel</th>
+    <th key="header-channel">Channel</th>,
   ];
 
   // Only add lap headers if there are laps
@@ -117,18 +120,18 @@ function LapsView({ raceId }: { raceId: string }) {
     for (let i = 0; i < maxLaps; i++) {
       headerRow.push(
         <th key={`header-lap-${i}`}>
-          {i === 0 ? 'HS' : `L${i}`}
-        </th>
+          {i === 0 ? "HS" : `L${i}`}
+        </th>,
       );
     }
   }
 
   // Create pilot rows with positions
   const rows: React.ReactNode[] = [];
-  
+
   // Calculate completed laps for each pilot and sort them
-  const pilotsWithLaps = race.PilotChannels.map(pilotChannel => {
-    const completedLaps = race.processedLaps.filter(lap => 
+  const pilotsWithLaps = race.PilotChannels.map((pilotChannel) => {
+    const completedLaps = race.processedLaps.filter((lap) =>
       lap.pilotId === pilotChannel.Pilot
     ).length;
     return { pilotChannel, completedLaps };
@@ -140,21 +143,27 @@ function LapsView({ raceId }: { raceId: string }) {
     const row: React.ReactNode[] = [];
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
-    
+
     // Add position
     row.push(
       <td key="pilot-position">
-        {maxLaps > 0 ? (
-          (() => {
-            const position = i + 1; // Use array index + 1 for position
-            const suffix = position === 1 ? 'st' : 
-                          position === 2 ? 'nd' : 
-                          position === 3 ? 'rd' : 'th';
-            
-            return `${position}${suffix}`;
-          })()
-        ) : '-'}
-      </td>
+        {maxLaps > 0
+          ? (
+            (() => {
+              const position = i + 1; // Use array index + 1 for position
+              const suffix = position === 1
+                ? "st"
+                : position === 2
+                ? "nd"
+                : position === 3
+                ? "rd"
+                : "th";
+
+              return `${position}${suffix}`;
+            })()
+          )
+          : "-"}
+      </td>,
     );
 
     // Add name and channel
@@ -178,33 +187,33 @@ function LapsView({ raceId }: { raceId: string }) {
     );
 
     // Get racing laps (excluding holeshot)
-    const racingLaps = race.processedLaps.filter(lap => 
-      lap.pilotId === pilotChannel.Pilot && 
+    const racingLaps = race.processedLaps.filter((lap) =>
+      lap.pilotId === pilotChannel.Pilot &&
       lap.lapNumber > 0
     );
 
     // Calculate fastest laps
     const fastestLap = racingLaps.length > 0
-      ? Math.min(...racingLaps.map(lap => lap.lengthSeconds))
+      ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
       : Infinity;
 
-    const overallFastestLap = Math.min(...racingLaps.map(lap => lap.lengthSeconds));
+    const overallFastestLap = Math.min(
+      ...racingLaps.map((lap) => lap.lengthSeconds),
+    );
 
     // Add lap times with highlighting
     for (const lap of racingLaps) {
       row.push(
-        <td 
+        <td
           key={lap.id}
-          className={
-            lap.lengthSeconds === overallFastestLap ? 
-              'lap-fastest-overall' : 
-              lap.lengthSeconds === fastestLap ? 
-                'lap-personal-best' : 
-                undefined
-          }
+          className={lap.lengthSeconds === overallFastestLap
+            ? "lap-fastest-overall"
+            : lap.lengthSeconds === fastestLap
+            ? "lap-personal-best"
+            : undefined}
         >
           {lap.lengthSeconds.toFixed(3)}
-        </td>
+        </td>,
       );
     }
 
@@ -245,7 +254,7 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
         {pilot.Name} {channel.ShortBand}
         {channel.Number}
       </div>
-      <div 
+      <div
         className="color-indicator"
         style={{ backgroundColor: color }}
       />
@@ -254,12 +263,12 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
 }
 
 function ChannelSquare(
-  { channelID, change }: { channelID: string; change?: boolean }
+  { channelID, change }: { channelID: string; change?: boolean },
 ) {
   const eventData = useAtomValue(eventDataAtom);
   const color =
     eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
-  
+
   return (
     <div
       className="channel-square"
@@ -276,17 +285,19 @@ function RaceTime() {
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];
   const raceLength = secondsFromString(eventData[0].RaceLength);
-  
+
   const [timeRemaining, setTimeRemaining] = useState(raceLength);
 
   useEffect(() => {
     // Only start countdown if race has started
     if (currentRace.Start) {
-      const currentRaceStart = new Date(currentRace.Start).valueOf()/1000;
+      const currentRaceStart = new Date(currentRace.Start).valueOf() / 1000;
       const currentRaceEnd = currentRaceStart + raceLength;
 
       const interval = setInterval(() => {
-        setTimeRemaining(Math.max(0, currentRaceEnd - (new Date().valueOf()/1000)));
+        setTimeRemaining(
+          Math.max(0, currentRaceEnd - (new Date().valueOf() / 1000)),
+        );
       }, 100);
       return () => clearInterval(interval);
     } else {
@@ -321,35 +332,35 @@ function Leaderboard() {
     raceNumber: number;
     startLap: number;
   }
-  
+
   const overallFastestLaps = new Map<string, BestTime>();
   const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
   const pilotChannels = new Map<string, string>();
-  
-  races.forEach(race => {
-    race.PilotChannels.forEach(pilotChannel => {
+
+  races.forEach((race) => {
+    race.PilotChannels.forEach((pilotChannel) => {
       if (!pilotChannels.has(pilotChannel.Pilot)) {
         pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
       }
 
       // Get racing laps (excluding holeshot)
-      const racingLaps = race.processedLaps.filter(lap => 
-        lap.pilotId === pilotChannel.Pilot && 
+      const racingLaps = race.processedLaps.filter((lap) =>
+        lap.pilotId === pilotChannel.Pilot &&
         lap.lapNumber > 0
       );
 
       if (racingLaps.length > 0) {
-        const fastestLap = racingLaps.reduce((fastest, lap) => 
+        const fastestLap = racingLaps.reduce((fastest, lap) =>
           lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
         );
-        
+
         const currentFastest = overallFastestLaps.get(pilotChannel.Pilot);
         if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
           overallFastestLaps.set(pilotChannel.Pilot, {
             time: fastestLap.lengthSeconds,
             roundId: race.Round,
             raceNumber: race.RaceNumber,
-            lapNumber: fastestLap.lapNumber
+            lapNumber: fastestLap.lapNumber,
           });
         }
       }
@@ -358,34 +369,40 @@ function Leaderboard() {
       if (racingLaps.length >= 2) {
         let fastestConsecutive = { time: Infinity, startLap: 0 };
         for (let i = 0; i < racingLaps.length - 1; i++) {
-          const twoLapTime = racingLaps[i].lengthSeconds + racingLaps[i + 1].lengthSeconds;
+          const twoLapTime = racingLaps[i].lengthSeconds +
+            racingLaps[i + 1].lengthSeconds;
           if (twoLapTime < fastestConsecutive.time) {
             fastestConsecutive = {
               time: twoLapTime,
-              startLap: racingLaps[i].lapNumber
+              startLap: racingLaps[i].lapNumber,
             };
           }
         }
-        
-        const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotChannel.Pilot);
-        if (!currentFastestConsecutive || fastestConsecutive.time < currentFastestConsecutive.time) {
+
+        const currentFastestConsecutive = fastestConsecutiveLaps.get(
+          pilotChannel.Pilot,
+        );
+        if (
+          !currentFastestConsecutive ||
+          fastestConsecutive.time < currentFastestConsecutive.time
+        ) {
           fastestConsecutiveLaps.set(pilotChannel.Pilot, {
             ...fastestConsecutive,
             roundId: race.Round,
-            raceNumber: race.RaceNumber
+            raceNumber: race.RaceNumber,
           });
         }
       }
     });
   });
 
-  const pilotEntries = pilots.map(pilot => ({
+  const pilotEntries = pilots.map((pilot) => ({
     pilot,
     bestLap: overallFastestLaps.get(pilot.ID) || null,
     consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
-    channel: pilotChannels.get(pilot.ID) ? 
-      channels.find(c => c.ID === pilotChannels.get(pilot.ID)) : 
-      null
+    channel: pilotChannels.get(pilot.ID)
+      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID))
+      : null,
   }));
 
   const sortedPilots = pilotEntries.sort((a, b) => {
@@ -418,38 +435,47 @@ function Leaderboard() {
         <tbody>
           {sortedPilots.map((entry, index) => (
             <tr key={entry.pilot.ID}>
-              <td>{entry.bestLap ? index + 1 : '-'}</td>
+              <td>{entry.bestLap ? index + 1 : "-"}</td>
               <td>{entry.pilot.Name}</td>
               <td>
-                {entry.channel ? (
-                  <div className="channel-display">
-                    {entry.channel.ShortBand}
-                    {entry.channel.Number}
-                    <ChannelSquare channelID={entry.channel.ID} />
-                  </div>
-                ) : '-'}
+                {entry.channel
+                  ? (
+                    <div className="channel-display">
+                      {entry.channel.ShortBand}
+                      {entry.channel.Number}
+                      <ChannelSquare channelID={entry.channel.ID} />
+                    </div>
+                  )
+                  : "-"}
               </td>
               <td>
-                {entry.bestLap ? (
-                  <>
-                    {entry.bestLap.time.toFixed(3)}
-                    <span className="source-info">
-                      {roundData.find(r => r.ID === entry.bestLap!.roundId)?.RoundNumber}-
-                      {entry.bestLap.raceNumber}
-                    </span>
-                  </>
-                ) : '-'}
+                {entry.bestLap
+                  ? (
+                    <>
+                      {entry.bestLap.time.toFixed(3)}
+                      <span className="source-info">
+                        {roundData.find((r) => r.ID === entry.bestLap!.roundId)
+                          ?.RoundNumber}-
+                        {entry.bestLap.raceNumber}
+                      </span>
+                    </>
+                  )
+                  : "-"}
               </td>
               <td>
-                {entry.consecutiveLaps ? (
-                  <>
-                    {entry.consecutiveLaps.time.toFixed(3)}
-                    <span className="source-info">
-                      {roundData.find(r => r.ID === entry.consecutiveLaps!.roundId)?.RoundNumber}-
-                      {entry.consecutiveLaps.raceNumber}
-                    </span>
-                  </>
-                ) : '-'}
+                {entry.consecutiveLaps
+                  ? (
+                    <>
+                      {entry.consecutiveLaps.time.toFixed(3)}
+                      <span className="source-info">
+                        {roundData.find((r) =>
+                          r.ID === entry.consecutiveLaps!.roundId
+                        )?.RoundNumber}-
+                        {entry.consecutiveLaps.raceNumber}
+                      </span>
+                    </>
+                  )
+                  : "-"}
               </td>
             </tr>
           ))}
