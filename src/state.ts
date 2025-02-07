@@ -113,7 +113,7 @@ export const racesAtom = atom(async (get) => {
 
   orderRaces(races, rounds);
 
-  return races as Race[];
+  return races;
 });
 
 function orderRaces(races: Race[], rounds: Round[]) {
@@ -184,12 +184,49 @@ export function findIndexOfLastRace(sortedRaces: Race[]) {
   return -1;
 }
 
+interface RaceWithProcessedLaps extends Race {
+  processedLaps: ProcessedLap[];
+}
+
+interface ProcessedLap {
+  id: string;
+  lapNumber: number;
+  lengthSeconds: number;
+  pilotId: string;
+  valid: boolean;
+  startTime: string;
+  endTime: string;
+}
+
 export const raceFamilyAtom = atomFamily((raceId: string) =>
   atomWithRefresh(async (get) => {
     const eventId = await get(eventIdAtom);
     const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
     const json = await page.json();
-    return json[0] as Race;
+    const race = json[0] as Race;
+
+    const processedLaps = race.Laps
+      .map(lap => {
+        const detection = race.Detections.find(d => lap.Detection === d.ID);
+        if (!detection || !detection.Valid) return null;
+        
+        return {
+          id: lap.ID,
+          lapNumber: lap.LapNumber,
+          lengthSeconds: lap.LengthSeconds,
+          pilotId: detection.Pilot,
+          valid: true,
+          startTime: lap.StartTime,
+          endTime: lap.EndTime
+        };
+      })
+      .filter((lap): lap is ProcessedLap => lap !== null)
+      .sort((a, b) => a.lapNumber - b.lapNumber);
+
+    return {
+      ...race,
+      processedLaps
+    } as RaceWithProcessedLaps;
   })
 );
 
