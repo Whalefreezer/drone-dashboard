@@ -80,6 +80,17 @@ function App() {
   );
 }
 
+function getPositionWithSuffix(position: number): string {
+  const suffix = position === 1
+    ? "st"
+    : position === 2
+    ? "nd"
+    : position === 3
+    ? "rd"
+    : "th";
+  return `${position}${suffix}`;
+}
+
 function LapsView({ raceId }: { raceId: string }) {
   const roundData = useAtomValue(roundsDataAtom);
   const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
@@ -115,15 +126,12 @@ function LapsView({ raceId }: { raceId: string }) {
     <th key="header-channel">Channel</th>,
   ];
 
-  // Only add lap headers if there are laps
-  if (maxLaps > 0) {
     for (let i = 0; i < maxLaps; i++) {
       headerRow.push(
         <th key={`header-lap-${i}`}>
           {i === 0 ? "HS" : `L${i}`}
         </th>,
       );
-    }
   }
 
   // Create pilot rows with positions
@@ -148,20 +156,7 @@ function LapsView({ raceId }: { raceId: string }) {
     row.push(
       <td key="pilot-position">
         {maxLaps > 0
-          ? (
-            (() => {
-              const position = i + 1; // Use array index + 1 for position
-              const suffix = position === 1
-                ? "st"
-                : position === 2
-                ? "nd"
-                : position === 3
-                ? "rd"
-                : "th";
-
-              return `${position}${suffix}`;
-            })()
-          )
+          ? getPositionWithSuffix(i + 1)
           : "-"}
       </td>,
     );
