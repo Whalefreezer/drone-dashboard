@@ -125,13 +125,73 @@
   padding: 4px;
 }
 
-/* Add these classes for the lap time highlighting */
+/* Common pattern mixin */
+.crosshatch-pattern {
+  background-image: 
+    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-size: 8px 8px;
+}
+
+/* Lap highlighting */
 .lap-fastest-overall {
   background-color: var(--fastest-lap-color);
+  background-image: inherit;
+  background-size: inherit;
 }
 
 .lap-personal-best {
   background-color: var(--personal-best-color);
+  background-image: inherit;
+  background-size: inherit;
+}
+
+.lap-overall-fastest {
+  background-color: var(--overall-fastest-color);
+}
+
+.lap-overall-personal-best {
+  background-color: var(--overall-personal-best-color);
+}
+
+/* Legend squares */
+.legend-square {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+}
+
+.legend-square-fastest-overall {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+  background-color: var(--fastest-lap-color);
+  background-image: 
+    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-size: 8px 8px;
+}
+
+.legend-square-personal-best {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+  background-color: var(--personal-best-color);
+  background-image: 
+    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-size: 8px 8px;
+}
+
+.legend-square-overall-fastest {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+  background-color: var(--overall-fastest-color);
+}
+
+.legend-square-overall-personal-best {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+  background-color: var(--overall-personal-best-color);
 }
 
 .leaderboard {
@@ -205,13 +265,4 @@
   --personal-best-color: #2a2a4a;  /* Dark blue for race personal best */
   --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
   --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
-}
-
-/* Add these new classes */
-.lap-overall-fastest {
-  background-color: var(--overall-fastest-color);
-}
-
-.lap-overall-personal-best {
-  background-color: var(--overall-personal-best-color);
 }
