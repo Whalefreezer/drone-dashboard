@@ -61,7 +61,7 @@ export const channelsDataAtom = atom(async () => {
 
 async function robustFetch(url: string): Promise<Response> {
   const timeout = 1000; // 1 second timeout
-  const maxRetries = 5;
+  const maxRetries = 10;
   let retries = 0;
 
   while (retries < maxRetries) {

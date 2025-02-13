@@ -266,3 +266,9 @@
   --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
   --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
 }
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}

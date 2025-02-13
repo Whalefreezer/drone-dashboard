@@ -16,6 +16,7 @@ import {
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
+import { QRCodeSVG } from 'qrcode.react';
 
 const UPDATE = true;
 
@@ -25,7 +26,7 @@ function App() {
   const updateRoundsData = useSetAtom(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
-  const raceSubset = races.slice(currentRaceIndex + 1);
+  const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
 
   if (UPDATE) {
     useEffect(() => {
@@ -77,7 +78,17 @@ function App() {
       </div>
       <div className="leaderboard-container">
         <Leaderboard />
-        <Legend />
+        {/* <Legend /> */}
+        <div className="qr-code-container">
+          <QRCodeSVG 
+            value="https://nzo.roboenator.com" 
+            size={230}
+            bgColor="#FFF"
+            fgColor="#000"
+            level="L"
+            style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
+          />
+        </div>
       </div>
     </div>
   );
