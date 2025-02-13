@@ -3,12 +3,13 @@ import { atomFamily, atomWithRefresh, loadable } from "jotai/utils";
 import { Channel, Pilot, Race, RaceEvent, Round } from "./types.ts";
 import { useEffect, useState } from "react";
 import { atomWithSuspenseQuery } from "jotai-tanstack-query";
+import axios from "axios";
 
 const eventIdAtom = atomWithSuspenseQuery(() => ({
   queryKey: ['eventId'],
   queryFn: async () => {
-    const page = await fetch("/api");
-    const text = await page.text();
+    const response = await axios.get("/api");
+    const text = response.data;
 
     const match = text.match(
       /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
@@ -20,12 +21,14 @@ const eventIdAtom = atomWithSuspenseQuery(() => ({
   },
 }));
 
-export const eventDataAtom = atomWithRefresh(async (get) => {
-  const {data: eventId} = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Event.json`);
-  const json = await page.json();
-  return json as RaceEvent[];
-});
+export const eventDataAtom = atomWithSuspenseQuery((get) => ({
+  queryKey: ['eventData'],
+  queryFn: async () => {
+    const {data: eventId} = await get(eventIdAtom);
+    const response = await axios.get(`/api/events/${eventId}/Event.json`);
+    return response.data as RaceEvent[];
+  },
+}));
 
 export const pilotsAtom = atomWithRefresh(async (get) => {
   const {data: eventId} = await get(eventIdAtom);
@@ -106,7 +109,7 @@ export const roundsDataAtom = atomWithRefresh(async (get) => {
 });
 
 export const racesAtom = atom(async (get) => {
-  const event = await get(eventDataAtom);
+  const {data: event} = await get(eventDataAtom);
   let races = await Promise.all(event[0].Races.map(async (raceId) => {
     return await get(raceFamilyAtom(raceId));
   }));

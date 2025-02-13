@@ -22,7 +22,6 @@ const UPDATE = true;
 
 function App() {
   const races = useAtomValue(racesAtom);
-  const updateEventData = useSetAtom(eventDataAtom);
   const updateRoundsData = useSetAtom(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
@@ -31,11 +30,10 @@ function App() {
   if (UPDATE) {
     useEffect(() => {
       const interval = setInterval(() => {
-        updateEventData();
         updateRoundsData();
       }, 10_000);
       return () => clearInterval(interval);
-    }, [updateEventData, updateRoundsData]);
+    }, [updateRoundsData]);
   }
 
   return (
@@ -252,7 +250,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
 function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
-  const eventData = useAtomValue(eventDataAtom);
+  const {data: eventData} = useAtomValue(eventDataAtom);
 
   const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
   const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
@@ -277,7 +275,7 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
 function ChannelSquare(
   { channelID, change }: { channelID: string; change?: boolean },
 ) {
-  const eventData = useAtomValue(eventDataAtom);
+  const {data: eventData} = useAtomValue(eventDataAtom);
   const color =
     eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
 
@@ -292,7 +290,7 @@ function ChannelSquare(
 }
 
 function RaceTime() {
-  const eventData = useAtomValue(eventDataAtom);
+  const {data: eventData} = useAtomValue(eventDataAtom);
   const races = useAtomValue(racesAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];

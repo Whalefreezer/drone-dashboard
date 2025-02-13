@@ -17,6 +17,7 @@
     "@types/react": "npm:@types/react@^18.3.12",
     "@types/react-dom": "npm:@types/react-dom@^18.3.1",
     "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.7.1",
+    "axios": "npm:axios@^1.7.9",
     "jotai": "npm:jotai@^2.11.0",
     "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
     "qrcode.react": "npm:qrcode.react@^4.2.0",
