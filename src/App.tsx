@@ -155,10 +155,12 @@ function LapsView({ raceId }: { raceId: string }) {
 
   return (
     <div className="laps-view">
-      <div className="race-number">
-        {round?.RoundNumber}-{race.RaceNumber}
+      <div className="race-info">
+        <div className="race-number">
+          {round?.RoundNumber}-{race.RaceNumber}
+        </div>
+        <LapsTable race={race} />
       </div>
-      <LapsTable race={race} />
     </div>
   );
 }
