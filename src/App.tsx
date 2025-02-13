@@ -202,7 +202,7 @@ function LapsTableHeader({ maxLaps }: { maxLaps: number }) {
     <th key="header-channel">Channel</th>,
   ];
 
-  for (let i = 0; i < maxLaps; i++) {
+  for (let i = 0; i <= maxLaps; i++) {
     headerCells.push(
       <th key={`header-lap-${i}`}>
         {i === 0 ? "HS" : `L${i}`}
