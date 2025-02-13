@@ -1,34 +1,46 @@
 import { Atom, atom, useAtomValue, useSetAtom } from "jotai";
-import { atomFamily, atomWithRefresh, loadable } from "jotai/utils";
+import { atomFamily, loadable } from "jotai/utils";
 import { Channel, Pilot, Race, RaceEvent, Round } from "./types.ts";
 import { useEffect, useState } from "react";
+import { atomWithQuery } from "jotai-tanstack-query";
+import type { Getter } from "jotai";
+import { DefaultError, QueryKey } from "@tanstack/react-query";
 
-const eventIdAtom = atom(async () => {
-  const page = await robustFetch("/api");
-  const text = await page.text();
+const eventIdAtom = atomWithQuery<string | null, DefaultError, string | null, QueryKey>(() => ({
+  queryKey: ["eventId"],
+  queryFn: async () => {
+    const page = await robustFetch("/api");
+    const text = await page.text();
+    const match = text.match(
+      /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
+    );
+    return match ? match[1] : null;
+  },
+}));
 
-  const match = text.match(
-    /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
-  );
-  if (match) {
-    return match[1];
-  }
-  return null;
-});
+export const eventDataAtom = atomWithQuery((get: Getter) => ({
+  queryKey: ["eventData", get(eventIdAtom)],
+  queryFn: async () => {
+    const eventId = get(eventIdAtom);
+    if (!eventId) return null;
+    const page = await robustFetch(`/api/events/${eventId}/Event.json`);
+    const json = await page.json();
+    return json as RaceEvent[];
+  },
+  enabled: !!get(eventIdAtom),
+}));
 
-export const eventDataAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Event.json`);
-  const json = await page.json();
-  return json as RaceEvent[];
-});
-
-export const pilotsAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
-  const json = await page.json();
-  return json as Pilot[];
-});
+export const pilotsAtom = atomWithQuery((get: Getter) => ({
+  queryKey: ["pilots", get(eventIdAtom)],
+  queryFn: async () => {
+    const eventId = get(eventIdAtom);
+    if (!eventId) return null;
+    const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
+    const json = await page.json();
+    return json as Pilot[];
+  },
+  enabled: !!get(eventIdAtom),
+}));
 
 export function useCachedAtom<T>(anAtom: Atom<T>) {
   const [cache, setCache] = useState<T | null>(null);
@@ -53,11 +65,14 @@ export function useCachedAtom<T>(anAtom: Atom<T>) {
   }
 }
 
-export const channelsDataAtom = atom(async () => {
-  const page = await robustFetch(`/api/httpfiles/Channels.json`);
-  const json = await page.json();
-  return json as Channel[];
-});
+export const channelsDataAtom = atomWithQuery((get: Getter) => ({
+  queryKey: ["channels"],
+  queryFn: async () => {
+    const page = await robustFetch(`/api/httpfiles/Channels.json`);
+    const json = await page.json();
+    return json as Channel[];
+  },
+}));
 
 async function robustFetch(url: string): Promise<Response> {
   const timeout = 1000; // 1 second timeout
@@ -94,27 +109,44 @@ async function robustFetch(url: string): Promise<Response> {
   throw new Error("should not get here");
 }
 
-export const roundsDataAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
-  const json = await page.json();
-  return json as Round[];
-});
+export const roundsDataAtom = atomWithQuery((get: Getter) => ({
+  queryKey: ["rounds", get(eventIdAtom)],
+  queryFn: async () => {
+    const eventId = get(eventIdAtom);
+    if (!eventId) return null;
+    const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
+    const json = await page.json();
+    return json as Round[];
+  },
+  enabled: !!get(eventIdAtom),
+}));
 
-export const racesAtom = atom(async (get) => {
-  const event = await get(eventDataAtom);
-  let races = await Promise.all(event[0].Races.map(async (raceId) => {
-    return await get(raceFamilyAtom(raceId));
-  }));
-  races = races.filter(race => race.Valid)
+export const racesAtom = atomWithQuery((get: Getter) => ({
+  queryKey: ["races", get(eventIdAtom)],
+  queryFn: async () => {
+    const eventData = get(eventDataAtom);
+    if (!eventData || !Array.isArray(eventData) || eventData.length === 0) {
+      return [];
+    }
 
-  const rounds = await get(roundsDataAtom);
+    const races = await Promise.all(eventData[0].Races.map((raceId: string) => {
+      const raceAtom = raceFamilyAtom(raceId);
+      return get(raceAtom);
+    }));
 
+    const filteredRaces = races.filter((race): race is RaceWithProcessedLaps =>
+      race !== null && race.Valid
+    );
 
-  orderRaces(races, rounds);
+    const roundsData = get(roundsDataAtom);
+    if (roundsData && Array.isArray(roundsData)) {
+      orderRaces(filteredRaces, roundsData);
+    }
 
-  return races;
-});
+    return filteredRaces;
+  },
+  enabled: !!get(eventDataAtom) && !!get(roundsDataAtom),
+}));
 
 function orderRaces(races: Race[], rounds: Round[]) {
   return races.sort((a, b) => {
@@ -140,7 +172,7 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
   });
 
   if (activeRace !== -1) {
-    return activeRace
+    return activeRace;
   }
 
   const lastRace = findLastIndex(sortedRaces, (race) => {
@@ -148,7 +180,10 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
       return false;
     }
 
-    if (race.Start && !race.Start.startsWith("0") && race.End && !race.End.startsWith("0")) {
+    if (
+      race.Start && !race.Start.startsWith("0") && race.End &&
+      !race.End.startsWith("0")
+    ) {
       return true;
     }
     return false;
@@ -161,7 +196,10 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
   return 0;
 }
 
-function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
+function findLastIndex<T>(
+  array: T[],
+  predicate: (value: T) => boolean,
+): number {
   for (let i = array.length - 1; i >= 0; i--) {
     if (predicate(array[i])) {
       return i;
@@ -200,36 +238,41 @@ interface ProcessedLap {
 }
 
 export const raceFamilyAtom = atomFamily((raceId: string) =>
-  atomWithRefresh(async (get) => {
-    const eventId = await get(eventIdAtom);
-    const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
-    const json = await page.json();
-    const race = json[0] as Race;
+  atomWithQuery((get: Getter) => ({
+    queryKey: ["race", get(eventIdAtom), raceId],
+    queryFn: async () => {
+      const eventId = get(eventIdAtom);
+      if (!eventId) return null;
+      const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
+      const json = await page.json();
+      const race = json[0] as Race;
 
-    const processedLaps = race.Laps
-      .map(lap => {
-        const detection = race.Detections.find(d => lap.Detection === d.ID);
-        if (!detection || !detection.Valid) return null;
-        
-        return {
-          id: lap.ID,
-          lapNumber: lap.LapNumber,
-          lengthSeconds: lap.LengthSeconds,
-          pilotId: detection.Pilot,
-          valid: true,
-          startTime: lap.StartTime,
-          endTime: lap.EndTime,
-          isHoleshot: detection.IsHoleshot
-        };
-      })
-      .filter((lap): lap is ProcessedLap => lap !== null)
-      .sort((a, b) => a.lapNumber - b.lapNumber);
+      const processedLaps = race.Laps
+        .map((lap) => {
+          const detection = race.Detections.find((d) => lap.Detection === d.ID);
+          if (!detection || !detection.Valid) return null;
 
-    return {
-      ...race,
-      processedLaps
-    } as RaceWithProcessedLaps;
-  })
+          return {
+            id: lap.ID,
+            lapNumber: lap.LapNumber,
+            lengthSeconds: lap.LengthSeconds,
+            pilotId: detection.Pilot,
+            valid: true,
+            startTime: lap.StartTime,
+            endTime: lap.EndTime,
+            isHoleshot: detection.IsHoleshot,
+          };
+        })
+        .filter((lap): lap is ProcessedLap => lap !== null)
+        .sort((a, b) => a.lapNumber - b.lapNumber);
+
+      return {
+        ...race,
+        processedLaps,
+      } as RaceWithProcessedLaps;
+    },
+    enabled: !!get(eventIdAtom),
+  }))
 );
 
 export const updateAtom = atom<
@@ -272,24 +315,26 @@ export interface OverallBestTimes {
   pilotBestLaps: Map<string, number>;
 }
 
-export const overallBestTimesAtom = atom(async (get) => {
-  const races = await get(racesAtom);
-  
+export const overallBestTimesAtom = atom((get: Getter) => {
+  const racesData = get(racesAtom);
+  if (!racesData || !Array.isArray(racesData)) return null;
+
   const overallBestTimes: OverallBestTimes = {
     overallFastestLap: Infinity,
-    pilotBestLaps: new Map()
+    pilotBestLaps: new Map(),
   };
 
-  races.forEach(race => {
-    race.processedLaps.forEach(lap => {
+  racesData.forEach((race: RaceWithProcessedLaps) => {
+    race.processedLaps.forEach((lap: ProcessedLap) => {
       if (!lap.isHoleshot) {
         // Update overall fastest
         if (lap.lengthSeconds < overallBestTimes.overallFastestLap) {
           overallBestTimes.overallFastestLap = lap.lengthSeconds;
         }
-        
+
         // Update pilot's personal best
-        const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ?? Infinity;
+        const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ??
+          Infinity;
         if (lap.lengthSeconds < currentBest) {
           overallBestTimes.pilotBestLaps.set(lap.pilotId, lap.lengthSeconds);
         }

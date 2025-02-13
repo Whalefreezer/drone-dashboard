@@ -1,7 +1,7 @@
 import "./App.css";
 // @deno-types="@types/react"
 import { useEffect, useState } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import {
   channelsDataAtom,
   eventDataAtom,
@@ -14,34 +14,20 @@ import {
   roundsDataAtom,
   overallBestTimesAtom,
 } from "./state.ts";
-import { useSetAtom } from "jotai";
-import { PilotChannel } from "./types.ts";
+import { PilotChannel, Round, Pilot, Channel } from "./types.ts";
 import { QRCodeSVG } from 'qrcode.react';
 
-const UPDATE = true;
-
 function App() {
-  const races = useAtomValue(racesAtom);
-  const updateEventData = useSetAtom(eventDataAtom);
-  const updateRoundsData = useSetAtom(roundsDataAtom);
+  const racesData = useAtomValue(racesAtom);
+  const races = Array.isArray(racesData) ? racesData : [];
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
   const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
 
-  if (UPDATE) {
-    useEffect(() => {
-      const interval = setInterval(() => {
-        updateEventData();
-        updateRoundsData();
-      }, 10_000);
-      return () => clearInterval(interval);
-    }, [updateEventData, updateRoundsData]);
-  }
-
   return (
     <div className="app-container">
       <div className="races-container">
-        {lastRaceIndex !== -1 && (
+        {lastRaceIndex !== -1 && races[lastRaceIndex] && (
           <div className="race-box last-race">
             <div className="race-header">
               <h3>Last Race</h3>
@@ -52,7 +38,7 @@ function App() {
             />
           </div>
         )}
-        {currentRaceIndex !== -1 && (
+        {currentRaceIndex !== -1 && races[currentRaceIndex] && (
           <div className="race-box current-race">
             <div className="race-header">
               <h3>Current Race</h3>
@@ -70,10 +56,12 @@ function App() {
           <div className="race-header">
             <h3>Next Races</h3>
           </div>
-          {raceSubset.map((race) => <LapsView
-            key={race.ID}
-            raceId={race.ID}
-          />)}
+          {raceSubset.map((race: RaceWithProcessedLaps) => (
+            <LapsView
+              key={race.ID}
+              raceId={race.ID}
+            />
+          ))}
         </div>
       </div>
       <div className="leaderboard-container">
@@ -107,21 +95,15 @@ function getPositionWithSuffix(position: number): string {
 
 function LapsView({ raceId }: { raceId: string }) {
   const roundData = useAtomValue(roundsDataAtom);
-  const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
-  const races = useAtomValue(racesAtom);
+  const raceData = useAtomValue(raceFamilyAtom(raceId));
+  const racesData = useAtomValue(racesAtom);
+  const races = Array.isArray(racesData) ? racesData : [];
   const currentRaceIndex = findIndexOfCurrentRace(races);
-  const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
 
-  if (UPDATE) {
-    useEffect(() => {
-      const interval = setInterval(() => {
-        updateRace();
-      }, isCurrentRace ? 500 : 10_000);
-      return () => clearInterval(interval);
-    }, [updateRace, isCurrentRace]);
-  }
+  if (!raceData || !roundData || !Array.isArray(roundData)) return null;
+  const race = raceData as RaceWithProcessedLaps;
 
-  const round = roundData.find((r) => r.ID === race.Round);
+  const round = roundData.find((r: Round) => r.ID === race.Round);
 
   return (
     <div className="laps-view">
@@ -191,12 +173,17 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
   maxLaps: number;
   race: RaceWithProcessedLaps;
 }) {
-  const pilots = useAtomValue(pilotsAtom);
-  const channels = useAtomValue(channelsDataAtom);
-  const overallBestTimes = useAtomValue(overallBestTimesAtom);
+  const pilotsData = useAtomValue(pilotsAtom);
+  const channelsData = useAtomValue(channelsDataAtom);
+  const overallBestTimesData = useAtomValue(overallBestTimesAtom);
 
-  const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-  const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+  if (!pilotsData || !Array.isArray(pilotsData) || !channelsData || !Array.isArray(channelsData) || !overallBestTimesData) {
+    return null;
+  }
+
+  const pilot = pilotsData.find((p: Pilot) => p.ID === pilotChannel.Pilot)!;
+  const channel = channelsData.find((c: Channel) => c.ID === pilotChannel.Channel)!;
+  const bestTimes = overallBestTimesData as { overallFastestLap: number; pilotBestLaps: Map<string, number> };
 
   // Get racing laps (excluding holeshot)
   const racingLaps = race.processedLaps.filter((lap) =>
@@ -229,9 +216,9 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
       </td>
       {racingLaps.map((lap) => {
         let className;
-        if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
+        if (bestTimes.overallFastestLap === lap.lengthSeconds) {
           className = "lap-overall-fastest";
-        } else if (lap.lengthSeconds === overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot)) {
+        } else if (bestTimes.pilotBestLaps.get(pilotChannel.Pilot) === lap.lengthSeconds) {
           className = "lap-overall-personal-best";
         } else if (lap.lengthSeconds === overallFastestLap) {
           className = "lap-fastest-overall";
@@ -249,60 +236,40 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
   );
 }
 
-function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
-  const pilots = useAtomValue(pilotsAtom);
-  const channels = useAtomValue(channelsDataAtom);
+function ChannelSquare({ channelID }: { channelID: string }) {
   const eventData = useAtomValue(eventDataAtom);
 
-  const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-  const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+  if (!eventData || !Array.isArray(eventData) || eventData.length === 0) {
+    return null;
+  }
 
-  const color = eventData[0]
-    .ChannelColors[eventData[0].Channels.indexOf(pilotChannel.Channel)];
-
-  return (
-    <div className="pilot-channel">
-      <div className="pilot-info">
-        {pilot.Name} {channel.ShortBand}
-        {channel.Number}
-      </div>
-      <div
-        className="color-indicator"
-        style={{ backgroundColor: color }}
-      />
-    </div>
-  );
-}
-
-function ChannelSquare(
-  { channelID, change }: { channelID: string; change?: boolean },
-) {
-  const eventData = useAtomValue(eventDataAtom);
-  const color =
-    eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
+  const color = eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
 
   return (
     <div
       className="channel-square"
       style={{ backgroundColor: color }}
-    >
-      {change ? "!" : ""}
-    </div>
+    />
   );
 }
 
 function RaceTime() {
   const eventData = useAtomValue(eventDataAtom);
-  const races = useAtomValue(racesAtom);
+  const racesData = useAtomValue(racesAtom);
+  const races = Array.isArray(racesData) ? racesData : [];
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];
-  const raceLength = secondsFromString(eventData[0].RaceLength);
 
+  if (!eventData || !Array.isArray(eventData) || eventData.length === 0) {
+    return null;
+  }
+
+  const raceLength = secondsFromString(eventData[0].RaceLength);
   const [timeRemaining, setTimeRemaining] = useState(raceLength);
 
   useEffect(() => {
     // Only start countdown if race has started
-    if (currentRace.Start) {
+    if (currentRace?.Start) {
       const currentRaceStart = new Date(currentRace.Start).valueOf() / 1000;
       const currentRaceEnd = currentRaceStart + raceLength;
 
@@ -315,7 +282,7 @@ function RaceTime() {
     } else {
       setTimeRemaining(raceLength);
     }
-  }, [currentRace.Start, raceLength]);
+  }, [currentRace?.Start, raceLength]);
 
   return <div className="race-time">{timeRemaining.toFixed(1)}</div>;
 }
