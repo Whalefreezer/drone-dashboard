@@ -483,8 +483,8 @@ function Leaderboard() {
   }));
 
   const sortedPilots = pilotEntries.sort((a, b) => {
-    // If neither pilot has a best lap time, sort by races until next
-    if (!a.bestLap && !b.bestLap) {
+    // If neither pilot has consecutive lap times, sort by races until next
+    if (!a.consecutiveLaps && !b.consecutiveLaps) {
       // If either pilot has no scheduled race (-1), put them at the end
       if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
       if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
@@ -502,11 +502,11 @@ function Leaderboard() {
       if (!b.channel) return -1;
       return 0;
     }
-    // If only one pilot has a best lap time, that pilot goes first
-    if (!a.bestLap) return 1;
-    if (!b.bestLap) return -1;
-    // If both pilots have best lap times, sort by time
-    return a.bestLap.time - b.bestLap.time;
+    // If only one pilot has consecutive lap times, that pilot goes first
+    if (!a.consecutiveLaps) return 1;
+    if (!b.consecutiveLaps) return -1;
+    // If both pilots have consecutive lap times, sort by time
+    return a.consecutiveLaps.time - b.consecutiveLaps.time;
   });
 
   return (
