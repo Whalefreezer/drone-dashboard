@@ -230,21 +230,23 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
   const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
   const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
 
-  // Get racing laps (excluding holeshot)
-  const racingLaps = race.processedLaps.filter((lap) =>
-    lap.pilotId === pilotChannel.Pilot &&
-    !lap.isHoleshot
+  // Get all laps for this pilot
+  const pilotLaps = race.processedLaps.filter((lap) =>
+    lap.pilotId === pilotChannel.Pilot
   );
 
-  // Calculate fastest lap for this pilot
+  // Get racing laps (excluding holeshot) for calculations only
+  const racingLaps = pilotLaps.filter(lap => !lap.isHoleshot);
+
+  // Calculate fastest lap for this pilot (excluding holeshot)
   const fastestLap = racingLaps.length > 0
     ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
     : Infinity;
 
-  // Calculate overall fastest lap across all pilots
+  // Calculate overall fastest lap across all pilots (excluding holeshot)
   const overallFastestLap = Math.min(
     ...race.processedLaps
-      .filter(lap => !lap.isHoleshot)  // Exclude holeshots
+      .filter(lap => !lap.isHoleshot)
       .map(lap => lap.lengthSeconds)
   );
 
@@ -259,16 +261,19 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
           <ChannelSquare channelID={pilotChannel.Channel} />
         </div>
       </td>
-      {racingLaps.map((lap) => {
-        let className;
-        if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
-          className = "lap-overall-fastest";
-        } else if (lap.lengthSeconds === overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot)) {
-          className = "lap-overall-personal-best";
-        } else if (lap.lengthSeconds === overallFastestLap) {
-          className = "lap-fastest-overall";
-        } else if (lap.lengthSeconds === fastestLap) {
-          className = "lap-personal-best";
+      {pilotLaps.map((lap) => {
+        // Only apply special styling to non-holeshot laps
+        let className = lap.isHoleshot ? undefined : undefined;
+        if (!lap.isHoleshot) {
+          if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
+            className = "lap-overall-fastest";
+          } else if (lap.lengthSeconds === overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot)) {
+            className = "lap-overall-personal-best";
+          } else if (lap.lengthSeconds === overallFastestLap) {
+            className = "lap-fastest-overall";
+          } else if (lap.lengthSeconds === fastestLap) {
+            className = "lap-personal-best";
+          }
         }
         
         return (
