@@ -4,6 +4,7 @@ import { Channel, Pilot, Race, RaceEvent, Round } from "./types.ts";
 import { useEffect, useState } from "react";
 import { atomWithSuspenseQuery } from "jotai-tanstack-query";
 import axios from "axios";
+import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 
 const eventIdAtom = atomWithSuspenseQuery(() => ({
   queryKey: ['eventId'],
@@ -306,3 +307,11 @@ export const overallBestTimesAtom = atom(async (get) => {
 
   return overallBestTimes;
 });
+
+// Add this new type and hook near the top of the file
+type QueryAtom<T> = Atom<{ data: T }>;
+
+export function useQueryAtom<T>(queryAtom: Atom<AtomWithSuspenseQueryResult<T, Error>>): T {
+  const { data } = useAtomValue(queryAtom);
+  return data;
+}

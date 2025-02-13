@@ -13,6 +13,7 @@ import {
   RaceWithProcessedLaps,
   roundsDataAtom,
   overallBestTimesAtom,
+  useQueryAtom,
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -314,7 +315,7 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
 function ChannelSquare(
   { channelID, change }: { channelID: string; change?: boolean },
 ) {
-  const {data: eventData} = useAtomValue(eventDataAtom);
+  const eventData = useQueryAtom(eventDataAtom);
   const color =
     eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
 
@@ -329,7 +330,7 @@ function ChannelSquare(
 }
 
 function RaceTime() {
-  const {data: eventData} = useAtomValue(eventDataAtom);
+  const eventData = useQueryAtom(eventDataAtom);
   const races = useAtomValue(racesAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const currentRace = races[currentRaceIndex];
@@ -518,7 +519,7 @@ function Leaderboard() {
             <th>Pilot</th>
             <th>Channel</th>
             <th>Best Lap</th>
-            <th>Best 2 Consecutive</th>
+            <th>Best 2 Consec</th>
             <th>Next Race In</th>
           </tr>
         </thead>
