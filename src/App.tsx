@@ -518,8 +518,8 @@ function Leaderboard() {
             <th>Pos</th>
             <th>Pilot</th>
             <th>Chan</th>
-            <th>Best Lap</th>
-            <th>Best 2 Consec</th>
+            <th>Top Lap</th>
+            <th>Top 2 Consec</th>
             <th>Next Race In</th>
           </tr>
         </thead>
