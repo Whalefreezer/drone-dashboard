@@ -571,7 +571,7 @@ function Leaderboard() {
                 ) : entry.racesUntilNext === 0 ? (
                   "Next"
                 ) : entry.racesUntilNext === -2 ? (
-                  <span style={{ color: 'red' }}>Now</span>
+                  <span style={{ color: 'red' }}>Racing</span>
                 ) : (
                   `${entry.racesUntilNext}`
                 )}
