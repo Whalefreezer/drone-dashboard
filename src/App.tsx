@@ -263,7 +263,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
       </td>
       {pilotLaps.map((lap) => {
         // Only apply special styling to non-holeshot laps
-        let className = lap.isHoleshot ? undefined : undefined;
+        let className: string | undefined = lap.isHoleshot ? undefined : undefined;
         if (!lap.isHoleshot) {
           if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
             className = "lap-overall-fastest";
