@@ -26,6 +26,23 @@ function App() {
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
   const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
+  const [currentTime, setCurrentTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const time = new Date().toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      setCurrentTime(time);
+    };
+
+    updateTime(); // Initial update
+    const timer = setInterval(updateTime, 1000); // Update every second
+
+    return () => clearInterval(timer); // Cleanup
+  }, []);
 
   if (UPDATE) {
     useEffect(() => {
@@ -37,58 +54,73 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      <div className="races-container">
-        {lastRaceIndex !== -1 && (
-          <div className="race-box last-race">
-            <div className="race-header">
-              <h3>Last Race</h3>
-            </div>
-            <LapsView
-              key={races[lastRaceIndex].ID}
-              raceId={races[lastRaceIndex].ID}
-            />
-          </div>
-        )}
-        {currentRaceIndex !== -1 && (
-          <div className="race-box current-race">
-            <div className="race-header">
-              <h3>Current Race</h3>
-              <div className="race-timer">
-                <RaceTime />
+    <>
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '0.5rem', 
+        borderBottom: '1px solid #333',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#1a1a1a',
+        zIndex: 100
+      }}>
+        {currentTime}
+      </div>
+      <div className="app-container" style={{ marginTop: '40px' }}>
+        <div className="races-container">
+          {lastRaceIndex !== -1 && (
+            <div className="race-box last-race">
+              <div className="race-header">
+                <h3>Last Race</h3>
               </div>
+              <LapsView
+                key={races[lastRaceIndex].ID}
+                raceId={races[lastRaceIndex].ID}
+              />
             </div>
-            <LapsView
-              key={races[currentRaceIndex].ID}
-              raceId={races[currentRaceIndex].ID}
+          )}
+          {currentRaceIndex !== -1 && (
+            <div className="race-box current-race">
+              <div className="race-header">
+                <h3>Current Race</h3>
+                <div className="race-timer">
+                  <RaceTime />
+                </div>
+              </div>
+              <LapsView
+                key={races[currentRaceIndex].ID}
+                raceId={races[currentRaceIndex].ID}
+              />
+            </div>
+          )}
+          <div className="race-box next-races">
+            <div className="race-header">
+              <h3>Next Races</h3>
+            </div>
+            {raceSubset.map((race) => <LapsView
+              key={race.ID}
+              raceId={race.ID}
+            />)}
+          </div>
+        </div>
+        <div className="leaderboard-container">
+          <Leaderboard />
+          {/* <Legend /> */}
+          {/* <div className="qr-code-container">
+            <QRCodeSVG 
+              value="https://nzo.roboenator.com" 
+              size={230}
+              bgColor="#FFF"
+              fgColor="#000"
+              level="L"
+              style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
             />
-          </div>
-        )}
-        <div className="race-box next-races">
-          <div className="race-header">
-            <h3>Next Races</h3>
-          </div>
-          {raceSubset.map((race) => <LapsView
-            key={race.ID}
-            raceId={race.ID}
-          />)}
+          </div> */}
         </div>
       </div>
-      <div className="leaderboard-container">
-        <Leaderboard />
-        {/* <Legend /> */}
-        {/* <div className="qr-code-container">
-          <QRCodeSVG 
-            value="https://nzo.roboenator.com" 
-            size={230}
-            bgColor="#FFF"
-            fgColor="#000"
-            level="L"
-            style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
-          />
-        </div> */}
-      </div>
-    </div>
+    </>
   );
 }
 
