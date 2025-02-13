@@ -231,6 +231,16 @@
   font-family: inherit;
 }
 
+/* Change racing text color to green */
+.leaderboard-table .racing-text {
+  color: #00ff00;
+}
+
+/* Add next race text color in orange */
+.leaderboard-table .next-text {
+  color: #ffa500;
+}
+
 .channel-display {
   display: flex;
   flex-direction: row;
