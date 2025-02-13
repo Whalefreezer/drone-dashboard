@@ -2,29 +2,33 @@ import { Atom, atom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, atomWithRefresh, loadable } from "jotai/utils";
 import { Channel, Pilot, Race, RaceEvent, Round } from "./types.ts";
 import { useEffect, useState } from "react";
+import { atomWithSuspenseQuery } from "jotai-tanstack-query";
 
-const eventIdAtom = atom(async () => {
-  const page = await robustFetch("/api");
-  const text = await page.text();
+const eventIdAtom = atomWithSuspenseQuery(() => ({
+  queryKey: ['eventId'],
+  queryFn: async () => {
+    const page = await fetch("/api");
+    const text = await page.text();
 
-  const match = text.match(
-    /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
-  );
-  if (match) {
-    return match[1];
-  }
-  return null;
-});
+    const match = text.match(
+      /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
+    );
+    if (match) {
+      return match[1];
+    }
+    return null;
+  },
+}));
 
 export const eventDataAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
+  const {data: eventId} = await get(eventIdAtom);
   const page = await robustFetch(`/api/events/${eventId}/Event.json`);
   const json = await page.json();
   return json as RaceEvent[];
 });
 
 export const pilotsAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
+  const {data: eventId} = await get(eventIdAtom);
   const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
   const json = await page.json();
   return json as Pilot[];
@@ -95,7 +99,7 @@ async function robustFetch(url: string): Promise<Response> {
 }
 
 export const roundsDataAtom = atomWithRefresh(async (get) => {
-  const eventId = await get(eventIdAtom);
+  const {data: eventId} = await get(eventIdAtom);
   const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
   const json = await page.json();
   return json as Round[];
@@ -201,7 +205,7 @@ interface ProcessedLap {
 
 export const raceFamilyAtom = atomFamily((raceId: string) =>
   atomWithRefresh(async (get) => {
-    const eventId = await get(eventIdAtom);
+    const {data: eventId} = await get(eventIdAtom);
     const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
     const json = await page.json();
     const race = json[0] as Race;

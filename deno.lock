@@ -2,10 +2,13 @@
   "version": "4",
   "specifiers": {
     "npm:@deno/vite-plugin@1": "1.0.2_vite@6.0.7",
+    "npm:@tanstack/query-core@^5.66.0": "5.66.0",
     "npm:@types/node@*": "22.5.4",
     "npm:@types/react-dom@^18.3.1": "18.3.5_@types+react@18.3.18",
     "npm:@types/react@^18.3.12": "18.3.18",
     "npm:@vitejs/plugin-react-swc@^3.7.1": "3.7.2_vite@6.0.7",
+    "npm:jotai-tanstack-query@0.9": "0.9.0_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1",
+    "npm:jotai-tanstack-query@~0.8.8": "0.8.8_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1",
     "npm:jotai@^2.11.0": "2.11.0_@types+react@18.3.18_react@18.3.1",
     "npm:qrcode.react@^4.2.0": "4.2.0_react@18.3.1",
     "npm:react-dom@^18.3.1": "18.3.1_react@18.3.1",
@@ -208,6 +211,9 @@
         "@swc/counter"
       ]
     },
+    "@tanstack/query-core@5.66.0": {
+      "integrity": "sha512-J+JeBtthiKxrpzUu7rfIPDzhscXF2p5zE/hVdrqkACBP8Yu0M96mwJ5m/8cPPYQE9aRNvXztXHlNwIh4FEeMZw=="
+    },
     "@types/estree@1.0.6": {
       "integrity": "sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw=="
     },
@@ -275,6 +281,20 @@
     },
     "fsevents@2.3.3": {
       "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="
+    },
+    "jotai-tanstack-query@0.8.8_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1": {
+      "integrity": "sha512-sWLnfE78Ltz5dCjSe0pujLgwNWudD5xwszowVuMILLue/AMmExuVcD3oF60mHLvE9uueTbvdqjkoea1NN8U/7w==",
+      "dependencies": [
+        "@tanstack/query-core",
+        "jotai"
+      ]
+    },
+    "jotai-tanstack-query@0.9.0_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1": {
+      "integrity": "sha512-8n7/xV14+ZE63dyqngtmqs6aV1bNnQJF9bJN5Bj70USc2cMFRmsVhGGzL1cSvp5E/xXasU37czFFaZ0vavmyfA==",
+      "dependencies": [
+        "@tanstack/query-core",
+        "jotai"
+      ]
     },
     "jotai@2.11.0_@types+react@18.3.18_react@18.3.1": {
       "integrity": "sha512-zKfoBBD1uDw3rljwHkt0fWuja1B76R7CjznuBO+mSX6jpsO1EBeWNRKpeaQho9yPI/pvCv4recGfgOXGxwPZvQ==",
@@ -384,9 +404,11 @@
   "workspace": {
     "dependencies": [
       "npm:@deno/vite-plugin@1",
+      "npm:@tanstack/query-core@^5.66.0",
       "npm:@types/react-dom@^18.3.1",
       "npm:@types/react@^18.3.12",
       "npm:@vitejs/plugin-react-swc@^3.7.1",
+      "npm:jotai-tanstack-query@0.9",
       "npm:jotai@^2.11.0",
       "npm:qrcode.react@^4.2.0",
       "npm:react-dom@^18.3.1",
