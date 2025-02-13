@@ -1,7 +1,7 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0rem;
   text-align: left;
 }
 
@@ -43,18 +43,18 @@
 .app-container {
   display: flex;
   justify-content: space-between;
-  margin: 0 20px;
+  margin: 0 10px;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
 }
 
 .races-container {
-  margin-right: 20px;
+  margin-right: 10px;
 }
 
 .leaderboard-container {
-  margin-left: 20px;
+  margin-left: 10px;
 }
 
 .race-box {
@@ -72,6 +72,7 @@
 
 .current-race {
   border-color: #4a4a4a;
+  background-color: #2a2a2a;
 }
 
 .current-race h3 {
@@ -217,6 +218,17 @@
   padding: 4px;
 }
 
+.leaderboard-table td {
+  border: 1px solid black;
+  padding: 4px;
+  font-family: monospace;
+}
+
+/* Override the font for pilot names */
+.leaderboard-table td:nth-child(2) {
+  font-family: inherit;
+}
+
 .channel-display {
   display: flex;
   flex-direction: row;
@@ -224,9 +236,11 @@
 }
 
 .source-info {
+  display: none;
   font-size: 0.7em;
-  color: #666;
-  display: block;
+  color: #fff;
+  /* display: inline-block; */
+  margin-left: 8px;
 }
 
 /* Race Component */

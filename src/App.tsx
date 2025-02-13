@@ -515,9 +515,9 @@ function Leaderboard() {
       <table className="leaderboard-table">
         <thead>
           <tr>
-            <th>Position</th>
+            <th>Pos</th>
             <th>Pilot</th>
-            <th>Channel</th>
+            <th>Chan</th>
             <th>Best Lap</th>
             <th>Best 2 Consec</th>
             <th>Next Race In</th>
@@ -545,9 +545,8 @@ function Leaderboard() {
                     <>
                       {entry.bestLap.time.toFixed(3)}
                       <span className="source-info">
-                        {roundData.find((r) => r.ID === entry.bestLap!.roundId)
-                          ?.RoundNumber}-
-                        {entry.bestLap.raceNumber}
+                        ({roundData.find((r) => r.ID === entry.bestLap!.roundId)?.RoundNumber}-
+                        {entry.bestLap.raceNumber})
                       </span>
                     </>
                   )
@@ -559,10 +558,8 @@ function Leaderboard() {
                     <>
                       {entry.consecutiveLaps.time.toFixed(3)}
                       <span className="source-info">
-                        {roundData.find((r) =>
-                          r.ID === entry.consecutiveLaps!.roundId
-                        )?.RoundNumber}-
-                        {entry.consecutiveLaps.raceNumber}
+                        ({roundData.find((r) => r.ID === entry.consecutiveLaps!.roundId)?.RoundNumber}-
+                        {entry.consecutiveLaps.raceNumber})
                       </span>
                     </>
                   )
