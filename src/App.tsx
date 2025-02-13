@@ -77,7 +77,7 @@ function App() {
       <div className="leaderboard-container">
         <Leaderboard />
         {/* <Legend /> */}
-        <div className="qr-code-container">
+        {/* <div className="qr-code-container">
           <QRCodeSVG 
             value="https://nzo.roboenator.com" 
             size={230}
@@ -86,7 +86,7 @@ function App() {
             level="L"
             style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
           />
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -443,13 +443,29 @@ function Leaderboard() {
   }));
 
   const sortedPilots = pilotEntries.sort((a, b) => {
+    // If neither pilot has a best lap time, sort by races until next
     if (!a.bestLap && !b.bestLap) {
+      // If either pilot has no scheduled race (-1), put them at the end
+      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
+      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
+      
+      // First compare racesUntilNext
+      if (a.racesUntilNext !== b.racesUntilNext) {
+        return a.racesUntilNext - b.racesUntilNext;
+      }
+      // If racesUntilNext is equal, use channel frequency as tiebreaker
+      if (a.channel && b.channel) {
+        return a.channel.Number - b.channel.Number;
+      }
+      // If one pilot has no channel, put them last
       if (!a.channel) return 1;
       if (!b.channel) return -1;
-      return a.racesUntilNext - b.racesUntilNext;
+      return 0;
     }
+    // If only one pilot has a best lap time, that pilot goes first
     if (!a.bestLap) return 1;
     if (!b.bestLap) return -1;
+    // If both pilots have best lap times, sort by time
     return a.bestLap.time - b.bestLap.time;
   });
 
@@ -517,8 +533,8 @@ function Leaderboard() {
                   "-"
                 ) : entry.racesUntilNext === 0 ? (
                   "Next"
-                ) : entry.racesUntilNext === -2 ? ( // We'll use -2 for current race
-                  "Now"
+                ) : entry.racesUntilNext === -2 ? (
+                  <span style={{ color: 'red' }}>Now</span>
                 ) : (
                   `${entry.racesUntilNext}`
                 )}
@@ -571,3 +587,4 @@ function Legend() {
 }
 
 export default App;
+
