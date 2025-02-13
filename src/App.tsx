@@ -448,10 +448,7 @@ function Leaderboard() {
     if (!a.bestLap && !b.bestLap) {
       if (!a.channel) return 1;
       if (!b.channel) return -1;
-      if (a.channel.ShortBand !== b.channel.ShortBand) {
-        return a.channel.ShortBand.localeCompare(b.channel.ShortBand);
-      }
-      return a.channel.Number - b.channel.Number;
+      return a.racesUntilNext - b.racesUntilNext;
     }
     if (!a.bestLap) return 1;
     if (!b.bestLap) return -1;
