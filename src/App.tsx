@@ -330,6 +330,7 @@ function Leaderboard() {
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
   const roundData = useAtomValue(roundsDataAtom);
+  const currentRaceIndex = findIndexOfCurrentRace(races);
 
   // Track best times and their sources
   interface BestTime {
@@ -408,6 +409,31 @@ function Leaderboard() {
     });
   });
 
+  // Calculate races until next race for each pilot
+  const racesUntilNext = new Map<string, number>();
+  if (currentRaceIndex !== -1) {
+    pilots.forEach(pilot => {
+      // Check if pilot is in current race
+      if (races[currentRaceIndex].PilotChannels.some(pc => pc.Pilot === pilot.ID)) {
+        racesUntilNext.set(pilot.ID, -2); // Use -2 to indicate current race
+        return;
+      }
+
+      let racesCount = 0;
+      let found = false;
+      
+      for (let i = currentRaceIndex + 1; i < races.length; i++) {
+        if (races[i].PilotChannels.some(pc => pc.Pilot === pilot.ID)) {
+          found = true;
+          break;
+        }
+        racesCount++;
+      }
+      
+      racesUntilNext.set(pilot.ID, found ? racesCount : -1);
+    });
+  }
+
   const pilotEntries = pilots.map((pilot) => ({
     pilot,
     bestLap: overallFastestLaps.get(pilot.ID) || null,
@@ -415,6 +441,7 @@ function Leaderboard() {
     channel: pilotChannels.get(pilot.ID)
       ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID))
       : null,
+    racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
   }));
 
   const sortedPilots = pilotEntries.sort((a, b) => {
@@ -442,6 +469,7 @@ function Leaderboard() {
             <th>Channel</th>
             <th>Best Lap</th>
             <th>Best 2 Consecutive</th>
+            <th>Next Race In</th>
           </tr>
         </thead>
         <tbody>
@@ -488,6 +516,17 @@ function Leaderboard() {
                     </>
                   )
                   : "-"}
+              </td>
+              <td>
+                {entry.racesUntilNext === -1 ? (
+                  "-"
+                ) : entry.racesUntilNext === 0 ? (
+                  "Next"
+                ) : entry.racesUntilNext === -2 ? ( // We'll use -2 for current race
+                  "Now"
+                ) : (
+                  `${entry.racesUntilNext}`
+                )}
               </td>
             </tr>
           ))}
