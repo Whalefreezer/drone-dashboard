@@ -18,6 +18,12 @@ import {
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
 import { QRCodeSVG } from 'qrcode.react';
+import { 
+  getPositionWithSuffix, 
+  secondsFromString, 
+  getLapClassName,
+  calculateRacesUntilNext
+} from "./utils.ts";
 
 const UPDATE = true;
 
@@ -123,17 +129,6 @@ function App() {
       </div>
     </>
   );
-}
-
-function getPositionWithSuffix(position: number): string {
-  const suffix = position === 1
-    ? "st"
-    : position === 2
-    ? "nd"
-    : position === 3
-    ? "rd"
-    : "th";
-  return `${position}${suffix}`;
 }
 
 function LapsView({ raceId }: { raceId: string }) {
@@ -263,19 +258,13 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
         </div>
       </td>
       {pilotLaps.map((lap) => {
-        // Only apply special styling to non-holeshot laps
-        let className: string | undefined = lap.isHoleshot ? undefined : undefined;
-        if (!lap.isHoleshot) {
-          if (lap.lengthSeconds === overallBestTimes.overallFastestLap) {
-            className = "lap-overall-fastest";
-          } else if (lap.lengthSeconds === overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot)) {
-            className = "lap-overall-personal-best";
-          } else if (lap.lengthSeconds === overallFastestLap) {
-            className = "lap-fastest-overall";
-          } else if (lap.lengthSeconds === fastestLap) {
-            className = "lap-personal-best";
-          }
-        }
+        const className = getLapClassName(
+          lap,
+          overallBestTimes.overallFastestLap,
+          overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot),
+          overallFastestLap,
+          fastestLap
+        );
         
         return (
           <td key={lap.id} className={className}>
@@ -356,11 +345,6 @@ function RaceTime() {
   }, [currentRace.Start, raceLength]);
 
   return <div className="race-time">{timeRemaining.toFixed(1)}</div>;
-}
-
-function secondsFromString(time: string) {
-  const [hours, minutes, seconds] = time.split(":");
-  return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
 }
 
 function Leaderboard() {
@@ -451,24 +435,7 @@ function Leaderboard() {
   const racesUntilNext = new Map<string, number>();
   if (currentRaceIndex !== -1) {
     pilots.forEach(pilot => {
-      // Check if pilot is in current race
-      if (races[currentRaceIndex].PilotChannels.some(pc => pc.Pilot === pilot.ID)) {
-        racesUntilNext.set(pilot.ID, -2); // Use -2 to indicate current race
-        return;
-      }
-
-      let racesCount = 0;
-      let found = false;
-      
-      for (let i = currentRaceIndex + 1; i < races.length; i++) {
-        if (races[i].PilotChannels.some(pc => pc.Pilot === pilot.ID)) {
-          found = true;
-          break;
-        }
-        racesCount++;
-      }
-      
-      racesUntilNext.set(pilot.ID, found ? racesCount : -1);
+      racesUntilNext.set(pilot.ID, calculateRacesUntilNext(races, currentRaceIndex, pilot.ID));
     });
   }
 

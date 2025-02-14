@@ -192,11 +192,7 @@ export function findIndexOfLastRace(sortedRaces: Race[]) {
   return -1;
 }
 
-export interface RaceWithProcessedLaps extends Race {
-  processedLaps: ProcessedLap[];
-}
-
-interface ProcessedLap {
+export interface ProcessedLap {
   id: string;
   lapNumber: number;
   lengthSeconds: number;
@@ -205,6 +201,10 @@ interface ProcessedLap {
   startTime: string;
   endTime: string;
   isHoleshot: boolean;
+}
+
+export interface RaceWithProcessedLaps extends Race {
+  processedLaps: ProcessedLap[];
 }
 
 export const raceFamilyAtom = atomFamily((raceId: string) =>

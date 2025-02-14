@@ -1,52 +1,22 @@
+:root {
+  --fastest-lap-color: #1a472a;  /* Dark green for race fastest */
+  --personal-best-color: #2a2a4a;  /* Dark blue for race personal best */
+  --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
+  --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
+}
+
 #root {
   max-width: 1280px;
-  /* margin: 0 auto; */
-  padding: 0rem;
+  padding: 0;
   width: 100vw;
   text-align: left;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
+/* Layout */
 .app-container {
   display: flex;
   justify-content: space-between;
-  /* margin: 0 10px; */
   width: 100vw;
-  /* max-width: 100vw; */
   box-sizing: border-box;
 }
 
@@ -58,6 +28,7 @@
   margin-left: 10px;
 }
 
+/* Race Box Styles */
 .race-box {
   margin-bottom: 12px;
   padding: 8px;
@@ -100,6 +71,7 @@
   text-align: right;
 }
 
+/* Laps View */
 .laps-view {
   display: flex;
   flex-direction: column;
@@ -125,35 +97,40 @@
   box-sizing: border-box;
 }
 
-.laps-table {
+/* Tables */
+.laps-table,
+.leaderboard-table {
   border: 1px solid black;
   border-collapse: collapse;
 }
 
 .laps-table td,
-.laps-table th {
+.laps-table th,
+.leaderboard-table td,
+.leaderboard-table th {
   border: 1px solid black;
-  padding: 2px 4px;
+  padding: 4px;
 }
 
-/* Common pattern mixin */
-.crosshatch-pattern {
-  background-image: 
-    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
-  background-size: 8px 8px;
+.leaderboard-table td {
+  font-family: monospace;
 }
 
-/* Lap highlighting */
+.leaderboard-table td:nth-child(2) {
+  font-family: inherit;
+}
+
+/* Lap Highlighting */
 .lap-fastest-overall {
   background-color: var(--fastest-lap-color);
-  background-image: inherit;
-  background-size: inherit;
+  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-size: 8px 8px;
 }
 
 .lap-personal-best {
   background-color: var(--personal-best-color);
-  background-image: inherit;
-  background-size: inherit;
+  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-size: 8px 8px;
 }
 
 .lap-overall-fastest {
@@ -164,7 +141,7 @@
   background-color: var(--overall-personal-best-color);
 }
 
-/* Legend squares */
+/* Legend */
 .legend-square {
   width: 16px;
   height: 16px;
@@ -172,135 +149,67 @@
 }
 
 .legend-square-fastest-overall {
-  width: 16px;
-  height: 16px;
-  border: 1px solid #666;
+  composes: legend-square;
   background-color: var(--fastest-lap-color);
-  background-image: 
-    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
   background-size: 8px 8px;
 }
 
 .legend-square-personal-best {
-  width: 16px;
-  height: 16px;
-  border: 1px solid #666;
+  composes: legend-square;
   background-color: var(--personal-best-color);
-  background-image: 
-    linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
+  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
   background-size: 8px 8px;
 }
 
 .legend-square-overall-fastest {
-  width: 16px;
-  height: 16px;
-  border: 1px solid #666;
+  composes: legend-square;
   background-color: var(--overall-fastest-color);
 }
 
 .legend-square-overall-personal-best {
-  width: 16px;
-  height: 16px;
-  border: 1px solid #666;
+  composes: legend-square;
   background-color: var(--overall-personal-best-color);
 }
 
-.leaderboard {
-  padding: 10px;
-}
-
-.leaderboard-table {
-  border: 1px solid black;
-  border-collapse: collapse;
-}
-
-.leaderboard-table td,
-.leaderboard-table th {
-  border: 1px solid black;
-  padding: 4px;
-}
-
-.leaderboard-table td {
-  border: 1px solid black;
-  padding: 4px;
-  font-family: monospace;
-}
-
-/* Override the font for pilot names */
-.leaderboard-table td:nth-child(2) {
-  font-family: inherit;
-}
-
-/* Change racing text color to green */
-.leaderboard-table .racing-text {
+/* Status Text */
+.racing-text {
   color: #00ff00;
 }
 
-/* Add next race text color in orange */
-.leaderboard-table .next-text {
+.next-text {
   color: #ffa500;
 }
 
+/* Channel Display */
 .channel-display {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-.source-info {
-  display: none;
-  font-size: 0.7em;
-  color: #fff;
-  /* display: inline-block; */
-  margin-left: 8px;
-}
-
-/* Race Component */
-.race {
-  border: solid 1px orange;
-}
-
-/* PilotChannelView Component */
-.pilot-channel {
-  display: flex;
-  align-items: center;
-}
-
-.pilot-info {
-  margin-right: 5px;
-}
-
-.color-indicator {
-  width: 10px;
-  height: 10px;
-}
-
-/* ChannelSquare Component */
 .channel-square {
   width: 10px;
   height: 10px;
   margin: 0 5px;
 }
 
-/* RaceTime Component */
-.race-time {
-  font-family: monospace;
+/* Source Info */
+.source-info {
+  display: none;
+  font-size: 0.7em;
+  color: #fff;
+  margin-left: 8px;
 }
 
-/* Additional utility classes */
+/* Utility Classes */
 .flex-row {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-:root {
-  --fastest-lap-color: #1a472a;  /* Dark green for race fastest */
-  --personal-best-color: #2a2a4a;  /* Dark blue for race personal best */
-  --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
-  --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
-}
-
+/* QR Code */
 .qr-code-container {
   display: flex;
   justify-content: center;
