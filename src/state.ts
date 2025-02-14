@@ -289,6 +289,7 @@ export interface LeaderboardEntry {
   } | null;
   channel: Channel | null;
   racesUntilNext: number;
+  totalLaps: number;
 }
 
 export function calculateLeaderboardData(
@@ -308,6 +309,16 @@ export function calculateLeaderboardData(
     });
   }
 
+  // Calculate total laps for each pilot
+  const totalLaps = new Map<string, number>();
+  races.forEach(race => {
+    race.processedLaps.forEach(lap => {
+      if (!lap.isHoleshot) {
+        totalLaps.set(lap.pilotId, (totalLaps.get(lap.pilotId) || 0) + 1);
+      }
+    });
+  });
+
   // Create pilot entries
   const pilotEntries = pilots.map((pilot) => ({
     pilot,
@@ -317,6 +328,7 @@ export function calculateLeaderboardData(
       ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
       : null,
     racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
+    totalLaps: totalLaps.get(pilot.ID) ?? 0,
   }));
 
   return sortPilotEntries(pilotEntries);

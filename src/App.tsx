@@ -446,6 +446,7 @@ function Leaderboard() {
             <th>Pos</th>
             <th>Pilot</th>
             <th>Chan</th>
+            <th>Laps</th>
             <th>Top Lap</th>
             <th>Top 2 Consec</th>
             <th>Next Race In</th>
@@ -479,6 +480,7 @@ function Leaderboard() {
                     )
                     : "-"}
                 </td>
+                <td>{entry.totalLaps}</td>
                 <td>
                   {renderTimeWithDiff(
                     entry.bestLap,
