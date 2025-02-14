@@ -375,21 +375,16 @@ function Leaderboard() {
 
   // Helper to render position changes
   const renderPositionChange = (pilotId: string, currentPos: number, entry: LeaderboardEntry) => {
-    const hasRecentImprovement = entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ||
-      (entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber));
-
-    if (!hasRecentImprovement) return null;
-
     const prevPos = positionChanges.get(pilotId);
     if (!prevPos || prevPos === currentPos) return null;
 
     const change = prevPos - currentPos;
-    const color = change > 0 ? '#00ff00' : '#ff0000';
-    const symbol = change > 0 ? '↑' : '↓';
+    // Only show improvements (positive changes)
+    if (change <= 0) return null;
 
     return (
-      <span className="position-change" style={{ color, marginLeft: '4px', fontSize: '0.8em' }}>
-        {symbol}{Math.abs(change)} (was {prevPos})
+      <span className="position-change" style={{ color: '#00ff00', marginLeft: '4px', fontSize: '0.8em' }}>
+        ↑{change} from {prevPos}
       </span>
     );
   };
@@ -413,10 +408,10 @@ function Leaderboard() {
             <tr key={entry.pilot.ID}>
               <td>
                 {entry.bestLap ? (
-                  <>
-                    {index + 1}
+                  <div className="position-container">
+                    <div>{index + 1}</div>
                     {renderPositionChange(entry.pilot.ID, index + 1, entry)}
-                  </>
+                  </div>
                 ) : "-"}
               </td>
               <td>{entry.pilot.Name}</td>
