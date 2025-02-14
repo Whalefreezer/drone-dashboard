@@ -14,7 +14,10 @@ import {
   roundsDataAtom,
   overallBestTimesAtom,
   useQueryAtom,
-  usePeriodicUpdate
+  usePeriodicUpdate,
+  calculateLeaderboardData,
+  getPositionChanges,
+  LeaderboardEntry
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -343,85 +346,41 @@ function Leaderboard() {
   const roundData = useAtomValue(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
 
-  const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels } = calculateBestTimes(races);
+  // Calculate current leaderboard
+  const currentLeaderboard = calculateLeaderboardData(
+    races,
+    pilots,
+    channels,
+    currentRaceIndex
+  );
 
-  // Calculate races until next race for each pilot
-  const racesUntilNext = new Map<string, number>();
-  if (currentRaceIndex !== -1) {
-    pilots.forEach(pilot => {
-      racesUntilNext.set(pilot.ID, calculateRacesUntilNext(races, currentRaceIndex, pilot.ID));
-    });
-  }
+  // Calculate previous leaderboard by excluding the current race AND the last race
+  const previousLeaderboard = calculateLeaderboardData(
+    races.slice(0, Math.max(0, currentRaceIndex - 1)),
+    pilots,
+    channels,
+    currentRaceIndex - 2
+  );
 
-  const pilotEntries = pilots.map((pilot) => ({
-    pilot,
-    bestLap: overallFastestLaps.get(pilot.ID) || null,
-    consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
-    channel: pilotChannels.get(pilot.ID)
-      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
-      : null,
-    racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
-  }));
+  // Get position changes
+  const positionChanges = getPositionChanges(currentLeaderboard, previousLeaderboard);
 
-  const sortedPilots = sortPilotEntries(pilotEntries);
-
-  // Add state to track previous positions
-  const [previousPositions, setPreviousPositions] = useState(new Map<string, number>());
-
-  // Update previous positions when race changes
-  useEffect(() => {
-    if (currentRaceIndex > 0) {
-      // Calculate positions from previous race state
-      const prevRace = races[currentRaceIndex - 1];
-      if (prevRace) {
-        const prevPositions = new Map<string, number>();
-        const prevRaces = races.slice(0, currentRaceIndex);
-        const { overallFastestLaps: prevLaps, fastestConsecutiveLaps: prevConsecutive, pilotChannels: prevChannels } = calculateBestTimes(prevRaces);
-        
-        // Calculate races until next for previous state
-        const prevRacesUntilNext = new Map<string, number>();
-        pilots.forEach(pilot => {
-          prevRacesUntilNext.set(pilot.ID, calculateRacesUntilNext(prevRaces, currentRaceIndex - 1, pilot.ID));
-        });
-
-        // Create pilot entries for previous state with full data structure
-        const prevPilotEntries = pilots.map(pilot => ({
-          pilot,
-          bestLap: prevLaps.get(pilot.ID) || null,
-          consecutiveLaps: prevConsecutive.get(pilot.ID) || null,
-          channel: prevChannels.get(pilot.ID)
-            ? channels.find((c) => c.ID === prevChannels.get(pilot.ID)) || null
-            : null,
-          racesUntilNext: prevRacesUntilNext.get(pilot.ID) ?? -1,
-        }));
-
-        // Sort them using same logic
-        const prevSorted = sortPilotEntries(prevPilotEntries);
-        
-        // Store previous positions
-        prevSorted.forEach((entry, index) => {
-          if (entry.bestLap) {
-            prevPositions.set(entry.pilot.ID, index + 1);
-          }
-        });
-
-        setPreviousPositions(prevPositions);
-      }
-    }
-  }, [currentRaceIndex, races]);
-
-  // Helper to check if a pilot's time is from recent races
-  const hasRecentImprovement = (entry: any) => {
-    if (!entry.bestLap) return false;
-    return isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ||
-           (entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber));
+  // Helper to check if a time is from recent races
+  const isRecentTime = (roundId: string, raceNumber: number) => {
+    const raceIndex = races.findIndex(race => 
+      race.Round === roundId && race.RaceNumber === raceNumber
+    );
+    return raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
   };
 
-  // Update renderPositionChange to only show for recent improvements
-  const renderPositionChange = (pilotId: string, currentPos: number, entry: any) => {
-    if (!hasRecentImprovement(entry)) return null;
-    
-    const prevPos = previousPositions.get(pilotId);
+  // Helper to render position changes
+  const renderPositionChange = (pilotId: string, currentPos: number, entry: LeaderboardEntry) => {
+    const hasRecentImprovement = entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ||
+      (entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber));
+
+    if (!hasRecentImprovement) return null;
+
+    const prevPos = positionChanges.get(pilotId);
     if (!prevPos || prevPos === currentPos) return null;
 
     const change = prevPos - currentPos;
@@ -433,19 +392,6 @@ function Leaderboard() {
         {symbol}{Math.abs(change)} (was {prevPos})
       </span>
     );
-  };
-
-  const isRecentTime = (roundId: string, raceNumber: number) => {
-    const round = roundData.find(r => r.ID === roundId);
-    if (!round) return false;
-    
-    // Find the race in the full races array
-    const raceIndex = races.findIndex(race => 
-      race.Round === roundId && race.RaceNumber === raceNumber
-    );
-    
-    // Check if this time was set in current or last race
-    return raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
   };
 
   return (
@@ -463,7 +409,7 @@ function Leaderboard() {
           </tr>
         </thead>
         <tbody>
-          {sortedPilots.map((entry: any, index: number) => (
+          {currentLeaderboard.map((entry, index) => (
             <tr key={entry.pilot.ID}>
               <td>
                 {entry.bestLap ? (

@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 import { atomWithSuspenseQuery } from "jotai-tanstack-query";
 import axios from "axios";
 import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
+import { 
+  calculateBestTimes,
+  calculateRacesUntilNext,
+  sortPilotEntries
+} from "./utils.ts";
 
 const UPDATE = true;
 
@@ -326,4 +331,71 @@ export function usePeriodicUpdate(updateFn: () => void, interval: number) {
       return () => clearInterval(intervalId);
     }
   }, [updateFn, interval]);
+}
+
+export interface LeaderboardEntry {
+  pilot: Pilot;
+  bestLap: {
+    time: number;
+    roundId: string;
+    raceNumber: number;
+  } | null;
+  consecutiveLaps: {
+    time: number;
+    roundId: string;
+    raceNumber: number;
+  } | null;
+  channel: Channel | null;
+  racesUntilNext: number;
+}
+
+export function calculateLeaderboardData(
+  races: RaceWithProcessedLaps[],
+  pilots: Pilot[],
+  channels: Channel[],
+  currentRaceIndex: number
+): LeaderboardEntry[] {
+  // Calculate best times
+  const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels } = calculateBestTimes(races);
+
+  // Calculate races until next race for each pilot
+  const racesUntilNext = new Map<string, number>();
+  if (currentRaceIndex !== -1) {
+    pilots.forEach(pilot => {
+      racesUntilNext.set(pilot.ID, calculateRacesUntilNext(races, currentRaceIndex, pilot.ID));
+    });
+  }
+
+  // Create pilot entries
+  const pilotEntries = pilots.map((pilot) => ({
+    pilot,
+    bestLap: overallFastestLaps.get(pilot.ID) || null,
+    consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
+    channel: pilotChannels.get(pilot.ID)
+      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
+      : null,
+    racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
+  }));
+
+  return sortPilotEntries(pilotEntries);
+}
+
+export function getPositionChanges(
+  currentPositions: LeaderboardEntry[],
+  previousPositions: LeaderboardEntry[]
+): Map<string, number> {
+  const changes = new Map<string, number>();
+  
+  currentPositions.forEach((entry, currentIndex) => {
+    const previousIndex = previousPositions.findIndex(
+      prev => prev.pilot.ID === entry.pilot.ID
+    );
+    
+    if (previousIndex !== -1 && previousIndex !== currentIndex) {
+      // Store the previous position (1-based)
+      changes.set(entry.pilot.ID, previousIndex + 1);
+    }
+  });
+
+  return changes;
 }
