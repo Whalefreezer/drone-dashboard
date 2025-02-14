@@ -569,7 +569,7 @@ function Leaderboard() {
                 {entry.racesUntilNext === -1 ? (
                   "-"
                 ) : entry.racesUntilNext === 0 ? (
-                  <span className="next-text">Next</span>
+                  <span className="next-text">In the Hole</span>
                 ) : entry.racesUntilNext === -2 ? (
                   <span className="racing-text">Racing</span>
                 ) : (
