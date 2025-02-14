@@ -18,14 +18,32 @@
   justify-content: space-between;
   width: 100vw;
   box-sizing: border-box;
+  gap: 16px;
+  padding: 0 16px;
 }
 
 .races-container {
-  margin-right: 10px;
+  flex: 1;
+  min-width: 300px;
+  margin-right: 0;
+}
+
+.schedule-container {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.schedule-wrapper {
+  display: flex;
+  padding: 8px 0;
 }
 
 .leaderboard-container {
-  margin-left: 10px;
+  flex: 1;
+  min-width: 300px;
+  margin-left: 0;
 }
 
 /* Race Box Styles */

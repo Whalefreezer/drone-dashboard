@@ -30,8 +30,170 @@ import {
   findIndexOfCurrentRace,
   findIndexOfLastRace
 } from "./utils.ts";
+import DaySchedule from './components/DaySchedule.tsx';
 
 const UPDATE = true;
+
+const scheduleData = {
+  friday: {
+    date: "Friday 14/02",
+    events: [
+      {
+        startTime: "8:00 AM",
+        endTime: "8:30am",
+        title: "Pilots Arrive",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:15 AM",
+        endTime: "8:45am",
+        title: "Scrutineering",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:45 AM",
+        type: "buffer"
+      },
+      {
+        startTime: "9:00 AM",
+        endTime: "9:30am",
+        title: "Mandatory Briefing",
+        type: "mandatory"
+      },
+      {
+        startTime: "9:30 AM",
+        type: "buffer"
+      },
+      {
+        startTime: "9:45 AM",
+        endTime: "12:30pm",
+        title: "Practice",
+        type: "practice"
+      },
+      {
+        startTime: "12:30 PM",
+        endTime: "1:00pm",
+        title: "Lunch & Organiser Break",
+        type: "break"
+      },
+      {
+        startTime: "1:00 PM",
+        endTime: "4:30pm",
+        title: "Practice",
+        type: "practice"
+      },
+      {
+        startTime: "4:30 PM",
+        title: "Track Closed",
+        type: "other"
+      }
+    ]
+  },
+  saturday: {
+    date: "Saturday 15/02",
+    events: [
+      {
+        startTime: "8:00 AM",
+        title: "Mandatory",
+        details: "Group 1 Arrive",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:30 AM",
+        title: "Mandatory",
+        details: "Group 2 Arrive",
+        type: "mandatory"
+      },
+      {
+        startTime: "9:00 AM",
+        title: "Mandatory",
+        details: "Group 3 Arrive",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:30 AM",
+        endTime: "12:30pm",
+        title: "Qualifying",
+        type: "qualifying"
+      },
+      {
+        startTime: "12:30 PM",
+        endTime: "1:00pm",
+        title: "Lunch & Organiser Break",
+        type: "break"
+      },
+      {
+        startTime: "1:00 PM",
+        endTime: "5:00pm",
+        title: "Qualifying",
+        type: "qualifying"
+      },
+      {
+        startTime: "5:00 PM",
+        title: "Track Closed",
+        type: "other"
+      }
+    ]
+  },
+  sunday: {
+    date: "Sunday 16/02",
+    events: [
+      {
+        startTime: "8:00 AM",
+        endTime: "8:15am",
+        title: "Pilots Arrive",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:15 AM",
+        endTime: "8:30am",
+        title: "Mandatory Briefing",
+        type: "mandatory"
+      },
+      {
+        startTime: "8:30 AM",
+        endTime: "12:30pm",
+        title: "Eliminations + Bottom Qualifiers",
+        type: "eliminations"
+      },
+      {
+        startTime: "12:30 PM",
+        endTime: "1:00pm",
+        title: "Lunch & Organiser Break",
+        type: "break"
+      },
+      {
+        startTime: "1:00 PM",
+        endTime: "3:00pm",
+        title: "Eliminations",
+        type: "eliminations"
+      },
+      {
+        startTime: "2:30 PM",
+        endTime: "3:00pm",
+        title: "Top 4 Finals",
+        type: "eliminations"
+      },
+      {
+        startTime: "3:30 PM",
+        endTime: "4:30pm",
+        title: "Event Packup",
+        type: "other"
+      },
+      {
+        startTime: "4:30 PM",
+        endTime: "5:00pm",
+        title: "Prizegiving",
+        type: "other"
+      },
+      {
+        startTime: "5:00 PM",
+        title: "Event Finished",
+        type: "other"
+      }
+    ]
+  }
+};
 
 function App() {
   const races = useAtomValue(racesAtom);
@@ -109,6 +271,11 @@ function App() {
               key={race.ID}
               raceId={race.ID}
             />)}
+          </div>
+        </div>
+        <div className="schedule-container">
+          <div className="schedule-wrapper">
+            <DaySchedule {...scheduleData.saturday} />
           </div>
         </div>
         <div className="leaderboard-container">
@@ -484,23 +651,23 @@ function Leaderboard() {
                 <td>{entry.totalLaps}</td>
                 <td>
                   {renderTimeWithDiff(
-                    entry.bestHoleshot,
-                    previousEntry?.bestHoleshot,
-                    entry.bestHoleshot && isRecentTime(entry.bestHoleshot.roundId, entry.bestHoleshot.raceNumber)
+                    entry.bestHoleshot || null,
+                    previousEntry?.bestHoleshot || null,
+                    entry.bestHoleshot ? isRecentTime(entry.bestHoleshot.roundId, entry.bestHoleshot.raceNumber) : false
                   )}
                 </td>
                 <td>
                   {renderTimeWithDiff(
-                    entry.bestLap,
-                    previousEntry?.bestLap,
-                    entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber)
+                    entry.bestLap || null,
+                    previousEntry?.bestLap || null,
+                    entry.bestLap ? isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) : false
                   )}
                 </td>
                 <td>
                   {renderTimeWithDiff(
-                    entry.consecutiveLaps,
-                    previousEntry?.consecutiveLaps,
-                    entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber)
+                    entry.consecutiveLaps || null,
+                    previousEntry?.consecutiveLaps || null,
+                    entry.consecutiveLaps ? isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber) : false
                   )}
                 </td>
                 <td>
