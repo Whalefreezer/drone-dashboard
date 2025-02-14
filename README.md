@@ -1,33 +1,92 @@
-# Vite + Deno + React + TypeScript
+# Drone Dashboard
 
-## Running
+A real-time dashboard for tracking drone racing metrics and statistics, built with React, Vite, and Deno.
 
-You need to have Deno v2.0.0 or later installed to run this repo.
+## Prerequisites
 
-Start a dev server:
+- Deno v2.0.0 or later
+- Node.js and npm (for node_modules dependencies)
+- Backend server running on port 8080
 
+## Tech Stack
+
+- **Frontend**: React 18
+- **State Management**: Jotai + TanStack Query
+- **Build Tool**: Vite
+- **Runtime**: Deno
+- **Additional Libraries**:
+  - QR Code generation (qrcode.react)
+  - Axios for HTTP requests
+
+## Development
+
+Start the development server:
+
+```bash
+deno task dev
 ```
-$ deno task dev
+
+The development server will run on port 3000 by default.
+
+### Proxy Server
+
+The application includes a proxy server (proxy.ts) that forwards requests to the backend:
+
+```bash
+deno run --allow-net proxy.ts
 ```
 
-## Deploy
+The proxy server runs on port 8000 and forwards requests to `http://localhost:8080`.
+
+## Deployment
 
 Build production assets:
 
+```bash
+deno task build
 ```
-$ deno task build
+
+To serve the built assets:
+
+```bash
+deno task serve
 ```
 
-TODO
+## Project Structure
 
-new rounds are not added automaticy
+```
+├── src/
+│   ├── App.tsx         # Main application component
+│   ├── state.ts        # Global state management
+│   ├── types.ts        # TypeScript type definitions
+│   ├── utils.ts        # Utility functions
+│   └── assets/         # Static assets
+├── proxy.ts            # Development proxy server
+└── deno.json          # Deno configuration and dependencies
+```
 
-* fastest lap
-* fastest 2 laps
-* ^ for individual race and overall
-* if a race has ended early, stop counting down
-* fix race count down sync clocks
-* lap table headers (HS, L1, L2 etc.)
-* detlta if chanel changed
-* put 1st 2nd etc on the race
+## Known Issues & Planned Features
+
+### Race Management
+- New rounds are not added automatically
+- Race countdown sync clocks need fixing
+- Early race termination handling needs implementation
+- Race position indicators (1st, 2nd, etc.) need to be added
+
+### Timing & Statistics
+- Fastest lap tracking
+- Fastest 2 consecutive laps tracking
+- Individual race and overall statistics
+- Delta timing when channel changes
+
+### UI Improvements
+- Lap table headers need proper labeling (HS, L1, L2, etc.)
+- Real-time data synchronization improvements
+- Mobile responsiveness enhancements
+
+### Technical Debt
+- Improve error handling in proxy server
+- Add proper TypeScript types for API responses
+- Implement proper WebSocket connection handling
+- Add loading states for data fetching
 
