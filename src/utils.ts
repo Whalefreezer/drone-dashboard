@@ -119,6 +119,7 @@ interface ConsecutiveTime {
 export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
   const overallFastestLaps = new Map<string, BestTime>();
   const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
+  const fastestHoleshots = new Map<string, BestTime>();
   const pilotChannels = new Map<string, string>();
 
   races.forEach((race) => {
@@ -131,12 +132,17 @@ export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
         lap.pilotId === pilotChannel.Pilot && !lap.isHoleshot
       );
 
+      const holeshotLaps = race.processedLaps.filter((lap) =>
+        lap.pilotId === pilotChannel.Pilot && lap.isHoleshot
+      );
+
       updateFastestLaps(racingLaps, pilotChannel.Pilot, race, overallFastestLaps);
       updateConsecutiveLaps(racingLaps, pilotChannel.Pilot, race, fastestConsecutiveLaps);
+      updateFastestLaps(holeshotLaps, pilotChannel.Pilot, race, fastestHoleshots);
     });
   });
 
-  return { overallFastestLaps, fastestConsecutiveLaps, pilotChannels };
+  return { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, pilotChannels };
 }
 
 function updateFastestLaps(

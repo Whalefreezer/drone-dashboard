@@ -447,6 +447,7 @@ function Leaderboard() {
             <th>Pilot</th>
             <th>Chan</th>
             <th>Laps</th>
+            <th>Holeshot</th>
             <th>Top Lap</th>
             <th>Top 2 Consec</th>
             <th>Next Race In</th>
@@ -481,6 +482,13 @@ function Leaderboard() {
                     : "-"}
                 </td>
                 <td>{entry.totalLaps}</td>
+                <td>
+                  {renderTimeWithDiff(
+                    entry.bestHoleshot,
+                    previousEntry?.bestHoleshot,
+                    entry.bestHoleshot && isRecentTime(entry.bestHoleshot.roundId, entry.bestHoleshot.raceNumber)
+                  )}
+                </td>
                 <td>
                   {renderTimeWithDiff(
                     entry.bestLap,

@@ -287,6 +287,11 @@ export interface LeaderboardEntry {
     roundId: string;
     raceNumber: number;
   } | null;
+  bestHoleshot: {
+    time: number;
+    roundId: string;
+    raceNumber: number;
+  } | null;
   channel: Channel | null;
   racesUntilNext: number;
   totalLaps: number;
@@ -299,7 +304,7 @@ export function calculateLeaderboardData(
   currentRaceIndex: number
 ): LeaderboardEntry[] {
   // Calculate best times
-  const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels } = calculateBestTimes(races);
+  const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels, fastestHoleshots } = calculateBestTimes(races);
 
   // Calculate races until next race for each pilot
   const racesUntilNext = new Map<string, number>();
@@ -324,6 +329,7 @@ export function calculateLeaderboardData(
     pilot,
     bestLap: overallFastestLaps.get(pilot.ID) || null,
     consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
+    bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
     channel: pilotChannels.get(pilot.ID)
       ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
       : null,
