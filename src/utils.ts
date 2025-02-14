@@ -71,6 +71,20 @@ export function calculateRacesUntilNext(
   return -1; // No upcoming races found
 }
 
+export function findIndexOfLastRace(sortedRaces: Race[]) {
+    const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
+    if (currentRaceIndex === -1) {
+      return -1;
+    }
+  
+    for (let i = currentRaceIndex - 1; i >= 0; i--) {
+      if (sortedRaces[i].Valid) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
 export function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
   for (let i = array.length - 1; i >= 0; i--) {
     if (predicate(array[i])) {
@@ -201,4 +215,44 @@ export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
     
     return a.consecutiveLaps.time - b.consecutiveLaps.time;
   });
+}
+
+export function findIndexOfCurrentRace(sortedRaces: Race[]) {
+  if (!sortedRaces || sortedRaces.length === 0) {
+    return -1;
+  }
+
+  const activeRace = sortedRaces.findIndex((race) => {
+    if (!race.Valid) {
+      return false;
+    }
+    if (!race.Start || race.Start.startsWith("0")) {
+      return false;
+    }
+    if (!race.End || race.End.startsWith("0")) {
+      return true;
+    }
+    return false;
+  });
+
+  if (activeRace !== -1) {
+    return activeRace;
+  }
+
+  const lastRace = findLastIndex(sortedRaces, (race) => {
+    if (!race.Valid) {
+      return false;
+    }
+
+    if (race.Start && !race.Start.startsWith("0") && race.End && !race.End.startsWith("0")) {
+      return true;
+    }
+    return false;
+  });
+
+  if (lastRace !== -1) {
+    return Math.min(lastRace + 1, sortedRaces.length - 1);
+  }
+
+  return sortedRaces.length > 0 ? 0 : -1;
 } 

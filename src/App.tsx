@@ -5,8 +5,6 @@ import { useAtom, useAtomValue } from "jotai";
 import {
   channelsDataAtom,
   eventDataAtom,
-  findIndexOfCurrentRace,
-  findIndexOfLastRace,
   pilotsAtom,
   raceFamilyAtom,
   racesAtom,
@@ -28,7 +26,9 @@ import {
   getLapClassName,
   calculateRacesUntilNext,
   calculateBestTimes,
-  sortPilotEntries
+  sortPilotEntries,
+  findIndexOfCurrentRace,
+  findIndexOfLastRace
 } from "./utils.ts";
 
 const UPDATE = true;
@@ -350,6 +350,16 @@ function Leaderboard() {
   const channels = useAtomValue(channelsDataAtom);
   const roundData = useAtomValue(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
+
+  // Add early return if there are no races
+  if (races.length === 0) {
+    return (
+      <div className="leaderboard">
+        <h3>Fastest Laps Overall</h3>
+        <div>No races available</div>
+      </div>
+    );
+  }
 
   // Calculate current leaderboard
   const currentLeaderboard = calculateLeaderboardData(

@@ -141,64 +141,6 @@ function orderRaces(races: Race[], rounds: Round[]) {
   });
 }
 
-export function findIndexOfCurrentRace(sortedRaces: Race[]) {
-  const activeRace = sortedRaces.findIndex((race) => {
-    if (!race.Valid) {
-      return false;
-    }
-    if (!race.Start || race.Start.startsWith("0")) {
-      return false;
-    }
-    if (!race.End || race.End.startsWith("0")) {
-      return true;
-    }
-  });
-
-  if (activeRace !== -1) {
-    return activeRace
-  }
-
-  const lastRace = findLastIndex(sortedRaces, (race) => {
-    if (!race.Valid) {
-      return false;
-    }
-
-    if (race.Start && !race.Start.startsWith("0") && race.End && !race.End.startsWith("0")) {
-      return true;
-    }
-    return false;
-  });
-
-  if (lastRace !== -1) {
-    return Math.min(lastRace + 1, sortedRaces.length - 1);
-  }
-
-  return 0;
-}
-
-function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
-  for (let i = array.length - 1; i >= 0; i--) {
-    if (predicate(array[i])) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-export function findIndexOfLastRace(sortedRaces: Race[]) {
-  const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
-  if (currentRaceIndex === -1) {
-    return -1;
-  }
-
-  for (let i = currentRaceIndex - 1; i >= 0; i--) {
-    if (sortedRaces[i].Valid) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 export interface ProcessedLap {
   id: string;
   lapNumber: number;
@@ -360,7 +302,7 @@ export function calculateLeaderboardData(
 
   // Calculate races until next race for each pilot
   const racesUntilNext = new Map<string, number>();
-  if (currentRaceIndex !== -1) {
+  if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
     pilots.forEach(pilot => {
       racesUntilNext.set(pilot.ID, calculateRacesUntilNext(races, currentRaceIndex, pilot.ID));
     });
