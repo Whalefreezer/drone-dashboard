@@ -365,6 +365,19 @@ function Leaderboard() {
 
   const sortedPilots = sortPilotEntries(pilotEntries);
 
+  const isRecentTime = (roundId: string, raceNumber: number) => {
+    const round = roundData.find(r => r.ID === roundId);
+    if (!round) return false;
+    
+    // Find the race in the full races array
+    const raceIndex = races.findIndex(race => 
+      race.Round === roundId && race.RaceNumber === raceNumber
+    );
+    
+    // Check if this time was set in current or last race
+    return raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
+  };
+
   return (
     <div className="leaderboard">
       <h3>Fastest Laps Overall</h3>
@@ -395,7 +408,7 @@ function Leaderboard() {
                   )
                   : "-"}
               </td>
-              <td>
+              <td className={entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ? 'recent-time' : ''}>
                 {entry.bestLap
                   ? (
                     <>
@@ -408,7 +421,7 @@ function Leaderboard() {
                   )
                   : "-"}
               </td>
-              <td>
+              <td className={entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber) ? 'recent-time' : ''}>
                 {entry.consecutiveLaps
                   ? (
                     <>

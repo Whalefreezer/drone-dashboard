@@ -215,3 +215,19 @@
   justify-content: center;
   margin-top: 16px;
 }
+
+/* Recent time highlighting */
+.recent-time {
+  animation: highlight 2s;
+  background-color: #2a4a2a;
+  border-radius: 4px;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: #4a2a2a;
+  }
+  100% {
+    background-color: #2a4a2a;
+  }
+}
