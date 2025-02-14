@@ -14,6 +14,7 @@ import {
   roundsDataAtom,
   overallBestTimesAtom,
   useQueryAtom,
+  usePeriodicUpdate
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -22,7 +23,9 @@ import {
   getPositionWithSuffix, 
   secondsFromString, 
   getLapClassName,
-  calculateRacesUntilNext
+  calculateRacesUntilNext,
+  calculateBestTimes,
+  sortPilotEntries
 } from "./utils.ts";
 
 const UPDATE = true;
@@ -51,14 +54,7 @@ function App() {
     return () => clearInterval(timer); // Cleanup
   }, []);
 
-  if (UPDATE) {
-    useEffect(() => {
-      const interval = setInterval(() => {
-        updateRoundsData();
-      }, 10_000);
-      return () => clearInterval(interval);
-    }, [updateRoundsData]);
-  }
+  usePeriodicUpdate(updateRoundsData, 10_000);
 
   return (
     <>
@@ -138,14 +134,7 @@ function LapsView({ raceId }: { raceId: string }) {
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
 
-  if (UPDATE) {
-    useEffect(() => {
-      const interval = setInterval(() => {
-        updateRace();
-      }, isCurrentRace ? 500 : 10_000);
-      return () => clearInterval(interval);
-    }, [updateRace, isCurrentRace]);
-  }
+  usePeriodicUpdate(updateRace, isCurrentRace ? 500 : 10_000);
 
   const round = roundData.find((r) => r.ID === race.Round);
 
@@ -354,82 +343,7 @@ function Leaderboard() {
   const roundData = useAtomValue(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
 
-  // Track best times and their sources
-  interface BestTime {
-    time: number;
-    roundId: string;
-    raceNumber: number;
-    lapNumber: number;
-  }
-  interface ConsecutiveTime {
-    time: number;
-    roundId: string;
-    raceNumber: number;
-    startLap: number;
-  }
-
-  const overallFastestLaps = new Map<string, BestTime>();
-  const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
-  const pilotChannels = new Map<string, string>();
-
-  races.forEach((race) => {
-    race.PilotChannels.forEach((pilotChannel) => {
-      if (!pilotChannels.has(pilotChannel.Pilot)) {
-        pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
-      }
-
-      // Get racing laps (excluding holeshot)
-      const racingLaps = race.processedLaps.filter((lap) =>
-        lap.pilotId === pilotChannel.Pilot &&
-        !lap.isHoleshot
-      );
-
-      if (racingLaps.length > 0) {
-        const fastestLap = racingLaps.reduce((fastest, lap) =>
-          lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
-        );
-
-        const currentFastest = overallFastestLaps.get(pilotChannel.Pilot);
-        if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
-          overallFastestLaps.set(pilotChannel.Pilot, {
-            time: fastestLap.lengthSeconds,
-            roundId: race.Round,
-            raceNumber: race.RaceNumber,
-            lapNumber: fastestLap.lapNumber,
-          });
-        }
-      }
-
-      // Calculate fastest 2 consecutive laps
-      if (racingLaps.length >= 2) {
-        let fastestConsecutive = { time: Infinity, startLap: 0 };
-        for (let i = 0; i < racingLaps.length - 1; i++) {
-          const twoLapTime = racingLaps[i].lengthSeconds +
-            racingLaps[i + 1].lengthSeconds;
-          if (twoLapTime < fastestConsecutive.time) {
-            fastestConsecutive = {
-              time: twoLapTime,
-              startLap: racingLaps[i].lapNumber,
-            };
-          }
-        }
-
-        const currentFastestConsecutive = fastestConsecutiveLaps.get(
-          pilotChannel.Pilot,
-        );
-        if (
-          !currentFastestConsecutive ||
-          fastestConsecutive.time < currentFastestConsecutive.time
-        ) {
-          fastestConsecutiveLaps.set(pilotChannel.Pilot, {
-            ...fastestConsecutive,
-            roundId: race.Round,
-            raceNumber: race.RaceNumber,
-          });
-        }
-      }
-    });
-  });
+  const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels } = calculateBestTimes(races);
 
   // Calculate races until next race for each pilot
   const racesUntilNext = new Map<string, number>();
@@ -444,37 +358,12 @@ function Leaderboard() {
     bestLap: overallFastestLaps.get(pilot.ID) || null,
     consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
     channel: pilotChannels.get(pilot.ID)
-      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID))
+      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
       : null,
     racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
   }));
 
-  const sortedPilots = pilotEntries.sort((a, b) => {
-    // If neither pilot has consecutive lap times, sort by races until next
-    if (!a.consecutiveLaps && !b.consecutiveLaps) {
-      // If either pilot has no scheduled race (-1), put them at the end
-      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
-      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
-      
-      // First compare racesUntilNext
-      if (a.racesUntilNext !== b.racesUntilNext) {
-        return a.racesUntilNext - b.racesUntilNext;
-      }
-      // If racesUntilNext is equal, use channel frequency as tiebreaker
-      if (a.channel && b.channel) {
-        return a.channel.Number - b.channel.Number;
-      }
-      // If one pilot has no channel, put them last
-      if (!a.channel) return 1;
-      if (!b.channel) return -1;
-      return 0;
-    }
-    // If only one pilot has consecutive lap times, that pilot goes first
-    if (!a.consecutiveLaps) return 1;
-    if (!b.consecutiveLaps) return -1;
-    // If both pilots have consecutive lap times, sort by time
-    return a.consecutiveLaps.time - b.consecutiveLaps.time;
-  });
+  const sortedPilots = sortPilotEntries(pilotEntries);
 
   return (
     <div className="leaderboard">
@@ -491,7 +380,7 @@ function Leaderboard() {
           </tr>
         </thead>
         <tbody>
-          {sortedPilots.map((entry, index) => (
+          {sortedPilots.map((entry: any, index: number) => (
             <tr key={entry.pilot.ID}>
               <td>{entry.bestLap ? index + 1 : "-"}</td>
               <td>{entry.pilot.Name}</td>

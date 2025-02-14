@@ -6,6 +6,8 @@ import { atomWithSuspenseQuery } from "jotai-tanstack-query";
 import axios from "axios";
 import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 
+const UPDATE = true;
+
 const eventIdAtom = atomWithSuspenseQuery(() => ({
   queryKey: ['eventId'],
   queryFn: async () => {
@@ -314,4 +316,14 @@ type QueryAtom<T> = Atom<{ data: T }>;
 export function useQueryAtom<T>(queryAtom: Atom<AtomWithSuspenseQueryResult<T, Error>>): T {
   const { data } = useAtomValue(queryAtom);
   return data;
+}
+
+export function usePeriodicUpdate(updateFn: () => void, interval: number) {
+  useEffect(() => {
+    if (UPDATE) {
+      updateFn(); // Initial update
+      const intervalId = setInterval(updateFn, interval);
+      return () => clearInterval(intervalId);
+    }
+  }, [updateFn, interval]);
 }

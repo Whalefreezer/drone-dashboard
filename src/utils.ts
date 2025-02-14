@@ -1,4 +1,4 @@
-import { Race, Round } from "./types.ts";
+import { Channel, Pilot, Race, Round } from "./types.ts";
 import { ProcessedLap, RaceWithProcessedLaps } from "./state.ts";
 
 export function getPositionWithSuffix(position: number): string {
@@ -78,4 +78,127 @@ export function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): 
     }
   }
   return -1;
+}
+
+interface PilotEntry {
+  pilot: Pilot;
+  bestLap: BestTime | null;
+  consecutiveLaps: ConsecutiveTime | null;
+  channel: Channel | null;
+  racesUntilNext: number;
+}
+
+interface BestTime {
+  time: number;
+  roundId: string;
+  raceNumber: number;
+  lapNumber: number;
+}
+
+interface ConsecutiveTime {
+  time: number;
+  roundId: string;
+  raceNumber: number;
+  startLap: number;
+}
+
+export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
+  const overallFastestLaps = new Map<string, BestTime>();
+  const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
+  const pilotChannels = new Map<string, string>();
+
+  races.forEach((race) => {
+    race.PilotChannels.forEach((pilotChannel) => {
+      if (!pilotChannels.has(pilotChannel.Pilot)) {
+        pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
+      }
+
+      const racingLaps = race.processedLaps.filter((lap) =>
+        lap.pilotId === pilotChannel.Pilot && !lap.isHoleshot
+      );
+
+      updateFastestLaps(racingLaps, pilotChannel.Pilot, race, overallFastestLaps);
+      updateConsecutiveLaps(racingLaps, pilotChannel.Pilot, race, fastestConsecutiveLaps);
+    });
+  });
+
+  return { overallFastestLaps, fastestConsecutiveLaps, pilotChannels };
+}
+
+function updateFastestLaps(
+  racingLaps: ProcessedLap[],
+  pilotId: string,
+  race: RaceWithProcessedLaps,
+  overallFastestLaps: Map<string, BestTime>
+) {
+  if (racingLaps.length > 0) {
+    const fastestLap = racingLaps.reduce((fastest, lap) =>
+      lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
+    );
+
+    const currentFastest = overallFastestLaps.get(pilotId);
+    if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
+      overallFastestLaps.set(pilotId, {
+        time: fastestLap.lengthSeconds,
+        roundId: race.Round,
+        raceNumber: race.RaceNumber,
+        lapNumber: fastestLap.lapNumber,
+      });
+    }
+  }
+}
+
+function updateConsecutiveLaps(
+  racingLaps: ProcessedLap[],
+  pilotId: string,
+  race: RaceWithProcessedLaps,
+  fastestConsecutiveLaps: Map<string, ConsecutiveTime>
+) {
+  if (racingLaps.length >= 2) {
+    let fastestConsecutive = { time: Infinity, startLap: 0 };
+    for (let i = 0; i < racingLaps.length - 1; i++) {
+      const twoLapTime = racingLaps[i].lengthSeconds + racingLaps[i + 1].lengthSeconds;
+      if (twoLapTime < fastestConsecutive.time) {
+        fastestConsecutive = {
+          time: twoLapTime,
+          startLap: racingLaps[i].lapNumber,
+        };
+      }
+    }
+
+    const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotId);
+    if (!currentFastestConsecutive || fastestConsecutive.time < currentFastestConsecutive.time) {
+      fastestConsecutiveLaps.set(pilotId, {
+        ...fastestConsecutive,
+        roundId: race.Round,
+        raceNumber: race.RaceNumber,
+      });
+    }
+  }
+}
+
+export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
+  return pilotEntries.sort((a, b) => {
+    if (!a.consecutiveLaps && !b.consecutiveLaps) {
+      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
+      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
+      
+      if (a.racesUntilNext !== b.racesUntilNext) {
+        return a.racesUntilNext - b.racesUntilNext;
+      }
+      
+      if (a.channel && b.channel) {
+        return a.channel.Number - b.channel.Number;
+      }
+      
+      if (!a.channel) return 1;
+      if (!b.channel) return -1;
+      return 0;
+    }
+    
+    if (!a.consecutiveLaps) return 1;
+    if (!b.consecutiveLaps) return -1;
+    
+    return a.consecutiveLaps.time - b.consecutiveLaps.time;
+  });
 } 
