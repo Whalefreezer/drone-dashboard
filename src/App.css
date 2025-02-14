@@ -221,6 +221,7 @@
   animation: highlight 2s;
   background-color: #2a4a2a;
   border-radius: 4px;
+  padding: 2px 4px;
 }
 
 @keyframes highlight {
@@ -253,4 +254,9 @@
   animation: fadeIn 0.5s ease-in;
   font-size: 0.8em;
   margin-top: 2px;
+}
+
+.leaderboard-table td {
+  padding: 4px 8px;
+  vertical-align: top;
 }

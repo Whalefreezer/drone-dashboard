@@ -339,6 +339,11 @@ function RaceTime() {
   return <div className="race-time">{timeRemaining.toFixed(1)}</div>;
 }
 
+function formatTimeDifference(newTime: number, oldTime: number): string {
+  const diff = oldTime - newTime;
+  return diff > 0 ? `-${diff.toFixed(3)}` : `+${(-diff).toFixed(3)}`;
+}
+
 function Leaderboard() {
   const races = useAtomValue(racesAtom);
   const pilots = useAtomValue(pilotsAtom);
@@ -389,6 +394,39 @@ function Leaderboard() {
     );
   };
 
+  // Helper to render time with difference
+  const renderTimeWithDiff = (
+    currentTime: { time: number; roundId: string; raceNumber: number } | null,
+    previousTime: { time: number; roundId: string; raceNumber: number } | null,
+    isRecent: boolean
+  ) => {
+    if (!currentTime) return "-";
+
+    const showDiff = previousTime && 
+                    previousTime.time !== currentTime.time && 
+                    isRecent;
+
+    return (
+      <div className={isRecent ? 'recent-time' : ''} style={{ display: 'flex', flexDirection: 'column' }}>
+        <div>
+          {currentTime.time.toFixed(3)}
+          <span className="source-info">
+            ({roundData.find((r) => r.ID === currentTime.roundId)?.RoundNumber}-
+            {currentTime.raceNumber})
+          </span>
+        </div>
+        {showDiff && (
+          <div style={{ 
+            fontSize: '0.8em', 
+            color: previousTime.time > currentTime.time ? '#00ff00' : '#ff0000' 
+          }}>
+            {formatTimeDifference(currentTime.time, previousTime.time)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="leaderboard">
       <h3>Fastest Laps Overall</h3>
@@ -404,67 +442,61 @@ function Leaderboard() {
           </tr>
         </thead>
         <tbody>
-          {currentLeaderboard.map((entry, index) => (
-            <tr key={entry.pilot.ID}>
-              <td>
-                {entry.bestLap ? (
-                  <div className="position-container">
-                    <div>{index + 1}</div>
-                    {renderPositionChange(entry.pilot.ID, index + 1, entry)}
-                  </div>
-                ) : "-"}
-              </td>
-              <td>{entry.pilot.Name}</td>
-              <td>
-                {entry.channel
-                  ? (
-                    <div className="channel-display">
-                      {entry.channel.ShortBand}
-                      {entry.channel.Number}
-                      <ChannelSquare channelID={entry.channel.ID} />
+          {currentLeaderboard.map((entry, index) => {
+            const previousEntry = previousLeaderboard.find(
+              prev => prev.pilot.ID === entry.pilot.ID
+            );
+            
+            return (
+              <tr key={entry.pilot.ID}>
+                <td>
+                  {entry.bestLap ? (
+                    <div className="position-container">
+                      <div>{index + 1}</div>
+                      {renderPositionChange(entry.pilot.ID, index + 1, entry)}
                     </div>
-                  )
-                  : "-"}
-              </td>
-              <td className={entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ? 'recent-time' : ''}>
-                {entry.bestLap
-                  ? (
-                    <>
-                      {entry.bestLap.time.toFixed(3)}
-                      <span className="source-info">
-                        ({roundData.find((r) => r.ID === entry.bestLap!.roundId)?.RoundNumber}-
-                        {entry.bestLap.raceNumber})
-                      </span>
-                    </>
-                  )
-                  : "-"}
-              </td>
-              <td className={entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber) ? 'recent-time' : ''}>
-                {entry.consecutiveLaps
-                  ? (
-                    <>
-                      {entry.consecutiveLaps.time.toFixed(3)}
-                      <span className="source-info">
-                        ({roundData.find((r) => r.ID === entry.consecutiveLaps!.roundId)?.RoundNumber}-
-                        {entry.consecutiveLaps.raceNumber})
-                      </span>
-                    </>
-                  )
-                  : "-"}
-              </td>
-              <td>
-                {entry.racesUntilNext === -1 ? (
-                  "-"
-                ) : entry.racesUntilNext === 0 ? (
-                  <span className="next-text">To Staging</span>
-                ) : entry.racesUntilNext === -2 ? (
-                  <span className="racing-text">Racing</span>
-                ) : (
-                  `${entry.racesUntilNext}`
-                )}
-              </td>
-            </tr>
-          ))}
+                  ) : "-"}
+                </td>
+                <td>{entry.pilot.Name}</td>
+                <td>
+                  {entry.channel
+                    ? (
+                      <div className="channel-display">
+                        {entry.channel.ShortBand}
+                        {entry.channel.Number}
+                        <ChannelSquare channelID={entry.channel.ID} />
+                      </div>
+                    )
+                    : "-"}
+                </td>
+                <td>
+                  {renderTimeWithDiff(
+                    entry.bestLap,
+                    previousEntry?.bestLap,
+                    entry.bestLap && isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber)
+                  )}
+                </td>
+                <td>
+                  {renderTimeWithDiff(
+                    entry.consecutiveLaps,
+                    previousEntry?.consecutiveLaps,
+                    entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber)
+                  )}
+                </td>
+                <td>
+                  {entry.racesUntilNext === -1 ? (
+                    "-"
+                  ) : entry.racesUntilNext === 0 ? (
+                    <span className="next-text">To Staging</span>
+                  ) : entry.racesUntilNext === -2 ? (
+                    <span className="racing-text">Racing</span>
+                  ) : (
+                    `${entry.racesUntilNext}`
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
