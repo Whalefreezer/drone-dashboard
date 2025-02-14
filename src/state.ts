@@ -329,13 +329,20 @@ export function getPositionChanges(
   const changes = new Map<string, number>();
   
   currentPositions.forEach((entry, currentIndex) => {
-    const previousIndex = previousPositions.findIndex(
-      prev => prev.pilot.ID === entry.pilot.ID
-    );
-    
-    if (previousIndex !== -1 && previousIndex !== currentIndex) {
-      // Store the previous position (1-based)
-      changes.set(entry.pilot.ID, previousIndex + 1);
+    // Only consider pilots who have times in the current leaderboard
+    if (entry.consecutiveLaps || entry.bestLap) {
+      const previousEntry = previousPositions.find(
+        prev => prev.pilot.ID === entry.pilot.ID
+      );
+      
+      // Only record change if they had times in the previous leaderboard too
+      if (previousEntry && (previousEntry.consecutiveLaps || previousEntry.bestLap)) {
+        const previousIndex = previousPositions.indexOf(previousEntry);
+        if (previousIndex !== currentIndex) {
+          // Store the previous position (1-based)
+          changes.set(entry.pilot.ID, previousIndex + 1);
+        }
+      }
     }
   });
 

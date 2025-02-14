@@ -460,7 +460,7 @@ function Leaderboard() {
             return (
               <tr key={entry.pilot.ID}>
                 <td>
-                  {entry.bestLap ? (
+                  {entry.consecutiveLaps ? (
                     <div className="position-container">
                       <div>{index + 1}</div>
                       {renderPositionChange(entry.pilot.ID, index + 1, entry)}
