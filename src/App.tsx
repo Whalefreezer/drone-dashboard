@@ -365,6 +365,76 @@ function Leaderboard() {
 
   const sortedPilots = sortPilotEntries(pilotEntries);
 
+  // Add state to track previous positions
+  const [previousPositions, setPreviousPositions] = useState(new Map<string, number>());
+
+  // Update previous positions when race changes
+  useEffect(() => {
+    if (currentRaceIndex > 0) {
+      // Calculate positions from previous race state
+      const prevRace = races[currentRaceIndex - 1];
+      if (prevRace) {
+        const prevPositions = new Map<string, number>();
+        const prevRaces = races.slice(0, currentRaceIndex);
+        const { overallFastestLaps: prevLaps, fastestConsecutiveLaps: prevConsecutive, pilotChannels: prevChannels } = calculateBestTimes(prevRaces);
+        
+        // Calculate races until next for previous state
+        const prevRacesUntilNext = new Map<string, number>();
+        pilots.forEach(pilot => {
+          prevRacesUntilNext.set(pilot.ID, calculateRacesUntilNext(prevRaces, currentRaceIndex - 1, pilot.ID));
+        });
+
+        // Create pilot entries for previous state with full data structure
+        const prevPilotEntries = pilots.map(pilot => ({
+          pilot,
+          bestLap: prevLaps.get(pilot.ID) || null,
+          consecutiveLaps: prevConsecutive.get(pilot.ID) || null,
+          channel: prevChannels.get(pilot.ID)
+            ? channels.find((c) => c.ID === prevChannels.get(pilot.ID)) || null
+            : null,
+          racesUntilNext: prevRacesUntilNext.get(pilot.ID) ?? -1,
+        }));
+
+        // Sort them using same logic
+        const prevSorted = sortPilotEntries(prevPilotEntries);
+        
+        // Store previous positions
+        prevSorted.forEach((entry, index) => {
+          if (entry.bestLap) {
+            prevPositions.set(entry.pilot.ID, index + 1);
+          }
+        });
+
+        setPreviousPositions(prevPositions);
+      }
+    }
+  }, [currentRaceIndex, races]);
+
+  // Helper to check if a pilot's time is from recent races
+  const hasRecentImprovement = (entry: any) => {
+    if (!entry.bestLap) return false;
+    return isRecentTime(entry.bestLap.roundId, entry.bestLap.raceNumber) ||
+           (entry.consecutiveLaps && isRecentTime(entry.consecutiveLaps.roundId, entry.consecutiveLaps.raceNumber));
+  };
+
+  // Update renderPositionChange to only show for recent improvements
+  const renderPositionChange = (pilotId: string, currentPos: number, entry: any) => {
+    if (!hasRecentImprovement(entry)) return null;
+    
+    const prevPos = previousPositions.get(pilotId);
+    if (!prevPos || prevPos === currentPos) return null;
+
+    const change = prevPos - currentPos;
+    const color = change > 0 ? '#00ff00' : '#ff0000';
+    const symbol = change > 0 ? '↑' : '↓';
+
+    return (
+      <span className="position-change" style={{ color, marginLeft: '4px', fontSize: '0.8em' }}>
+        {symbol}{Math.abs(change)} (was {prevPos})
+      </span>
+    );
+  };
+
   const isRecentTime = (roundId: string, raceNumber: number) => {
     const round = roundData.find(r => r.ID === roundId);
     if (!round) return false;
@@ -395,7 +465,14 @@ function Leaderboard() {
         <tbody>
           {sortedPilots.map((entry: any, index: number) => (
             <tr key={entry.pilot.ID}>
-              <td>{entry.bestLap ? index + 1 : "-"}</td>
+              <td>
+                {entry.bestLap ? (
+                  <>
+                    {index + 1}
+                    {renderPositionChange(entry.pilot.ID, index + 1, entry)}
+                  </>
+                ) : "-"}
+              </td>
               <td>{entry.pilot.Name}</td>
               <td>
                 {entry.channel

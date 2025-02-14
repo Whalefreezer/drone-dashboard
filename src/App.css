@@ -231,3 +231,13 @@
     background-color: #2a4a2a;
   }
 }
+
+/* Position change animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.position-change {
+  animation: fadeIn 0.5s ease-in;
+}
