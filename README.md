@@ -2,6 +2,8 @@
 
 A real-time dashboard for tracking drone racing metrics and statistics, built with React, Vite, and Deno.
 
+> **Note**: This project is primarily AI-generated and is currently in an experimental state. While functional, there may be some rough edges and non-optimal implementations that haven't been refined yet. Contributions and improvements are welcome!
+
 ## Prerequisites
 
 - Deno v2.0.0 or later
