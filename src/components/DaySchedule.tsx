@@ -16,8 +16,11 @@ interface DayScheduleProps {
   className?: string;
 }
 
-const PIXELS_PER_MINUTE = 2; // Scale factor for timeline
+const PIXELS_PER_MINUTE = 4; // Doubled from 2 to 4
 const DEFAULT_EVENT_DURATION = 15; // Default duration in minutes for events without endTime
+const HOURS_BEFORE = 1; // Hours to show before current time
+const MINUTES_PER_HOUR = 60;
+const VISIBLE_WINDOW_START = HOURS_BEFORE * MINUTES_PER_HOUR;
 
 const DaySchedule: React.FC<DayScheduleProps> = ({ 
   date, 
@@ -105,22 +108,40 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
     return parseTimeToMinutes(e.startTime) + DEFAULT_EVENT_DURATION;
   }));
 
-  const timelineHeight = Math.max((endMinutes - startMinutes) * PIXELS_PER_MINUTE, 100);
-
-  // Helper function to format time range
-  const formatTimeRange = (event: ScheduleEvent): string => {
-    if (!event.endTime) return event.startTime;
-    return `(${event.startTime} - ${event.endTime})`;
-  };
-
   // Helper function to get current time in minutes since midnight
   const getCurrentTimeMinutes = (): number => {
     return currentTime.getHours() * 60 + currentTime.getMinutes();
   };
 
-  // Calculate current time position
-  const currentTimePosition = Math.max(0, (getCurrentTimeMinutes() - startMinutes) * PIXELS_PER_MINUTE);
-  const isCurrentTimeInRange = currentTimePosition >= 0 && currentTimePosition <= timelineHeight;
+  // Calculate the visible time window
+  const currentMinutes = getCurrentTimeMinutes();
+  const windowStart = currentMinutes - VISIBLE_WINDOW_START;
+  
+  // Filter events to only show those after the window start
+  const visibleEvents = sortedEvents.filter(event => {
+    const eventStart = parseTimeToMinutes(event.startTime);
+    const eventEnd = event.endTime 
+      ? parseTimeToMinutes(event.endTime)
+      : eventStart + DEFAULT_EVENT_DURATION;
+    
+    // Handle events that cross midnight
+    const normalizedEventEnd = eventEnd < eventStart 
+      ? eventEnd + (24 * MINUTES_PER_HOUR) 
+      : eventEnd;
+
+    return normalizedEventEnd >= windowStart;
+  });
+
+  // Calculate timeline height based on the last event of the day
+  const lastEventTime = Math.max(...visibleEvents.map(event => {
+    const eventEnd = event.endTime 
+      ? parseTimeToMinutes(event.endTime)
+      : parseTimeToMinutes(event.startTime) + DEFAULT_EVENT_DURATION;
+    return eventEnd;
+  }));
+
+  const timelineHeight = (lastEventTime - windowStart) * PIXELS_PER_MINUTE;
+  const currentTimePosition = VISIBLE_WINDOW_START * PIXELS_PER_MINUTE; // Position current time at 1/3 of the height
 
   return (
     <div className={`day-schedule ${className}`}>
@@ -134,38 +155,39 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
           position: 'relative'
         }}
       >
-        {isCurrentTimeInRange && (
+        <div 
+          className="current-time-indicator"
+          style={{
+            position: 'absolute',
+            top: currentTimePosition,
+            left: -4,
+            right: -4,
+            height: '2px',
+            backgroundColor: '#ff0000',
+            boxShadow: '0 0 8px rgba(255, 0, 0, 0.5)',
+            zIndex: 2
+          }}
+        >
           <div 
-            className="current-time-indicator"
+            className="current-time-dot"
             style={{
               position: 'absolute',
-              top: currentTimePosition,
-              left: -4,
-              right: -4,
-              height: '2px',
+              left: -3,
+              top: -2,
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
               backgroundColor: '#ff0000',
-              boxShadow: '0 0 8px rgba(255, 0, 0, 0.5)',
-              zIndex: 2
+              boxShadow: '0 0 8px rgba(255, 0, 0, 0.8)'
             }}
-          >
-            <div 
-              className="current-time-dot"
-              style={{
-                position: 'absolute',
-                left: -3,
-                top: -2,
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#ff0000',
-                boxShadow: '0 0 8px rgba(255, 0, 0, 0.8)'
-              }}
-            />
-          </div>
-        )}
-        {sortedEvents.map((event: ScheduleEvent, index: number) => {
-          const eventStart = parseTimeToMinutes(event.startTime) - startMinutes;
+          />
+        </div>
+        {visibleEvents.map((event: ScheduleEvent, index: number) => {
+          const eventStart = parseTimeToMinutes(event.startTime);
           const duration = getEventDuration(event);
+          
+          // Calculate position relative to the window
+          const relativeStart = eventStart - windowStart;
           
           return (
             <div
@@ -177,7 +199,7 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
                 borderRadius: '4px',
                 border: '1px solid rgba(0, 0, 0, 0.1)',
                 position: 'absolute',
-                top: eventStart * PIXELS_PER_MINUTE,
+                top: relativeStart * PIXELS_PER_MINUTE,
                 height: Math.max(duration * PIXELS_PER_MINUTE - 4, 20),
                 left: 0,
                 right: 0
