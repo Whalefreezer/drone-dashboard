@@ -18,7 +18,7 @@ interface DayScheduleProps {
 
 const PIXELS_PER_MINUTE = 4; // Doubled from 2 to 4
 const DEFAULT_EVENT_DURATION = 15; // Default duration in minutes for events without endTime
-const HOURS_BEFORE = 1; // Hours to show before current time
+const HOURS_BEFORE = 2; // Hours to show before current time
 const MINUTES_PER_HOUR = 60;
 const VISIBLE_WINDOW_START = HOURS_BEFORE * MINUTES_PER_HOUR;
 
@@ -47,11 +47,11 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
       case 'practice':
         return '#1a3a4a';  // Dark blue
       case 'qualifying':
-        return '#4a3a1a';  // Dark gold
+        return 'rgb(66, 13, 35)';  // Dark gold
       case 'eliminations':
         return '#4a1a1a';  // Dark red
       case 'break':
-        return '#3a1a4a';  // Dark purple
+        return 'rgb(6, 64, 70)';  // Dark purple
       default:
         return '#1a1a1a';  // Very dark gray
     }
