@@ -51,7 +51,7 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
       case 'eliminations':
         return '#4a1a1a';  // Dark red
       case 'break':
-        return 'rgb(6, 64, 70)';  // Dark purple
+        return 'rgb(157, 71, 19)';  // Dark purple
       default:
         return '#1a1a1a';  // Very dark gray
     }

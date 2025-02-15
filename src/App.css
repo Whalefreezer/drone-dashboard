@@ -18,7 +18,7 @@
   justify-content: space-between;
   width: 100vw;
   box-sizing: border-box;
-  gap: 16px;
+  gap: 4px;
   padding: 0 16px;
 }
 
@@ -136,6 +136,20 @@
 
 .leaderboard-table td:nth-child(2) {
   font-family: inherit;
+}
+
+/* Add alternating row colors for leaderboard */
+.leaderboard-table tbody tr:nth-child(even) {
+  background-color: #222;
+}
+
+.leaderboard-table tbody tr:nth-child(odd) {
+  background-color: #1a1a1a;
+}
+
+/* Update hover effect for better visibility */
+.leaderboard-table tbody tr:hover {
+  background-color: #2a2a2a;
 }
 
 /* Lap Highlighting */
