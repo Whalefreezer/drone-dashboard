@@ -119,7 +119,7 @@ const scheduleData = {
       {
         startTime: "12:30 PM",
         endTime: "1:00pm",
-        title: "Lunch & Organiser Break",
+        title: "Pretend Lunch & Organiser Break",
         type: "break"
       },
       {
@@ -131,6 +131,11 @@ const scheduleData = {
       {
         startTime: "5:00 PM",
         title: "Track Closed",
+        type: "other"
+      },
+      {
+        startTime: "6:00 PM",
+        title: "Katsubi",
         type: "other"
       }
     ]
@@ -604,6 +609,30 @@ function Leaderboard() {
     );
   };
 
+  // Add this new state to track which rows should be animated
+  const [animatingRows, setAnimatingRows] = useState<Set<string>>(new Set());
+
+  // Add this effect to handle animations when positions change
+  useEffect(() => {
+    const newAnimatingRows = new Set<string>();
+    
+    currentLeaderboard.forEach((entry, index) => {
+      const prevPos = positionChanges.get(entry.pilot.ID);
+      if (prevPos && prevPos > index + 1) {
+        newAnimatingRows.add(entry.pilot.ID);
+      }
+    });
+
+    setAnimatingRows(newAnimatingRows);
+
+    // Clear animations after they complete
+    const timer = setTimeout(() => {
+      setAnimatingRows(new Set());
+    }, 1000); // Match this to animation duration
+
+    return () => clearTimeout(timer);
+  }, [currentLeaderboard, positionChanges]);
+
   return (
     <div className="leaderboard">
       <h3>Fastest Laps Overall</h3>
@@ -627,7 +656,10 @@ function Leaderboard() {
             );
             
             return (
-              <tr key={entry.pilot.ID}>
+              <tr 
+                key={entry.pilot.ID}
+                className={animatingRows.has(entry.pilot.ID) ? 'position-improved' : ''}
+              >
                 <td>
                   {entry.consecutiveLaps ? (
                     <div className="position-container">
