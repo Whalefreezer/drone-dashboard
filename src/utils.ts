@@ -102,6 +102,13 @@ interface PilotEntry {
   consecutiveLaps: ConsecutiveTime | null;
   channel: Channel | null;
   racesUntilNext: number;
+  totalLaps: number;
+  bestHoleshot: BestTime | null;
+  eliminatedInfo: {
+    bracket: string;
+    position: number;
+    points: number;
+  } | null;
 }
 
 interface BestTime {
@@ -203,6 +210,37 @@ function updateConsecutiveLaps(
 
 export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
   return pilotEntries.sort((a, b) => {
+    // First handle eliminated pilots
+    if (a.eliminatedInfo && b.eliminatedInfo) {
+      // Extract bracket numbers (assuming format like "H1", "H2", etc.)
+      const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ''));
+      const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ''));
+      
+      // Determine which group each pilot is in
+      const getGroup = (bracketNum: number) => {
+        if (bracketNum <= 8) return 1;  // H1-H8
+        if (bracketNum <= 12) return 2; // H9-H12
+        if (bracketNum <= 14) return 3; // H13-H14
+        return 4; // H15 (finals)
+      };
+      
+      const aGroup = getGroup(aBracketNum);
+      const bGroup = getGroup(bBracketNum);
+      
+      // Sort by group first (later groups come first)
+      if (aGroup !== bGroup) {
+        return bGroup - aGroup;
+      }
+      
+      // Within the same group, sort by points
+      return b.eliminatedInfo.points - a.eliminatedInfo.points;
+    }
+    
+    // Put non-eliminated pilots before eliminated ones
+    if (a.eliminatedInfo) return 1;
+    if (b.eliminatedInfo) return -1;
+
+    // For non-eliminated pilots, use existing logic
     if (!a.consecutiveLaps && !b.consecutiveLaps) {
       if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
       if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;

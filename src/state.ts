@@ -317,13 +317,19 @@ export interface LeaderboardEntry {
   channel: Channel | null;
   racesUntilNext: number;
   totalLaps: number;
+  eliminatedInfo: {
+    bracket: string;
+    position: number;
+    points: number;
+  } | null;
 }
 
 export function calculateLeaderboardData(
   races: RaceWithProcessedLaps[],
   pilots: Pilot[],
   channels: Channel[],
-  currentRaceIndex: number
+  currentRaceIndex: number,
+  brackets: Bracket[] = []
 ): LeaderboardEntry[] {
   // Calculate best times
   const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels, fastestHoleshots } = calculateBestTimes(races);
@@ -346,18 +352,33 @@ export function calculateLeaderboardData(
     });
   });
 
+  // Get eliminated pilots information
+  const eliminatedPilots = findEliminatedPilots(brackets);
+
   // Create pilot entries
-  const pilotEntries = pilots.map((pilot) => ({
-    pilot,
-    bestLap: overallFastestLaps.get(pilot.ID) || null,
-    consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
-    bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
-    channel: pilotChannels.get(pilot.ID)
-      ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
-      : null,
-    racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
-    totalLaps: totalLaps.get(pilot.ID) ?? 0,
-  }));
+  const pilotEntries = pilots.map((pilot) => {
+    // Find if this pilot is eliminated
+    const eliminatedInfo = eliminatedPilots.find(
+      ep => ep.name.toLowerCase().replace(/\s+/g, '') === pilot.Name.toLowerCase().replace(/\s+/g, '')
+    );
+
+    return {
+      pilot,
+      bestLap: overallFastestLaps.get(pilot.ID) || null,
+      consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
+      bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
+      channel: pilotChannels.get(pilot.ID)
+        ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
+        : null,
+      racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
+      totalLaps: totalLaps.get(pilot.ID) ?? 0,
+      eliminatedInfo: eliminatedInfo ? {
+        bracket: eliminatedInfo.bracket,
+        position: eliminatedInfo.position,
+        points: eliminatedInfo.points
+      } : null
+    };
+  });
 
   return sortPilotEntries(pilotEntries);
 }

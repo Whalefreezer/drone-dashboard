@@ -648,7 +648,8 @@ function Leaderboard() {
       races,
       pilots,
       channels,
-      currentRaceIndex
+      currentRaceIndex,
+      brackets
     );
 
     // Calculate previous leaderboard by excluding the current race AND the last race
@@ -656,11 +657,12 @@ function Leaderboard() {
       races.slice(0, Math.max(0, currentRaceIndex - 1)),
       pilots,
       channels,
-      currentRaceIndex - 2
+      currentRaceIndex - 2,
+      brackets
     );
 
     return [current, previous];
-  }, [races, pilots, channels, currentRaceIndex]);
+  }, [races, pilots, channels, currentRaceIndex, brackets]);
 
   // Get position changes
   const positionChanges = useMemo(() => 
@@ -759,6 +761,7 @@ function Leaderboard() {
             <th>Pilot</th>
             <th>Chan</th>
             <th>Laps</th>
+            <th>P</th>
             <th>Holeshot</th>
             <th>Top Lap</th>
             <th>Top {CONSECUTIVE_LAPS} Consec</th>
@@ -801,6 +804,11 @@ function Leaderboard() {
                     : "-"}
                 </td>
                 <td>{entry.totalLaps}</td>
+                <td>
+                  {entry.eliminatedInfo ? (
+                    <span style={{ color: '#00ff00' }}>{entry.eliminatedInfo.points}</span>
+                  ) : "-"}
+                </td>
                 <td>
                   {renderTimeWithDiff(
                     entry.bestHoleshot || null,
