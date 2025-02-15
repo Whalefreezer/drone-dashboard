@@ -15,7 +15,8 @@ import {
   usePeriodicUpdate,
   calculateLeaderboardData,
   getPositionChanges,
-  LeaderboardEntry
+  LeaderboardEntry,
+  bracketsDataAtom
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -206,7 +207,7 @@ function App() {
   const updateRoundsData = useSetAtom(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
-  const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
+  const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 3);
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -278,6 +279,7 @@ function App() {
               raceId={race.ID}
             />)}
           </div>
+          <BracketsView />
         </div>
         <div className="schedule-container">
           <div className="schedule-wrapper">
@@ -758,6 +760,44 @@ function Legend() {
       <LegendItem color="var(--overall-personal-best-color)" label="Overall Personal Best" />
       <LegendItem color="var(--fastest-lap-color)" label="Race Fastest" />
       <LegendItem color="var(--personal-best-color)" label="Race Personal Best" />
+    </div>
+  );
+}
+
+function BracketsView() {
+  const brackets = useQueryAtom(bracketsDataAtom);
+
+  return (
+    <div className="brackets-container">
+      {brackets.map((bracket, index) => (
+        <div key={index} className="bracket">
+          <h3>{bracket.name}</h3>
+          <table className="bracket-table">
+            <thead>
+              <tr>
+                <th>Seed</th>
+                <th>Pilot</th>
+                <th>Points</th>
+                {bracket.pilots[0]?.rounds.map((_, roundIndex) => (
+                  <th key={roundIndex}>R{roundIndex + 1}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bracket.pilots.map((pilot, pilotIndex) => (
+                <tr key={pilotIndex}>
+                  <td>{pilot.seed}</td>
+                  <td>{pilot.name}</td>
+                  <td>{pilot.points}</td>
+                  {pilot.rounds.map((round, roundIndex) => (
+                    <td key={roundIndex}>{round ?? '-'}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }
