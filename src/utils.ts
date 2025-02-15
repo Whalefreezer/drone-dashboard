@@ -1,6 +1,8 @@
 import { Channel, Pilot, Race, Round } from "./types.ts";
 import { ProcessedLap, RaceWithProcessedLaps } from "./state.ts";
 
+export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
+
 export function getPositionWithSuffix(position: number): string {
   const suffix = position === 1
     ? "st"
@@ -174,13 +176,15 @@ function updateConsecutiveLaps(
   race: RaceWithProcessedLaps,
   fastestConsecutiveLaps: Map<string, ConsecutiveTime>
 ) {
-  if (racingLaps.length >= 2) {
+  if (racingLaps.length >= CONSECUTIVE_LAPS) {
     let fastestConsecutive = { time: Infinity, startLap: 0 };
-    for (let i = 0; i < racingLaps.length - 1; i++) {
-      const twoLapTime = racingLaps[i].lengthSeconds + racingLaps[i + 1].lengthSeconds;
-      if (twoLapTime < fastestConsecutive.time) {
+    for (let i = 0; i < racingLaps.length - (CONSECUTIVE_LAPS - 1); i++) {
+      const consecutiveLapsTime = racingLaps
+        .slice(i, i + CONSECUTIVE_LAPS)
+        .reduce((sum, lap) => sum + lap.lengthSeconds, 0);
+      if (consecutiveLapsTime < fastestConsecutive.time) {
         fastestConsecutive = {
-          time: twoLapTime,
+          time: consecutiveLapsTime,
           startLap: racingLaps[i].lapNumber,
         };
       }

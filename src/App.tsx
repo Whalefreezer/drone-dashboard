@@ -29,7 +29,8 @@ import {
   calculateBestTimes,
   sortPilotEntries,
   findIndexOfCurrentRace,
-  findIndexOfLastRace
+  findIndexOfLastRace,
+  CONSECUTIVE_LAPS
 } from "./utils.ts";
 import DaySchedule from './components/DaySchedule.tsx';
 
@@ -656,7 +657,7 @@ function Leaderboard() {
             <th>Laps</th>
             <th>Holeshot</th>
             <th>Top Lap</th>
-            <th>Top 2 Consec</th>
+            <th>Top {CONSECUTIVE_LAPS} Consec</th>
             <th>Next Race In</th>
           </tr>
         </thead>
