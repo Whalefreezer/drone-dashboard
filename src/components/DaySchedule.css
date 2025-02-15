@@ -35,7 +35,7 @@
   margin: 0 2px;
   border-left: 1px dashed rgba(255, 255, 255, 0.1);
   padding-left: 4px;
-  overflow-y: auto;
+  overflow: hidden;
   height: calc(100% - 40px);
   mask-image: linear-gradient(
     to bottom,
@@ -71,14 +71,14 @@
   overflow: hidden;
 }
 
-.schedule-event:hover {
+/* .schedule-event:hover {
   transform: translateX(2px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.2);
   z-index: 1;
-  width: 200px;
+  width: 180px;
   max-height: none;
-}
+} */
 
 .schedule-event::before {
   content: '';

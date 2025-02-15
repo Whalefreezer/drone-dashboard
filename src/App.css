@@ -6,10 +6,10 @@
 }
 
 #root {
-  max-width: 1280px;
   padding: 0;
   width: 100vw;
   text-align: left;
+  overflow-x: hidden;
 }
 
 /* Layout */
@@ -20,6 +20,7 @@
   box-sizing: border-box;
   gap: 4px;
   padding: 0 16px;
+  overflow-x: hidden;
 }
 
 .races-container {

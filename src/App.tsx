@@ -130,6 +130,7 @@ const scheduleData = {
       },
       {
         startTime: "5:00 PM",
+        endTime: "6:00pm",
         title: "Track Closed",
         type: "other"
       },
@@ -156,7 +157,7 @@ const scheduleData = {
         type: "mandatory"
       },
       {
-        startTime: "8:30 AM",
+        startTime: "8:45 AM",
         endTime: "12:30pm",
         title: "Eliminations + Bottom Qualifiers",
         type: "eliminations"
@@ -280,7 +281,7 @@ function App() {
         </div>
         <div className="schedule-container">
           <div className="schedule-wrapper">
-            <DaySchedule {...scheduleData.saturday} />
+            <DaySchedule {...scheduleData.sunday} />
           </div>
         </div>
         <div className="leaderboard-container">

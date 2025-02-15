@@ -16,7 +16,7 @@ interface DayScheduleProps {
   className?: string;
 }
 
-const PIXELS_PER_MINUTE = 4; // Doubled from 2 to 4
+const PIXELS_PER_MINUTE = 6; // Doubled from 2 to 4
 const DEFAULT_EVENT_DURATION = 15; // Default duration in minutes for events without endTime
 const HOURS_BEFORE = 2; // Hours to show before current time
 const MINUTES_PER_HOUR = 60;
