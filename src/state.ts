@@ -38,6 +38,27 @@ export const eventDataAtom = atomWithSuspenseQuery((get) => ({
   },
 }));
 
+export interface BracketPilot {
+  seed: string;
+  name: string;
+  rounds: (number | null)[];
+  points: number;
+}
+
+export interface Bracket {
+  name: string;
+  pilots: BracketPilot[];
+}
+
+export const bracketsDataAtom = atomWithSuspenseQuery(() => ({
+  queryKey: ['bracketsData'],
+  queryFn: async () => {
+    const response = await axios.get(`/brackets/groups/`);
+    return response.data as Bracket[];
+  },
+  staleTime: 10_000,
+}));
+
 export const pilotsAtom = atomWithRefresh(async (get) => {
   const {data: eventId} = await get(eventIdAtom);
   const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
