@@ -53,10 +53,11 @@ export interface Bracket {
 export const bracketsDataAtom = atomWithSuspenseQuery(() => ({
   queryKey: ['bracketsData'],
   queryFn: async () => {
-    const response = await axios.get(`/brackets/groups/1`);
+    const response = await axios.get(`/brackets/groups/0`);
     return response.data as Bracket[];
   },
-  staleTime: 10_000,
+  // staleTime: 10_000,
+  refetchInterval: 10_000,
 }));
 
 export const pilotsAtom = atomWithRefresh(async (get) => {

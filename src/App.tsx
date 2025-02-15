@@ -16,7 +16,9 @@ import {
   calculateLeaderboardData,
   getPositionChanges,
   LeaderboardEntry,
-  bracketsDataAtom
+  bracketsDataAtom,
+  Bracket,
+  BracketPilot
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -310,6 +312,8 @@ function LapsView({ raceId }: { raceId: string }) {
   const roundData = useAtomValue(roundsDataAtom);
   const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
   const races = useAtomValue(racesAtom);
+  const pilots = useAtomValue(pilotsAtom);
+  const brackets = useQueryAtom(bracketsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
 
@@ -317,19 +321,50 @@ function LapsView({ raceId }: { raceId: string }) {
 
   const round = roundData.find((r) => r.ID === race.Round);
 
+  // Get bracket data if this is the current race
+  const getBracketData = (): Bracket | null => {
+    if (!isCurrentRace) return null;
+
+    // Normalize names by removing whitespace and converting to lowercase
+    const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
+    
+    // Get the set of normalized pilot names from the current race
+    const currentRacePilotNames = new Set(
+      race.PilotChannels
+        .map(pc => pilots.find(p => p.ID === pc.Pilot)?.Name ?? '')
+        .filter(name => name !== '')
+        .map(normalizeString)
+    );
+    
+    // Find the bracket that matches the current race pilots
+    const matchingBracket = brackets.find(bracket => {
+      const bracketPilotNames = new Set(
+        bracket.pilots.map(p => normalizeString(p.name))
+      );
+      
+      return bracketPilotNames.size === currentRacePilotNames.size &&
+             Array.from(currentRacePilotNames).every(name => bracketPilotNames.has(name));
+    });
+
+    return matchingBracket ?? null;
+  };
+
+  const matchingBracket = getBracketData();
+
   return (
     <div className="laps-view">
       <div className="race-info">
         <div className="race-number">
           {round?.RoundNumber}-{race.RaceNumber}
+          {matchingBracket && <span style={{ marginLeft: '8px', color: '#888' }}>({matchingBracket.name})</span>}
         </div>
-        <LapsTable race={race} />
+        <LapsTable race={race} matchingBracket={matchingBracket} />
       </div>
     </div>
   );
 }
 
-function LapsTable({ race }: { race: RaceWithProcessedLaps }) {
+function LapsTable({ race, matchingBracket }: { race: RaceWithProcessedLaps; matchingBracket: Bracket | null }) {
   // Calculate completed laps for each pilot and sort them
   const pilotsWithLaps = race.PilotChannels.map((pilotChannel) => {
     const completedLaps = race.processedLaps.filter((lap) =>
@@ -343,7 +378,7 @@ function LapsTable({ race }: { race: RaceWithProcessedLaps }) {
 
   return (
     <table className="laps-table">
-      <LapsTableHeader maxLaps={maxLaps} />
+      <LapsTableHeader maxLaps={maxLaps} matchingBracket={matchingBracket} />
       <tbody>
         {pilotsWithLaps.map((pilotData, index) => (
           <LapsTableRow
@@ -352,6 +387,7 @@ function LapsTable({ race }: { race: RaceWithProcessedLaps }) {
             position={index + 1}
             maxLaps={maxLaps}
             race={race}
+            matchingBracket={matchingBracket}
           />
         ))}
       </tbody>
@@ -359,13 +395,27 @@ function LapsTable({ race }: { race: RaceWithProcessedLaps }) {
   );
 }
 
-function LapsTableHeader({ maxLaps }: { maxLaps: number }) {
+function LapsTableHeader({ maxLaps, matchingBracket }: { maxLaps: number; matchingBracket: Bracket | null }) {
   const headerCells = [
     <th key="header-pos">Pos</th>,
     <th key="header-name">Name</th>,
     <th key="header-channel">Channel</th>,
   ];
 
+  if (matchingBracket) {
+    headerCells.push(
+      <th key="header-points">Points</th>
+    );
+    
+    // Add bracket round headers
+    matchingBracket.pilots[0]?.rounds.forEach((_, index: number) => {
+      headerCells.push(
+        <th key={`header-bracket-round-${index}`}>R{index + 1}</th>
+      );
+    });
+  }
+
+  // Add lap headers after bracket information
   for (let i = 0; i <= maxLaps; i++) {
     headerCells.push(
       <th key={`header-lap-${i}`}>
@@ -381,11 +431,12 @@ function LapsTableHeader({ maxLaps }: { maxLaps: number }) {
   );
 }
 
-function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
+function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }: {
   pilotChannel: PilotChannel;
   position: number;
   maxLaps: number;
   race: RaceWithProcessedLaps;
+  matchingBracket: Bracket | null;
 }) {
   const pilots = useAtomValue(pilotsAtom);
   const channels = useAtomValue(channelsDataAtom);
@@ -414,34 +465,54 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race }: {
       .map(lap => lap.lengthSeconds)
   );
 
-  return (
-    <tr>
-      <td>{maxLaps > 0 ? getPositionWithSuffix(position) : "-"}</td>
-      <td>{pilot.Name}</td>
-      <td>
-        <div className="flex-row">
-          {channel.ShortBand}
-          {channel.Number}
-          <ChannelSquare channelID={pilotChannel.Channel} />
-        </div>
-      </td>
-      {pilotLaps.map((lap) => {
-        const className = getLapClassName(
-          lap,
-          overallBestTimes.overallFastestLap,
-          overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot),
-          overallFastestLap,
-          fastestLap
-        );
-        
-        return (
-          <td key={lap.id} className={className}>
-            {lap.lengthSeconds.toFixed(3)}
-          </td>
-        );
-      })}
-    </tr>
+  // Find matching bracket pilot
+  const bracketPilot = matchingBracket?.pilots.find(
+    (p: BracketPilot) => p.name.toLowerCase().replace(/\s+/g, '') === pilot.Name.toLowerCase().replace(/\s+/g, '')
   );
+
+  const cells = [
+    <td key="pos">{maxLaps > 0 ? getPositionWithSuffix(position) : "-"}</td>,
+    <td key="name">{pilot.Name}</td>,
+    <td key="channel">
+      <div className="flex-row">
+        {channel.ShortBand}
+        {channel.Number}
+        <ChannelSquare channelID={pilotChannel.Channel} />
+      </div>
+    </td>
+  ];
+
+  if (matchingBracket && bracketPilot) {
+    cells.push(
+      <td key="points" style={{ color: '#00ff00' }}>{bracketPilot.points}</td>
+    );
+    
+    // Add bracket round cells
+    bracketPilot.rounds.forEach((round: number | null, index: number) => {
+      cells.push(
+        <td key={`bracket-round-${index}`}>{round ?? '-'}</td>
+      );
+    });
+  }
+
+  // Add lap cells
+  pilotLaps.forEach((lap) => {
+    const className = getLapClassName(
+      lap,
+      overallBestTimes.overallFastestLap,
+      overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot),
+      overallFastestLap,
+      fastestLap
+    );
+    
+    cells.push(
+      <td key={lap.id} className={className}>
+        {lap.lengthSeconds.toFixed(3)}
+      </td>
+    );
+  });
+
+  return <tr>{cells}</tr>;
 }
 
 function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
