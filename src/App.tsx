@@ -205,6 +205,14 @@ const scheduleData = {
   }
 };
 
+// Add scoring system at the top of the file
+const POSITION_POINTS: Record<number, number> = {
+  1: 10,
+  2: 7,
+  3: 4,
+  4: 3
+};
+
 function App() {
   const races = useAtomValue(racesAtom);
   const updateRoundsData = useSetAtom(roundsDataAtom);
@@ -471,7 +479,18 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
   );
 
   const cells = [
-    <td key="pos">{maxLaps > 0 ? getPositionWithSuffix(position) : "-"}</td>,
+    <td key="pos">
+      {maxLaps > 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {getPositionWithSuffix(position)}
+          {POSITION_POINTS[position] && (
+            <span style={{ fontSize: '0.8em', color: '#888' }}>
+              +{POSITION_POINTS[position]}
+            </span>
+          )}
+        </div>
+      ) : "-"}
+    </td>,
     <td key="name">{pilot.Name}</td>,
     <td key="channel">
       <div className="flex-row">
@@ -490,7 +509,18 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     // Add bracket round cells
     bracketPilot.rounds.forEach((round: number | null, index: number) => {
       cells.push(
-        <td key={`bracket-round-${index}`}>{round ?? '-'}</td>
+        <td key={`bracket-round-${index}`}>
+          {round ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {round}
+              {POSITION_POINTS[round] && (
+                <span style={{ fontSize: '0.8em', color: '#888' }}>
+                  +{POSITION_POINTS[round]}
+                </span>
+              )}
+            </div>
+          ) : '-'}
+        </td>
       );
     });
   }
