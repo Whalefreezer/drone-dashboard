@@ -210,7 +210,33 @@ function updateConsecutiveLaps(
 
 export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
   return pilotEntries.sort((a, b) => {
-    // First handle eliminated pilots
+    // Check for pilots with no laps first
+    const aHasLaps = a.totalLaps > 0;
+    const bHasLaps = b.totalLaps > 0;
+
+    // If one has laps and the other doesn't, put the one with no laps last
+    if (aHasLaps && !bHasLaps) return -1;
+    if (!aHasLaps && bHasLaps) return 1;
+
+    // If both have no laps, sort them by racesUntilNext
+    if (!aHasLaps && !bHasLaps) {
+      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
+      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
+      
+      if (a.racesUntilNext !== b.racesUntilNext) {
+        return a.racesUntilNext - b.racesUntilNext;
+      }
+      
+      if (a.channel && b.channel) {
+        return a.channel.Number - b.channel.Number;
+      }
+      
+      if (!a.channel) return 1;
+      if (!b.channel) return -1;
+      return 0;
+    }
+
+    // Both have laps, now handle eliminated pilots
     if (a.eliminatedInfo && b.eliminatedInfo) {
       // Extract bracket numbers (assuming format like "H1", "H2", etc.)
       const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ''));
@@ -240,7 +266,7 @@ export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
     if (a.eliminatedInfo) return 1;
     if (b.eliminatedInfo) return -1;
 
-    // For non-eliminated pilots, use existing logic
+    // Both are active pilots with laps, use existing logic
     if (!a.consecutiveLaps && !b.consecutiveLaps) {
       if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
       if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;

@@ -753,7 +753,18 @@ function Leaderboard() {
 
   return (
     <div className="leaderboard">
-      <h3>Fastest Laps Overall</h3>
+      {/* <h3>Fastest Laps Overall</h3> */}
+      <div style={{ 
+        backgroundColor: '#2a2a2a', 
+        padding: '8px', 
+        marginBottom: '12px', 
+        borderRadius: '4px',
+        border: '1px solid #444',
+        color: '#ff9900',
+        fontSize: '0.9em'
+      }}>
+        ⚠️ Note: Positions shown are estimates only and not final race results
+      </div>
       <table className="leaderboard-table">
         <thead>
           <tr>
