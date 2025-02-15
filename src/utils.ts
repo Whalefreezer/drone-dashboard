@@ -233,6 +233,10 @@ function getEliminationGroup(bracketNum: number): number {
   return 4; // H15 (finals)
 }
 
+function getSeedNumber(seedPosition: string): number {
+  return parseInt(seedPosition.replace(/(?:st|nd|rd|th)$/, ''));
+}
+
 function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
   if (!a.eliminatedInfo || !b.eliminatedInfo) return 0;
   
@@ -248,7 +252,18 @@ function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
   }
   
   // Within the same group, sort by points
-  return b.eliminatedInfo.points - a.eliminatedInfo.points;
+  const pointsDiff = b.eliminatedInfo.points - a.eliminatedInfo.points;
+  if (pointsDiff !== 0) {
+    return pointsDiff;
+  }
+
+  // If points are equal, use seed position as tiebreaker
+  // Lower seed number (better position) should come first
+  if (a.pilot.Seed && b.pilot.Seed) {
+    return getSeedNumber(a.pilot.Seed) - getSeedNumber(b.pilot.Seed);
+  }
+  
+  return 0;
 }
 
 export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
