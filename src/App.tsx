@@ -1,6 +1,6 @@
 import "./App.css";
 // @deno-types="@types/react"
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import {
   channelsDataAtom,
@@ -270,6 +270,7 @@ function App() {
               />
             </div>
           )}
+          <BracketsView />
           <div className="race-box next-races">
             <div className="race-header">
               <h3>Next Races</h3>
@@ -279,7 +280,6 @@ function App() {
               raceId={race.ID}
             />)}
           </div>
-          <BracketsView />
         </div>
         <div className="schedule-container">
           <div className="schedule-wrapper">
@@ -536,35 +536,67 @@ function Leaderboard() {
     );
   }
 
-  // Calculate current leaderboard
-  const currentLeaderboard = calculateLeaderboardData(
-    races,
-    pilots,
-    channels,
-    currentRaceIndex
-  );
+  // Memoize the leaderboard calculations
+  const [currentLeaderboard, previousLeaderboard] = useMemo(() => {
+    // Calculate current leaderboard
+    const current = calculateLeaderboardData(
+      races,
+      pilots,
+      channels,
+      currentRaceIndex
+    );
 
-  // Calculate previous leaderboard by excluding the current race AND the last race
-  const previousLeaderboard = calculateLeaderboardData(
-    races.slice(0, Math.max(0, currentRaceIndex - 1)),
-    pilots,
-    channels,
-    currentRaceIndex - 2
-  );
+    // Calculate previous leaderboard by excluding the current race AND the last race
+    const previous = calculateLeaderboardData(
+      races.slice(0, Math.max(0, currentRaceIndex - 1)),
+      pilots,
+      channels,
+      currentRaceIndex - 2
+    );
+
+    return [current, previous];
+  }, [races, pilots, channels, currentRaceIndex]);
 
   // Get position changes
-  const positionChanges = getPositionChanges(currentLeaderboard, previousLeaderboard);
+  const positionChanges = useMemo(() => 
+    getPositionChanges(currentLeaderboard, previousLeaderboard),
+    [currentLeaderboard, previousLeaderboard]
+  );
 
   // Helper to check if a time is from recent races
-  const isRecentTime = (roundId: string, raceNumber: number) => {
+  const isRecentTime = useCallback((roundId: string, raceNumber: number) => {
     const raceIndex = races.findIndex(race => 
       race.Round === roundId && race.RaceNumber === raceNumber
     );
     return raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
-  };
+  }, [races, currentRaceIndex]);
+
+  // Add this new state to track which rows should be animated
+  const [animatingRows, setAnimatingRows] = useState<Set<string>>(new Set());
+
+  // Add this effect to handle animations when positions change
+  useEffect(() => {
+    const newAnimatingRows = new Set<string>();
+    
+    currentLeaderboard.forEach((entry, index) => {
+      const prevPos = positionChanges.get(entry.pilot.ID);
+      if (prevPos && prevPos > index + 1) {
+        newAnimatingRows.add(entry.pilot.ID);
+      }
+    });
+
+    setAnimatingRows(newAnimatingRows);
+
+    // Clear animations after they complete
+    const timer = setTimeout(() => {
+      setAnimatingRows(new Set());
+    }, 1000); // Match this to animation duration
+
+    return () => clearTimeout(timer);
+  }, [currentLeaderboard, positionChanges]);
 
   // Helper to render position changes
-  const renderPositionChange = (pilotId: string, currentPos: number, entry: LeaderboardEntry) => {
+  const renderPositionChange = useCallback((pilotId: string, currentPos: number) => {
     const prevPos = positionChanges.get(pilotId);
     if (!prevPos || prevPos === currentPos) return null;
 
@@ -577,10 +609,10 @@ function Leaderboard() {
         ↑{change} from {prevPos}
       </span>
     );
-  };
+  }, [positionChanges]);
 
   // Helper to render time with difference
-  const renderTimeWithDiff = (
+  const renderTimeWithDiff = useCallback((
     currentTime: { time: number; roundId: string; raceNumber: number } | null,
     previousTime: { time: number; roundId: string; raceNumber: number } | null,
     isRecent: boolean
@@ -610,31 +642,7 @@ function Leaderboard() {
         )}
       </div>
     );
-  };
-
-  // Add this new state to track which rows should be animated
-  const [animatingRows, setAnimatingRows] = useState<Set<string>>(new Set());
-
-  // Add this effect to handle animations when positions change
-  useEffect(() => {
-    const newAnimatingRows = new Set<string>();
-    
-    currentLeaderboard.forEach((entry, index) => {
-      const prevPos = positionChanges.get(entry.pilot.ID);
-      if (prevPos && prevPos > index + 1) {
-        newAnimatingRows.add(entry.pilot.ID);
-      }
-    });
-
-    setAnimatingRows(newAnimatingRows);
-
-    // Clear animations after they complete
-    const timer = setTimeout(() => {
-      setAnimatingRows(new Set());
-    }, 1000); // Match this to animation duration
-
-    return () => clearTimeout(timer);
-  }, [currentLeaderboard, positionChanges]);
+  }, [roundData]);
 
   return (
     <div className="leaderboard">
@@ -667,7 +675,7 @@ function Leaderboard() {
                   {entry.consecutiveLaps ? (
                     <div className="position-container">
                       <div>{index + 1}</div>
-                      {renderPositionChange(entry.pilot.ID, index + 1, entry)}
+                      {renderPositionChange(entry.pilot.ID, index + 1)}
                     </div>
                   ) : "-"}
                 </td>
@@ -766,38 +774,71 @@ function Legend() {
 
 function BracketsView() {
   const brackets = useQueryAtom(bracketsDataAtom);
+  const races = useAtomValue(racesAtom);
+  const pilots = useAtomValue(pilotsAtom);
+  const currentRaceIndex = findIndexOfCurrentRace(races);
+  
+  // If no current race, don't show any brackets
+  if (currentRaceIndex === -1) {
+    return null;
+  }
+  
+  const currentRace = races[currentRaceIndex];
+  
+  // Get the set of pilot names from the current race (lowercase for case-insensitive matching)
+  const currentRacePilotNames = new Set(
+    currentRace.PilotChannels
+      .map(pc => pilots.find(p => p.ID === pc.Pilot)?.Name?.toLowerCase() ?? '')
+      .filter(name => name !== '')
+  );
+  
+  // console.log("Current race pilots:", Array.from(currentRacePilotNames));
+  
+  // Find the bracket that matches the current race pilots
+  const matchingBracket = brackets.find(bracket => {
+    // Get all pilot names from the bracket (lowercase for case-insensitive matching)
+    const bracketPilotNames = new Set(bracket.pilots.map(p => p.name.toLowerCase()));
+    
+    // console.log("Bracket pilots:", Array.from(bracketPilotNames));
+    
+    // Check if the number of pilots matches and all names are the same
+    return bracketPilotNames.size === currentRacePilotNames.size &&
+           Array.from(currentRacePilotNames).every(name => bracketPilotNames.has(name));
+  });
+
+  // console.log("Matching bracket:", matchingBracket);
+
+  if (!matchingBracket) return null;
 
   return (
     <div className="brackets-container">
-      {brackets.map((bracket, index) => (
-        <div key={index} className="bracket">
-          <h3>{bracket.name}</h3>
-          <table className="bracket-table">
-            <thead>
-              <tr>
-                <th>Seed</th>
-                <th>Pilot</th>
-                <th>Points</th>
-                {bracket.pilots[0]?.rounds.map((_, roundIndex) => (
-                  <th key={roundIndex}>R{roundIndex + 1}</th>
+      <div className="bracket">
+        <h3>Bracket: {matchingBracket.name}</h3>
+        <table className="bracket-table">
+          <thead>
+            <tr>
+              <th>Seed</th>
+              <th>Pilot</th>
+              <th>Points</th>
+              {matchingBracket.pilots[0]?.rounds.map((_, roundIndex) => (
+                <th key={roundIndex}>R{roundIndex + 1}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matchingBracket.pilots.map((pilot, pilotIndex) => (
+              <tr key={pilotIndex}>
+                <td>{pilot.seed}</td>
+                <td>{pilot.name}</td>
+                <td>{pilot.points}</td>
+                {pilot.rounds.map((round, roundIndex) => (
+                  <td key={roundIndex}>{round ?? '-'}</td>
                 ))}
               </tr>
-            </thead>
-            <tbody>
-              {bracket.pilots.map((pilot, pilotIndex) => (
-                <tr key={pilotIndex}>
-                  <td>{pilot.seed}</td>
-                  <td>{pilot.name}</td>
-                  <td>{pilot.points}</td>
-                  {pilot.rounds.map((round, roundIndex) => (
-                    <td key={roundIndex}>{round ?? '-'}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
