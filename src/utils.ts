@@ -208,80 +208,78 @@ function updateConsecutiveLaps(
   }
 }
 
+function compareChannels(a: PilotEntry, b: PilotEntry): number {
+  if (a.channel && b.channel) {
+    return a.channel.Number - b.channel.Number;
+  }
+  if (!a.channel) return 1;
+  if (!b.channel) return -1;
+  return 0;
+}
+
+function compareRacesUntilNext(a: PilotEntry, b: PilotEntry): number {
+  if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
+  if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
+  if (a.racesUntilNext !== b.racesUntilNext) {
+    return a.racesUntilNext - b.racesUntilNext;
+  }
+  return 0;
+}
+
+function getEliminationGroup(bracketNum: number): number {
+  if (bracketNum <= 8) return 1;  // H1-H8
+  if (bracketNum <= 12) return 2; // H9-H12
+  if (bracketNum <= 14) return 3; // H13-H14
+  return 4; // H15 (finals)
+}
+
+function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
+  if (!a.eliminatedInfo || !b.eliminatedInfo) return 0;
+  
+  const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ''));
+  const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ''));
+  
+  const aGroup = getEliminationGroup(aBracketNum);
+  const bGroup = getEliminationGroup(bBracketNum);
+  
+  // Sort by group first (later groups come first)
+  if (aGroup !== bGroup) {
+    return bGroup - aGroup;
+  }
+  
+  // Within the same group, sort by points
+  return b.eliminatedInfo.points - a.eliminatedInfo.points;
+}
+
 export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
   return pilotEntries.sort((a, b) => {
-    // Check for pilots with no laps first
+    // First, handle pilots with no laps
     const aHasLaps = a.totalLaps > 0;
     const bHasLaps = b.totalLaps > 0;
 
-    // If one has laps and the other doesn't, put the one with no laps last
-    if (aHasLaps && !bHasLaps) return -1;
-    if (!aHasLaps && bHasLaps) return 1;
-
-    // If both have no laps, sort them by racesUntilNext
-    if (!aHasLaps && !bHasLaps) {
-      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
-      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
-      
-      if (a.racesUntilNext !== b.racesUntilNext) {
-        return a.racesUntilNext - b.racesUntilNext;
-      }
-      
-      if (a.channel && b.channel) {
-        return a.channel.Number - b.channel.Number;
-      }
-      
-      if (!a.channel) return 1;
-      if (!b.channel) return -1;
-      return 0;
+    if (aHasLaps !== bHasLaps) {
+      return aHasLaps ? -1 : 1;
     }
 
-    // Both have laps, now handle eliminated pilots
+    // If both have no laps, sort by races until next and channel
+    if (!aHasLaps) {
+      const racesComparison = compareRacesUntilNext(a, b);
+      return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
+    }
+
+    // Handle eliminated pilots
     if (a.eliminatedInfo && b.eliminatedInfo) {
-      // Extract bracket numbers (assuming format like "H1", "H2", etc.)
-      const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ''));
-      const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ''));
-      
-      // Determine which group each pilot is in
-      const getGroup = (bracketNum: number) => {
-        if (bracketNum <= 8) return 1;  // H1-H8
-        if (bracketNum <= 12) return 2; // H9-H12
-        if (bracketNum <= 14) return 3; // H13-H14
-        return 4; // H15 (finals)
-      };
-      
-      const aGroup = getGroup(aBracketNum);
-      const bGroup = getGroup(bBracketNum);
-      
-      // Sort by group first (later groups come first)
-      if (aGroup !== bGroup) {
-        return bGroup - aGroup;
-      }
-      
-      // Within the same group, sort by points
-      return b.eliminatedInfo.points - a.eliminatedInfo.points;
+      return compareEliminatedPilots(a, b);
     }
-    
+
     // Put non-eliminated pilots before eliminated ones
     if (a.eliminatedInfo) return 1;
     if (b.eliminatedInfo) return -1;
 
-    // Both are active pilots with laps, use existing logic
+    // Both are active pilots with laps
     if (!a.consecutiveLaps && !b.consecutiveLaps) {
-      if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
-      if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
-      
-      if (a.racesUntilNext !== b.racesUntilNext) {
-        return a.racesUntilNext - b.racesUntilNext;
-      }
-      
-      if (a.channel && b.channel) {
-        return a.channel.Number - b.channel.Number;
-      }
-      
-      if (!a.channel) return 1;
-      if (!b.channel) return -1;
-      return 0;
+      const racesComparison = compareRacesUntilNext(a, b);
+      return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
     }
     
     if (!a.consecutiveLaps) return 1;

@@ -148,7 +148,7 @@ const scheduleData = {
     ]
   },
   sunday: {
-    date: "Sunday 16/02",
+    date: "Sunday",
     events: [
       {
         startTime: "8:00 AM",
