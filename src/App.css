@@ -214,6 +214,11 @@
   color: #ffa500;
 }
 
+.done-text {
+  color: #888;
+  font-style: italic;
+}
+
 /* Channel Display */
 .channel-display {
   display: flex;
@@ -387,4 +392,18 @@
 .bracket-table td:nth-child(3) {
   font-weight: bold;
   color: #00ff00;
+}
+
+/* Eliminated Pilots View */
+.eliminated-pilots {
+  margin-bottom: 16px;
+}
+
+.eliminated-pilots .bracket-table {
+  width: 100%;
+}
+
+.eliminated-pilots .bracket-table td:nth-child(4) {
+  font-weight: bold;
+  color: #ff4444;
 }

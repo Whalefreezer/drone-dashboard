@@ -18,7 +18,9 @@ import {
   LeaderboardEntry,
   bracketsDataAtom,
   Bracket,
-  BracketPilot
+  BracketPilot,
+  findEliminatedPilots,
+  EliminatedPilot
 } from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
@@ -281,7 +283,6 @@ function App() {
               />
             </div>
           )}
-          {/* <BracketsView /> */}
           <div className="race-box next-races">
             <div className="race-header">
               <h3>Next Races</h3>
@@ -299,6 +300,8 @@ function App() {
         </div>
         <div className="leaderboard-container">
           <Leaderboard />
+          {/* <EliminatedPilotsView /> */}
+
           {/* <Legend /> */}
           {/* <div className="qr-code-container">
             <QRCodeSVG 
@@ -625,6 +628,8 @@ function Leaderboard() {
   const channels = useAtomValue(channelsDataAtom);
   const roundData = useAtomValue(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
+  const brackets = useQueryAtom(bracketsDataAtom);
+  const eliminatedPilots = findEliminatedPilots(brackets);
 
   // Add early return if there are no races
   if (races.length === 0) {
@@ -765,6 +770,10 @@ function Leaderboard() {
             const previousEntry = previousLeaderboard.find(
               prev => prev.pilot.ID === entry.pilot.ID
             );
+
+            const isEliminated = eliminatedPilots.some(
+              pilot => pilot.name.toLowerCase().replace(/\s+/g, '') === entry.pilot.Name.toLowerCase().replace(/\s+/g, '')
+            );
             
             return (
               <tr 
@@ -814,7 +823,9 @@ function Leaderboard() {
                   )}
                 </td>
                 <td>
-                  {entry.racesUntilNext === -1 ? (
+                  {entry.racesUntilNext === -1 && isEliminated ? (
+                    <span className="done-text">Done</span>
+                  ) : entry.racesUntilNext === -1 ? (
                     "-"
                   ) : entry.racesUntilNext === 0 ? (
                     <span className="next-text">To Staging</span>
@@ -936,6 +947,43 @@ function BracketsView() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function EliminatedPilotsView() {
+  const brackets = useQueryAtom(bracketsDataAtom);
+  const eliminatedPilots = findEliminatedPilots(brackets);
+
+  if (eliminatedPilots.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="race-box eliminated-pilots">
+      <div className="race-header">
+        <h3>Eliminated Pilots maybe...?</h3>
+      </div>
+      <table className="bracket-table">
+        <thead>
+          <tr>
+            <th>Pilot</th>
+            <th>Bracket</th>
+            <th>Position</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eliminatedPilots.map((pilot, index) => (
+            <tr key={index}>
+              <td>{pilot.name}</td>
+              <td>{pilot.bracket}</td>
+              <td>{getPositionWithSuffix(pilot.position)}</td>
+              <td>{pilot.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
