@@ -779,35 +779,32 @@ function BracketsView() {
   const pilots = useAtomValue(pilotsAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   
-  // If no current race, don't show any brackets
   if (currentRaceIndex === -1) {
     return null;
   }
   
   const currentRace = races[currentRaceIndex];
   
-  // Get the set of pilot names from the current race (lowercase for case-insensitive matching)
+  // Normalize names by removing whitespace and converting to lowercase
+  const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
+  
+  // Get the set of normalized pilot names from the current race
   const currentRacePilotNames = new Set(
     currentRace.PilotChannels
-      .map(pc => pilots.find(p => p.ID === pc.Pilot)?.Name?.toLowerCase() ?? '')
+      .map(pc => pilots.find(p => p.ID === pc.Pilot)?.Name ?? '')
       .filter(name => name !== '')
+      .map(normalizeString)
   );
-  
-  // console.log("Current race pilots:", Array.from(currentRacePilotNames));
   
   // Find the bracket that matches the current race pilots
   const matchingBracket = brackets.find(bracket => {
-    // Get all pilot names from the bracket (lowercase for case-insensitive matching)
-    const bracketPilotNames = new Set(bracket.pilots.map(p => p.name.toLowerCase()));
+    const bracketPilotNames = new Set(
+      bracket.pilots.map(p => normalizeString(p.name))
+    );
     
-    // console.log("Bracket pilots:", Array.from(bracketPilotNames));
-    
-    // Check if the number of pilots matches and all names are the same
     return bracketPilotNames.size === currentRacePilotNames.size &&
            Array.from(currentRacePilotNames).every(name => bracketPilotNames.has(name));
   });
-
-  // console.log("Matching bracket:", matchingBracket);
 
   if (!matchingBracket) return null;
 
