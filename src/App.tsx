@@ -218,7 +218,7 @@ function App() {
   const updateRoundsData = useSetAtom(roundsDataAtom);
   const currentRaceIndex = findIndexOfCurrentRace(races);
   const lastRaceIndex = findIndexOfLastRace(races);
-  const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 3);
+  const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -281,7 +281,7 @@ function App() {
               />
             </div>
           )}
-          <BracketsView />
+          {/* <BracketsView /> */}
           <div className="race-box next-races">
             <div className="race-header">
               <h3>Next Races</h3>
@@ -329,29 +329,27 @@ function LapsView({ raceId }: { raceId: string }) {
 
   const round = roundData.find((r) => r.ID === race.Round);
 
-  // Get bracket data if this is the current race
+  // Get bracket data for any race
   const getBracketData = (): Bracket | null => {
-    if (!isCurrentRace) return null;
-
     // Normalize names by removing whitespace and converting to lowercase
     const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
     
-    // Get the set of normalized pilot names from the current race
-    const currentRacePilotNames = new Set(
+    // Get the set of normalized pilot names from the race
+    const racePilotNames = new Set(
       race.PilotChannels
         .map(pc => pilots.find(p => p.ID === pc.Pilot)?.Name ?? '')
         .filter(name => name !== '')
         .map(normalizeString)
     );
     
-    // Find the bracket that matches the current race pilots
+    // Find the bracket that matches the race pilots
     const matchingBracket = brackets.find(bracket => {
       const bracketPilotNames = new Set(
         bracket.pilots.map(p => normalizeString(p.name))
       );
       
-      return bracketPilotNames.size === currentRacePilotNames.size &&
-             Array.from(currentRacePilotNames).every(name => bracketPilotNames.has(name));
+      return bracketPilotNames.size === racePilotNames.size &&
+             Array.from(racePilotNames).every(name => bracketPilotNames.has(name));
     });
 
     return matchingBracket ?? null;
