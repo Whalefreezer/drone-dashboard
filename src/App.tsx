@@ -408,7 +408,7 @@ function LapsTableHeader({ maxLaps, matchingBracket }: { maxLaps: number; matchi
   const headerCells = [
     <th key="header-pos">Pos</th>,
     <th key="header-name">Name</th>,
-    <th key="header-channel">Channel</th>,
+    <th key="header-channel">Chan</th>,
   ];
 
   if (matchingBracket) {
