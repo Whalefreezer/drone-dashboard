@@ -28,7 +28,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       console.log('Scheduling page reload in 10 seconds...');
       setTimeout(() => {
         window.location.reload();
-      }, 10000);
+      }, 3000);
     }
   }
 
@@ -43,7 +43,7 @@ class ErrorBoundary extends React.Component<Props, State> {
           margin: '20px'
         }}>
           <h2>Something went wrong</h2>
-          <p>The page will reload in 10 seconds...</p>
+          <p>The page will reload in 3 seconds...</p>
         </div>
       );
     }

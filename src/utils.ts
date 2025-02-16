@@ -329,9 +329,33 @@ function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
   return 0;
 }
 
+function getNormalizedPilotName(name: string): string {
+  return name.toLowerCase().replace(/\W+/g, '');
+}
+
+function getEliminationOrderIndex(pilotName: string): number {
+  const normalizedName = getNormalizedPilotName(pilotName);
+  const entry = officalEliminationOrder.find(([_, name]) => 
+    getNormalizedPilotName(String(name)) === normalizedName
+  );
+  return entry ? entry[0] : -1;
+}
+
 export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
   return pilotEntries.sort((a, b) => {
-    // First, handle pilots with no laps
+    const aElimIndex = getEliminationOrderIndex(a.pilot.Name);
+    const bElimIndex = getEliminationOrderIndex(b.pilot.Name);
+    
+    // If both pilots are in elimination order, sort by their index
+    if (aElimIndex !== -1 && bElimIndex !== -1) {
+      return aElimIndex - bElimIndex;
+    }
+    
+    // If only one pilot is in elimination order, they come after
+    if (aElimIndex !== -1) return 1;
+    if (bElimIndex !== -1) return -1;
+
+    // For pilots not in elimination order, use the original sorting logic
     const aHasLaps = a.totalLaps > 0;
     const bHasLaps = b.totalLaps > 0;
 
@@ -345,16 +369,13 @@ export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
       return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
     }
 
-    // Handle eliminated pilots
     if (a.eliminatedInfo && b.eliminatedInfo) {
       return compareEliminatedPilots(a, b);
     }
 
-    // Put non-eliminated pilots before eliminated ones
     if (a.eliminatedInfo) return 1;
     if (b.eliminatedInfo) return -1;
 
-    // Both are active pilots with laps
     if (!a.consecutiveLaps && !b.consecutiveLaps) {
       const racesComparison = compareRacesUntilNext(a, b);
       return racesComparison !== 0 ? racesComparison : compareChannels(a, b);

@@ -11,14 +11,14 @@ window.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);
   setTimeout(() => {
     window.location.reload();
-  }, 10000);
+  }, 3000);
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
   setTimeout(() => {
     window.location.reload();
-  }, 10000);
+  }, 3000);
 });
 
 createRoot(document.getElementById('root') as HTMLElement).render(
