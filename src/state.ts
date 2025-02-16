@@ -362,14 +362,49 @@ export function calculateLeaderboardData(
       ep => ep.name.toLowerCase().replace(/\s+/g, '') === pilot.Name.toLowerCase().replace(/\s+/g, '')
     );
 
+    // Get the pilot's channel with priority:
+    // 1. Current race channel
+    // 2. Next race channel
+    // 3. Last used channel
+    let pilotChannel: Channel | null = null;
+    
+    if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
+      // Check current race
+      const currentRace = races[currentRaceIndex];
+      const currentChannel = currentRace.PilotChannels.find(pc => pc.Pilot === pilot.ID)?.Channel;
+      if (currentChannel) {
+        pilotChannel = channels.find(c => c.ID === currentChannel) || null;
+      }
+      
+      // If no current channel and not currently racing, check next race
+      if (!pilotChannel && racesUntilNext.get(pilot.ID) !== -2) {
+        for (let i = currentRaceIndex + 1; i < races.length; i++) {
+          const nextChannel = races[i].PilotChannels.find(pc => pc.Pilot === pilot.ID)?.Channel;
+          if (nextChannel) {
+            pilotChannel = channels.find(c => c.ID === nextChannel) || null;
+            break;
+          }
+        }
+      }
+      
+      // If still no channel, get last used channel
+      if (!pilotChannel) {
+        for (let i = currentRaceIndex - 1; i >= 0; i--) {
+          const lastChannel = races[i].PilotChannels.find(pc => pc.Pilot === pilot.ID)?.Channel;
+          if (lastChannel) {
+            pilotChannel = channels.find(c => c.ID === lastChannel) || null;
+            break;
+          }
+        }
+      }
+    }
+
     return {
       pilot,
       bestLap: overallFastestLaps.get(pilot.ID) || null,
       consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
       bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
-      channel: pilotChannels.get(pilot.ID)
-        ? channels.find((c) => c.ID === pilotChannels.get(pilot.ID)) || null
-        : null,
+      channel: pilotChannel,
       racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
       totalLaps: totalLaps.get(pilot.ID) ?? 0,
       eliminatedInfo: eliminatedInfo ? {
