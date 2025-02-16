@@ -34,10 +34,10 @@ export function getLapClassName(
   overallFastestLap: number,
   pilotBestLap: number | undefined,
   raceFastestLap: number,
-  pilotFastestLap: number
+  pilotFastestLap: number,
 ): string | undefined {
   if (lap.isHoleshot) return undefined;
-  
+
   if (lap.lengthSeconds === overallFastestLap) {
     return "lap-overall-fastest";
   } else if (lap.lengthSeconds === pilotBestLap) {
@@ -47,47 +47,58 @@ export function getLapClassName(
   } else if (lap.lengthSeconds === pilotFastestLap) {
     return "lap-personal-best";
   }
-  
+
   return undefined;
 }
 
 export function calculateRacesUntilNext(
   races: RaceWithProcessedLaps[],
   currentRaceIndex: number,
-  pilotId: string
+  pilotId: string,
 ): number {
   // Check if pilot is in current race
-  if (races[currentRaceIndex].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)) {
+  if (
+    races[currentRaceIndex].PilotChannels.some((pc: { Pilot: string }) =>
+      pc.Pilot === pilotId
+    )
+  ) {
     return -2; // Use -2 to indicate current race
   }
 
   let racesCount = 0;
-  
+
   for (let i = currentRaceIndex + 1; i < races.length; i++) {
-    if (races[i].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)) {
+    if (
+      races[i].PilotChannels.some((pc: { Pilot: string }) =>
+        pc.Pilot === pilotId
+      )
+    ) {
       return racesCount;
     }
     racesCount++;
   }
-  
+
   return -1; // No upcoming races found
 }
 
 export function findIndexOfLastRace(sortedRaces: Race[]) {
-    const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
-    if (currentRaceIndex === -1) {
-      return -1;
-    }
-  
-    for (let i = currentRaceIndex - 1; i >= 0; i--) {
-      if (sortedRaces[i].Valid) {
-        return i;
-      }
-    }
+  const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
+  if (currentRaceIndex === -1) {
     return -1;
   }
 
-export function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
+  for (let i = currentRaceIndex - 1; i >= 0; i--) {
+    if (sortedRaces[i].Valid) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+export function findLastIndex<T>(
+  array: T[],
+  predicate: (value: T) => boolean,
+): number {
   for (let i = array.length - 1; i >= 0; i--) {
     if (predicate(array[i])) {
       return i;
@@ -145,20 +156,40 @@ export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
         lap.pilotId === pilotChannel.Pilot && lap.isHoleshot
       );
 
-      updateFastestLaps(racingLaps, pilotChannel.Pilot, race, overallFastestLaps);
-      updateConsecutiveLaps(racingLaps, pilotChannel.Pilot, race, fastestConsecutiveLaps);
-      updateFastestLaps(holeshotLaps, pilotChannel.Pilot, race, fastestHoleshots);
+      updateFastestLaps(
+        racingLaps,
+        pilotChannel.Pilot,
+        race,
+        overallFastestLaps,
+      );
+      updateConsecutiveLaps(
+        racingLaps,
+        pilotChannel.Pilot,
+        race,
+        fastestConsecutiveLaps,
+      );
+      updateFastestLaps(
+        holeshotLaps,
+        pilotChannel.Pilot,
+        race,
+        fastestHoleshots,
+      );
     });
   });
 
-  return { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, pilotChannels };
+  return {
+    overallFastestLaps,
+    fastestConsecutiveLaps,
+    fastestHoleshots,
+    pilotChannels,
+  };
 }
 
 function updateFastestLaps(
   racingLaps: ProcessedLap[],
   pilotId: string,
   race: RaceWithProcessedLaps,
-  overallFastestLaps: Map<string, BestTime>
+  overallFastestLaps: Map<string, BestTime>,
 ) {
   if (racingLaps.length > 0) {
     const fastestLap = racingLaps.reduce((fastest, lap) =>
@@ -181,7 +212,7 @@ function updateConsecutiveLaps(
   racingLaps: ProcessedLap[],
   pilotId: string,
   race: RaceWithProcessedLaps,
-  fastestConsecutiveLaps: Map<string, ConsecutiveTime>
+  fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
 ) {
   if (racingLaps.length >= CONSECUTIVE_LAPS) {
     let fastestConsecutive = { time: Infinity, startLap: 0 };
@@ -198,7 +229,10 @@ function updateConsecutiveLaps(
     }
 
     const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotId);
-    if (!currentFastestConsecutive || fastestConsecutive.time < currentFastestConsecutive.time) {
+    if (
+      !currentFastestConsecutive ||
+      fastestConsecutive.time < currentFastestConsecutive.time
+    ) {
       fastestConsecutiveLaps.set(pilotId, {
         ...fastestConsecutive,
         roundId: race.Round,
@@ -207,6 +241,35 @@ function updateConsecutiveLaps(
     }
   }
 }
+
+const officalEliminationOrder = [
+  [17, "ZENITH"],
+  [18, "REDALIN"],
+  [19, "RISLER"],
+  [20, "FIZZ"],
+  [21, "IBEX"],
+  [22, "SPEED DEMON"],
+  [23, "Iceberg"],
+  [24, "AEROPLANEJELLY"],
+  [25, "BOB9"],
+  [26, "ROBO"],
+  [27, "BRODIE REED"],
+  [28, "MAD MITCH"],
+  [29, "Tek FPV"],
+  [30, "WILLMAN"],
+  [31, "PHIX"],
+  [32, "NUG NUG"],
+  [33, "Hopper FPV"],
+  [34, "Fazented"],
+  [35, "Heatsink"],
+  [36, "Red Dog"],
+  [37, "Buglish"],
+  [38, "Cookie FPV"],
+  [39, "Kiwi"],
+  [40, "Nil"],
+  [41, "SnapperFPV"],
+  [42, "Papa Bear"],
+];
 
 function compareChannels(a: PilotEntry, b: PilotEntry): number {
   if (a.channel && b.channel) {
@@ -227,30 +290,30 @@ function compareRacesUntilNext(a: PilotEntry, b: PilotEntry): number {
 }
 
 function getEliminationGroup(bracketNum: number): number {
-  if (bracketNum <= 8) return 1;  // H1-H8
+  if (bracketNum <= 8) return 1; // H1-H8
   if (bracketNum <= 12) return 2; // H9-H12
   if (bracketNum <= 14) return 3; // H13-H14
   return 4; // H15 (finals)
 }
 
 function getSeedNumber(seedPosition: string): number {
-  return parseInt(seedPosition.replace(/(?:st|nd|rd|th)$/, ''));
+  return parseInt(seedPosition.replace(/(?:st|nd|rd|th)$/, ""));
 }
 
 function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
   if (!a.eliminatedInfo || !b.eliminatedInfo) return 0;
-  
-  const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ''));
-  const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ''));
-  
+
+  const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ""));
+  const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ""));
+
   const aGroup = getEliminationGroup(aBracketNum);
   const bGroup = getEliminationGroup(bBracketNum);
-  
+
   // Sort by group first (later groups come first)
   if (aGroup !== bGroup) {
     return bGroup - aGroup;
   }
-  
+
   // Within the same group, sort by points
   const pointsDiff = b.eliminatedInfo.points - a.eliminatedInfo.points;
   if (pointsDiff !== 0) {
@@ -262,7 +325,7 @@ function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
   if (a.pilot.Seed && b.pilot.Seed) {
     return getSeedNumber(a.pilot.Seed) - getSeedNumber(b.pilot.Seed);
   }
-  
+
   return 0;
 }
 
@@ -296,10 +359,10 @@ export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
       const racesComparison = compareRacesUntilNext(a, b);
       return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
     }
-    
+
     if (!a.consecutiveLaps) return 1;
     if (!b.consecutiveLaps) return -1;
-    
+
     return a.consecutiveLaps.time - b.consecutiveLaps.time;
   });
 }
@@ -331,7 +394,10 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
       return false;
     }
 
-    if (race.Start && !race.Start.startsWith("0") && race.End && !race.End.startsWith("0")) {
+    if (
+      race.Start && !race.Start.startsWith("0") && race.End &&
+      !race.End.startsWith("0")
+    ) {
       return true;
     }
     return false;
@@ -342,4 +408,4 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
   }
 
   return sortedRaces.length > 0 ? 0 : -1;
-} 
+}
