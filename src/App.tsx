@@ -772,7 +772,6 @@ function Leaderboard() {
             <th>Pilot</th>
             <th>Chan</th>
             <th>Laps</th>
-            <th>P</th>
             <th>Holeshot</th>
             <th>Top Lap</th>
             <th>Top {CONSECUTIVE_LAPS} Consec</th>
@@ -795,12 +794,10 @@ function Leaderboard() {
                 className={animatingRows.has(entry.pilot.ID) ? 'position-improved' : ''}
               >
                 <td>
-                  {entry.consecutiveLaps ? (
-                    <div className="position-container">
-                      <div>{index + 1}</div>
-                      {renderPositionChange(entry.pilot.ID, index + 1)}
-                    </div>
-                  ) : "-"}
+                  <div className="position-container">
+                    <div>{index + 1}</div>
+                    {renderPositionChange(entry.pilot.ID, index + 1)}
+                  </div>
                 </td>
                 <td>{entry.pilot.Name}</td>
                 <td>
@@ -815,11 +812,6 @@ function Leaderboard() {
                     : "-"}
                 </td>
                 <td>{entry.totalLaps}</td>
-                <td>
-                  {entry.eliminatedInfo ? (
-                    <span style={{ color: '#00ff00' }}>{entry.eliminatedInfo.points}</span>
-                  ) : "-"}
-                </td>
                 <td>
                   {renderTimeWithDiff(
                     entry.bestHoleshot || null,
