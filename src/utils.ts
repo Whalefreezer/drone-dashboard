@@ -243,6 +243,18 @@ function updateConsecutiveLaps(
 }
 
 const officalEliminationOrder = [
+  [5, "SLOOGUS"],
+  [6, "FPVDOG"],
+  [7, "RED2ROTOR"], 
+  [8, "JUICYFLICK"],
+  [9, "EBFPV"],
+  [10, "Q-SWITCH"],
+  [11, "SQUID"],
+  [12, "MIRELLAFPV"],
+  [13, "KRYPTO"],
+  [14, "CRAZYBRAIN"],
+  [15, "KUATO"],
+  [16, "MACDADDY"],
   [17, "ZENITH"],
   [18, "REDALIN"],
   [19, "RISLER"],

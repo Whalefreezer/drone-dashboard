@@ -181,20 +181,20 @@ const scheduleData = {
         type: "eliminations"
       },
       {
-        startTime: "2:30 PM",
-        endTime: "3:00pm",
+        startTime: "2:00 PM",
+        endTime: "2:30pm",
         title: "Top 4 Finals",
         type: "eliminations"
       },
       {
-        startTime: "3:30 PM",
-        endTime: "4:30pm",
+        startTime: "3:00 PM",
+        endTime: "4:00pm",
         title: "Event Packup",
         type: "other"
       },
       {
-        startTime: "4:30 PM",
-        endTime: "5:00pm",
+        startTime: "4:00 PM",
+        endTime: "4:30pm",
         title: "Prizegiving",
         type: "other"
       },
@@ -283,6 +283,7 @@ function App() {
               />
             </div>
           )}
+          <BracketsView />
           <div className="race-box next-races">
             <div className="race-header">
               <h3>Next Races</h3>
@@ -346,14 +347,14 @@ function LapsView({ raceId }: { raceId: string }) {
     );
     
     // Find the bracket that matches the race pilots
-    const matchingBracket = brackets.find(bracket => {
+    const matchingBracket = null /* brackets.find(bracket => {
       const bracketPilotNames = new Set(
         bracket.pilots.map(p => normalizeString(p.name))
       );
       
       return bracketPilotNames.size === racePilotNames.size &&
              Array.from(racePilotNames).every(name => bracketPilotNames.has(name));
-    });
+    });*/
 
     return matchingBracket ?? null;
   };
