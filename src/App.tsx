@@ -15,197 +15,21 @@ import {
   usePeriodicUpdate,
   calculateLeaderboardData,
   getPositionChanges,
-  LeaderboardEntry,
   bracketsDataAtom,
   Bracket,
   BracketPilot,
-  findEliminatedPilots,
-  EliminatedPilot
-} from "./state.ts";
+  findEliminatedPilots} from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
-import { QRCodeSVG } from 'qrcode.react';
 import { 
   getPositionWithSuffix, 
   secondsFromString, 
   getLapClassName,
-  calculateRacesUntilNext,
-  calculateBestTimes,
-  sortPilotEntries,
   findIndexOfCurrentRace,
   findIndexOfLastRace,
   CONSECUTIVE_LAPS
 } from "./utils.ts";
 import DaySchedule from './components/DaySchedule.tsx';
-
-const UPDATE = true;
-
-const scheduleData = {
-  friday: {
-    date: "Friday 14/02",
-    events: [
-      {
-        startTime: "8:00 AM",
-        endTime: "8:30am",
-        title: "Pilots Arrive",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:15 AM",
-        endTime: "8:45am",
-        title: "Scrutineering",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:45 AM",
-        type: "buffer"
-      },
-      {
-        startTime: "9:00 AM",
-        endTime: "9:30am",
-        title: "Mandatory Briefing",
-        type: "mandatory"
-      },
-      {
-        startTime: "9:30 AM",
-        type: "buffer"
-      },
-      {
-        startTime: "9:45 AM",
-        endTime: "12:30pm",
-        title: "Practice",
-        type: "practice"
-      },
-      {
-        startTime: "12:30 PM",
-        endTime: "1:00pm",
-        title: "Lunch & Organiser Break",
-        type: "break"
-      },
-      {
-        startTime: "1:00 PM",
-        endTime: "4:30pm",
-        title: "Practice",
-        type: "practice"
-      },
-      {
-        startTime: "4:30 PM",
-        title: "Track Closed",
-        type: "other"
-      }
-    ]
-  },
-  saturday: {
-    date: "Saturday",
-    events: [
-      {
-        startTime: "8:00 AM",
-        title: "Mandatory",
-        details: "Group 1 Arrive",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:30 AM",
-        title: "Mandatory",
-        details: "Group 2 Arrive",
-        type: "mandatory"
-      },
-      {
-        startTime: "9:00 AM",
-        title: "Mandatory",
-        details: "Group 3 Arrive",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:30 AM",
-        endTime: "12:30pm",
-        title: "Qualifying",
-        type: "qualifying"
-      },
-      {
-        startTime: "12:30 PM",
-        endTime: "1:00pm",
-        title: "Pretend Lunch & Organiser Break",
-        type: "break"
-      },
-      {
-        startTime: "1:00 PM",
-        endTime: "5:00pm",
-        title: "Qualifying",
-        type: "qualifying"
-      },
-      {
-        startTime: "5:00 PM",
-        endTime: "6:00pm",
-        title: "Track Closed",
-        type: "other"
-      },
-      {
-        startTime: "6:00 PM",
-        title: "Katsubi",
-        type: "other"
-      }
-    ]
-  },
-  sunday: {
-    date: "Sunday",
-    events: [
-      {
-        startTime: "8:00 AM",
-        endTime: "8:15am",
-        title: "Pilots Arrive",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:15 AM",
-        endTime: "8:30am",
-        title: "Mandatory Briefing",
-        type: "mandatory"
-      },
-      {
-        startTime: "8:45 AM",
-        endTime: "12:30pm",
-        title: "Eliminations + Bottom Qualifiers",
-        type: "eliminations"
-      },
-      {
-        startTime: "12:30 PM",
-        endTime: "1:00pm",
-        title: "Lunch & Organiser Break",
-        type: "break"
-      },
-      {
-        startTime: "1:00 PM",
-        endTime: "3:00pm",
-        title: "Eliminations",
-        type: "eliminations"
-      },
-      {
-        startTime: "2:00 PM",
-        endTime: "2:30pm",
-        title: "Top 4 Finals",
-        type: "eliminations"
-      },
-      {
-        startTime: "3:00 PM",
-        endTime: "4:00pm",
-        title: "Event Packup",
-        type: "other"
-      },
-      {
-        startTime: "4:00 PM",
-        endTime: "4:30pm",
-        title: "Prizegiving",
-        type: "other"
-      },
-      {
-        startTime: "5:00 PM",
-        title: "Event Finished",
-        type: "other"
-      }
-    ]
-  }
-};
 
 // Add scoring system at the top of the file
 const POSITION_POINTS: Record<number, number> = {
@@ -294,11 +118,11 @@ function App() {
             />)}
           </div>
         </div>
-        <div className="schedule-container">
+        {/* <div className="schedule-container">
           <div className="schedule-wrapper">
             <DaySchedule {...scheduleData.sunday} />
           </div>
-        </div>
+        </div> */}
         <div className="leaderboard-container">
           <Leaderboard />
           {/* <EliminatedPilotsView /> */}
@@ -755,7 +579,7 @@ function Leaderboard() {
   return (
     <div className="leaderboard">
       {/* <h3>Fastest Laps Overall</h3> */}
-      <div style={{ 
+      {/* <div style={{ 
         backgroundColor: '#2a2a2a', 
         padding: '8px', 
         marginBottom: '12px', 
@@ -765,7 +589,7 @@ function Leaderboard() {
         fontSize: '0.9em'
       }}>
         ⚠️ Note: Positions shown are estimates only and not final race results
-      </div>
+      </div> */}
       <table className="leaderboard-table">
         <thead>
           <tr>
