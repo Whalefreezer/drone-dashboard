@@ -1,0 +1,82 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [created]
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+      
+      - name: Build Frontend
+        working-directory: frontend
+        run: deno task build
+      
+      - name: Upload Frontend Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: backend/static
+          retention-days: 1
+
+  build-backend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download Frontend Build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: backend/static
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Compile Backend
+        working-directory: backend
+        run: deno task compile
+      
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: backend/bin/
+          retention-days: 7
+
+  create-release:
+    needs: build-backend
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin
+      
+      - name: Upload Release Binaries
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            bin/drone-dashboard_linux_x86
+            bin/drone-dashboard_linux_arm
+            bin/drone-dashboard.exe
+            bin/drone-dashboard_mac_x86
+            bin/drone-dashboard_mac_arm 
