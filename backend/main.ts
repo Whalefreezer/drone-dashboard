@@ -3,9 +3,8 @@ import { proxy } from "https://deno.land/x/oak_proxy@v0.0.2/mod.ts";
 
 const app = new Application();
 const router = new Router();
-const root = await Deno.realPath(`${Deno.cwd()}/../frontend/dist/`);
 
-console.log(root);
+// console.log(root);
 
 
 app.use(proxy("/api", {
@@ -22,7 +21,7 @@ app.use(proxy("/api", {
 app.use(async (ctx, next) => {
   try {
     await ctx.send({
-      root,
+      root: import.meta.dirname + "/static",
       index: "index.html",
     });
   } catch {
@@ -37,4 +36,4 @@ app.use(router.allowedMethods());
 
 const port = 3000;
 console.log(`Server running on http://localhost:${port}`);
-await app.listen({ port });
+await app.listen({ port, hostname: "0.0.0.0" });
