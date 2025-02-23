@@ -20,5 +20,8 @@ export default defineConfig({
       //   rewrite: (path) => path.replace(/^\/brackets/, '')
       // }
     }
+  },
+  build: {
+    sourcemap: true,
   }
 })

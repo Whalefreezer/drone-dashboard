@@ -30,16 +30,6 @@ deno task dev
 
 The development server will run on port 3000 by default.
 
-### Proxy Server
-
-The application includes a proxy server (proxy.ts) that forwards requests to the backend:
-
-```bash
-deno run --allow-net proxy.ts
-```
-
-The proxy server runs on port 8000 and forwards requests to `http://localhost:8080`.
-
 ## Deployment
 
 Build production assets:
@@ -63,32 +53,7 @@ deno task serve
 │   ├── types.ts        # TypeScript type definitions
 │   ├── utils.ts        # Utility functions
 │   └── assets/         # Static assets
-├── proxy.ts            # Development proxy server
 └── deno.json          # Deno configuration and dependencies
 ```
 
 ## Known Issues & Planned Features
-
-### Race Management
-- New rounds are not added automatically
-- Race countdown sync clocks need fixing
-- Early race termination handling needs implementation
-- Race position indicators (1st, 2nd, etc.) need to be added
-
-### Timing & Statistics
-- Fastest lap tracking
-- Fastest 2 consecutive laps tracking
-- Individual race and overall statistics
-- Delta timing when channel changes
-
-### UI Improvements
-- Lap table headers need proper labeling (HS, L1, L2, etc.)
-- Real-time data synchronization improvements
-- Mobile responsiveness enhancements
-
-### Technical Debt
-- Improve error handling in proxy server
-- Add proper TypeScript types for API responses
-- Implement proper WebSocket connection handling
-- Add loading states for data fetching
-
