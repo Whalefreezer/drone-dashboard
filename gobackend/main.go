@@ -1,8 +1,10 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -10,6 +12,9 @@ import (
 	"os"
 	"strings"
 )
+
+//go:embed static/*
+var staticFiles embed.FS
 
 func main() {
 	// Parse command line flags
@@ -50,8 +55,12 @@ Example:
 		proxy.ServeHTTP(w, r)
 	})
 
-	// Handle static files
-	fileServer := http.FileServer(http.Dir("static"))
+	// Handle static files from embedded filesystem
+	staticContent, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		log.Fatal("Failed to access static files:", err)
+	}
+	fileServer := http.FileServer(http.FS(staticContent))
 	mux.Handle("/", fileServer)
 
 	// Start the server
