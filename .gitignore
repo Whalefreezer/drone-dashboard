@@ -29,4 +29,6 @@ bin
 static
 build
 target
-
+upx.exe
+migrations
+pb_data

@@ -6,11 +6,19 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"net/http"
+
+	// "net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+
+	_ "drone-dashboard/migrations"
 )
 
 //go:embed static/*
@@ -38,6 +46,13 @@ Example:
 		os.Exit(0)
 	}
 
+	// Initialize PocketBase
+	app := pocketbase.New()
+
+	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+		Automigrate: true,
+	})
+
 	// Create reverse proxy for API requests
 	apiTarget, err := url.Parse(*velocidroneAPI)
 	if err != nil {
@@ -45,30 +60,36 @@ Example:
 	}
 	proxy := httputil.NewSingleHostReverseProxy(apiTarget)
 
-	// Create the main router/multiplexer
-	mux := http.NewServeMux()
+	// Add custom routes to PocketBase
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		// Set the HTTP port based on command line flag
+		se.Server.Addr = fmt.Sprintf("localhost:%d", *port)
 
-	// Handle API requests
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		// Strip /api prefix
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
-		proxy.ServeHTTP(w, r)
+		// Handle API requests
+		se.Router.GET("/api/*", func(c *core.RequestEvent) error {
+			// Strip /api prefix and proxy the request
+			req := c.Request
+			req.URL.Path = strings.TrimPrefix(req.URL.Path, "/api")
+			proxy.ServeHTTP(c.Response, req)
+			return nil
+		})
+
+		// Serve static files from embedded filesystem
+		staticContent, err := fs.Sub(staticFiles, "static")
+		if err != nil {
+			return fmt.Errorf("failed to access static files: %w", err)
+		}
+
+		se.Router.GET("/*", apis.Static(staticContent, false))
+
+		return se.Next()
 	})
 
-	// Handle static files from embedded filesystem
-	staticContent, err := fs.Sub(staticFiles, "static")
-	if err != nil {
-		log.Fatal("Failed to access static files:", err)
-	}
-	fileServer := http.FileServer(http.FS(staticContent))
-	mux.Handle("/", fileServer)
-
-	// Start the server
-	addr := fmt.Sprintf("0.0.0.0:%d", *port)
+	// Start PocketBase
 	fmt.Printf("Pointing to Velocidrone API: %s\n", *velocidroneAPI)
-	fmt.Printf("Server running on http://localhost:%d\n", *port)
-	
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	fmt.Printf("Starting server on http://localhost:%d\n", *port)
+
+	if err := app.Start(); err != nil {
 		log.Fatal("Server error:", err)
 	}
-} 
+}
