@@ -18,7 +18,8 @@ import {
   bracketsDataAtom,
   Bracket,
   BracketPilot,
-  findEliminatedPilots} from "./state.ts";
+  findEliminatedPilots,
+  testDataAtom} from "./state.ts";
 import { useSetAtom } from "jotai";
 import { PilotChannel } from "./types.ts";
 import { 
@@ -38,6 +39,14 @@ const POSITION_POINTS: Record<number, number> = {
   3: 4,
   4: 3
 };
+
+function TestData() {
+  const testData = useAtomValue(testDataAtom);
+  return <div>
+    <h1>Test Data</h1>
+    <p>{JSON.stringify(testData)}</p>
+  </div>;
+}
 
 function App() {
   const races = useAtomValue(racesAtom);
@@ -67,6 +76,7 @@ function App() {
 
   return (
     <>
+      <TestData />
       <div style={{ 
         textAlign: 'center', 
         padding: '0.5rem', 

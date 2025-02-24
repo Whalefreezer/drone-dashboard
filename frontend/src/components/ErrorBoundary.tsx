@@ -1,6 +1,8 @@
 // @deno-types="@types/react"
 import React from 'react';
 
+export const REFRESH_TIMEOUT = 100_000;
+
 interface Props {
   children: React.ReactNode;
 }
@@ -28,7 +30,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       console.log('Scheduling page reload in 10 seconds...');
       setTimeout(() => {
         window.location.reload();
-      }, 3000);
+      }, REFRESH_TIMEOUT);
     }
   }
 
@@ -43,7 +45,7 @@ class ErrorBoundary extends React.Component<Props, State> {
           margin: '20px'
         }}>
           <h2>Something went wrong</h2>
-          <p>The page will reload in 3 seconds...</p>
+          <p>The page will reload in {REFRESH_TIMEOUT/1000} seconds...</p>
         </div>
       );
     }

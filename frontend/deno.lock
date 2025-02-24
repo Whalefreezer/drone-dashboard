@@ -11,6 +11,7 @@
     "npm:jotai-tanstack-query@0.9": "0.9.0_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1",
     "npm:jotai-tanstack-query@~0.8.8": "0.8.8_@tanstack+query-core@5.66.0_jotai@2.11.0__@types+react@18.3.18__react@18.3.1_@types+react@18.3.18_react@18.3.1",
     "npm:jotai@^2.11.0": "2.11.0_@types+react@18.3.18_react@18.3.1",
+    "npm:pocketbase@~0.25.1": "0.25.1",
     "npm:qrcode.react@^4.2.0": "4.2.0_react@18.3.1",
     "npm:react-dom@^18.3.1": "18.3.1_react@18.3.1",
     "npm:react@^18.3.1": "18.3.1",
@@ -359,6 +360,9 @@
     "picocolors@1.1.1": {
       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="
     },
+    "pocketbase@0.25.1": {
+      "integrity": "sha512-2IH0KLI/qMNR/E17C7BGWX2FxW7Tead+igLHOWZ45P56v/NyVT18Jnmddeft+3qWWGL1Hog2F8bc4orWV/+Fcg=="
+    },
     "postcss@8.5.1": {
       "integrity": "sha512-6oz2beyjc5VMn/KV1pPw8fliQkhBXrVn1Z3TVyqZxU8kZpzEKhBdmCFqI6ZbmGtamQvQGuU1sgPTk8ZrXDD7jQ==",
       "dependencies": [
@@ -455,6 +459,7 @@
       "npm:axios@^1.7.9",
       "npm:jotai-tanstack-query@0.9",
       "npm:jotai@^2.11.0",
+      "npm:pocketbase@~0.25.1",
       "npm:qrcode.react@^4.2.0",
       "npm:react-dom@^18.3.1",
       "npm:react@^18.3.1",

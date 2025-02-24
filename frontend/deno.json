@@ -20,6 +20,7 @@
     "axios": "npm:axios@^1.7.9",
     "jotai": "npm:jotai@^2.11.0",
     "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
+    "pocketbase": "npm:pocketbase@^0.25.1",
     "qrcode.react": "npm:qrcode.react@^4.2.0",
     "react": "npm:react@^18.3.1",
     "react-dom": "npm:react-dom@^18.3.1",

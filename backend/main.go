@@ -4,17 +4,14 @@ import (
 	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 
 	// "net/http"
-	"net/http/httputil"
-	"net/url"
+	// "net/http/httputil"
+	// "net/url"
 	"os"
-	"strings"
 
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 
@@ -53,34 +50,34 @@ Example:
 		Automigrate: true,
 	})
 
-	// Create reverse proxy for API requests
-	apiTarget, err := url.Parse(*velocidroneAPI)
-	if err != nil {
-		log.Fatal("Invalid Velocidrone API URL:", err)
-	}
-	proxy := httputil.NewSingleHostReverseProxy(apiTarget)
+	// // Create reverse proxy for API requests
+	// apiTarget, err := url.Parse(*velocidroneAPI)
+	// if err != nil {
+	// 	log.Fatal("Invalid Velocidrone API URL:", err)
+	// }
+	// proxy := httputil.NewSingleHostReverseProxy(apiTarget)
 
 	// Add custom routes to PocketBase
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Set the HTTP port based on command line flag
 		se.Server.Addr = fmt.Sprintf("localhost:%d", *port)
 
-		// Handle API requests
-		se.Router.GET("/api/*", func(c *core.RequestEvent) error {
-			// Strip /api prefix and proxy the request
-			req := c.Request
-			req.URL.Path = strings.TrimPrefix(req.URL.Path, "/api")
-			proxy.ServeHTTP(c.Response, req)
-			return nil
-		})
+		// // Handle API requests
+		// se.Router.GET("/api/*", func(c *core.RequestEvent) error {
+		// 	// Strip /api prefix and proxy the request
+		// 	req := c.Request
+		// 	req.URL.Path = strings.TrimPrefix(req.URL.Path, "/api")
+		// 	proxy.ServeHTTP(c.Response, req)
+		// 	return nil
+		// })
 
-		// Serve static files from embedded filesystem
-		staticContent, err := fs.Sub(staticFiles, "static")
-		if err != nil {
-			return fmt.Errorf("failed to access static files: %w", err)
-		}
+		// // Serve static files from embedded filesystem
+		// staticContent, err := fs.Sub(staticFiles, "static")
+		// if err != nil {
+		// 	return fmt.Errorf("failed to access static files: %w", err)
+		// }
 
-		se.Router.GET("/*", apis.Static(staticContent, false))
+		// se.Router.GET("/*", apis.Static(staticContent, false))
 
 		return se.Next()
 	})

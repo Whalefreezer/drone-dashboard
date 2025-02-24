@@ -10,13 +10,16 @@ import {
   calculateRacesUntilNext,
   sortPilotEntries
 } from "./utils.ts";
+import PocketBase from 'pocketbase';
+
+const pb = new PocketBase('/');
 
 const UPDATE = true;
 
 const eventIdAtom = atomWithSuspenseQuery(() => ({
   queryKey: ['eventId'],
   queryFn: async () => {
-    const response = await axios.get("/api");
+    const response = await axios.get("/trackside");
     const text = response.data;
 
     const match = text.match(
@@ -29,11 +32,23 @@ const eventIdAtom = atomWithSuspenseQuery(() => ({
   },
 }));
 
+export const testDataAtom = atom(async (get) => {
+    // authenticate as auth collection record
+  const userData = await pb.collection('users').authWithPassword('test@roboenator.com', 'slowIsSmooth');
+
+  // list and filter "example" collection records
+  // const result = await pb.collection('example').getList(1, 20, {
+  //     // filter: 'status = true && created > "2022-08-01 10:00:00"'
+  // });
+
+  return {userData};
+});
+
 export const eventDataAtom = atomWithSuspenseQuery((get) => ({
   queryKey: ['eventData'],
   queryFn: async () => {
     const {data: eventId} = await get(eventIdAtom);
-    const response = await axios.get(`/api/events/${eventId}/Event.json`);
+    const response = await axios.get(`/trackside/events/${eventId}/Event.json`);
     return response.data as RaceEvent[];
   },
 }));
@@ -63,7 +78,7 @@ export const bracketsDataAtom = atomWithSuspenseQuery(() => ({
 
 export const pilotsAtom = atomWithRefresh(async (get) => {
   const {data: eventId} = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
+  const page = await robustFetch(`/trackside/events/${eventId}/Pilots.json`);
   const json = await page.json();
   return json as Pilot[];
 });
@@ -92,7 +107,7 @@ export function useCachedAtom<T>(anAtom: Atom<T>) {
 }
 
 export const channelsDataAtom = atom(async () => {
-  const page = await robustFetch(`/api/httpfiles/Channels.json`);
+  const page = await robustFetch(`/trackside/httpfiles/Channels.json`);
   const json = await page.json();
   return json as Channel[];
 });
@@ -134,7 +149,7 @@ async function robustFetch(url: string): Promise<Response> {
 
 export const roundsDataAtom = atomWithRefresh(async (get) => {
   const {data: eventId} = await get(eventIdAtom);
-  const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
+  const page = await robustFetch(`/trackside/events/${eventId}/Rounds.json`);
   const json = await page.json();
   return json as Round[];
 });
@@ -182,7 +197,7 @@ export interface RaceWithProcessedLaps extends Race {
 export const raceFamilyAtom = atomFamily((raceId: string) =>
   atomWithRefresh(async (get) => {
     const {data: eventId} = await get(eventIdAtom);
-    const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
+    const page = await fetch(`/trackside/events/${eventId}/${raceId}/Race.json`);
     const json = await page.json();
     const race = json[0] as Race;
 
