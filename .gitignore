@@ -27,4 +27,5 @@ dist-ssr
 # other
 bin
 static
+build
 
