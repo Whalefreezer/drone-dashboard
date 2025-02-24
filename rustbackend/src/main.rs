@@ -1,9 +1,9 @@
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::State,
     http::{self, Request, StatusCode, Uri},
     response::Response,
-    routing::get,
+    routing::{get, post, put, delete, patch},
     Router,
 };
 use clap::Parser;
@@ -47,7 +47,12 @@ async fn main() {
 
     // Create router with CORS enabled
     let app = Router::new()
-        .route("/api/*path", get(proxy_handler).post(proxy_handler))
+        .route("/api/*path", 
+            get(proxy_handler)
+            .post(proxy_handler)
+            .put(proxy_handler)
+            .delete(proxy_handler)
+            .patch(proxy_handler))
         .fallback(static_handler)
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -65,27 +70,70 @@ async fn main() {
 
 async fn proxy_handler(
     State(state): State<AppState>,
-    req: Request<Body>,
+    method: http::Method,
+    uri: Uri,
+    headers: http::HeaderMap,
+    body: Bytes,
 ) -> Response<Body> {
-    let path = req.uri().path().trim_start_matches("/api");
-    let url = format!("{}{}", state.velocidrone_api, path);
+    let path = uri.path().trim_start_matches("/api");
+    let mut url = format!("{}{}", state.velocidrone_api, path);
 
-    // Forward the request
-    match state.client.get(&url).send().await {
+    // Add query parameters if present
+    if let Some(query) = uri.query() {
+        url = format!("{}?{}", url, query);
+    }
+
+    // Create a new request with the same method
+    let mut proxy_req = state.client.request(
+        reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap(),
+        &url
+    );
+
+    // Forward headers
+    for (name, value) in headers {
+        // Skip headers that reqwest will set
+        if let Some(name) = name {
+            if !["host", "content-length"].contains(&name.as_str()) {
+                if let Ok(v) = reqwest::header::HeaderValue::from_bytes(value.as_bytes()) {
+                    proxy_req = proxy_req.header(name.as_str(), v);
+                }
+            }
+        }
+    }
+
+    // Only add body if it's not empty
+    if !body.is_empty() {
+        proxy_req = proxy_req.body(body);
+    }
+
+    // Send the request
+    match proxy_req.send().await {
         Ok(res) => {
             let status = StatusCode::from_u16(res.status().as_u16()).unwrap();
-            let body = res.bytes().await.unwrap_or_default();
+            let mut builder = Response::builder().status(status);
             
+            // Forward response headers
+            if let Some(headers) = builder.headers_mut() {
+                for (key, value) in res.headers() {
+                    if let Ok(name) = http::HeaderName::from_bytes(key.as_ref()) {
+                        if let Ok(val) = http::HeaderValue::from_bytes(value.as_bytes()) {
+                            headers.insert(name, val);
+                        }
+                    }
+                }
+            }
+
+            // Get and forward response body
+            let body = res.bytes().await.unwrap_or_default();
+            builder.body(Body::from(body)).unwrap()
+        }
+        Err(e) => {
+            eprintln!("Proxy error: {}", e);
             Response::builder()
-                .status(status)
-                .header(http::header::CONTENT_TYPE, "application/json")
-                .body(Body::from(body))
+                .status(StatusCode::BAD_GATEWAY)
+                .body(Body::empty())
                 .unwrap()
         }
-        Err(_) => Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body(Body::empty())
-            .unwrap(),
     }
 }
 
