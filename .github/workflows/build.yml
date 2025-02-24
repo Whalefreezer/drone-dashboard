@@ -40,14 +40,36 @@ jobs:
           name: frontend-build
           path: backend/static
       
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          deno-version: v2.x
+          go-version: '1.24'
+          
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
       
-      - name: Compile Backend
+      - name: Create bin directory
+        run: mkdir -p backend/bin
+      
+      - name: Build for Windows
         working-directory: backend
-        run: deno task compile
+        run: |
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o bin/drone-dashboard.exe
+          upx --best bin/drone-dashboard.exe
+      
+      - name: Build for Linux
+        working-directory: backend
+        run: |
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o bin/drone-dashboard_linux_x86
+          upx --best bin/drone-dashboard_linux_x86
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o bin/drone-dashboard_linux_arm
+          upx --best bin/drone-dashboard_linux_arm
+      
+      - name: Build for macOS
+        working-directory: backend
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o bin/drone-dashboard_mac_x86
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o bin/drone-dashboard_mac_arm
       
       - name: Upload Binaries
         uses: actions/upload-artifact@v4
@@ -73,8 +95,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
+            bin/drone-dashboard.exe
             bin/drone-dashboard_linux_x86
             bin/drone-dashboard_linux_arm
-            bin/drone-dashboard.exe
             bin/drone-dashboard_mac_x86
             bin/drone-dashboard_mac_arm 
