@@ -1,3 +1,11 @@
+# Drone Dashboard Backend (Go)
+
+A lightweight Go server that acts as a proxy for the Velocidrone API and serves static frontend files. This implementation provides a single binary output with minimal dependencies, using only Go's standard library.
+
+## Prerequisites
+
+- Go 1.21 or later (https://golang.org/dl/)
+
 ## Building
 
 Before building, ensure your frontend files are in the `static` directory. These files will be embedded into the binary during compilation.
@@ -8,26 +16,72 @@ To build the server into a single executable:
 go build -o drone-dashboard.exe
 ```
 
-### Optimized Build (Smaller Binary)
+This will create a `drone-dashboard.exe` file in the current directory that includes both the server and the frontend files.
 
-To create a significantly smaller binary, use these optimization flags:
+### Multi-Platform Build Scripts
 
-```bash
-# Windows
-go build -ldflags="-s -w" -trimpath -o drone-dashboard.exe
+For convenience, build scripts are provided to compile for all major platforms at once in parallel:
 
-# Linux/macOS
-go build -ldflags="-s -w" -trimpath -o drone-dashboard
+- On Windows: Run `build.bat`
+- On Linux/macOS: Run `./build.sh` (make it executable first with `chmod +x build.sh`)
+
+These scripts will create a `build` directory containing 64-bit binaries for:
+- Windows (AMD64)
+- Linux (AMD64 and ARM64)
+- macOS (Intel and Apple Silicon)
+
+All builds run in parallel for faster compilation. The build script will wait for all builds to complete before finishing.
+
+### Static Files
+
+The frontend files should be placed in the `static` directory before building. The build process will embed these files directly into the binary using Go's `embed` package, resulting in a single, self-contained executable.
+
+Directory structure:
+```
+gobackend/
+├── main.go
+├── build.bat
+├── build.sh
+└── static/
+    ├── index.html
+    ├── css/
+    ├── js/
+    └── ...
 ```
 
-The optimization flags do the following:
-- `-ldflags="-s -w"`: Strips debug information and symbol tables
-- `-trimpath`: Removes file system paths from the binary
+## Running
 
-After building, you can further compress the binary using UPX:
-1. Download UPX from https://upx.github.io/
-2. Run: `upx --best drone-dashboard.exe`
+The server is completely self-contained and doesn't need external files to run. Just make sure you have:
+1. Access to a Velocidrone API endpoint
 
-This can reduce the binary size by up to 50-70% depending on the content.
+### Command Line Options
 
-### Multi-Platform Build Scripts 
+```bash
+Usage: drone-dashboard [OPTIONS]
+
+Options:
+  -velocidrone-api string   Set the Velocidrone API endpoint (default: http://localhost:8080)
+  -port int                 Set the server port (default: 3000)
+  -help                     Show this help message
+```
+
+### Examples
+
+Run with default settings:
+```bash
+./drone-dashboard
+```
+
+Run with custom API endpoint and port:
+```bash
+./drone-dashboard -velocidrone-api="http://localhost:8000" -port=4000
+```
+
+## Features
+
+- **API Proxy**: Forwards requests from `/api/*` to the configured Velocidrone API endpoint
+- **Static File Server**: Serves embedded frontend files (no external files needed)
+- **Zero External Dependencies**: Uses only Go standard library
+- **Small Binary Size**: Produces a single, efficient executable
+- **Cross-Platform**: Can be compiled for any platform that Go supports
+- **Self-Contained**: All frontend files are embedded in the binary 
