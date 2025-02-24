@@ -1,6 +1,8 @@
 name: Build and Release
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
   pull_request:
     branches: [ main ]
@@ -32,34 +34,6 @@ jobs:
   build-backend:
     needs: build-frontend
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - platform: windows
-            goos: windows
-            goarch: amd64
-            binary: drone-dashboard.exe
-            compress: true
-          - platform: linux-x86
-            goos: linux
-            goarch: amd64
-            binary: drone-dashboard_linux_x86
-            compress: true
-          - platform: linux-arm
-            goos: linux
-            goarch: arm64
-            binary: drone-dashboard_linux_arm
-            compress: true
-          - platform: mac-x86
-            goos: darwin
-            goarch: amd64
-            binary: drone-dashboard_mac_x86
-            compress: false
-          - platform: mac-arm
-            goos: darwin
-            goarch: arm64
-            binary: drone-dashboard_mac_arm
-            compress: false
     steps:
       - uses: actions/checkout@v4
       
@@ -75,53 +49,23 @@ jobs:
           go-version: '1.24'
           
       - name: Install UPX
-        if: matrix.compress
         run: sudo apt-get update && sudo apt-get install -y upx-ucl
       
-      - name: Create bin directory
-        run: mkdir -p backend/bin
-      
-      - name: Build ${{ matrix.platform }}
+      - name: Build All Platforms
         working-directory: backend
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -ldflags="-s -w" -trimpath -o bin/${{ matrix.binary }}
-          if [ "${{ matrix.compress }}" = "true" ]; then
-            upx --best bin/${{ matrix.binary }}
-          fi
+          chmod +x build.sh
+          ./build.sh
       
-      - name: Upload Binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.platform }}
-          path: backend/bin/${{ matrix.binary }}
-          retention-days: 7
-
-  collect-binaries:
-    needs: build-backend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create bin directory
-        run: mkdir -p bin
-        
-      - name: Download all binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: binary-*
-          path: bin
-          merge-multiple: true
-
-      - name: Upload Combined Binaries
+      - name: Upload Binaries
         uses: actions/upload-artifact@v4
         with:
           name: binaries
-          path: bin/
+          path: backend/build/
           retention-days: 7
 
   create-release:
-    needs: collect-binaries
+    needs: build-backend
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     permissions:

@@ -19,24 +19,24 @@ compress_if_available() {
 echo "Starting parallel builds..."
 
 # Windows build
-(GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard-windows-amd64.exe && 
+(GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard.exe && 
  echo "Windows build complete." && 
- compress_if_available "build/drone-dashboard-windows-amd64.exe" "windows") &
+ compress_if_available "build/drone-dashboard.exe" "windows") &
 
 # Linux builds
-(GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard-linux-amd64 && 
+(GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard_linux_x86 && 
  echo "Linux amd64 build complete." && 
- compress_if_available "build/drone-dashboard-linux-amd64" "linux") &
+ compress_if_available "build/drone-dashboard_linux_x86" "linux") &
 
-(GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard-linux-arm64 && 
+(GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard_linux_arm && 
  echo "Linux arm64 build complete." && 
- compress_if_available "build/drone-dashboard-linux-arm64" "linux") &
+ compress_if_available "build/drone-dashboard_linux_arm" "linux") &
 
 # macOS builds (no compression)
-(GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard-macos-amd64 && 
+(GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard_mac_x86 && 
  echo "macOS amd64 build complete.") &
 
-(GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard-macos-arm64 && 
+(GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o build/drone-dashboard_mac_arm && 
  echo "macOS arm64 build complete.") &
 
 # Wait for all background jobs to complete
