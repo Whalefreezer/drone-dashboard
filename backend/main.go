@@ -18,7 +18,7 @@ var staticFiles embed.FS
 
 func main() {
 	// Parse command line flags
-	velocidroneAPI := flag.String("velocidrone-api", "http://localhost:8080", "Velocidrone API endpoint")
+	fpvtracksideAPI := flag.String("fpvtrackside-api", "http://localhost:8080", "FPVTrackside API endpoint")
 	port := flag.Int("port", 3000, "Server port")
 	help := flag.Bool("help", false, "Show help message")
 	flag.Parse()
@@ -28,20 +28,20 @@ func main() {
 Usage: %s [OPTIONS]
 
 Options:
-  -velocidrone-api string   Set the Velocidrone API endpoint (default: http://localhost:8080)
+  -fpvtrackside-api string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
   -port int                 Set the server port (default: 3000)
   -help                     Show this help message
 
 Example:
-  drone-dashboard -velocidrone-api="http://localhost:8000" -port=4000
+  drone-dashboard -fpvtrackside-api="http://localhost:8000" -port=4000
 `, os.Args[0])
 		os.Exit(0)
 	}
 
 	// Create reverse proxy for API requests
-	apiTarget, err := url.Parse(*velocidroneAPI)
+	apiTarget, err := url.Parse(*fpvtracksideAPI)
 	if err != nil {
-		log.Fatal("Invalid Velocidrone API URL:", err)
+		log.Fatal("Invalid FPVTrackside API URL:", err)
 	}
 	proxy := httputil.NewSingleHostReverseProxy(apiTarget)
 
@@ -65,10 +65,10 @@ Example:
 
 	// Start the server
 	addr := fmt.Sprintf("0.0.0.0:%d", *port)
-	fmt.Printf("Pointing to Velocidrone API: %s\n", *velocidroneAPI)
+	fmt.Printf("Pointing to FPVTrackside API: %s\n", *fpvtracksideAPI)
 	fmt.Printf("Server running on http://localhost:%d\n", *port)
-	
+
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal("Server error:", err)
 	}
-} 
+}

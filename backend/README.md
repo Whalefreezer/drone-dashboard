@@ -1,6 +1,6 @@
 # Drone Dashboard Backend (Go)
 
-A lightweight Go server that acts as a proxy for the Velocidrone API and serves static frontend files. This implementation provides a single binary output with minimal dependencies, using only Go's standard library.
+A lightweight Go server that acts as a proxy for the FPVTrackside API and serves static frontend files. This implementation provides a single binary output with minimal dependencies, using only Go's standard library.
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ gobackend/
 ## Running
 
 The server is completely self-contained and doesn't need external files to run. Just make sure you have:
-1. Access to a Velocidrone API endpoint
+1. Access to a FPVTrackside API endpoint
 
 ### Command Line Options
 
@@ -60,7 +60,7 @@ The server is completely self-contained and doesn't need external files to run. 
 Usage: drone-dashboard [OPTIONS]
 
 Options:
-  -velocidrone-api string   Set the Velocidrone API endpoint (default: http://localhost:8080)
+  -fpvtrackside-api string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
   -port int                 Set the server port (default: 3000)
   -help                     Show this help message
 ```
@@ -74,12 +74,12 @@ Run with default settings:
 
 Run with custom API endpoint and port:
 ```bash
-./drone-dashboard -velocidrone-api="http://localhost:8000" -port=4000
+./drone-dashboard -fpvtrackside-api="http://localhost:8000" -port=4000
 ```
 
 ## Features
 
-- **API Proxy**: Forwards requests from `/api/*` to the configured Velocidrone API endpoint
+- **API Proxy**: Forwards requests from `/api/*` to the configured FPVTrackside API endpoint
 - **Static File Server**: Serves embedded frontend files (no external files needed)
 - **Zero External Dependencies**: Uses only Go standard library
 - **Small Binary Size**: Produces a single, efficient executable
