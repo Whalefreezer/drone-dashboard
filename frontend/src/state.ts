@@ -335,6 +335,14 @@ export function calculateLeaderboardData(
   // Calculate best times
   const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels, fastestHoleshots } = calculateBestTimes(races);
 
+  // Get pilots that are explicitly listed in race PilotChannels
+  const scheduledPilots = new Set<string>();
+  races.forEach(race => {
+    race.PilotChannels.forEach(pc => {
+      scheduledPilots.add(pc.Pilot);
+    });
+  });
+
   // Calculate races until next race for each pilot
   const racesUntilNext = new Map<string, number>();
   if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
@@ -356,8 +364,10 @@ export function calculateLeaderboardData(
   // Get eliminated pilots information
   const eliminatedPilots = findEliminatedPilots(brackets);
 
-  // Create pilot entries
-  const pilotEntries = pilots.map((pilot) => {
+  // Create pilot entries only for pilots in races
+  const pilotEntries = pilots
+    .filter(pilot => scheduledPilots.has(pilot.ID))
+    .map((pilot) => {
     // Find if this pilot is eliminated
     const eliminatedInfo = eliminatedPilots.find(
       ep => ep.name.toLowerCase().replace(/\s+/g, '') === pilot.Name.toLowerCase().replace(/\s+/g, '')
