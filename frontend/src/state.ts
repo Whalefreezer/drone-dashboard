@@ -36,6 +36,7 @@ export const eventDataAtom = atomWithSuspenseQuery((get) => ({
     const response = await axios.get(`/api/events/${eventId}/Event.json`);
     return response.data as RaceEvent[];
   },
+  refetchInterval: 10_000,
 }));
 
 export interface BracketPilot {
