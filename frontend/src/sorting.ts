@@ -174,7 +174,7 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
         condition: (entry) => !pilotHasLaps(entry),
         criteria: [
           {
-            getValue: (entry) => entry.racesUntilNext,
+            getValue: (entry) => entry.racesUntilNext === -1 ? Number.MAX_SAFE_INTEGER : entry.racesUntilNext,
             direction: SortDirection.Ascending,
             nullHandling: NullHandling.Last,
           },
@@ -229,7 +229,7 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
     name: "Default Sort", // Catch-all for any pilots not meeting other conditions
     criteria: [
       {
-        getValue: (entry) => entry.racesUntilNext,
+        getValue: (entry) => entry.racesUntilNext === -1 ? Number.MAX_SAFE_INTEGER : entry.racesUntilNext,
         direction: SortDirection.Ascending,
         nullHandling: NullHandling.Last,
       },
