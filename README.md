@@ -2,6 +2,60 @@
 
 A real-time drone racing dashboard application built with React, TypeScript, and Jotai for state management. The application provides live tracking of races, pilot performance, and tournament brackets.
 
+## Features
+
+- Real-time race tracking
+- Lap time tracking and display
+- Pilot rankings and leaderboards
+- Bracket system for tournament management
+- Channel management for pilots
+- Time tracking and display
+- Position change tracking
+- Best times and records tracking
+
+## Quick Start
+
+### Prerequisites
+
+- [Deno](https://deno.land/#installation) v2.1.0 or higher
+- [Go](https://golang.org/doc/install) v1.21 or higher
+- [VS Code](https://code.visualstudio.com/) with [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) (recommended)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd drone-dashboard
+   ```
+
+2. Set up environment:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Install dependencies:
+   ```bash
+   # Frontend
+   cd frontend
+   deno task install
+
+   # Backend
+   cd ../backend
+   go mod download
+   ```
+
+4. Start development servers:
+   ```bash
+   # Frontend (in frontend directory)
+   deno task dev
+
+   # Backend (in backend directory)
+   go run ./cmd/server
+   ```
+
+The application will be available at `http://localhost:5173` by default.
+
 ## Architecture Overview
 
 ### Core Components
@@ -37,17 +91,6 @@ A real-time drone racing dashboard application built with React, TypeScript, and
              └── Leaderboard Component
      ```
 
-### Features
-
-- Real-time race tracking
-- Lap time tracking and display
-- Pilot rankings and leaderboards
-- Bracket system for tournament management
-- Channel management for pilots
-- Time tracking and display
-- Position change tracking
-- Best times and records tracking
-
 ### Data Flow
 
 - Current race updates: Every 500ms
@@ -56,22 +99,37 @@ A real-time drone racing dashboard application built with React, TypeScript, and
 - Implements caching for better performance
 - Uses suspense for data loading states
 
-## Development Setup
+## Development
 
-### Prerequisites
+Please refer to our [Contributing Guide](./CONTRIBUTING.md) for detailed information about:
+- Development workflow
+- Git branching strategy
+- Pull request process
+- Testing approach
+- CI/CD pipeline
+- State management patterns
+- Component documentation
+- Troubleshooting
 
-- [Deno](https://deno.land/#installation) v2.1.0 or higher
-- [VS Code](https://code.visualstudio.com/) with [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) (recommended)
+### Available Scripts
+
+```bash
+# Frontend (in frontend directory)
+deno task dev        # Start development server
+deno task build      # Build for production
+deno task preview    # Preview production build
+deno task test       # Run tests
+deno task lint       # Run linter
+deno task fmt        # Format code
+
+# Backend (in backend directory)
+go run ./cmd/server  # Start backend server
+go test ./...        # Run tests
+```
 
 ### Environment Configuration
 
-Create a `.env` file in the frontend directory:
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-Key environment variables:
+Key environment variables (in `.env`):
 - `VITE_API_URL`: Backend API URL (default: http://localhost:8000)
 - `VITE_DEV_MODE`: Enable development features
 - `VITE_UPDATE_INTERVAL`: Data update interval in ms
@@ -79,28 +137,6 @@ Key environment variables:
 - `VITE_API_TIMEOUT`: API request timeout in ms
 - `VITE_API_RETRY_COUNT`: Number of API retry attempts
 - `VITE_API_RETRY_DELAY`: Delay between retries in ms
-
-### Available Tasks
-
-```bash
-# Start development server
-deno task dev
-
-# Build for production
-deno task build
-
-# Preview production build
-deno task preview
-
-# Serve production build
-deno task serve
-
-# Run tests
-deno task test
-
-# Run tests in watch mode
-deno task test:watch
-```
 
 ### Project Structure
 
@@ -118,41 +154,15 @@ deno task test:watch
 │   ├── tests/            # Test files
 │   ├── public/           # Public static files
 │   └── dist/            # Production build output
+├── backend/
+│   ├── cmd/
+│   │   └── server/      # Server entry point
+│   ├── internal/        # Internal packages
+│   └── tests/          # Backend tests
+├── .github/            # GitHub configuration
+├── docs/              # Documentation
+└── scripts/           # Build and utility scripts
 ```
-
-### Code Style
-
-The project uses Deno's built-in formatter and linter:
-
-```bash
-# Format code
-deno fmt
-
-# Lint code
-deno lint
-```
-
-## Building for Production
-
-1. Build the application:
-```bash
-deno task build
-```
-
-2. Preview the production build:
-```bash
-deno task preview
-```
-
-The production build will be available in the `dist` directory.
-
-## Contributing
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Run tests and ensure they pass
-4. Format and lint your code
-5. Submit a pull request
 
 ## Testing
 
@@ -167,16 +177,25 @@ describe("utils", () => {
     it("should return correct suffix for 1st position", () => {
       assertEquals(getPositionWithSuffix(1), "1st");
     });
-    // ... more tests
   });
 });
 ```
 
-Run tests with:
-```bash
-deno task test
-# or in watch mode:
-deno task test:watch
-```
+## Additional Resources
 
-## Known Issues & Planned Features
+- [Coding Standards](./CODING_STANDARDS.md)
+- [Improvement Plan](./IMPROVEMENT_PLAN.md)
+- [API Documentation](./backend/README.md)
+- [Frontend Architecture](./frontend/README.md)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+If you encounter any issues or have questions:
+1. Check the [Troubleshooting](./CONTRIBUTING.md#troubleshooting) section
+2. Search existing issues
+3. Create a new issue with detailed information
+4. Tag maintainers for urgent matters
