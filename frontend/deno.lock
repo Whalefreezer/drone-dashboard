@@ -530,6 +530,8 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/assert@0.218.2",
+      "jsr:@std/testing@0.218.2",
       "npm:@deno/vite-plugin@1",
       "npm:@tanstack/query-core@^5.66.0",
       "npm:@types/react-dom@^18.3.1",
