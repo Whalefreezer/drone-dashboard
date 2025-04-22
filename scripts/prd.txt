@@ -1,0 +1,112 @@
+# FPVTrackside Dashboard Enhancement Project PRD
+
+## Project Overview
+The FPVTrackside Dashboard is an existing web application that provides real-time information and management capabilities for drone racing events. This phase of the project focuses on codebase cleanup and enhanced race information display.
+
+## Current System
+- Frontend: Deno + TypeScript + React
+- Backend: Go (proxy server for static files)
+- External Integration: FPVTrackside software
+
+## Project Goals
+1. Improve code maintainability and organization
+2. Enhance user experience for pilots and race organizers
+3. Reduce organizer workload by providing better information accessibility
+
+## Phase 1: Codebase Cleanup
+### Objectives
+- Refactor existing codebase for better maintainability
+- Implement consistent coding patterns
+- Improve type safety and TypeScript usage
+- Enhance error handling
+- Optimize performance
+- Document key components and interfaces
+
+### Current Features to Maintain
+- Best times display
+- Consecutive laps tracking
+- Last race details
+- Channel information
+- Next race scheduling
+
+## Phase 2: Enhanced Race Information Display
+### New Feature Requirements
+1. Dedicated Race Status Page
+   - URL Path: /race-status (or similar)
+   - Large, bold display of current race information
+   - Prominent "UP NEXT" section
+   - Optimized for visibility from a distance
+   - Real-time updates
+
+2. Information Display Requirements
+   - Current Race:
+     * Race number/identifier
+     * Current heat status
+     * Active pilots
+     * Real-time lap counts
+     * Channel assignments
+   - Up Next Information:
+     * Next heat details
+     * Participating pilots
+     * Channel assignments
+     * Estimated start time
+
+### Technical Requirements
+1. Frontend
+   - Maintain Deno + TypeScript + React stack
+   - Implement responsive design
+   - Optimize for real-time updates
+   - Ensure type safety
+   - Follow React best practices
+
+2. Backend Integration
+   - Maintain existing Go proxy server
+   - Ensure efficient communication with FPVTrackside
+   - Implement proper error handling
+   - Add necessary endpoints for new features
+
+3. Performance Requirements
+   - Real-time updates (< 1 second delay)
+   - Smooth animations/transitions
+   - Efficient data caching
+   - Minimal network overhead
+
+## User Experience Requirements
+1. Visibility
+   - Large, clear typography
+   - High contrast color scheme
+   - Important information visible from 20+ feet
+
+2. Information Hierarchy
+   - Critical race information prominently displayed
+   - Clear distinction between current and upcoming races
+   - Easy-to-scan layout
+
+3. Accessibility
+   - Screen reader support
+   - Keyboard navigation
+   - Color blind friendly design
+
+## Success Criteria
+1. Code Quality
+   - Improved code organization
+   - Consistent coding patterns
+   - Comprehensive type coverage
+   - Reduced technical debt
+
+2. User Impact
+   - Reduced questions to organizers about race scheduling
+   - Improved pilot preparedness
+   - Positive feedback from event organizers
+   - Smooth race day operations
+
+## Future Considerations
+- Additional dashboard customization options
+- Multiple display support
+- Advanced statistics and analytics
+- Integration with additional race management systems
+
+## Project Constraints
+- Must maintain compatibility with existing FPVTrackside software
+- Changes should not disrupt existing functionality
+- Must work within current technical stack (Deno, TypeScript, React, Go) 
