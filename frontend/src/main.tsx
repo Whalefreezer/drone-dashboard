@@ -7,17 +7,17 @@ import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
 
 // Global error handlers
-window.addEventListener('error', (event) => {
+globalThis.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);
   setTimeout(() => {
-    window.location.reload();
+    globalThis.location.reload();
   }, 3000);
 });
 
-window.addEventListener('unhandledrejection', (event) => {
+globalThis.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
   setTimeout(() => {
-    window.location.reload();
+    globalThis.location.reload();
   }, 3000);
 });
 

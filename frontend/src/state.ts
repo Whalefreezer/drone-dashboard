@@ -8,8 +8,8 @@ import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 import { 
   calculateBestTimes,
   calculateRacesUntilNext,
-  sortPilotEntries
 } from "./utils.ts";
+import { sortLeaderboard, defaultLeaderboardSortConfig } from "./sorting.ts";
 
 const UPDATE = true;
 
@@ -426,7 +426,7 @@ export function calculateLeaderboardData(
     };
   });
 
-  return sortPilotEntries(pilotEntries);
+  return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
 }
 
 export function getPositionChanges(

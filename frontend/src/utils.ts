@@ -1,5 +1,5 @@
 import { Channel, Pilot, Race, Round } from "./types.ts";
-import { ProcessedLap, RaceWithProcessedLaps } from "./state.ts";
+import { ProcessedLap, RaceWithProcessedLaps, LeaderboardEntry } from "./state.ts";
 
 export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
 
@@ -242,163 +242,66 @@ function updateConsecutiveLaps(
   }
 }
 
-const officalEliminationOrder = [
-  [5, "SLOOGUS"],
-  [6, "FPVDOG"],
-  [7, "RED2ROTOR"], 
-  [8, "JUICYFLICK"],
-  [9, "EBFPV"],
-  [10, "Q-SWITCH"],
-  [11, "SQUID"],
-  [12, "MIRELLAFPV"],
-  [13, "KRYPTO"],
-  [14, "CRAZYBRAIN"],
-  [15, "KUATO"],
-  [16, "MACDADDY"],
-  [17, "ZENITH"],
-  [18, "REDALIN"],
-  [19, "RISLER"],
-  [20, "FIZZ"],
-  [21, "IBEX"],
-  [22, "SPEED DEMON"],
-  [23, "Iceberg"],
-  [24, "AEROPLANEJELLY"],
-  [25, "BOB9"],
-  [26, "ROBO"],
-  [27, "BRODIE REED"],
-  [28, "MAD MITCH"],
-  [29, "Tek FPV"],
-  [30, "WILLMAN"],
-  [31, "PHIX"],
-  [32, "NUG NUG"],
-  [33, "Hopper FPV"],
-  [34, "Fazented"],
-  [35, "Heatsink"],
-  [36, "Red Dog"],
-  [37, "Buglish"],
-  [38, "Cookie FPV"],
-  [39, "Kiwi"],
-  [40, "Nil"],
-  [41, "SnapperFPV"],
-  [42, "Papa Bear"],
+// --- Consolidated Elimination Logic --- 
+
+const officalEliminationOrder: [number, string][] = [
 ];
 
-function compareChannels(a: PilotEntry, b: PilotEntry): number {
-  if (a.channel && b.channel) {
-    return a.channel.Number - b.channel.Number;
-  }
-  if (!a.channel) return 1;
-  if (!b.channel) return -1;
-  return 0;
-}
-
-function compareRacesUntilNext(a: PilotEntry, b: PilotEntry): number {
-  if (a.racesUntilNext === -1 && b.racesUntilNext !== -1) return 1;
-  if (b.racesUntilNext === -1 && a.racesUntilNext !== -1) return -1;
-  if (a.racesUntilNext !== b.racesUntilNext) {
-    return a.racesUntilNext - b.racesUntilNext;
-  }
-  return 0;
-}
-
-function getEliminationGroup(bracketNum: number): number {
-  if (bracketNum <= 8) return 1; // H1-H8
-  if (bracketNum <= 12) return 2; // H9-H12
-  if (bracketNum <= 14) return 3; // H13-H14
-  return 4; // H15 (finals)
-}
-
-function getSeedNumber(seedPosition: string): number {
-  return parseInt(seedPosition.replace(/(?:st|nd|rd|th)$/, ""));
-}
-
-function compareEliminatedPilots(a: PilotEntry, b: PilotEntry): number {
-  if (!a.eliminatedInfo || !b.eliminatedInfo) return 0;
-
-  const aBracketNum = parseInt(a.eliminatedInfo.bracket.replace(/\D/g, ""));
-  const bBracketNum = parseInt(b.eliminatedInfo.bracket.replace(/\D/g, ""));
-
-  const aGroup = getEliminationGroup(aBracketNum);
-  const bGroup = getEliminationGroup(bBracketNum);
-
-  // Sort by group first (later groups come first)
-  if (aGroup !== bGroup) {
-    return bGroup - aGroup;
-  }
-
-  // Within the same group, sort by points
-  const pointsDiff = b.eliminatedInfo.points - a.eliminatedInfo.points;
-  if (pointsDiff !== 0) {
-    return pointsDiff;
-  }
-
-  // If points are equal, use seed position as tiebreaker
-  // Lower seed number (better position) should come first
-  if (a.pilot.Seed && b.pilot.Seed) {
-    return getSeedNumber(a.pilot.Seed) - getSeedNumber(b.pilot.Seed);
-  }
-
-  return 0;
-}
-
-function getNormalizedPilotName(name: string): string {
+export function getNormalizedPilotName(name: string): string {
   return name.toLowerCase().replace(/\W+/g, '');
 }
 
-function getEliminationOrderIndex(pilotName: string): number {
+export function getEliminationOrderIndex(pilotName: string): number {
   const normalizedName = getNormalizedPilotName(pilotName);
   const entry = officalEliminationOrder.find(([_, name]) => 
     getNormalizedPilotName(String(name)) === normalizedName
   );
-  return entry ? entry[0] : -1;
+  return entry ? Number(entry[0]) : -1;
 }
 
-export function sortPilotEntries(pilotEntries: PilotEntry[]): PilotEntry[] {
-  return pilotEntries.sort((a, b) => {
-    const aElimIndex = getEliminationOrderIndex(a.pilot.Name);
-    const bElimIndex = getEliminationOrderIndex(b.pilot.Name);
-    
-    // If both pilots are in elimination order, sort by their index
-    if (aElimIndex !== -1 && bElimIndex !== -1) {
-      return aElimIndex - bElimIndex;
-    }
-    
-    // If only one pilot is in elimination order, they come after
-    if (aElimIndex !== -1) return 1;
-    if (bElimIndex !== -1) return -1;
+// --- New Helper Functions for Sorting --- 
 
-    // For pilots not in elimination order, use the original sorting logic
-    const aHasLaps = a.totalLaps > 0;
-    const bHasLaps = b.totalLaps > 0;
-
-    if (aHasLaps !== bHasLaps) {
-      return aHasLaps ? -1 : 1;
-    }
-
-    // If both have no laps, sort by races until next and channel
-    if (!aHasLaps) {
-      const racesComparison = compareRacesUntilNext(a, b);
-      return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
-    }
-
-    if (a.eliminatedInfo && b.eliminatedInfo) {
-      return compareEliminatedPilots(a, b);
-    }
-
-    if (a.eliminatedInfo) return 1;
-    if (b.eliminatedInfo) return -1;
-
-    if (!a.consecutiveLaps && !b.consecutiveLaps) {
-      const racesComparison = compareRacesUntilNext(a, b);
-      return racesComparison !== 0 ? racesComparison : compareChannels(a, b);
-    }
-
-    if (!a.consecutiveLaps) return 1;
-    if (!b.consecutiveLaps) return -1;
-
-    return a.consecutiveLaps.time - b.consecutiveLaps.time;
-  });
+export function isPilotInEliminationOrder(entry: LeaderboardEntry): boolean {
+  return getEliminationOrderIndex(entry.pilot.Name) !== -1;
 }
+
+export function pilotHasLaps(entry: LeaderboardEntry): boolean {
+  return entry.totalLaps > 0;
+}
+
+export function pilotHasConsecutiveLaps(entry: LeaderboardEntry): boolean {
+  return entry.consecutiveLaps !== null;
+}
+
+export function isPilotEliminated(entry: LeaderboardEntry): boolean {
+  return entry.eliminatedInfo !== null;
+}
+
+/**
+ * Determines the elimination stage based on the bracket number.
+ * Returns a number representing the stage (lower is earlier):
+ * 1: Heats (<= 8)
+ * 2: Quarters (<= 12)
+ * 3: Semis (<= 14)
+ * 4: Finals (> 14)
+ * Returns null if the pilot is not eliminated or info is missing.
+ */
+export function getEliminationStage(entry: LeaderboardEntry): number | null {
+  if (!entry.eliminatedInfo) return null;
+  try {
+    const bracketNum = parseInt(entry.eliminatedInfo.bracket.replace(/\D/g, ""));
+    if (isNaN(bracketNum)) return null;
+    if (bracketNum <= 8) return 1; 
+    if (bracketNum <= 12) return 2;
+    if (bracketNum <= 14) return 3;
+    return 4;
+  } catch (e) {
+    console.error("Error parsing bracket number:", entry.eliminatedInfo.bracket, e);
+    return null;
+  }
+}
+
+// --- Original Sorting Logic (to be potentially removed later) --- 
 
 export function findIndexOfCurrentRace(sortedRaces: Race[]) {
   if (!sortedRaces || sortedRaces.length === 0) {
