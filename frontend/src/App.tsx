@@ -1,7 +1,7 @@
 import "./App.css";
 // @deno-types="@types/react"
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   channelsDataAtom,
   eventDataAtom,
@@ -18,9 +18,9 @@ import {
   bracketsDataAtom,
   Bracket,
   BracketPilot,
-  findEliminatedPilots} from "./state/atoms.ts";
-import { useSetAtom } from "jotai";
-import { PilotChannel } from "./types/types.ts";
+  findEliminatedPilots
+} from "./state";
+import { PilotChannel } from "./types";
 import { 
   getPositionWithSuffix, 
   secondsFromString, 
@@ -28,8 +28,8 @@ import {
   findIndexOfCurrentRace,
   findIndexOfLastRace,
   CONSECUTIVE_LAPS
-} from "./common/utils.ts";
-import DaySchedule from './race/DaySchedule.tsx';
+} from "./common";
+import { DaySchedule } from './race';
 
 // Add scoring system at the top of the file
 const POSITION_POINTS: Record<number, number> = {
