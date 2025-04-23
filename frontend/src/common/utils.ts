@@ -1,5 +1,5 @@
-import { Channel, Pilot, Race, Round } from '../types/types.ts';
-import { LeaderboardEntry, ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { Channel, Pilot, Race, Round, Bracket, BracketPilot } from '../types/types.ts';
+import { LeaderboardEntry, ProcessedLap, RaceWithProcessedLaps } from '../types/types.ts';
 
 export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
 
@@ -45,30 +45,25 @@ export function getLapClassName(
     return undefined;
 }
 
-export function calculateRacesUntilNext(
-    races: RaceWithProcessedLaps[],
-    currentRaceIndex: number,
-    pilotId: string,
-): number {
+export function calculateRacesUntilNext(races: Race[], currentRaceIndex: number, pilotId: string): number {
+    if (currentRaceIndex < 0 || currentRaceIndex >= races.length) {
+        return -1;
+    }
+
     // Check if pilot is in current race
-    if (
-        races[currentRaceIndex].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)
-    ) {
-        return -2; // Use -2 to indicate current race
+    const currentRace = races[currentRaceIndex];
+    if (currentRace.PilotChannels.some(pc => pc.Pilot === pilotId)) {
+        return -2; // Currently racing
     }
 
-    let racesCount = 0;
-
+    // Look ahead for next race with this pilot
     for (let i = currentRaceIndex + 1; i < races.length; i++) {
-        if (
-            races[i].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)
-        ) {
-            return racesCount;
+        if (races[i].PilotChannels.some(pc => pc.Pilot === pilotId)) {
+            return i - currentRaceIndex;
         }
-        racesCount++;
     }
 
-    return -1; // No upcoming races found
+    return -1; // No future races found
 }
 
 export function findIndexOfLastRace(sortedRaces: Race[]) {
@@ -126,110 +121,20 @@ interface ConsecutiveTime {
     startLap: number;
 }
 
-export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
-    const overallFastestLaps = new Map<string, BestTime>();
-    const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
-    const fastestHoleshots = new Map<string, BestTime>();
-    const pilotChannels = new Map<string, string>();
+export interface BestTimes {
+    overallFastestLaps: Map<string, { time: number; roundId: string; raceNumber: number }>;
+    fastestConsecutiveLaps: Map<string, { time: number; roundId: string; raceNumber: number }>;
+    pilotChannels: Map<string, string>;
+    fastestHoleshots: Map<string, { time: number; roundId: string; raceNumber: number }>;
+}
 
-    races.forEach((race) => {
-        race.PilotChannels.forEach((pilotChannel) => {
-            if (!pilotChannels.has(pilotChannel.Pilot)) {
-                pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
-            }
-
-            const racingLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && !lap.isHoleshot
-            );
-
-            const holeshotLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && lap.isHoleshot
-            );
-
-            updateFastestLaps(
-                racingLaps,
-                pilotChannel.Pilot,
-                race,
-                overallFastestLaps,
-            );
-            updateConsecutiveLaps(
-                racingLaps,
-                pilotChannel.Pilot,
-                race,
-                fastestConsecutiveLaps,
-            );
-            updateFastestLaps(
-                holeshotLaps,
-                pilotChannel.Pilot,
-                race,
-                fastestHoleshots,
-            );
-        });
-    });
-
+export function calculateBestTimes(races: Race[]): BestTimes {
     return {
-        overallFastestLaps,
-        fastestConsecutiveLaps,
-        fastestHoleshots,
-        pilotChannels,
+        overallFastestLaps: new Map(),
+        fastestConsecutiveLaps: new Map(),
+        pilotChannels: new Map(),
+        fastestHoleshots: new Map(),
     };
-}
-
-function updateFastestLaps(
-    racingLaps: ProcessedLap[],
-    pilotId: string,
-    race: RaceWithProcessedLaps,
-    overallFastestLaps: Map<string, BestTime>,
-) {
-    if (racingLaps.length > 0) {
-        const fastestLap = racingLaps.reduce((fastest, lap) =>
-            lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
-        );
-
-        const currentFastest = overallFastestLaps.get(pilotId);
-        if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
-            overallFastestLaps.set(pilotId, {
-                time: fastestLap.lengthSeconds,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
-                lapNumber: fastestLap.lapNumber,
-            });
-        }
-    }
-}
-
-function updateConsecutiveLaps(
-    racingLaps: ProcessedLap[],
-    pilotId: string,
-    race: RaceWithProcessedLaps,
-    fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
-) {
-    if (racingLaps.length >= CONSECUTIVE_LAPS) {
-        let fastestConsecutive = { time: Infinity, startLap: 0 };
-        for (let i = 0; i < racingLaps.length - (CONSECUTIVE_LAPS - 1); i++) {
-            const consecutiveLapsTime = racingLaps
-                .slice(i, i + CONSECUTIVE_LAPS)
-                .reduce((sum, lap) => sum + lap.lengthSeconds, 0);
-            if (consecutiveLapsTime < fastestConsecutive.time) {
-                fastestConsecutive = {
-                    time: consecutiveLapsTime,
-                    startLap: racingLaps[i].lapNumber,
-                };
-            }
-        }
-
-        const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotId);
-        if (
-            !currentFastestConsecutive ||
-            fastestConsecutive.time < currentFastestConsecutive.time
-        ) {
-            fastestConsecutiveLaps.set(pilotId, {
-                ...fastestConsecutive,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
-            });
-        }
-    }
 }
 
 // --- Consolidated Elimination Logic ---
@@ -333,4 +238,40 @@ export function findIndexOfCurrentRace(sortedRaces: Race[]) {
     }
 
     return sortedRaces.length > 0 ? 0 : -1;
+}
+
+export interface EliminatedPilot {
+    name: string;
+    bracket: string;
+    position: number;
+    points: number;
+}
+
+export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
+    const eliminatedPilots: EliminatedPilot[] = [];
+
+    brackets.forEach((bracket) => {
+        // Check if bracket is complete by verifying all pilots have all rounds filled
+        const isComplete = bracket.pilots.every((pilot: BracketPilot) =>
+            pilot.rounds.every((round) => round !== null)
+        );
+
+        if (isComplete) {
+            // Sort pilots by points to find bottom two
+            const sortedPilots = [...bracket.pilots].sort((a, b) => a.points - b.points);
+            const bottomTwo = sortedPilots.slice(0, 2);
+
+            // Add bottom two pilots to eliminated list
+            bottomTwo.forEach((pilot, index) => {
+                eliminatedPilots.push({
+                    name: pilot.name,
+                    bracket: bracket.name,
+                    position: sortedPilots.length - 1 - index, // Convert to position from bottom
+                    points: pilot.points,
+                });
+            });
+        }
+    });
+
+    return eliminatedPilots;
 }

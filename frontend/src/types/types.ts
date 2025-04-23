@@ -163,3 +163,39 @@ export enum ShortBand {
     R = 'R',
     Z = 'Z',
 }
+
+export interface BracketPilot {
+    name: string;
+    points: number;
+    rounds: (string | null)[];
+}
+
+export interface Bracket {
+    name: string;
+    pilots: BracketPilot[];
+}
+
+export interface LeaderboardEntry {
+    pilotId: string;
+    pilotName: string;
+    channel: string;
+    position: number;
+    positionChange: number;
+    fastestLap: number | null;
+    fastestConsecutive: number | null;
+    fastestHoleshot: number | null;
+    totalPoints: number;
+    roundPoints: number[];
+}
+
+export interface ProcessedLap {
+    pilotId: string;
+    lapNumber: number;
+    lengthSeconds: number;
+    isHoleshot: boolean;
+    timestamp: string;
+}
+
+export interface RaceWithProcessedLaps extends Race {
+    processedLaps: ProcessedLap[];
+}

@@ -9,6 +9,9 @@ import {
     pilotHasConsecutiveLaps,
     pilotHasLaps,
 } from '../common/utils.ts';
+import { RaceWithProcessedLaps } from '../state/index.ts';
+import { PilotLapData } from './race-types.ts';
+import { RoundData } from './race-types.ts';
 
 export enum SortDirection {
     Ascending = 'asc',
@@ -243,3 +246,16 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
         ],
     },
 ];
+
+export function calculatePilotsWithLaps(race: RaceWithProcessedLaps): PilotLapData[] {
+    return race.PilotChannels.map((pilotChannel) => {
+        const completedLaps = race.processedLaps.filter((lap) =>
+            lap.pilotId === pilotChannel.Pilot
+        ).length;
+        return { pilotChannel, completedLaps };
+    }).sort((a, b) => b.completedLaps - a.completedLaps);
+}
+
+export function normalizeString(str: string): string {
+    return str.toLowerCase().replace(/\s+/g, '');
+}
