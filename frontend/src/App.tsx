@@ -18,9 +18,9 @@ import {
   bracketsDataAtom,
   Bracket,
   BracketPilot,
-  findEliminatedPilots} from "./state.ts";
+  findEliminatedPilots} from "./state/atoms.ts";
 import { useSetAtom } from "jotai";
-import { PilotChannel } from "./types.ts";
+import { PilotChannel } from "./types/types.ts";
 import { 
   getPositionWithSuffix, 
   secondsFromString, 
@@ -28,8 +28,8 @@ import {
   findIndexOfCurrentRace,
   findIndexOfLastRace,
   CONSECUTIVE_LAPS
-} from "./utils.ts";
-import DaySchedule from './components/DaySchedule.tsx';
+} from "./common/utils.ts";
+import DaySchedule from './race/DaySchedule.tsx';
 
 // Add scoring system at the top of the file
 const POSITION_POINTS: Record<number, number> = {

@@ -1,4 +1,5 @@
-import { LeaderboardEntry } from "./state.ts";
+import { LeaderboardEntry } from '../state/atoms.ts';
+import { secondsFromString } from '../common/utils.ts';
 import { 
   getNormalizedPilotName, 
   getEliminationOrderIndex,
@@ -7,7 +8,7 @@ import {
   pilotHasConsecutiveLaps,
   isPilotEliminated,
   getEliminationStage
-} from "./utils.ts";
+} from "../common/utils.ts";
 
 export enum SortDirection {
   Ascending = "asc",

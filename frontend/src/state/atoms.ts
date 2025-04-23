@@ -1,6 +1,6 @@
 import { Atom, atom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, atomWithRefresh, loadable } from "jotai/utils";
-import { Channel, Pilot, Race, RaceEvent, Round } from "./types.ts";
+import { Channel, Pilot, Race, RaceEvent, Round } from "../types/types.ts";
 import { useEffect, useState } from "react";
 import { atomWithSuspenseQuery } from "jotai-tanstack-query";
 import axios from "axios";
@@ -8,8 +8,8 @@ import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 import { 
   calculateBestTimes,
   calculateRacesUntilNext,
-} from "./utils.ts";
-import { sortLeaderboard, defaultLeaderboardSortConfig } from "./sorting.ts";
+} from "../common/utils.ts";
+import { sortLeaderboard, defaultLeaderboardSortConfig } from "../race/race-utils.ts";
 
 const UPDATE = true;
 

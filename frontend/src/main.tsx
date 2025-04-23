@@ -4,7 +4,7 @@ import { StrictMode } from 'react'
 // @deno-types="@types/react-dom/client"
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
-import ErrorBoundary from './components/ErrorBoundary.tsx'
+import ErrorBoundary from './common/ErrorBoundary.tsx'
 
 // Global error handlers
 globalThis.addEventListener('error', (event) => {
