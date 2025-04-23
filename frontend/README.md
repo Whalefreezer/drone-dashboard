@@ -30,6 +30,7 @@ A real-time dashboard for FPVTrackside race management system, built with Deno, 
 ## Development
 
 Start the development server:
+
 ```bash
 deno task dev
 ```
@@ -65,11 +66,13 @@ frontend/
 ## Code Style
 
 The project uses Deno's built-in formatter and linter. Format your code with:
+
 ```bash
 deno fmt
 ```
 
 Lint your code with:
+
 ```bash
 deno lint
 ```
@@ -77,11 +80,13 @@ deno lint
 ## Testing
 
 Run the test suite:
+
 ```bash
 deno task test
 ```
 
 Watch mode for development:
+
 ```bash
 deno task test:watch
 ```
@@ -102,15 +107,15 @@ The production build will be available in the `dist` directory.
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| VITE_API_URL | Backend API URL | http://localhost:8000 |
-| VITE_DEV_MODE | Enable development features | true |
-| VITE_UPDATE_INTERVAL | Data update interval (ms) | 500 |
-| VITE_NEXT_RACES_COUNT | Number of upcoming races to show | 8 |
-| VITE_API_TIMEOUT | API request timeout (ms) | 10000 |
-| VITE_API_RETRY_COUNT | Number of API retry attempts | 10 |
-| VITE_API_RETRY_DELAY | Delay between retries (ms) | 100 |
+| Variable              | Description                      | Default               |
+| --------------------- | -------------------------------- | --------------------- |
+| VITE_API_URL          | Backend API URL                  | http://localhost:8000 |
+| VITE_DEV_MODE         | Enable development features      | true                  |
+| VITE_UPDATE_INTERVAL  | Data update interval (ms)        | 500                   |
+| VITE_NEXT_RACES_COUNT | Number of upcoming races to show | 8                     |
+| VITE_API_TIMEOUT      | API request timeout (ms)         | 10000                 |
+| VITE_API_RETRY_COUNT  | Number of API retry attempts     | 10                    |
+| VITE_API_RETRY_DELAY  | Delay between retries (ms)       | 100                   |
 
 ## Contributing
 
@@ -122,4 +127,4 @@ The production build will be available in the `dist` directory.
 
 ## License
 
-[Add your license information here] 
+[Add your license information here]

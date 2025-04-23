@@ -1,63 +1,62 @@
-import { serve } from "https://deno.land/std/http/server.ts";
+import { serve } from 'https://deno.land/std/http/server.ts';
 
-const BACKEND_URL = "http://localhost:8080"; // Replace with your backend URL
+const BACKEND_URL = 'http://localhost:8080'; // Replace with your backend URL
 
 async function executeCurl(url: string): Promise<Response> {
-  // Build curl command array
-  const curlCmd = ["curl"];
-  
-//   // Add headers
-//   headers.forEach((value, key) => {
-//     curlCmd.push("-H", `${key}: ${value}`);
-//   });
+    // Build curl command array
+    const curlCmd = ['curl'];
 
-//   // Add request body if present
-//   if (body) {
-//     curlCmd.push("-d", body.toString());
-//   }
+    //   // Add headers
+    //   headers.forEach((value, key) => {
+    //     curlCmd.push("-H", `${key}: ${value}`);
+    //   });
 
-  // Add the URL
-  curlCmd.push(url);
+    //   // Add request body if present
+    //   if (body) {
+    //     curlCmd.push("-d", body.toString());
+    //   }
 
-  // Execute curl command
-  const process = new Deno.Command("curl", {
-    args: curlCmd,
-    stdout: "piped",
-    stderr: "piped",
-  });
+    // Add the URL
+    curlCmd.push(url);
 
-  const { stdout, stderr, success } = await process.output();
+    // Execute curl command
+    const process = new Deno.Command('curl', {
+        args: curlCmd,
+        stdout: 'piped',
+        stderr: 'piped',
+    });
 
-  if (!success) {
-    const errorMessage = new TextDecoder().decode(stderr);
-    throw new Error(`Curl failed: ${errorMessage}`);
-  }
+    const { stdout, stderr, success } = await process.output();
 
-  return new Response(stdout, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+    if (!success) {
+        const errorMessage = new TextDecoder().decode(stderr);
+        throw new Error(`Curl failed: ${errorMessage}`);
+    }
+
+    return new Response(stdout, {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
 }
 
 async function handler(req: Request): Promise<Response> {
-  try {
-    const url = new URL(req.url);
-    const path = url.pathname;
-    const fullUrl = `${BACKEND_URL}${path}`;
+    try {
+        const url = new URL(req.url);
+        const path = url.pathname;
+        const fullUrl = `${BACKEND_URL}${path}`;
 
-    return await executeCurl(fullUrl);
-
-  } catch (error) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
+        return await executeCurl(fullUrl);
+    } catch (error) {
+        console.error('Error:', error);
+        return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    }
 }
 
 // Start the server

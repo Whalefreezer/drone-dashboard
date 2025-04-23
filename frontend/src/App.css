@@ -1,409 +1,437 @@
 :root {
-  --fastest-lap-color: #1a472a;  /* Dark green for race fastest */
-  --personal-best-color: #2a2a4a;  /* Dark blue for race personal best */
-  --overall-fastest-color: #4a1a1a;  /* Dark red for overall fastest */
-  --overall-personal-best-color: #1a1a4a;  /* Dark purple for overall personal best */
+    --fastest-lap-color: #1a472a; /* Dark green for race fastest */
+    --personal-best-color: #2a2a4a; /* Dark blue for race personal best */
+    --overall-fastest-color: #4a1a1a; /* Dark red for overall fastest */
+    --overall-personal-best-color: #1a1a4a; /* Dark purple for overall personal best */
 }
 
 #root {
-  padding: 0;
-  width: 100vw;
-  text-align: left;
-  /* overflow-x: hidden; */
+    padding: 0;
+    width: 100vw;
+    text-align: left;
+    /* overflow-x: hidden; */
 }
 
 /* Layout */
 .app-container {
-  display: flex;
-  justify-content: space-between;
-  width: 100vw;
-  box-sizing: border-box;
-  gap: 4px;
-  padding: 0 16px;
-  /* overflow-x: hidden; */
+    display: flex;
+    justify-content: space-between;
+    width: 100vw;
+    box-sizing: border-box;
+    gap: 4px;
+    padding: 0 16px;
+    /* overflow-x: hidden; */
 }
 
 .races-container {
-  flex: 1;
-  min-width: 300px;
-  margin-right: 0;
+    flex: 1;
+    min-width: 300px;
+    margin-right: 0;
 }
 
 .schedule-container {
-  flex: 0 1 auto;
-  min-width: 0;
-  display: flex;
-  justify-content: center;
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
 }
 
 .schedule-wrapper {
-  display: flex;
-  padding: 8px 0;
+    display: flex;
+    padding: 8px 0;
 }
 
 .leaderboard-container {
-  flex: 1;
-  min-width: 300px;
-  margin-left: 0;
+    flex: 1;
+    min-width: 300px;
+    margin-left: 0;
 }
 
 /* Race Box Styles */
 .race-box {
-  margin-bottom: 12px;
-  padding: 8px;
-  border-radius: 8px;
-  background-color: #1a1a1a;
-  border: 1px solid #333;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
 }
 
 .race-box h3 {
-  margin: 0 0 6px 0;
-  color: #888;
+    margin: 0 0 6px 0;
+    color: #888;
 }
 
 .current-race {
-  border-color: #00ff00;
-  border-width: 1px;
-  background-color: #2a2a2a;
+    border-color: #00ff00;
+    border-width: 1px;
+    background-color: #2a2a2a;
 }
 
 .current-race h3 {
-  color: #fff;
-  margin: 0;
+    color: #fff;
+    margin: 0;
 }
 
 .race-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
 }
 
 .race-timer {
-  font-family: monospace;
-  font-size: 24px;
-  color: #00ff00;
-  background-color: #1e2a1e;
-  padding: 4px 12px;
-  border-radius: 4px;
-  min-width: 80px;
-  text-align: right;
+    font-family: monospace;
+    font-size: 24px;
+    color: #00ff00;
+    background-color: #1e2a1e;
+    padding: 4px 12px;
+    border-radius: 4px;
+    min-width: 80px;
+    text-align: right;
 }
 
 /* Laps View */
 .laps-view {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .race-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
 }
 
 .race-number {
-  font-size: 18px;
-  font-weight: bold;
-  color: #888;
-  text-align: center;
-  padding: 4px;
-  background-color: #2a2a2a;
-  border-radius: 4px;
-  width: 100%;
-  box-sizing: border-box;
+    font-size: 18px;
+    font-weight: bold;
+    color: #888;
+    text-align: center;
+    padding: 4px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Tables */
 .laps-table,
 .leaderboard-table {
-  border: 1px solid black;
-  border-collapse: collapse;
+    border: 1px solid black;
+    border-collapse: collapse;
 }
 
 .laps-table td,
 .laps-table th,
 .leaderboard-table td,
 .leaderboard-table th {
-  border: 1px solid black;
-  padding: 4px;
+    border: 1px solid black;
+    padding: 4px;
 }
 
 .leaderboard-table td {
-  font-family: monospace;
+    font-family: monospace;
 }
 
 .leaderboard-table td:nth-child(2) {
-  font-family: inherit;
+    font-family: inherit;
 }
 
 /* Add alternating row colors for leaderboard */
 .leaderboard-table tbody tr:nth-child(even) {
-  background-color: #222;
+    background-color: #222;
 }
 
 .leaderboard-table tbody tr:nth-child(odd) {
-  background-color: #1a1a1a;
+    background-color: #1a1a1a;
 }
 
 /* Update hover effect for better visibility */
 .leaderboard-table tbody tr:hover {
-  background-color: #2a2a2a;
+    background-color: #2a2a2a;
 }
 
 /* Lap Highlighting */
 .lap-fastest-overall {
-  background-color: var(--fastest-lap-color);
-  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
-  background-size: 8px 8px;
+    background-color: var(--fastest-lap-color);
+    background-image: linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.2) 12.5%,
+        transparent 12.5%,
+        transparent 87.5%,
+        rgba(0, 0, 0, 0.2) 87.5%
+    );
+    background-size: 8px 8px;
 }
 
 .lap-personal-best {
-  background-color: var(--personal-best-color);
-  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
-  background-size: 8px 8px;
+    background-color: var(--personal-best-color);
+    background-image: linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.2) 12.5%,
+        transparent 12.5%,
+        transparent 87.5%,
+        rgba(0, 0, 0, 0.2) 87.5%
+    );
+    background-size: 8px 8px;
 }
 
 .lap-overall-fastest {
-  background-color: var(--overall-fastest-color);
+    background-color: var(--overall-fastest-color);
 }
 
 .lap-overall-personal-best {
-  background-color: var(--overall-personal-best-color);
+    background-color: var(--overall-personal-best-color);
 }
 
 /* Legend */
 .legend-square {
-  width: 16px;
-  height: 16px;
-  border: 1px solid #666;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #666;
 }
 
 .legend-square-fastest-overall {
-  composes: legend-square;
-  background-color: var(--fastest-lap-color);
-  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
-  background-size: 8px 8px;
+    composes: legend-square;
+    background-color: var(--fastest-lap-color);
+    background-image: linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.2) 12.5%,
+        transparent 12.5%,
+        transparent 87.5%,
+        rgba(0, 0, 0, 0.2) 87.5%
+    );
+    background-size: 8px 8px;
 }
 
 .legend-square-personal-best {
-  composes: legend-square;
-  background-color: var(--personal-best-color);
-  background-image: linear-gradient(45deg, rgba(0,0,0,0.2) 12.5%, transparent 12.5%, transparent 87.5%, rgba(0,0,0,0.2) 87.5%);
-  background-size: 8px 8px;
+    composes: legend-square;
+    background-color: var(--personal-best-color);
+    background-image: linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.2) 12.5%,
+        transparent 12.5%,
+        transparent 87.5%,
+        rgba(0, 0, 0, 0.2) 87.5%
+    );
+    background-size: 8px 8px;
 }
 
 .legend-square-overall-fastest {
-  composes: legend-square;
-  background-color: var(--overall-fastest-color);
+    composes: legend-square;
+    background-color: var(--overall-fastest-color);
 }
 
 .legend-square-overall-personal-best {
-  composes: legend-square;
-  background-color: var(--overall-personal-best-color);
+    composes: legend-square;
+    background-color: var(--overall-personal-best-color);
 }
 
 /* Status Text */
 .racing-text {
-  color: #00ff00;
+    color: #00ff00;
 }
 
 .next-text {
-  color: #ffa500;
+    color: #ffa500;
 }
 
 .done-text {
-  color: #888;
-  font-style: italic;
+    color: #888;
+    font-style: italic;
 }
 
 /* Channel Display */
 .channel-display {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 .channel-square {
-  width: 10px;
-  height: 10px;
-  margin: 0 5px;
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
 }
 
 /* Source Info */
 .source-info {
-  display: none;
-  font-size: 0.7em;
-  color: #fff;
-  margin-left: 8px;
+    display: none;
+    font-size: 0.7em;
+    color: #fff;
+    margin-left: 8px;
 }
 
 /* Utility Classes */
 .flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 /* QR Code */
 .qr-code-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
 }
 
 /* Recent time highlighting */
 .recent-time {
-  animation: highlight 2s;
-  background-color: #2a4a2a;
-  border-radius: 4px;
-  padding: 2px 4px;
+    animation: highlight 2s;
+    background-color: #2a4a2a;
+    border-radius: 4px;
+    padding: 2px 4px;
 }
 
 @keyframes highlight {
-  0% {
-    background-color: #4a2a2a;
-  }
-  100% {
-    background-color: #2a4a2a;
-  }
+    0% {
+        background-color: #4a2a2a;
+    }
+    100% {
+        background-color: #2a4a2a;
+    }
 }
 
 /* Position change animation */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .position-change {
-  animation: fadeIn 0.5s ease-in;
+    animation: fadeIn 0.5s ease-in;
 }
 
 /* Position display */
 .position-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .position-change {
-  animation: fadeIn 0.5s ease-in;
-  font-size: 0.8em;
-  margin-top: 2px;
+    animation: fadeIn 0.5s ease-in;
+    font-size: 0.8em;
+    margin-top: 2px;
 }
 
 .leaderboard-table td {
-  padding: 4px 8px;
-  vertical-align: top;
+    padding: 4px 8px;
+    vertical-align: top;
 }
 
 /* Add these new animations to the existing CSS */
 
 @keyframes moveUpAndForward {
-  0% {
-    transform: translateZ(0) translateY(0);
-    background-color: #2a2a2a;
-  }
-  25% {
-    transform: translateZ(50px) translateY(0);
-    background-color: #3a3a3a;
-  }
-  75% {
-    transform: translateZ(50px) translateY(-100%);
-    background-color: #3a3a3a;
-  }
-  100% {
-    transform: translateZ(0) translateY(0);
-    background-color: #2a2a2a;
-  }
+    0% {
+        transform: translateZ(0) translateY(0);
+        background-color: #2a2a2a;
+    }
+    25% {
+        transform: translateZ(50px) translateY(0);
+        background-color: #3a3a3a;
+    }
+    75% {
+        transform: translateZ(50px) translateY(-100%);
+        background-color: #3a3a3a;
+    }
+    100% {
+        transform: translateZ(0) translateY(0);
+        background-color: #2a2a2a;
+    }
 }
 
 /* Update the leaderboard table styles */
 .leaderboard-table {
-  /* ... existing styles ... */
-  perspective: 1000px; /* Add perspective for 3D effect */
+    /* ... existing styles ... */
+    perspective: 1000px; /* Add perspective for 3D effect */
 }
 
 .leaderboard-table tbody tr {
-  transition: transform 0.3s ease-out;
+    transition: transform 0.3s ease-out;
 }
 
 .position-improved {
-  animation: moveUpAndForward 1s ease-out;
-  z-index: 10;
-  position: relative;
+    animation: moveUpAndForward 1s ease-out;
+    z-index: 10;
+    position: relative;
 }
 
 /* Brackets View Styles */
 .brackets-container {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .bracket {
-  background-color: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 12px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
 }
 
 .bracket h3 {
-  margin: 0 0 12px 0;
-  color: #888;
-  font-size: 1.1em;
+    margin: 0 0 12px 0;
+    color: #888;
+    font-size: 1.1em;
 }
 
 .bracket-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9em;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
 }
 
 .bracket-table th,
 .bracket-table td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid #333;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid #333;
 }
 
 .bracket-table th {
-  font-weight: bold;
-  color: #888;
-  background-color: #222;
+    font-weight: bold;
+    color: #888;
+    background-color: #222;
 }
 
 .bracket-table tr:last-child td {
-  border-bottom: none;
+    border-bottom: none;
 }
 
 .bracket-table tbody tr:hover {
-  background-color: #222;
+    background-color: #222;
 }
 
 .bracket-table td:first-child {
-  font-weight: bold;
-  color: #666;
+    font-weight: bold;
+    color: #666;
 }
 
 .bracket-table td:nth-child(3) {
-  font-weight: bold;
-  color: #00ff00;
+    font-weight: bold;
+    color: #00ff00;
 }
 
 /* Eliminated Pilots View */
 .eliminated-pilots {
-  margin-bottom: 16px;
+    margin-bottom: 16px;
 }
 
 .eliminated-pilots .bracket-table {
-  width: 100%;
+    width: 100%;
 }
 
 .eliminated-pilots .bracket-table td:nth-child(4) {
-  font-weight: bold;
-  color: #ff4444;
+    font-weight: bold;
+    color: #ff4444;
 }
