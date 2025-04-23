@@ -12,28 +12,26 @@ This document outlines the comprehensive improvement strategy for the Drone Dash
 
 ### Improvement Strategy
 
-#### 1.1 State Modularization
+#### 1.1 State Organization
 ```typescript
-// Proposed structure:
-src/state/
-├── races/
-│   ├── atoms.ts        # Race-specific atoms
-│   ├── selectors.ts    # Race-specific derived state
-│   └── mutations.ts    # Race state updates
-├── pilots/
-│   ├── atoms.ts
-│   ├── selectors.ts
-│   └── mutations.ts
-├── channels/
-│   ├── atoms.ts
-│   ├── selectors.ts
-│   └── mutations.ts
-└── index.ts           # Public API
+// Feature-specific state:
+race/
+├── race-state.ts     # Race-specific atoms
+└── race-types.ts     # Race-specific types
+
+pilot/
+├── pilot-state.ts
+└── pilot-types.ts
+
+// Global state:
+state/
+├── atoms.ts         # App-wide atoms
+└── selectors.ts     # Global selectors
 ```
 
 #### 1.2 Custom Hooks Implementation
 ```typescript
-// Example of encapsulated race logic
+// Example from race-hooks.ts
 export function useRaceData(raceId: string) {
   const [race] = useAtom(raceAtom);
   const [loading, setLoading] = useState(false);
@@ -65,52 +63,45 @@ export function useRaceData(raceId: string) {
 
 ### Improvement Strategy
 
-#### 2.1 Component Extraction Plan
-From App.tsx, extract:
-1. `<LapsView />` → `components/races/LapsView/`
-   ```typescript
-   components/races/LapsView/
-   ├── index.tsx
-   ├── LapsTable.tsx
-   ├── LapRow.tsx
-   ├── useRaceLaps.ts
-   └── styles.module.css
-   ```
-
-2. `<Leaderboard />` → `components/leaderboard/`
-   ```typescript
-   components/leaderboard/
-   ├── index.tsx
-   ├── LeaderboardRow.tsx
-   ├── useLeaderboard.ts
-   └── styles.module.css
-   ```
-
-3. `<BracketsView />` → `components/brackets/`
-   ```typescript
-   components/brackets/
-   ├── index.tsx
-   ├── BracketMatch.tsx
-   ├── useBracketData.ts
-   └── styles.module.css
-   ```
-
-#### 2.2 Shared Components
-Extract common patterns into reusable components:
+#### 2.1 Feature-Based Organization
 ```typescript
-components/common/
-├── LoadingSpinner/
-├── ErrorBoundary/
-├── DataTable/
-├── StatusBadge/
-└── TimeDisplay/
+src/
+├── race/                    # Race feature
+│   ├── CurrentRace.tsx     
+│   ├── LastRace.tsx
+│   ├── NextRaces.tsx
+│   ├── LapsView.tsx
+│   ├── race-hooks.ts
+│   ├── race-state.ts
+│   └── race-types.ts
+
+├── pilot/                   # Pilot feature
+│   ├── ChannelView.tsx
+│   ├── Channel.tsx
+│   ├── pilot-hooks.ts
+│   ├── pilot-state.ts
+│   └── pilot-types.ts
+
+├── common/                  # Shared components
+│   ├── ErrorBoundary.tsx
+│   ├── TimeDisplay.tsx
+│   └── Spinner.tsx
 ```
 
-#### 2.3 Data Fetching Separation
-- Move data fetching logic to custom hooks
+#### 2.2 Shared Components
+Common components that don't belong to a specific feature:
+```typescript
+common/
+├── ErrorBoundary.tsx
+├── TimeDisplay.tsx
+└── Spinner.tsx
+```
+
+#### 2.3 Feature-Based Data Fetching
+- Move data fetching logic to feature-specific hooks
 - Implement proper caching strategies
 - Add error handling and retries
-- Separate UI and data concerns
+- Separate UI and data concerns within each feature
 
 ## 3. Type System Improvements
 
@@ -198,22 +189,22 @@ const BracketView = lazy(() => import('./components/BracketView'));
 ## 5. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
-1. Set up new directory structure
-2. Implement base type system improvements
-3. Create shared components
-4. Set up testing infrastructure
+1. Set up new feature-based directory structure
+2. Create shared components in common/
+3. Set up testing infrastructure
+4. Begin extracting first feature (race)
 
-### Phase 2: Core Improvements (Weeks 3-4)
-1. Implement state management modularization
-2. Extract main components from App.tsx
+### Phase 2: Core Features (Weeks 3-4)
+1. Complete race feature migration
+2. Implement pilot feature
 3. Add error handling improvements
 4. Implement basic performance optimizations
 
 ### Phase 3: Advanced Features (Weeks 5-6)
-1. Implement advanced caching
-2. Add code splitting
-3. Implement advanced error recovery
-4. Add performance monitoring
+1. Complete leaderboard feature
+2. Implement bracket feature
+3. Add advanced caching
+4. Add code splitting
 
 ### Phase 4: Polish (Weeks 7-8)
 1. Implement remaining optimizations
