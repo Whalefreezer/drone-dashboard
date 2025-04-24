@@ -30,6 +30,7 @@ import {
     secondsFromString,
 } from './common/index.ts';
 import { DaySchedule } from './race/index.ts';
+import { TimeDisplay } from './common/index.ts';
 
 // Add scoring system at the top of the file
 const POSITION_POINTS: Record<number, number> = {
@@ -45,23 +46,6 @@ function App() {
     const currentRaceIndex = findIndexOfCurrentRace(races);
     const lastRaceIndex = findIndexOfLastRace(races);
     const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
-    const [currentTime, setCurrentTime] = useState('');
-
-    useEffect(() => {
-        const updateTime = () => {
-            const time = new Date().toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-            });
-            setCurrentTime(time);
-        };
-
-        updateTime(); // Initial update
-        const timer = setInterval(updateTime, 1000); // Update every second
-
-        return () => clearInterval(timer); // Cleanup
-    }, []);
 
     usePeriodicUpdate(updateRoundsData, 10_000);
 
@@ -80,7 +64,7 @@ function App() {
                     zIndex: 100,
                 }}
             >
-                {currentTime}
+                <TimeDisplay />
             </div>
             <div className='app-container' style={{ marginTop: '40px' }}>
                 <div className='races-container'>
