@@ -1,9 +1,9 @@
 /// <reference lib="deno.ns" />
-import { assert, assertEquals } from 'https://deno.land/std@0.215.0/assert/mod.ts'; // Use a specific version
-import { defaultLeaderboardSortConfig, sortLeaderboard } from './sorting.ts';
-import type { LeaderboardEntry } from './state.ts';
-import type { Channel, Pilot } from './types.ts';
-import { ChannelPrefix, ShortBand } from './types.ts'; // Import necessary enums
+import { assert, assertEquals } from 'jsr:@std/assert@0.218.2';
+import { defaultLeaderboardSortConfig, sortLeaderboard } from './race-utils.ts';
+import type { LeaderboardEntry } from '../state/atoms.ts';
+import type { Channel, Pilot } from '../types/types.ts';
+import { ChannelPrefix, ShortBand } from '../types/types.ts'; // Import necessary enums
 
 // --- Mock Data ---
 

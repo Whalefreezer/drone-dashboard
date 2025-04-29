@@ -1,7 +1,20 @@
 // @deno-types="@types/react"
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-export default function TimeDisplay() {
+interface TimeDisplayProps {
+    /** Format for displaying the time. Defaults to '12h' */
+    format?: '12h' | '24h';
+    /** Whether to show seconds. Defaults to false */
+    showSeconds?: boolean;
+    /** Custom style object for the container */
+    style?: React.CSSProperties;
+}
+
+export default function TimeDisplay({ 
+    format = '12h', 
+    showSeconds = false,
+    style
+}: TimeDisplayProps) {
     const [currentTime, setCurrentTime] = useState('');
 
     useEffect(() => {
@@ -9,7 +22,8 @@ export default function TimeDisplay() {
             const time = new Date().toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
-                hour12: true,
+                second: showSeconds ? '2-digit' : undefined,
+                hour12: format === '12h',
             });
             setCurrentTime(time);
         };
@@ -18,7 +32,7 @@ export default function TimeDisplay() {
         const timer = setInterval(updateTime, 1000); // Update every second
 
         return () => clearInterval(timer); // Cleanup
-    }, []);
+    }, [format, showSeconds]);
 
     return (
         <div
@@ -26,12 +40,8 @@ export default function TimeDisplay() {
                 textAlign: 'center',
                 padding: '0.5rem',
                 borderBottom: '1px solid #333',
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
                 backgroundColor: '#1a1a1a',
-                zIndex: 100,
+                ...style
             }}
         >
             {currentTime}

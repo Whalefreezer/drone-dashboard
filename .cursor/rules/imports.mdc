@@ -1,3 +1,8 @@
+---
+description: 
+globs: *.ts,*.tsx
+alwaysApply: false
+---
 # TypeScript Import Guidelines
 
 - **Always Include File Extensions**

@@ -4,7 +4,14 @@ import { LeaderboardEntry, ProcessedLap, RaceWithProcessedLaps } from '../state/
 export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
 
 export function getPositionWithSuffix(position: number): string {
-    const suffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+    // Handle special cases for 11th, 12th, 13th
+    if (position % 100 >= 11 && position % 100 <= 13) {
+        return `${position}th`;
+    }
+    
+    // Handle other cases based on the last digit
+    const lastDigit = position % 10;
+    const suffix = lastDigit === 1 ? 'st' : lastDigit === 2 ? 'nd' : lastDigit === 3 ? 'rd' : 'th';
     return `${position}${suffix}`;
 }
 

@@ -4,8 +4,17 @@
         "build": "deno run -A --node-modules-dir npm:vite build --emptyOutDir",
         "preview": "deno run -A --node-modules-dir npm:vite preview",
         "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/",
-        "test": "deno test --allow-env --allow-read",
-        "test:watch": "deno test --allow-env --allow-read --watch"
+        "test": "deno test --allow-env --allow-read --allow-net --allow-write",
+        "test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --watch"
+    },
+    "test": {
+        "include": [
+            "test_setup.ts",
+            "src/**/*.test.ts",
+            "src/**/*.test.tsx",
+            "tests/**/*.test.ts",
+            "tests/**/*.test.tsx"
+        ]
     },
     "compilerOptions": {
         "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -16,6 +25,7 @@
     "imports": {
         "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.0",
         "@tanstack/query-core": "npm:@tanstack/query-core@^5.66.0",
+        "@testing-library/react": "npm:@testing-library/react@^16.3.0",
         "@types/react": "npm:@types/react@^18.3.12",
         "@types/react-dom": "npm:@types/react-dom@^18.3.1",
         "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.7.1",
