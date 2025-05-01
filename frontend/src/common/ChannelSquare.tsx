@@ -1,6 +1,6 @@
 import React from 'react';
-import { useQueryAtom } from '../../state/index.ts';
-import { eventDataAtom } from '../../state/index.ts';
+import { useQueryAtom } from '../state/index.ts';
+import { eventDataAtom } from '../state/index.ts';
 import './ChannelSquare.css';
 // import './ChannelSquare.css';
 

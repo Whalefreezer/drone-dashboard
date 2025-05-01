@@ -30,8 +30,8 @@ import {
 } from './common/index.ts';
 import { DaySchedule } from './race/index.ts';
 import { TimeDisplay } from './common/index.ts';
-import { LapsView } from './components/races/LapsView.tsx';
-import { ChannelSquare } from './components/common/ChannelSquare.tsx';
+import { LapsView } from './race/LapsView.tsx';
+import { ChannelSquare } from './common/ChannelSquare.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);

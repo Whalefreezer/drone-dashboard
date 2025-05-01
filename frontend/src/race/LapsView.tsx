@@ -13,13 +13,13 @@ import {
     useQueryAtom,
     Bracket,
     BracketPilot,
-} from '../../state/index.ts';
-import { PilotChannel } from '../../types/index.ts';
+} from '../state/index.ts';
+import { PilotChannel } from '../types/index.ts';
 import {
     findIndexOfCurrentRace,
     getLapClassName,
     getPositionWithSuffix,
-} from '../../common/index.ts';
+} from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import './LapsView.css';
 
