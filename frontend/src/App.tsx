@@ -1,5 +1,4 @@
 import './App.css';
-// @deno-types="@types/react"
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {

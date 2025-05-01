@@ -1,4 +1,3 @@
-// @deno-types="@types/react"
 import React, { useEffect, useState } from 'react';
 
 interface TimeDisplayProps {

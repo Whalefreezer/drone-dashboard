@@ -33,6 +33,7 @@
     "npm:qrcode.react@^4.2.0": "4.2.0_react@19.1.0",
     "npm:react-dom@^19.1.0": "19.1.0_react@19.1.0",
     "npm:react@^19.1.0": "19.1.0",
+    "npm:vite@*": "6.3.4_@types+node@22.5.4_picomatch@4.0.2",
     "npm:vite@^6.3.4": "6.3.4_@types+node@22.5.4_picomatch@4.0.2"
   },
   "jsr": {

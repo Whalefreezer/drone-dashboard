@@ -1,4 +1,3 @@
-// @deno-types="@types/react"
 import React, { useEffect } from 'react';
 
 interface SpinnerProps {
