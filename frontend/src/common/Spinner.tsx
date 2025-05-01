@@ -1,10 +1,18 @@
 // @deno-types="@types/react"
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface SpinnerProps {
     size?: 'small' | 'medium' | 'large';
     color?: string;
 }
+
+// Define keyframes animation
+const KEYFRAMES_STYLE = `
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+`;
 
 export default function Spinner({ size = 'medium', color = '#ffffff' }: SpinnerProps) {
     const dimensions = {
@@ -15,8 +23,28 @@ export default function Spinner({ size = 'medium', color = '#ffffff' }: SpinnerP
 
     const { width, height } = dimensions[size];
 
+    useEffect(() => {
+        // Check if the style already exists
+        const existingStyle = document.getElementById('spinner-keyframes');
+        if (!existingStyle) {
+            const styleSheet = document.createElement('style');
+            styleSheet.id = 'spinner-keyframes';
+            styleSheet.textContent = KEYFRAMES_STYLE;
+            document.head.appendChild(styleSheet);
+        }
+
+        // Cleanup on unmount
+        return () => {
+            const style = document.getElementById('spinner-keyframes');
+            if (style && document.querySelectorAll('[data-spinner]').length === 1) {
+                style.remove();
+            }
+        };
+    }, []);
+
     return (
         <div
+            data-spinner
             style={{
                 display: 'inline-block',
                 width,
@@ -28,14 +56,4 @@ export default function Spinner({ size = 'medium', color = '#ffffff' }: SpinnerP
             }}
         />
     );
-}
-
-// Add the keyframes animation to the document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(styleSheet); 
+} 

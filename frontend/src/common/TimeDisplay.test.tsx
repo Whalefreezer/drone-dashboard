@@ -1,7 +1,8 @@
+import "../tests/test_setup.ts";
 import { assertEquals } from "@std/assert";
 import { render } from "@testing-library/react";
 import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";
-import TimeDisplay from '../TimeDisplay.tsx';
+import TimeDisplay from './TimeDisplay.tsx';
 
 describe('TimeDisplay', () => {
     let originalDate: DateConstructor;

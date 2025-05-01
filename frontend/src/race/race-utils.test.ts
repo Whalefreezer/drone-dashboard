@@ -1,5 +1,5 @@
 /// <reference lib="deno.ns" />
-import { assert, assertEquals } from 'jsr:@std/assert@0.218.2';
+import { assert, assertEquals } from '@std/assert';
 import { defaultLeaderboardSortConfig, sortLeaderboard } from './race-utils.ts';
 import type { LeaderboardEntry } from '../state/atoms.ts';
 import type { Channel, Pilot } from '../types/types.ts';

@@ -5,6 +5,19 @@ alwaysApply: false
 ---
 # TypeScript Import Guidelines
 
+- **Version Specifiers in deno.json Only**
+  - All package version specifiers should be in deno.json imports map
+  - Keep imports in source files clean without version numbers
+  ```typescript
+  // ✅ DO: Clean imports (versions in deno.json)
+  import { assertEquals } from "@std/assert";
+  import { JSDOM } from "jsdom";
+  
+  // ❌ DON'T: Include version numbers in imports
+  import { assertEquals } from "jsr:@std/assert@0.218.2";
+  import { JSDOM } from "npm:jsdom@24.0.0";
+  ```
+
 - **Always Include File Extensions**
   - TypeScript/React files must include `.ts` or `.tsx` extensions in imports
   ```typescript

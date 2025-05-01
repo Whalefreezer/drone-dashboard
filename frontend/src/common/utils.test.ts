@@ -1,6 +1,6 @@
-import { assertEquals } from 'jsr:@std/assert@0.218.2';
-import { describe, it } from 'jsr:@std/testing@0.218.2/bdd';
-import { getPositionWithSuffix } from '../src/common/utils.ts';
+import { assertEquals } from '@std/assert';
+import { describe, it } from '@std/testing/bdd';
+import { getPositionWithSuffix } from './utils.ts';
 
 describe('utils', () => {
     describe('getPositionWithSuffix', () => {

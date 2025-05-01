@@ -1,7 +1,9 @@
+import "../tests/test_setup.ts";
 import { assertEquals } from "@std/assert";
 import { render } from "@testing-library/react";
 import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";
-import Spinner from '../Spinner.tsx';
+import Spinner from './Spinner.tsx';
+
 
 describe('Spinner', () => {
     it('renders with default props', () => {
