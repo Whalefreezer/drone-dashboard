@@ -32,6 +32,7 @@ import { DaySchedule } from './race/index.ts';
 import { TimeDisplay } from './common/index.ts';
 import { LapsView } from './race/LapsView.tsx';
 import { ChannelSquare } from './common/ChannelSquare.tsx';
+import Legend from './common/Legend.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -449,52 +450,6 @@ function Leaderboard() {
                     })}
                 </tbody>
             </table>
-        </div>
-    );
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-    const getClassName = () => {
-        switch (color) {
-            case 'var(--overall-fastest-color)':
-                return 'legend-square-overall-fastest';
-            case 'var(--overall-personal-best-color)':
-                return 'legend-square-overall-personal-best';
-            case 'var(--fastest-lap-color)':
-                return 'legend-square-fastest-overall';
-            case 'var(--personal-best-color)':
-                return 'legend-square-personal-best';
-            default:
-                return 'legend-square';
-        }
-    };
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
-            <div className={getClassName()} />
-            <span>{label}</span>
-        </div>
-    );
-}
-
-function Legend() {
-    return (
-        <div
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                padding: '8px',
-                backgroundColor: '#222',
-                borderRadius: '4px',
-                marginBottom: '16px',
-                width: 'fit-content',
-            }}
-        >
-            <LegendItem color='var(--overall-fastest-color)' label='Overall Fastest' />
-            <LegendItem color='var(--overall-personal-best-color)' label='Overall Personal Best' />
-            <LegendItem color='var(--fastest-lap-color)' label='Race Fastest' />
-            <LegendItem color='var(--personal-best-color)' label='Race Personal Best' />
         </div>
     );
 }
