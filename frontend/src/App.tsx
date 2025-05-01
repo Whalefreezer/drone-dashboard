@@ -30,14 +30,8 @@ import {
 } from './common/index.ts';
 import { DaySchedule } from './race/index.ts';
 import { TimeDisplay } from './common/index.ts';
-
-// Add scoring system at the top of the file
-const POSITION_POINTS: Record<number, number> = {
-    1: 10,
-    2: 7,
-    3: 4,
-    4: 3,
-};
+import { LapsView } from './components/races/LapsView.tsx';
+import { ChannelSquare } from './components/common/ChannelSquare.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -53,7 +47,6 @@ function App() {
             <div
                 style={{
                     textAlign: 'center',
-                    padding: '0.5rem',
                     borderBottom: '1px solid #333',
                     position: 'fixed',
                     top: 0,
@@ -135,245 +128,6 @@ function App() {
     );
 }
 
-function LapsView({ raceId }: { raceId: string }) {
-    const roundData = useAtomValue(roundsDataAtom);
-    const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
-    const races = useAtomValue(racesAtom);
-    const pilots = useAtomValue(pilotsAtom);
-    const brackets = useQueryAtom(bracketsDataAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
-
-    usePeriodicUpdate(updateRace, isCurrentRace ? 500 : 10_000);
-
-    const round = roundData.find((r) => r.ID === race.Round);
-
-    // Get bracket data for any race
-    const getBracketData = (): Bracket | null => {
-        // Normalize names by removing whitespace and converting to lowercase
-        const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-
-        // Get the set of normalized pilot names from the race
-        const racePilotNames = new Set(
-            race.PilotChannels
-                .map((pc) => pilots.find((p) => p.ID === pc.Pilot)?.Name ?? '')
-                .filter((name) => name !== '')
-                .map(normalizeString),
-        );
-
-        // Find the bracket that matches the race pilots
-        const matchingBracket = null; /* brackets.find(bracket => {
-      const bracketPilotNames = new Set(
-        bracket.pilots.map(p => normalizeString(p.name))
-      );
-
-      return bracketPilotNames.size === racePilotNames.size &&
-             Array.from(racePilotNames).every(name => bracketPilotNames.has(name));
-    });*/
-
-        return matchingBracket ?? null;
-    };
-
-    const matchingBracket = getBracketData();
-
-    return (
-        <div className='laps-view'>
-            <div className='race-info'>
-                <div className='race-number'>
-                    {round?.RoundNumber}-{race.RaceNumber}
-                    {matchingBracket && (
-                        <span style={{ marginLeft: '8px', color: '#888' }}>
-                            ({matchingBracket.name})
-                        </span>
-                    )}
-                </div>
-                <LapsTable race={race} matchingBracket={matchingBracket} />
-            </div>
-        </div>
-    );
-}
-
-function LapsTable(
-    { race, matchingBracket }: { race: RaceWithProcessedLaps; matchingBracket: Bracket | null },
-) {
-    // Calculate completed laps for each pilot and sort them
-    const pilotsWithLaps = race.PilotChannels.map((pilotChannel) => {
-        const completedLaps = race.processedLaps.filter((lap) =>
-            lap.pilotId === pilotChannel.Pilot
-        ).length;
-        return { pilotChannel, completedLaps };
-    }).sort((a, b) => b.completedLaps - a.completedLaps);
-
-    // Get the actual number of columns needed
-    const maxLaps = Math.max(...race.processedLaps.map((lap) => lap.lapNumber));
-
-    return (
-        <table className='laps-table'>
-            <LapsTableHeader maxLaps={maxLaps} matchingBracket={matchingBracket} />
-            <tbody>
-                {pilotsWithLaps.map((pilotData, index) => (
-                    <LapsTableRow
-                        key={pilotData.pilotChannel.ID}
-                        pilotChannel={pilotData.pilotChannel}
-                        position={index + 1}
-                        maxLaps={maxLaps}
-                        race={race}
-                        matchingBracket={matchingBracket}
-                    />
-                ))}
-            </tbody>
-        </table>
-    );
-}
-
-function LapsTableHeader(
-    { maxLaps, matchingBracket }: { maxLaps: number; matchingBracket: Bracket | null },
-) {
-    const headerCells = [
-        <th key='header-pos'>Pos</th>,
-        <th key='header-name'>Name</th>,
-        <th key='header-channel'>Chan</th>,
-    ];
-
-    if (matchingBracket) {
-        headerCells.push(
-            <th key='header-points'>Points</th>,
-        );
-
-        // Add bracket round headers
-        matchingBracket.pilots[0]?.rounds.forEach((_, index: number) => {
-            headerCells.push(
-                <th key={`header-bracket-round-${index}`}>R{index + 1}</th>,
-            );
-        });
-    }
-
-    // Add lap headers after bracket information
-    for (let i = 0; i <= maxLaps; i++) {
-        headerCells.push(
-            <th key={`header-lap-${i}`}>
-                {i === 0 ? 'HS' : `L${i}`}
-            </th>,
-        );
-    }
-
-    return (
-        <thead>
-            <tr>{headerCells}</tr>
-        </thead>
-    );
-}
-
-function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }: {
-    pilotChannel: PilotChannel;
-    position: number;
-    maxLaps: number;
-    race: RaceWithProcessedLaps;
-    matchingBracket: Bracket | null;
-}) {
-    const pilots = useAtomValue(pilotsAtom);
-    const channels = useAtomValue(channelsDataAtom);
-    const overallBestTimes = useAtomValue(overallBestTimesAtom);
-
-    const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
-
-    // Get all laps for this pilot
-    const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.Pilot);
-
-    // Get racing laps (excluding holeshot) for calculations only
-    const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
-
-    // Calculate fastest lap for this pilot (excluding holeshot)
-    const fastestLap = racingLaps.length > 0
-        ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
-        : Infinity;
-
-    // Calculate overall fastest lap across all pilots (excluding holeshot)
-    const overallFastestLap = Math.min(
-        ...race.processedLaps
-            .filter((lap) => !lap.isHoleshot)
-            .map((lap) => lap.lengthSeconds),
-    );
-
-    // Find matching bracket pilot
-    const bracketPilot = matchingBracket?.pilots.find(
-        (p: BracketPilot) =>
-            p.name.toLowerCase().replace(/\s+/g, '') ===
-                pilot.Name.toLowerCase().replace(/\s+/g, ''),
-    );
-
-    const cells = [
-        <td key='pos'>
-            {maxLaps > 0
-                ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {getPositionWithSuffix(position)}
-                        {POSITION_POINTS[position] && (
-                            <span style={{ fontSize: '0.8em', color: '#888' }}>
-                                +{POSITION_POINTS[position]}
-                            </span>
-                        )}
-                    </div>
-                )
-                : '-'}
-        </td>,
-        <td key='name'>{pilot.Name}</td>,
-        <td key='channel'>
-            <div className='flex-row'>
-                {channel.ShortBand}
-                {channel.Number}
-                <ChannelSquare channelID={pilotChannel.Channel} />
-            </div>
-        </td>,
-    ];
-
-    if (matchingBracket && bracketPilot) {
-        cells.push(
-            <td key='points' style={{ color: '#00ff00' }}>{bracketPilot.points}</td>,
-        );
-
-        // Add bracket round cells
-        bracketPilot.rounds.forEach((round: number | null, index: number) => {
-            cells.push(
-                <td key={`bracket-round-${index}`}>
-                    {round
-                        ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {round}
-                                {POSITION_POINTS[round] && (
-                                    <span style={{ fontSize: '0.8em', color: '#888' }}>
-                                        +{POSITION_POINTS[round]}
-                                    </span>
-                                )}
-                            </div>
-                        )
-                        : '-'}
-                </td>,
-            );
-        });
-    }
-
-    // Add lap cells
-    pilotLaps.forEach((lap) => {
-        const className = getLapClassName(
-            lap,
-            overallBestTimes.overallFastestLap,
-            overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot),
-            overallFastestLap,
-            fastestLap,
-        );
-
-        cells.push(
-            <td key={lap.id} className={className}>
-                {lap.lengthSeconds.toFixed(3)}
-            </td>,
-        );
-    });
-
-    return <tr>{cells}</tr>;
-}
-
 function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
     const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
@@ -382,8 +136,10 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
 
-    const color = eventData[0]
-        .ChannelColors[eventData[0].Channels.indexOf(pilotChannel.Channel)];
+    const colorIndex = eventData?.[0]?.Channels?.indexOf(pilotChannel.Channel);
+    const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
+        ? eventData[0].ChannelColors[colorIndex]
+        : '#888';
 
     return (
         <div className='pilot-channel'>
@@ -395,22 +151,6 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
                 className='color-indicator'
                 style={{ backgroundColor: color }}
             />
-        </div>
-    );
-}
-
-function ChannelSquare(
-    { channelID, change }: { channelID: string; change?: boolean },
-) {
-    const eventData = useQueryAtom(eventDataAtom);
-    const color = eventData[0].ChannelColors[eventData[0].Channels.indexOf(channelID)];
-
-    return (
-        <div
-            className='channel-square'
-            style={{ backgroundColor: color }}
-        >
-            {change ? '!' : ''}
         </div>
     );
 }
