@@ -20,40 +20,27 @@ The current codebase has a monolithic structure with most of the UI components d
 
 ### Components Identified for Extraction
 
-From `App.tsx`, the following components can be extracted:
+The following components are defined within `App.tsx` or already extracted and should be organized according to the proposed structure:
 
-1. **Layout Components**:
-   - `AppLayout`: Main layout with header and content areas
-   - `TimeDisplay`: Current time display in the header
-   - `MainContent`: Container for races and leaderboard
+1. **Already Extracted / Located:**
+   - `ErrorBoundary.tsx` (in `frontend/src/common/`) - Already exists
+   - `DaySchedule.tsx` (in `frontend/src/race/`) - Already exists
+   - `TimeDisplay.tsx` (in `frontend/src/common/`) - Already exists
+   - `Spinner.tsx` (in `frontend/src/common/`) - Already exists
+   - `ChannelSquare.tsx` (in `frontend/src/common/`) - Already exists
+   - `LapsView.tsx` (in `frontend/src/race/`) - Already exists
 
-2. **Race Components**:
-   - `LapsView`: Currently defined as a function component within `App.tsx`
-   - `LapsTable`: Currently defined within `LapsView`
-   - `LapsTableHeader`: Currently defined as a separate function
-   - `LapsTableRow`: Currently defined as a separate function
-   - `RaceContainer`: Container for all race-related components
-   - `CurrentRace`: Container specific to the current race
-   - `LastRace`: Container specific to the last race
-   - `NextRaces`: Container for upcoming races
+2. **Defined within `App.tsx` (Needs Extraction):**
+   - `PilotChannelView` (Line 130) -> Move to `frontend/src/pilot/PilotChannelView.tsx`
+   - `RaceTime` (Line 157) -> Move to `frontend/src/race/RaceTime.tsx`
+   - `Leaderboard` (Line 191) -> Move to `frontend/src/leaderboard/Leaderboard.tsx`
+   - `LegendItem` (Line 455) -> Move to `frontend/src/common/LegendItem.tsx`
+   - `Legend` (Line 479) -> Move to `frontend/src/common/Legend.tsx`
+   - `BracketsView` (Line 501) -> Move to `frontend/src/bracket/BracketsView.tsx`
+   - `EliminatedPilotsView` (Line 570) -> Move to `frontend/src/bracket/EliminatedPilotsView.tsx`
 
-3. **Pilot Components**:
-   - `PilotChannelView`: Currently defined as a separate function
-   - `ChannelSquare`: Currently defined as a separate function
+*Note 1: Components `LapsTable`, `LapsTableHeader`, `LapsTableRow` are defined within `LapsView.tsx` but will **not** be extracted for now as `LapsView.tsx` is self-contained and not overly complex.*
 
-4. **Leaderboard Components**:
-   - `Leaderboard`: Currently defined as a separate function
-   - `LeaderboardHeader`: Currently defined within `Leaderboard`
-   - `LeaderboardRow`: Currently defined within `Leaderboard`
-
-5. **Bracket Components**:
-   - `BracketsView`: Currently defined as a separate function
-   - `EliminatedPilotsView`: Currently defined as a separate function
-
-6. **Utility Components**:
-   - `RaceTime`: Currently defined as a separate function
-   - `Legend`: Currently defined as a separate function
-   - `LegendItem`: Currently defined as a separate function
 
 ### Business Logic for Custom Hooks
 
@@ -83,61 +70,64 @@ The following business logic can be extracted into custom hooks:
    - `useBrackets`: For managing bracket data
    - `useEliminatedPilots`: For tracking eliminated pilots
 
+6. **Ensure consistent error handling across features**
+
 ## Refactoring Strategy
 
-### 1. New Folder Structure
+### 1. New Folder Structure (Target State)
 
 ```
 frontend/
 ├── src/
-│   ├── race/                     # Everything race-related
-│   │   ├── CurrentRace.tsx      
-│   │   ├── LastRace.tsx
-│   │   ├── NextRaces.tsx
-│   │   ├── LapsView.tsx
-│   │   ├── race-hooks.ts        # Race-specific hooks
-│   │   ├── race-state.ts        # Race-specific state
-│   │   ├── race-utils.ts        # Race-specific utilities
-│   │   ├── race-types.ts        # Race-specific types
-│   │   └── index.ts             # Public API for race feature
+│   ├── race/                     # Existing race components + RaceTime
+│   │   ├── LapsView.tsx          # Contains LapsTable, Header, Row internally
+│   │   ├── DaySchedule.tsx
+│   │   ├── RaceTime.tsx          # Extracted from App.tsx
+│   │   ├── race-hooks.ts
+│   │   ├── race-state.ts
+│   │   ├── race-utils.ts
+│   │   ├── race-types.ts
+│   │   └── index.ts
 │   │
-│   ├── pilot/                   
-│   │   ├── ChannelView.tsx
-│   │   ├── Channel.tsx
+│   ├── pilot/                    # Pilot-specific components
+│   │   ├── PilotChannelView.tsx  # Extracted from App.tsx
 │   │   ├── pilot-hooks.ts
 │   │   ├── pilot-state.ts
 │   │   ├── pilot-types.ts
 │   │   └── index.ts
 │   │
-│   ├── leaderboard/            
-│   │   ├── Leaderboard.tsx
-│   │   ├── Row.tsx
+│   ├── leaderboard/              # Leaderboard components
+│   │   ├── Leaderboard.tsx       # Extracted from App.tsx
 │   │   ├── leaderboard-hooks.ts
 │   │   ├── leaderboard-state.ts
 │   │   ├── leaderboard-types.ts
 │   │   └── index.ts
 │   │
-│   ├── bracket/                
-│   │   ├── Bracket.tsx
-│   │   ├── EliminatedPilots.tsx
+│   ├── bracket/                  # Bracket components
+│   │   ├── BracketsView.tsx        # Extracted from App.tsx
+│   │   ├── EliminatedPilotsView.tsx # Extracted from App.tsx
 │   │   ├── bracket-hooks.ts
 │   │   ├── bracket-state.ts
 │   │   ├── bracket-types.ts
 │   │   └── index.ts
 │   │
-│   ├── common/                  # Truly shared components and utilities
-│   │   ├── ErrorBoundary.tsx
-│   │   ├── TimeDisplay.tsx
-│   │   └── Spinner.tsx
+│   ├── common/                   # Truly shared components and utilities
+│   │   ├── ErrorBoundary.tsx     # Existing
+│   │   ├── TimeDisplay.tsx       # Existing
+│   │   ├── Spinner.tsx           # Existing
+│   │   ├── ChannelSquare.tsx     # Existing
+│   │   ├── Legend.tsx            # Extracted from App.tsx
+│   │   ├── LegendItem.tsx        # Extracted from App.tsx
+│   │   └── index.ts
 │   │
-│   ├── state/                   # Global state
-│   │   ├── atoms.ts           
-│   │   └── selectors.ts        
+│   ├── state/                    # Global state
+│   │   ├── atoms.ts
+│   │   └── selectors.ts
 │   │
-│   ├── types/                   # Shared types (if needed)
+│   ├── types/                    # Shared types (if needed)
 │   │   └── types.ts
 │   │
-│   ├── App.tsx
+│   ├── App.tsx                 # Should become simpler composition layer
 │   └── main.tsx
 ```
 
@@ -191,42 +181,39 @@ To ensure the application remains functional during refactoring:
 
 ## Component Extraction Plan
 
-### Phase 1: Common Components
+### Phase 1: Common Components (Partially Done)
 
-1. Extract shared components to `common/`:
-   - `TimeDisplay`
-   - `ErrorBoundary`
-   - `Spinner`
+1. Ensure shared components are in `common/`:
+   - `TimeDisplay` (Done)
+   - `ErrorBoundary` (Done)
+   - `Spinner` (Done)
+   - `ChannelSquare` (Done)
+   - Extract `Legend`, `LegendItem` from `App.tsx` to `common/`.
 
-### Phase 2: Race Feature
+### Phase 2: Race Feature (Partially Done)
 
-1. Create `race/` directory with core files
-2. Migrate race-related components:
-   - `CurrentRace`
-   - `LastRace`
-   - `NextRaces`
-   - `LapsView`
+1. `LapsView.tsx` and `DaySchedule.tsx` are already in `race/`.
+2. Internal components (`LapsTable`, `LapsTableHeader`, `LapsTableRow`) will remain within `LapsView.tsx` for now.
+3. Extract `RaceTime` from `App.tsx` to `frontend/src/race/RaceTime.tsx`.
 
 ### Phase 3: Pilot Feature
 
-1. Create `pilot/` directory with core files
-2. Migrate pilot-related components:
-   - `ChannelView`
-   - `Channel`
+1. Create `pilot/` directory with core files.
+2. Migrate components defined within `App.tsx`:
+   - `PilotChannelView` -> `frontend/src/pilot/PilotChannelView.tsx`
 
 ### Phase 4: Leaderboard Feature
 
-1. Create `leaderboard/` directory with core files
-2. Migrate leaderboard components:
-   - `Leaderboard`
-   - `Row`
+1. Create `leaderboard/` directory with core files.
+2. Migrate components defined within `App.tsx`:
+   - `Leaderboard` -> `frontend/src/leaderboard/Leaderboard.tsx`
 
 ### Phase 5: Bracket Feature
 
-1. Create `bracket/` directory with core files
-2. Migrate bracket components:
-   - `Bracket`
-   - `EliminatedPilots`
+1. Create `bracket/` directory with core files.
+2. Migrate components defined within `App.tsx`:
+   - `BracketsView` -> `frontend/src/bracket/BracketsView.tsx`
+   - `EliminatedPilotsView` -> `frontend/src/bracket/EliminatedPilotsView.tsx`
 
 ### Phase 6: Feature Hooks
 
@@ -262,7 +249,7 @@ For each feature, create its hooks file with related functionality:
 
 This refactoring plan addresses the key issues in the current codebase by:
 
-1. Breaking down the monolithic App.tsx
+1. Breaking down the monolithic `App.tsx`.
 2. Implementing a clear folder structure
 3. Separating business logic from UI components
 4. Creating reusable custom hooks
