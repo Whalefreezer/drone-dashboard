@@ -1,6 +1,6 @@
 import "../tests/test_setup.ts";
 import { assertEquals } from "@std/assert";
-import { render } from "@testing-library/react";
+import { render, cleanup } from "@testing-library/react";
 import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";
 import TimeDisplay from './TimeDisplay.tsx';
 
@@ -20,6 +20,7 @@ describe('TimeDisplay', () => {
 
     afterEach(() => {
         globalThis.Date = originalDate;
+        cleanup();
     });
 
     it('renders 12-hour time format by default', () => {
@@ -44,7 +45,7 @@ describe('TimeDisplay', () => {
         assertEquals(timeDisplay.style.textAlign, 'center');
         assertEquals(timeDisplay.style.padding, '0.5rem');
         assertEquals(timeDisplay.style.borderBottom, '1px solid #333');
-        assertEquals(timeDisplay.style.backgroundColor, '#1a1a1a');
+        assertEquals(timeDisplay.style.backgroundColor, 'rgb(26, 26, 26)');
     });
 
     it('allows style overrides', () => {

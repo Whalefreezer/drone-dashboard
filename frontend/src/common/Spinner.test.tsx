@@ -12,7 +12,7 @@ describe('Spinner', () => {
         
         assertEquals(spinner.style.width, '24px');  // medium size
         assertEquals(spinner.style.height, '24px');
-        assertEquals(spinner.style.borderColor, '#ffffff33');
+        assertEquals(spinner.style.borderColor, 'rgba(255, 255, 255, 0.2)');
         assertEquals(spinner.style.borderTopColor, '#ffffff');
     });
 
@@ -36,7 +36,7 @@ describe('Spinner', () => {
         const { container } = render(<Spinner color="#ff0000" />);
         const spinner = container.firstChild as HTMLElement;
         
-        assertEquals(spinner.style.borderColor, '#ff000033');
+        assertEquals(spinner.style.borderColor, 'rgba(255, 0, 0, 0.2)');
         assertEquals(spinner.style.borderTopColor, '#ff0000');
     });
 
