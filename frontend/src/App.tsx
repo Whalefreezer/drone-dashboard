@@ -36,6 +36,7 @@ import Legend from './common/Legend.tsx';
 import RaceTime from './race/RaceTime.tsx';
 import { PilotChannelView } from './pilot/index.ts';
 import ScenarioSelector from './common/ScenarioSelector.tsx';
+import SnapshotControl from './common/SnapshotControl.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -48,6 +49,8 @@ function App() {
 
     return (
         <>
+            <SnapshotControl />
+
             <div
                 style={{
                     textAlign: 'center',

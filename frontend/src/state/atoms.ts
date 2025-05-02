@@ -10,7 +10,7 @@ import { defaultLeaderboardSortConfig, sortLeaderboard } from '../race/race-util
 
 const UPDATE = true;
 
-const eventIdAtom = atomWithSuspenseQuery(() => ({
+export const eventIdAtom = atomWithSuspenseQuery(() => ({
     queryKey: ['eventId'],
     queryFn: async () => {
         const response = await axios.get('/api');
