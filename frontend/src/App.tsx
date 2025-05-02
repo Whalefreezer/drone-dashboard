@@ -33,6 +33,7 @@ import { TimeDisplay } from './common/index.ts';
 import { LapsView } from './race/LapsView.tsx';
 import { ChannelSquare } from './common/ChannelSquare.tsx';
 import Legend from './common/Legend.tsx';
+import RaceTime from './race/RaceTime.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -154,35 +155,6 @@ function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
             />
         </div>
     );
-}
-
-function RaceTime() {
-    const eventData = useQueryAtom(eventDataAtom);
-    const races = useAtomValue(racesAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const currentRace = races[currentRaceIndex];
-    const raceLength = secondsFromString(eventData[0].RaceLength);
-
-    const [timeRemaining, setTimeRemaining] = useState(raceLength);
-
-    useEffect(() => {
-        // Only start countdown if race has started
-        if (currentRace.Start) {
-            const currentRaceStart = new Date(currentRace.Start).valueOf() / 1000;
-            const currentRaceEnd = currentRaceStart + raceLength;
-
-            const interval = setInterval(() => {
-                setTimeRemaining(
-                    Math.max(0, currentRaceEnd - (new Date().valueOf() / 1000)),
-                );
-            }, 100);
-            return () => clearInterval(interval);
-        } else {
-            setTimeRemaining(raceLength);
-        }
-    }, [currentRace.Start, raceLength]);
-
-    return <div className='race-time'>{timeRemaining.toFixed(1)}</div>;
 }
 
 function formatTimeDifference(newTime: number, oldTime: number): string {
