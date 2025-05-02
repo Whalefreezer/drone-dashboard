@@ -16,8 +16,42 @@ export function getPositionWithSuffix(position: number): string {
 }
 
 export function secondsFromString(time: string): number {
-    const [hours, minutes, seconds] = time.split(':');
-    return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+    const parts = time.split(':').map(part => parseInt(part, 10));
+
+    // Check if any part failed to parse
+    if (parts.some(isNaN)) {
+        console.error(`Invalid time format passed to secondsFromString: ${time}`);
+        return NaN;
+    }
+
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+
+    if (parts.length === 3) {
+        // HH:MM:SS format
+        [hours, minutes, seconds] = parts;
+    } else if (parts.length === 2) {
+        // MM:SS format
+        [minutes, seconds] = parts;
+    } else {
+        // Handle unexpected formats (e.g., single number for seconds, or too many parts)
+        // For simplicity, let's assume a single number is seconds, otherwise error.
+        if (parts.length === 1) {
+             seconds = parts[0];
+        } else {
+            console.error(`Unexpected time format length in secondsFromString: ${time}`);
+            return NaN;
+        }
+    }
+
+    // Ensure all components are valid numbers before calculation
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+         console.error(`Parsed NaN component in secondsFromString: ${time}`);
+         return NaN;
+    }
+
+    return hours * 3600 + minutes * 60 + seconds;
 }
 
 export function orderRaces(races: Race[], rounds: Round[]): Race[] {
