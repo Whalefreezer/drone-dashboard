@@ -10,7 +10,7 @@ import { ChannelPrefix, ShortBand, EventType, RoundType } from '../types/index.t
 // Use a consistent mock event ID
 export const MOCK_EVENT_ID = 'mock-event-123';
 // Define base URL for mocks and export it
-export const BASE_URL = 'http://localhost';
+export const BASE_URL = 'http://localhost:5173';
 
 const mockApiPilots: Pilot[] = [
   { ID: 'pilot1', Name: 'Alice', Phonetic: 'Alpha', TimingSensitivityPercent: 100, PracticePilot: false, ExternalID: 301, Aircraft: null, BestResult: null, CatchPhrase: null, DiscordID: null, FirstName: null, LastName: null, PhotoPath: null, SillyName: null },
