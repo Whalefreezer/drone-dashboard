@@ -17,7 +17,7 @@ const eventIdAtom = atomWithSuspenseQuery(() => ({
         const text = response.data;
 
         const match = text.match(
-            /var eventManager = new EventManager\("events\/([a-f0-9-]+)"/,
+            /var eventManager = new EventManager\("events\/([a-z0-9-]+)"/,
         );
         if (match) {
             return match[1];
