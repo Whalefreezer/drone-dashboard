@@ -46,15 +46,8 @@ function App() {
 
     usePeriodicUpdate(updateRoundsData, 10_000);
 
-    // Check for the dev flag - No longer needed here for selector
-    // const urlParams = useMemo(() => new URLSearchParams(globalThis.location.search), []);
-    // const isDevMode = urlParams.get('dev') === '1';
-
     return (
         <>
-            {/* Scenario Selector is now rendered independently in main.tsx */}
-            {/* {isDevMode && <ScenarioSelector />} */}
-
             <div
                 style={{
                     textAlign: 'center',
@@ -109,13 +102,6 @@ function App() {
                         ))}
                     </div>
                 </div>
-                {
-                    /* <div className="schedule-container">
-          <div className="schedule-wrapper">
-            <DaySchedule {...scheduleData.sunday} />
-          </div>
-        </div> */
-                }
                 <div className='leaderboard-container'>
                     <Leaderboard />
                     {/* <EliminatedPilotsView /> */}
