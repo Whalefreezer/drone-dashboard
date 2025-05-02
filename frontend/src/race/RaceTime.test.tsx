@@ -1,35 +1,54 @@
-import "../tests/test_setup.ts";
-import { render, screen, act } from "@testing-library/react";
+import "../tests/global-jsdom.ts"; // Initialize JSDOM environment FIRST
+import "../tests/test_setup.ts"; // Import common setup (MSW, cleanup)
+import { render, screen, act } from "@testing-library/react"; // Import act
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
-import { Provider } from 'jotai'; // Removed createStore and atom imports if no longer needed
+import { Provider } from 'jotai';
 import RaceTime from './RaceTime.tsx';
-// Mocking atoms is complex here, so we focus on basic render
-// import { racesAtom, eventDataAtom } from '../state/atoms.ts';
-// import type { Race, RaceEvent } from '../types/index.ts';
+import { server } from '../mocks/server.ts'; // Import server for test-specific overrides
+import { http } from 'msw'; // Import msw utils for overrides
 
 describe('RaceTime', () => {
-  // Note: This test is simplified due to difficulties mocking useQueryAtom effectively.
-  // It primarily checks if the component renders without crashing in the Provider.
-  it('renders without crashing', async () => {
-    let renderedCorrectly = true;
-    try {
-      await act(async () => {
-        render(
-          <Provider> 
-            <RaceTime />
-          </Provider>
-        );
-      });
-      // Optional: Check if the container div exists
-      // const containerDiv = document.querySelector('.race-time'); 
-      // assertEquals(containerDiv !== null, true);
-    } catch (error) {
-      console.error("RaceTime render failed in test:", error);
-      renderedCorrectly = false;
-    }
-    assertEquals(renderedCorrectly, true, "Component should render without throwing errors");
+  it('renders initial time correctly based on mocked API data', async () => {
+    // Wrap render in async act to handle async state updates triggered by useQueryAtom
+    await act(async () => {
+      render(
+          <RaceTime />
+      );
+    });
+
+    // findBy* waits for the element to appear after async operations
+    const timeElement = await screen.findByText(/^180\.0$/); 
+    assertEquals(timeElement !== null, true, "Should display initial time 180.0");
   });
 
-  // TODO: Implement proper mocking for useQueryAtom/atoms for value testing.
+  it('renders error state when API fails', async () => {
+    // Override the default handler for /api/event to return an error for this test
+    server.use(
+      http.get('/api/event', () => {
+        const errorResponse = new Response(null, {
+          status: 500,
+          statusText: 'Internal Server Error'
+        });
+        return errorResponse; 
+      })
+    );
+
+    // Wrap render in async act here too for consistency and potential async error handling
+    await act(async () => {
+      render(
+          <RaceTime />
+      );
+    });
+
+    // Assert how the component handles the error.
+    const timeElement = screen.queryByText(/\d+\.\d/); 
+    assertEquals(timeElement, null, "Time element should not be present on error");
+
+    // Optionally, look for an error message if the component renders one
+    // const errorElement = await screen.findByText(/error/i); 
+    // assertEquals(errorElement !== null, true, "Should display an error message");
+  });
+
+  // TODO: Add tests for timer countdown behavior when race starts (requires Date/timer mocking).
 }); 

@@ -61,8 +61,8 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 
 export const pilotsAtom = atomWithRefresh(async (get) => {
     const { data: eventId } = await get(eventIdAtom);
-    const page = await robustFetch(`/api/events/${eventId}/Pilots.json`);
-    const json = await page.json();
+    const page = await axios.get(`/api/events/${eventId}/Pilots.json`);
+    const json = page.data;
     return json as Pilot[];
 });
 
@@ -90,8 +90,8 @@ export function useCachedAtom<T>(anAtom: Atom<T>) {
 }
 
 export const channelsDataAtom = atom(async () => {
-    const page = await robustFetch(`/api/httpfiles/Channels.json`);
-    const json = await page.json();
+    const page = await axios.get(`/api/httpfiles/Channels.json`);
+    const json = page.data;
     return json as Channel[];
 });
 
@@ -130,8 +130,8 @@ async function robustFetch(url: string): Promise<Response> {
 
 export const roundsDataAtom = atomWithRefresh(async (get) => {
     const { data: eventId } = await get(eventIdAtom);
-    const page = await robustFetch(`/api/events/${eventId}/Rounds.json`);
-    const json = await page.json();
+    const page = await axios.get(`/api/events/${eventId}/Rounds.json`);
+    const json = page.data;
     return json as Round[];
 });
 
@@ -177,8 +177,8 @@ export interface RaceWithProcessedLaps extends Race {
 export const raceFamilyAtom = atomFamily((raceId: string) =>
     atomWithRefresh(async (get) => {
         const { data: eventId } = await get(eventIdAtom);
-        const page = await fetch(`/api/events/${eventId}/${raceId}/Race.json`);
-        const json = await page.json();
+        const page = await axios.get(`/api/events/${eventId}/${raceId}/Race.json`);
+        const json = page.data;
         const race = json[0] as Race;
 
         const processedLaps = race.Laps

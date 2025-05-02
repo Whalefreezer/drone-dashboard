@@ -1,7 +1,8 @@
+import "../tests/global-jsdom.ts"; // Initialize JSDOM environment FIRST
 import "../tests/test_setup.ts";
-import { assertEquals } from "@std/assert";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";
+import { assertEquals } from "@std/assert";
 import Spinner from './Spinner.tsx';
 
 

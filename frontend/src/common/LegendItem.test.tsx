@@ -1,3 +1,4 @@
+import "../tests/global-jsdom.ts"; // Initialize JSDOM environment FIRST
 import "../tests/test_setup.ts"; // Add test setup import
 import { assertEquals } from "@std/assert"; // Use std/assert
 import { render } from "@testing-library/react";
