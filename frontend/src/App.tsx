@@ -34,6 +34,7 @@ import { LapsView } from './race/LapsView.tsx';
 import { ChannelSquare } from './common/ChannelSquare.tsx';
 import Legend from './common/Legend.tsx';
 import RaceTime from './race/RaceTime.tsx';
+import { PilotChannelView } from './pilot/index.ts';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -127,33 +128,6 @@ function App() {
                 </div>
             </div>
         </>
-    );
-}
-
-function PilotChannelView({ pilotChannel }: { pilotChannel: PilotChannel }) {
-    const pilots = useAtomValue(pilotsAtom);
-    const channels = useAtomValue(channelsDataAtom);
-    const { data: eventData } = useAtomValue(eventDataAtom);
-
-    const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
-
-    const colorIndex = eventData?.[0]?.Channels?.indexOf(pilotChannel.Channel);
-    const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
-        ? eventData[0].ChannelColors[colorIndex]
-        : '#888';
-
-    return (
-        <div className='pilot-channel'>
-            <div className='pilot-info'>
-                {pilot.Name} {channel.ShortBand}
-                {channel.Number}
-            </div>
-            <div
-                className='color-indicator'
-                style={{ backgroundColor: color }}
-            />
-        </div>
     );
 }
 

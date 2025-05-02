@@ -32,10 +32,10 @@ The following components are defined within `App.tsx` or already extracted and s
 
 2. **Defined within `App.tsx` (Needs Extraction):**
    - `PilotChannelView` (Line 130) -> Move to `frontend/src/pilot/PilotChannelView.tsx`
-   - `RaceTime` (Line 157) -> Move to `frontend/src/race/RaceTime.tsx`
+   - `RaceTime` (Line 157) -> Moved to `frontend/src/race/RaceTime.tsx` (Done)
    - `Leaderboard` (Line 191) -> Move to `frontend/src/leaderboard/Leaderboard.tsx`
-   - `LegendItem` (Line 455) -> Move to `frontend/src/common/LegendItem.tsx`
-   - `Legend` (Line 479) -> Move to `frontend/src/common/Legend.tsx`
+   - `LegendItem` (Line 455) -> Moved to `frontend/src/common/LegendItem.tsx` (Done)
+   - `Legend` (Line 479) -> Moved to `frontend/src/common/Legend.tsx` (Done)
    - `BracketsView` (Line 501) -> Move to `frontend/src/bracket/BracketsView.tsx`
    - `EliminatedPilotsView` (Line 570) -> Move to `frontend/src/bracket/EliminatedPilotsView.tsx`
 
@@ -188,27 +188,27 @@ To ensure the application remains functional during refactoring:
    - `ErrorBoundary` (Done)
    - `Spinner` (Done)
    - `ChannelSquare` (Done)
-   - Extract `Legend`, `LegendItem` from `App.tsx` to `common/`.
+   - Extract `Legend`, `LegendItem` from `App.tsx` to `common/`. (Done)
 
 ### Phase 2: Race Feature (Partially Done)
 
 1. `LapsView.tsx` and `DaySchedule.tsx` are already in `race/`.
 2. Internal components (`LapsTable`, `LapsTableHeader`, `LapsTableRow`) will remain within `LapsView.tsx` for now.
-3. Extract `RaceTime` from `App.tsx` to `frontend/src/race/RaceTime.tsx`.
+3. Extract `RaceTime` from `App.tsx` to `frontend/src/race/RaceTime.tsx`. (Done)
 
-### Phase 3: Pilot Feature
+### Phase 3: Pilot Feature (To Do)
 
 1. Create `pilot/` directory with core files.
 2. Migrate components defined within `App.tsx`:
    - `PilotChannelView` -> `frontend/src/pilot/PilotChannelView.tsx`
 
-### Phase 4: Leaderboard Feature
+### Phase 4: Leaderboard Feature (To Do)
 
 1. Create `leaderboard/` directory with core files.
 2. Migrate components defined within `App.tsx`:
    - `Leaderboard` -> `frontend/src/leaderboard/Leaderboard.tsx`
 
-### Phase 5: Bracket Feature
+### Phase 5: Bracket Feature (To Do)
 
 1. Create `bracket/` directory with core files.
 2. Migrate components defined within `App.tsx`:

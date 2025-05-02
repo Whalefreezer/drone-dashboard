@@ -8,7 +8,7 @@ import { ChannelPrefix, ShortBand, EventType, RoundType } from '../types/index.t
 // ==================
 
 // Use a consistent mock event ID
-const MOCK_EVENT_ID = 'mock-event-123';
+export const MOCK_EVENT_ID = 'mock-event-123';
 // Define base URL for mocks and export it
 export const BASE_URL = 'http://localhost';
 
