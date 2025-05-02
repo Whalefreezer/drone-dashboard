@@ -35,6 +35,7 @@ import { ChannelSquare } from './common/ChannelSquare.tsx';
 import Legend from './common/Legend.tsx';
 import RaceTime from './race/RaceTime.tsx';
 import { PilotChannelView } from './pilot/index.ts';
+import ScenarioSelector from './common/ScenarioSelector.tsx';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -45,8 +46,15 @@ function App() {
 
     usePeriodicUpdate(updateRoundsData, 10_000);
 
+    // Check for the dev flag
+    const urlParams = useMemo(() => new URLSearchParams(globalThis.location.search), []);
+    const isDevMode = urlParams.get('dev') === '1';
+
     return (
         <>
+            {/* Conditionally render the Scenario Selector */}
+            {isDevMode && <ScenarioSelector />}
+
             <div
                 style={{
                     textAlign: 'center',
