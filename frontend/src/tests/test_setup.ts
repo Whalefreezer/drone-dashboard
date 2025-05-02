@@ -1,5 +1,4 @@
-// import jsdom from "global-jsdom";
-// jsdom();
+import "../tests/global-jsdom.ts";
 
 import { cleanup } from "@testing-library/react";
 import { beforeAll, afterEach, afterAll } from "@std/testing/bdd";

@@ -1,4 +1,3 @@
-import "../tests/global-jsdom.ts"; // Initialize JSDOM environment FIRST
 import "../tests/test_setup.ts";
 import { render, screen } from "@testing-library/react";
 import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";

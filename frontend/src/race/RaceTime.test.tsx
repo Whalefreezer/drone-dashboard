@@ -1,4 +1,3 @@
-import "../tests/global-jsdom.ts"; // Initialize JSDOM environment FIRST
 import "../tests/test_setup.ts"; // Import common setup (MSW, cleanup)
 import { render, screen, act } from "@testing-library/react"; // Import act
 import { describe, it } from "@std/testing/bdd";
