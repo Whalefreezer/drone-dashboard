@@ -1,8 +1,6 @@
 import { setupServer } from 'msw/node';
-// import { getHandlersByScenarioName, DEFAULT_SCENARIO_NAME } from './scenarios/index.ts'; // Logic moved
 import { loadDefaultHandlers } from './workerUtils.ts';
 import type { HttpHandler } from 'msw';
-// import axios from 'axios'; // Base URL setting removed, axios likely not needed here directly
 
 let serverHandlers: readonly HttpHandler[] = [];
 
@@ -23,7 +21,3 @@ export const applyServerHandlers = () => {
     }
     server.use(...serverHandlers);
 };
-
-// Removing default base URL setting for axios
-// axios.defaults.baseURL = BASE_URL;
-

@@ -13,3 +13,5 @@ export const SNAPSHOT_TARGET_ENDPOINTS = [
 
 // Specific template for race data that needs iterating
 export const RACE_DATA_ENDPOINT_TEMPLATE = '/api/events/:eventId/:raceId/Race.json'; 
+
+export const BASE_URL = 'http://localhost:5173';

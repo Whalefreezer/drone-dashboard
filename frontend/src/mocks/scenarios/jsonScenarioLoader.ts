@@ -1,8 +1,7 @@
 /// <reference lib="deno.ns" />
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { RACE_DATA_ENDPOINT_TEMPLATE } from '../snapshotConstants.ts';
+import { BASE_URL, RACE_DATA_ENDPOINT_TEMPLATE } from '../snapshotConstants.ts';
 
-export const BASE_URL = 'http://localhost:5173';
 
 interface SnapshotResult {
     status: number;

@@ -8,7 +8,7 @@ import { PilotChannelView } from './PilotChannelView.tsx';
 import { server } from '../mocks/server.ts';
 import { ChannelPrefix, ShortBand, EventType, RoundType } from '../types/index.ts';
 import type { RaceEvent, Pilot, Channel, PilotChannel } from '../types/index.ts';
-import { BASE_URL } from '../mocks/scenarios/jsonScenarioLoader.ts';
+import { BASE_URL } from '../mocks/snapshotConstants.ts';
 
 const MOCK_EVENT_ID = 'mock-event-123';
 

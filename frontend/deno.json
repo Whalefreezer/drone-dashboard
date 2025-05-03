@@ -4,8 +4,8 @@
         "build": "deno run -A --node-modules-dir npm:vite build --emptyOutDir",
         "preview": "deno run -A --node-modules-dir npm:vite preview",
         "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/",
-        "test": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel",
-        "test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --watch"
+        "test": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --parallel",
+        "test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --watch --parallel"
     },
     "test": {
         "include": [

@@ -6,7 +6,7 @@ import { beforeAll, afterEach, afterAll } from "@std/testing/bdd";
 // import { JSDOM } from "jsdom"; 
 import { server, initializeServerHandlers, applyServerHandlers } from '../mocks/server.ts'; // MSW server
 import axios from 'axios'; // Import axios
-import { BASE_URL } from '../mocks/scenarios/jsonScenarioLoader.ts';
+import { BASE_URL } from '../mocks/snapshotConstants.ts';
 
 // Define a base URL for tests
 
