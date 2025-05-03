@@ -6,9 +6,11 @@ import { http, HttpResponse } from 'msw';
 
 import { PilotChannelView } from './PilotChannelView.tsx';
 import { server } from '../mocks/server.ts';
-import { BASE_URL, MOCK_EVENT_ID } from '../mocks/handlers.ts';
 import { ChannelPrefix, ShortBand, EventType, RoundType } from '../types/index.ts';
 import type { RaceEvent, Pilot, Channel, PilotChannel } from '../types/index.ts';
+import { BASE_URL } from '../mocks/scenarios/jsonScenarioLoader.ts';
+
+const MOCK_EVENT_ID = 'mock-event-123';
 
 // Mock data definitions
 const mockTestPilot = { ID: 'pilot-test-1', Name: 'Tester', Phonetic: 'Tango', TimingSensitivityPercent: 100, PracticePilot: false, ExternalID: 901, Aircraft: null, BestResult: null, CatchPhrase: null, DiscordID: null, FirstName: null, LastName: null, PhotoPath: null, SillyName: null } as Pilot;

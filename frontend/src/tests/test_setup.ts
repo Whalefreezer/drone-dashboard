@@ -4,12 +4,25 @@ import { cleanup } from "@testing-library/react";
 import { beforeAll, afterEach, afterAll } from "@std/testing/bdd";
 // No longer importing JSDOM manually
 // import { JSDOM } from "jsdom"; 
-import { server } from '../mocks/server.ts'; // MSW server
+import { server, initializeServerHandlers, applyServerHandlers } from '../mocks/server.ts'; // MSW server
+import axios from 'axios'; // Import axios
+import { BASE_URL } from '../mocks/scenarios/jsonScenarioLoader.ts';
+
+// Define a base URL for tests
 
 // --- MSW Server Lifecycle --- 
 // Establish API mocking before all tests.
-// Use onUnhandledRequest: 'error' to fail tests that make unmocked requests.
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeAll(async () => {
+  // Set base URL for axios requests made during tests
+  axios.defaults.baseURL = BASE_URL;
+
+  // 1. Load the default handlers asynchronously
+  await initializeServerHandlers();
+  // 2. Apply the loaded handlers to the server instance
+  applyServerHandlers();
+  // 3. Start the server to listen for requests
+  server.listen({ onUnhandledRequest: 'error' });
+});
 
 // Reset any request handlers that were added during the tests,
 // so they don't affect other tests.

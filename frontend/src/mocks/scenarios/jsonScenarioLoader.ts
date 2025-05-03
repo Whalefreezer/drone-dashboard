@@ -1,6 +1,8 @@
+/// <reference lib="deno.ns" />
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { BASE_URL } from '../handlers.ts'; // Mock base URL
 import { RACE_DATA_ENDPOINT_TEMPLATE } from '../snapshotConstants.ts';
+
+export const BASE_URL = 'http://localhost:5173';
 
 interface SnapshotResult {
     status: number;
@@ -22,22 +24,36 @@ type CapturedDataMap = Record<string, CapturedDataMapValue>;
 
 /**
  * Dynamically creates MSW handlers from a specified scenario JSON file.
+ * Handles loading the JSON file in both Browser and Node (Deno test) environments.
  * @param scenarioFilename - The name of the JSON file (without extension) in ./data/
  * @returns A promise resolving to an array of MSW handlers, or null if loading fails.
  */
 export async function createHandlersFromJson(scenarioFilename: string): Promise<readonly HttpHandler[] | null> {
-    const jsonPath = `/scenarios/${scenarioFilename}.json`;
     let capturedDataMap: CapturedDataMap;
     let scenarioContext: ScenarioContext | null = null;
 
     try {
-        console.log(`Loading scenario JSON from: ${jsonPath}`);
-        // For public assets, fetch might be more reliable than dynamic import
-        const response = await fetch(jsonPath);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // --- Environment-Specific JSON Loading ---
+        // Use Deno check for test environment, otherwise assume browser
+        // @ts-ignore: Check for Deno global which exists in Deno runtime
+        if (typeof Deno === 'undefined') {
+            // Browser environment: Use fetch with relative path
+            const jsonPath = `/scenarios/${scenarioFilename}.json`;
+            console.log(`MSW Browser: Loading scenario JSON from: ${jsonPath}`);
+            const response = await fetch(jsonPath);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            capturedDataMap = await response.json();
+        } else {
+            // Node/Deno environment: Use Deno.readTextFile
+            // Assumes tests run from the 'frontend' directory
+            const filePath = `./public/scenarios/${scenarioFilename}.json`;
+            console.log(`MSW Node: Loading scenario JSON from filesystem: ${filePath}`);
+            const fileContent = await Deno.readTextFile(filePath);
+            capturedDataMap = JSON.parse(fileContent);
         }
-        capturedDataMap = await response.json();
+        // --- End Environment-Specific JSON Loading ---
 
         // Extract context using type assertion after check
         const contextValue = capturedDataMap['__scenarioContext'];
@@ -49,8 +65,9 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
 
         console.log(`Successfully loaded scenario: ${scenarioFilename}`);
     } catch (error) {
-        console.error(`Failed to load or parse scenario JSON from ${jsonPath}:`, error);
-        return null; 
+        // Use scenarioFilename in the error message as path depends on environment
+        console.error(`Failed to load or parse scenario JSON for ${scenarioFilename}:`, error);
+        return null;
     }
 
     const handlers: HttpHandler[] = [];
@@ -65,8 +82,8 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
             })
         );
     } else {
-         // Optionally add a fallback /api handler if context is missing
          console.warn(`MSW: No eventId found in scenario context for /api handler.`);
+         // Fallback handler also uses full URL
          handlers.push(
              http.get(`${BASE_URL}/api`, () => {
                  return new Response('<html><body>Error: Mock scenario context missing eventId</body></html>', { status: 500, headers: { 'Content-Type': 'text/html' } });
@@ -76,8 +93,7 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
 
     // Process the rest of the captured endpoints
     for (const templatePath in capturedDataMap) {
-        // Skip the context entry itself
-        if (templatePath === '__scenarioContext') continue; 
+        if (templatePath === '__scenarioContext') continue;
 
         const resultOrMap = capturedDataMap[templatePath];
         const fullMockUrl = `${BASE_URL}${templatePath}`;
@@ -108,7 +124,7 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
             // Handle standard, non-parameterized endpoints
             const standardResult = resultOrMap as SnapshotResult;
             handlers.push(
-                http.get(fullMockUrl, () => {
+                http.get(fullMockUrl, () => { // Use full URL for matching
                     if (standardResult.data !== undefined) {
                         return HttpResponse.json(standardResult.data);
                     } else {

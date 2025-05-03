@@ -5,7 +5,6 @@ import { assertEquals } from "@std/assert";
 import RaceTime from './RaceTime.tsx';
 import { server } from '../mocks/server.ts'; // Import server for test-specific overrides
 import { http } from 'msw'; // Import msw utils for overrides
-import { BASE_URL } from '../mocks/handlers.ts';
 
 
 describe('RaceTime', () => {
