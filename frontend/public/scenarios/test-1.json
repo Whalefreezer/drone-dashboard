@@ -15,7 +15,7 @@
         "PrimaryTimingSystemLocation": "Holeshot",
         "RaceStartIgnoreDetections": "00:00:00.5000000",
         "MinLapTime": "00:00:05",
-        "LastOpened": "2025/05/01 12:14:44.57",
+        "LastOpened": "2025/05/03 14:39:20.325",
         "PilotChannels": [
           {
             "Pilot": "e5166a87-41b4-443c-85dd-3b02b361d39d",
@@ -3264,5 +3264,8 @@
         }
       ]
     }
+  },
+  "__scenarioContext": {
+    "eventId": "3a96b1b6-7b6b-43a8-b93e-d918f43607d2"
   }
 }
