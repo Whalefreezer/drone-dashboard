@@ -35,6 +35,7 @@ export async function enableMocking(): Promise<void> {
 
         await worker.start({
             onUnhandledRequest: 'bypass',
+            quiet: true,
         });
         worker.resetHandlers(...handlers);
         return; // Return void explicitly after async operation
