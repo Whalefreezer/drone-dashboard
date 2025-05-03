@@ -35,7 +35,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
     try {
         // --- Environment-Specific JSON Loading ---
         // Use Deno check for test environment, otherwise assume browser
-        // @ts-ignore: Check for Deno global which exists in Deno runtime
         if (typeof Deno === 'undefined') {
             // Browser environment: Use fetch with relative path
             const jsonPath = `/scenarios/${scenarioFilename}.json`;
@@ -49,7 +48,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
             // Node/Deno environment: Use Deno.readTextFile
             // Assumes tests run from the 'frontend' directory
             const filePath = `./public/scenarios/${scenarioFilename}.json`;
-            console.log(`MSW Node: Loading scenario JSON from filesystem: ${filePath}`);
             const fileContent = await Deno.readTextFile(filePath);
             capturedDataMap = JSON.parse(fileContent);
         }
@@ -63,7 +61,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
             console.warn(`Scenario JSON ${scenarioFilename}.json is missing valid __scenarioContext.eventId`);
         }
 
-        console.log(`Successfully loaded scenario: ${scenarioFilename}`);
     } catch (error) {
         // Use scenarioFilename in the error message as path depends on environment
         console.error(`Failed to load or parse scenario JSON for ${scenarioFilename}:`, error);
@@ -77,7 +74,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
         handlers.push(
             http.get(`${BASE_URL}/api`, () => {
                 const htmlResponse = `<html><body><script>var eventManager = new EventManager("events/${scenarioContext?.eventId}")</script></body></html>`;
-                console.log(`MSW: Mocking /api with eventId: ${scenarioContext.eventId}`);
                 return new Response(htmlResponse, { headers: { 'Content-Type': 'text/html' } });
             })
         );
@@ -128,7 +124,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
                     if (standardResult.data !== undefined) {
                         return HttpResponse.json(standardResult.data);
                     } else {
-                        console.log(`MSW: Mocking ${templatePath} with captured error ${standardResult.status}.`);
                         return new Response(null, { status: standardResult.status, statusText: standardResult.error });
                     }
                 })
