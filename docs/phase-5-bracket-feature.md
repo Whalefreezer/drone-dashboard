@@ -2,6 +2,9 @@
 
 This phase involves extracting components related to the race bracket system into a dedicated feature directory.
 
+**Guiding Principle: Move Only, Minimal Changes**
+The primary goal is to *move* the existing `BracketsView` and `EliminatedPilotsView` implementations from `App.tsx` to their new locations. Avoid refactoring or changing the logic itself during this phase. Reference the original code in `App.tsx` for all implementation details, including component structure, state usage (Jotai atoms), types, utility functions, and applied styles. Look up any necessary imports or details directly from the existing code.
+
 ## Objectives
 
 - Create the `frontend/src/bracket/` directory structure.
