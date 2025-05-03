@@ -1,5 +1,5 @@
 import './App.css';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     Bracket,
@@ -37,6 +37,7 @@ import RaceTime from './race/RaceTime.tsx';
 import { PilotChannelView } from './pilot/index.ts';
 import ScenarioSelector from './common/ScenarioSelector.tsx';
 import SnapshotControl from './common/SnapshotControl.tsx';
+import { useIdleCursor } from './common/useIdleCursor.ts';
 
 function App() {
     const races = useAtomValue(racesAtom);
@@ -46,6 +47,9 @@ function App() {
     const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
 
     usePeriodicUpdate(updateRoundsData, 10_000);
+
+    // Use the custom hook to handle cursor visibility
+    useIdleCursor();
 
     return (
         <>

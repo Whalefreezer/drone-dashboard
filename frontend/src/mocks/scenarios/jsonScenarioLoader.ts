@@ -92,10 +92,9 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
 
                     if (raceResult) {
                         if (raceResult.data !== undefined) {
-                            console.log(`MSW: Mocking ${templatePath} (Race ID: ${raceId}) with captured data.`);
                             return HttpResponse.json(raceResult.data);
                         } else {
-                            console.log(`MSW: Mocking ${templatePath} (Race ID: ${raceId}) with captured error ${raceResult.status}.`);
+                            console.log(`MSW: Moking ${templatePath} (Race ID: ${raceId}) with captured error ${raceResult.status}.`);
                             return new Response(null, { status: raceResult.status, statusText: raceResult.error });
                         }
                     } else {
@@ -111,7 +110,6 @@ export async function createHandlersFromJson(scenarioFilename: string): Promise<
             handlers.push(
                 http.get(fullMockUrl, () => {
                     if (standardResult.data !== undefined) {
-                        console.log(`MSW: Mocking ${templatePath} with captured data.`);
                         return HttpResponse.json(standardResult.data);
                     } else {
                         console.log(`MSW: Mocking ${templatePath} with captured error ${standardResult.status}.`);
