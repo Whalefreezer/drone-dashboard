@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { loadable } from 'jotai/utils';
 import { eventIdAtom, eventDataAtom } from '../state/atoms.ts';
@@ -11,6 +11,14 @@ const snapshotControlStyle: React.CSSProperties = {
     bottom: '50px', // Position slightly above ScenarioSelector
     right: '10px',
     zIndex: 9998, // Slightly below ScenarioSelector if they overlap
+    transition: 'opacity 0.5s ease-in-out', // Add transition for smooth fade
+    opacity: 1, // Default opacity when visible
+};
+
+const hiddenStyle: React.CSSProperties = {
+    ...snapshotControlStyle,
+    opacity: 0,
+    pointerEvents: 'none', // Prevent interaction when hidden
 };
 
 const buttonStyle: React.CSSProperties = {
@@ -29,12 +37,41 @@ const buttonDisabledStyle: React.CSSProperties = {
     cursor: 'not-allowed',
 };
 
+const HIDE_DELAY = 2000; // milliseconds
+
 function SnapshotControl() {
     const [isCapturing, setIsCapturing] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
+    const [isVisible, setIsVisible] = useState(false); // Visibility state
+    const hideTimeoutRef = useRef<number | null>(null); // Ref for timeout ID
 
     const eventIdLoadable = useAtomValue(loadable(eventIdAtom));
     const eventDataLoadable = useAtomValue(loadable(eventDataAtom));
+
+    // Effect to handle mouse move and visibility timeout
+    useEffect(() => {
+        const handleMouseMove = () => {
+            setIsVisible(true);
+            // Clear existing timeout if mouse moves again
+            if (hideTimeoutRef.current) {
+                clearTimeout(hideTimeoutRef.current);
+            }
+            // Set new timeout to hide after delay
+            hideTimeoutRef.current = window.setTimeout(() => {
+                setIsVisible(false);
+            }, HIDE_DELAY);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+
+        // Cleanup function
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            if (hideTimeoutRef.current) {
+                clearTimeout(hideTimeoutRef.current);
+            }
+        };
+    }, []); // Empty dependency array ensures this runs only on mount and unmount
 
     // Helper to get the actual event ID string from the loadable query result
     const getEventId = (): string | null => {
@@ -141,9 +178,10 @@ function SnapshotControl() {
     }
 
     const isEventDataReady = eventDataLoadable.state === 'hasData' && Array.isArray(eventDataLoadable.data?.data);
+    const finalStyle = isVisible ? snapshotControlStyle : hiddenStyle;
 
     return (
-        <div style={snapshotControlStyle}>
+        <div style={finalStyle}>
             <button
                 onClick={captureAndGenerateJson}
                 disabled={isCapturing || !isEventDataReady} 
