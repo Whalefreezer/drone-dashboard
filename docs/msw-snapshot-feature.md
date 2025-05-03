@@ -71,24 +71,18 @@ This document describes a feature to capture live API responses from the actual 
     *   The user can rename the file in the browser's save dialog.
     *   Display instructions in the UI:
         1.  "Snapshot JSON downloaded."
-        2.  "**Action Required:** Move the downloaded file into the `frontend/src/mocks/scenarios/data/` directory."
-        3.  "**Action Required:** To use this scenario, add its filename (without `.json`) to the `jsonScenarioFiles` list in `frontend/src/mocks/scenarios/index.ts` and give it a display name."
+        2.  "**Action Required:** Move the downloaded file into the `public/scenarios/` directory."
+        3.  "**Action Required:** To use this scenario, add its filename (without `.json`) and a display name to `jsonScenarioFiles` in `frontend/src/mocks/scenarios/index.ts`."
 
 6.  **Dynamic JSON Handler Generation:**
     *   Create `frontend/src/mocks/scenarios/jsonScenarioLoader.ts`.
     *   Export `async function createHandlersFromJson(scenarioFilename: string): Promise<readonly HttpHandler[] | null>`.
-    *   Inside, construct the path: `const jsonPath = \`./data/${scenarioFilename}.json\`;`.
-    *   Dynamically `import(jsonPath, { assert: { type: 'json' } })` to load the `capturedDataMap`.
-    *   Handle import errors.
-    *   Iterate through the `capturedDataMap`.
-    *   For each entry (`endpointTemplatePath` -> `resultOrMap`):
-        *   If the template is **not** `/api/events/:eventId/:raceId/Race.json`:
-            *   Create a standard `http.get(BASE_URL + endpointTemplatePath, ...)` handler using the `status`, `data`, or `error` from `resultOrMap`.
-        *   If the template **is** `/api/events/:eventId/:raceId/Race.json`:
-            *   Create a parameterized handler: `http.get(BASE_URL + endpointTemplatePath, ({ params }) => { ... })`.
-            *   Inside the handler, use `params.raceId` to look up the corresponding result (`{status, data?, error?}`) from the nested map (`resultOrMap[params.raceId]`).
-            *   Return `HttpResponse.json(data)`, `new HttpResponse(null, { status, statusText: error })`, or a default 404 if the specific `raceId` wasn't found in the snapshot.
-    *   Return the array of generated `HttpHandler`s.
+    *   Inside, construct the path: `const jsonPath = \`/scenarios/${scenarioFilename}.json\`;` (Relative path for fetch from browser).
+    *   Fetch the JSON file.
+    *   Handle fetch errors.
+    *   Extract the `eventId` from the `__scenarioContext` field within the JSON.
+    *   Generate a specific handler for `/api` using the extracted `eventId` to produce the correct HTML structure.
+    *   Iterate through the rest of the `capturedDataMap`...
 
 7.  **Scenario Index Update:**
     *   Modify `frontend/src/mocks/scenarios/index.ts`:

@@ -102,25 +102,29 @@ function SnapshotControl() {
                  }
              }
  
-             const jsonString = JSON.stringify(capturedDataMap, null, 2);
-             const blob = new Blob([jsonString], { type: 'application/json' });
-             const url = URL.createObjectURL(blob);
-             const link = document.createElement('a');
-             link.href = url;
-             link.download = `snapshot-${Date.now()}.json`; 
-             document.body.appendChild(link);
-             link.click();
-             document.body.removeChild(link);
-             URL.revokeObjectURL(url);
+            // Add scenario context (like the eventId used) to the map
+            capturedDataMap['__scenarioContext'] = { eventId: eventId };
+
+            // Generate JSON and trigger download
+            const jsonString = JSON.stringify(capturedDataMap, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `snapshot-${Date.now()}.json`; 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
  
-             setStatusMessage('Snapshot downloaded! Check instructions.');
-             alert(
- `Snapshot JSON downloaded as ${link.download}.\n\n` +
- `**ACTION REQUIRED:**\n` +
- `1. Move the downloaded file into: frontend/src/mocks/scenarios/data/\n` +
- `2. Add the filename (without .json) and a display name to jsonScenarioFiles in: frontend/src/mocks/scenarios/index.ts\n\n` +
- `(See docs/msw-snapshot-feature.md for details)`
-             );
+            setStatusMessage('Snapshot downloaded! Check instructions.');
+            alert(
+`Snapshot JSON downloaded as ${link.download}.\n\n` +
+`**ACTION REQUIRED:**\n` +
+`1. Move the downloaded file into: public/scenarios/\n` +
+`2. Add the filename (without .json) and a display name to jsonScenarioFiles in: frontend/src/mocks/scenarios/index.ts\n\n` +
+`(See docs/msw-snapshot-feature.md for details)`
+            );
         } catch (error) {
             console.error('Snapshot failed globally:', error);
             setStatusMessage(`Snapshot failed: ${(error as Error).message}`);

@@ -16,7 +16,8 @@ export const staticScenarios: Record<string, readonly HttpHandler[]> = {
 export const jsonScenarioFiles: Record<string, string> = {
     // Example: 'Race Day Start': 'race-day-start',
     // Example: 'Qualifying Round 2': 'qualifying-round-2',
-    'Test 1': 'test-1'
+    'Test 1': 'test-1',
+    'Test 2': 'test-2'
 };
 
 // Combine static and JSON scenario names for the selector

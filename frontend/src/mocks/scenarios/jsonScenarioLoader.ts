@@ -12,7 +12,13 @@ interface RaceDataSnapshot {
     [raceId: string]: SnapshotResult;
 }
 
-type CapturedDataMap = Record<string, SnapshotResult | RaceDataSnapshot>;
+interface ScenarioContext {
+    eventId: string;
+}
+
+type CapturedDataMapValue = SnapshotResult | RaceDataSnapshot | ScenarioContext;
+
+type CapturedDataMap = Record<string, CapturedDataMapValue>;
 
 /**
  * Dynamically creates MSW handlers from a specified scenario JSON file.
@@ -22,21 +28,57 @@ type CapturedDataMap = Record<string, SnapshotResult | RaceDataSnapshot>;
 export async function createHandlersFromJson(scenarioFilename: string): Promise<readonly HttpHandler[] | null> {
     const jsonPath = `/scenarios/${scenarioFilename}.json`;
     let capturedDataMap: CapturedDataMap;
+    let scenarioContext: ScenarioContext | null = null;
 
     try {
-        console.log(`Loading scenario JSON: ${jsonPath}`);
-        // Use dynamic import to load the JSON data
-        const module = await fetch(jsonPath);
-        capturedDataMap = await module.json() as CapturedDataMap;
+        console.log(`Loading scenario JSON from: ${jsonPath}`);
+        // For public assets, fetch might be more reliable than dynamic import
+        const response = await fetch(jsonPath);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        capturedDataMap = await response.json();
+
+        // Extract context using type assertion after check
+        const contextValue = capturedDataMap['__scenarioContext'];
+        if (contextValue && typeof (contextValue as ScenarioContext).eventId === 'string') {
+            scenarioContext = contextValue as ScenarioContext;
+        } else {
+            console.warn(`Scenario JSON ${scenarioFilename}.json is missing valid __scenarioContext.eventId`);
+        }
+
         console.log(`Successfully loaded scenario: ${scenarioFilename}`);
     } catch (error) {
-        console.error(`Failed to load scenario JSON from ${jsonPath}:`, error);
-        return null; // Indicate failure
+        console.error(`Failed to load or parse scenario JSON from ${jsonPath}:`, error);
+        return null; 
     }
 
     const handlers: HttpHandler[] = [];
 
+    // Add handler for /api first, using the context
+    if (scenarioContext) {
+        handlers.push(
+            http.get(`${BASE_URL}/api`, () => {
+                const htmlResponse = `<html><body><script>var eventManager = new EventManager("events/${scenarioContext?.eventId}")</script></body></html>`;
+                console.log(`MSW: Mocking /api with eventId: ${scenarioContext.eventId}`);
+                return new Response(htmlResponse, { headers: { 'Content-Type': 'text/html' } });
+            })
+        );
+    } else {
+         // Optionally add a fallback /api handler if context is missing
+         console.warn(`MSW: No eventId found in scenario context for /api handler.`);
+         handlers.push(
+             http.get(`${BASE_URL}/api`, () => {
+                 return new Response('<html><body>Error: Mock scenario context missing eventId</body></html>', { status: 500, headers: { 'Content-Type': 'text/html' } });
+             })
+         );
+    }
+
+    // Process the rest of the captured endpoints
     for (const templatePath in capturedDataMap) {
+        // Skip the context entry itself
+        if (templatePath === '__scenarioContext') continue; 
+
         const resultOrMap = capturedDataMap[templatePath];
         const fullMockUrl = `${BASE_URL}${templatePath}`;
 
