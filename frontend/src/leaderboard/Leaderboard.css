@@ -1,0 +1,155 @@
+/* Styles for the Leaderboard component */
+
+.leaderboard-container {
+    flex: 1;
+    min-width: 300px;
+    margin-left: 0;
+}
+
+/* --- Table Styles --- */
+.leaderboard-table { 
+    border: 1px solid black;
+    border-collapse: collapse;
+    width: 100%; /* Ensure table takes available space */
+    table-layout: fixed; /* Helps with consistent column widths */
+    perspective: 1000px; /* Add perspective for 3D effect */
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+    border: 1px solid black;
+    padding: 4px 8px; /* Consistent padding */
+    text-align: left;
+    vertical-align: top;
+}
+
+.leaderboard-table th {
+    background-color: #333; /* Header background */
+    font-weight: bold;
+}
+
+.leaderboard-table td {
+    font-family: monospace;
+}
+
+.leaderboard-table td:nth-child(2) { /* Pilot name column */
+    font-family: inherit;
+    font-weight: bold;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+    background-color: #222;
+}
+
+.leaderboard-table tbody tr:nth-child(odd) {
+    background-color: #1a1a1a;
+}
+
+.leaderboard-table tbody tr:hover {
+    background-color: #2a2a2a;
+}
+
+.leaderboard-table tbody tr {
+    transition: transform 0.3s ease-out;
+}
+
+/* --- Position Display & Animation --- */
+.position-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.position-change {
+    animation: fadeIn 0.5s ease-in;
+    font-size: 0.8em;
+    margin-top: 2px;
+    color: #00ff00; /* Explicitly set color */
+    /* Removed margin-left: 4px from App.tsx inline style */
+}
+
+.position-improved {
+    animation: moveUpAndForward 1s ease-out;
+    z-index: 10;
+    position: relative; /* Needed for z-index and transform */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes moveUpAndForward {
+    0% {
+        transform: translateZ(0) translateY(0);
+        background-color: #2a2a2a; /* Start color matches hover */
+    }
+    25% {
+        transform: translateZ(50px) translateY(0);
+        background-color: #3a3a3a; /* Raised color */
+    }
+    75% {
+        transform: translateZ(50px) translateY(-100%); /* Move up */
+        background-color: #3a3a3a;
+    }
+    100% {
+        transform: translateZ(0) translateY(0);
+        background-color: #2a2a2a; /* End color matches hover */
+    }
+}
+
+/* --- Time & Lap Info --- */
+.recent-time {
+    animation: highlight 2s;
+    background-color: #2a4a2a; /* Final color */
+    border-radius: 4px;
+    padding: 2px 4px;
+    display: inline-block; /* Ensure background covers text */
+}
+
+@keyframes highlight {
+    0% {
+        background-color: #4a2a2a; /* Start color */
+    }
+    50% {
+        background-color: #2a4a2a; /* Transition to final color */
+    }
+    100% {
+        background-color: #2a4a2a; /* Hold final color */
+    }
+}
+
+.source-info {
+    /* display: none; */ /* Keep visible for now */
+    font-size: 0.7em;
+    color: #aaa; /* Slightly dimmer color */
+    margin-left: 6px;
+}
+
+/* --- Status Text --- */
+.racing-text {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.next-text {
+    color: #ffa500;
+    font-weight: bold;
+}
+
+.done-text {
+    color: #888;
+    font-style: italic;
+}
+
+/* --- Channel Display (If specific to Leaderboard) --- */
+/* Assuming .channel-display might be shared, keep it minimal or move if confirmed exclusive */
+.channel-display { 
+    display: flex;
+    align-items: center;
+    gap: 4px; 
+} 

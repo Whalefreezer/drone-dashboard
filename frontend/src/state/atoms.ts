@@ -6,7 +6,6 @@ import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
 import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 import { calculateBestTimes, calculateRacesUntilNext } from '../common/utils.ts';
-import { defaultLeaderboardSortConfig, sortLeaderboard } from '../race/race-utils.ts';
 
 const UPDATE = true;
 
@@ -275,14 +274,6 @@ export const overallBestTimesAtom = atom(async (get) => {
     return overallBestTimes;
 });
 
-// Add this new type and hook near the top of the file
-type QueryAtom<T> = Atom<{ data: T }>;
-
-export function useQueryAtom<T>(queryAtom: Atom<AtomWithSuspenseQueryResult<T, Error>>): T {
-    const { data } = useAtomValue(queryAtom);
-    return data;
-}
-
 export function usePeriodicUpdate(updateFn: () => void, interval: number) {
     useEffect(() => {
         if (UPDATE) {
@@ -291,177 +282,6 @@ export function usePeriodicUpdate(updateFn: () => void, interval: number) {
             return () => clearInterval(intervalId);
         }
     }, [updateFn, interval]);
-}
-
-export interface LeaderboardEntry {
-    pilot: Pilot;
-    bestLap: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    consecutiveLaps: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    bestHoleshot: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    channel: Channel | null;
-    racesUntilNext: number;
-    totalLaps: number;
-    eliminatedInfo: {
-        bracket: string;
-        position: number;
-        points: number;
-    } | null;
-}
-
-export function calculateLeaderboardData(
-    races: RaceWithProcessedLaps[],
-    pilots: Pilot[],
-    channels: Channel[],
-    currentRaceIndex: number,
-    brackets: Bracket[] = [],
-): LeaderboardEntry[] {
-    // Calculate best times
-    const { overallFastestLaps, fastestConsecutiveLaps, pilotChannels, fastestHoleshots } =
-        calculateBestTimes(races);
-
-    // Get pilots that are explicitly listed in race PilotChannels
-    const scheduledPilots = new Set<string>();
-    races.forEach((race) => {
-        race.PilotChannels.forEach((pc) => {
-            scheduledPilots.add(pc.Pilot);
-        });
-    });
-
-    // Calculate races until next race for each pilot
-    const racesUntilNext = new Map<string, number>();
-    if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
-        pilots.forEach((pilot) => {
-            racesUntilNext.set(
-                pilot.ID,
-                calculateRacesUntilNext(races, currentRaceIndex, pilot.ID),
-            );
-        });
-    }
-
-    // Calculate total laps for each pilot
-    const totalLaps = new Map<string, number>();
-    races.forEach((race) => {
-        race.processedLaps.forEach((lap) => {
-            if (!lap.isHoleshot) {
-                totalLaps.set(lap.pilotId, (totalLaps.get(lap.pilotId) || 0) + 1);
-            }
-        });
-    });
-
-    // Get eliminated pilots information
-    const eliminatedPilots = findEliminatedPilots(brackets);
-
-    // Create pilot entries only for pilots in races
-    const pilotEntries = pilots
-        .filter((pilot) => scheduledPilots.has(pilot.ID))
-        .map((pilot) => {
-            // Find if this pilot is eliminated
-            const eliminatedInfo = eliminatedPilots.find(
-                (ep) =>
-                    ep.name.toLowerCase().replace(/\s+/g, '') ===
-                        pilot.Name.toLowerCase().replace(/\s+/g, ''),
-            );
-
-            // Get the pilot's channel with priority:
-            // 1. Current race channel
-            // 2. Next race channel
-            // 3. Last used channel
-            let pilotChannel: Channel | null = null;
-
-            if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
-                // Check current race
-                const currentRace = races[currentRaceIndex];
-                const currentChannel = currentRace.PilotChannels.find((pc) => pc.Pilot === pilot.ID)
-                    ?.Channel;
-                if (currentChannel) {
-                    pilotChannel = channels.find((c) => c.ID === currentChannel) || null;
-                }
-
-                // If no current channel and not currently racing, check next race
-                if (!pilotChannel && racesUntilNext.get(pilot.ID) !== -2) {
-                    for (let i = currentRaceIndex + 1; i < races.length; i++) {
-                        const nextChannel = races[i].PilotChannels.find((pc) =>
-                            pc.Pilot === pilot.ID
-                        )?.Channel;
-                        if (nextChannel) {
-                            pilotChannel = channels.find((c) => c.ID === nextChannel) || null;
-                            break;
-                        }
-                    }
-                }
-
-                // If still no channel, get last used channel
-                if (!pilotChannel) {
-                    for (let i = currentRaceIndex - 1; i >= 0; i--) {
-                        const lastChannel = races[i].PilotChannels.find((pc) =>
-                            pc.Pilot === pilot.ID
-                        )?.Channel;
-                        if (lastChannel) {
-                            pilotChannel = channels.find((c) => c.ID === lastChannel) || null;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return {
-                pilot,
-                bestLap: overallFastestLaps.get(pilot.ID) || null,
-                consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
-                bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
-                channel: pilotChannel,
-                racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
-                totalLaps: totalLaps.get(pilot.ID) ?? 0,
-                eliminatedInfo: eliminatedInfo
-                    ? {
-                        bracket: eliminatedInfo.bracket,
-                        position: eliminatedInfo.position,
-                        points: eliminatedInfo.points,
-                    }
-                    : null,
-            };
-        });
-
-    return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
-}
-
-export function getPositionChanges(
-    currentPositions: LeaderboardEntry[],
-    previousPositions: LeaderboardEntry[],
-): Map<string, number> {
-    const changes = new Map<string, number>();
-
-    currentPositions.forEach((entry, currentIndex) => {
-        // Only consider pilots who have times in the current leaderboard
-        if (entry.consecutiveLaps || entry.bestLap) {
-            const previousEntry = previousPositions.find(
-                (prev) => prev.pilot.ID === entry.pilot.ID,
-            );
-
-            // Only record change if they had times in the previous leaderboard too
-            if (previousEntry && (previousEntry.consecutiveLaps || previousEntry.bestLap)) {
-                const previousIndex = previousPositions.indexOf(previousEntry);
-                if (previousIndex !== currentIndex) {
-                    // Store the previous position (1-based)
-                    changes.set(entry.pilot.ID, previousIndex + 1);
-                }
-            }
-        }
-    });
-
-    return changes;
 }
 
 export interface EliminatedPilot {

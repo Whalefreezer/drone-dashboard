@@ -1,4 +1,3 @@
-import { LeaderboardEntry } from '../state/atoms.ts';
 import { secondsFromString } from '../common/utils.ts';
 import {
     getEliminationOrderIndex,
@@ -9,86 +8,6 @@ import {
     pilotHasConsecutiveLaps,
     pilotHasLaps,
 } from '../common/utils.ts';
-
-export enum SortDirection {
-    Ascending = 'asc',
-    Descending = 'desc',
-}
-
-export enum NullHandling {
-    First = 'NULLS_FIRST',
-    Last = 'NULLS_LAST',
-    Exclude = 'EXCLUDE',
-}
-
-export interface SortCriteria {
-    getValue: (entry: LeaderboardEntry) => number | null;
-    direction: SortDirection;
-    nullHandling: NullHandling;
-}
-
-export interface SortGroup {
-    name: string;
-    criteria: SortCriteria[];
-    condition?: (entry: LeaderboardEntry) => boolean;
-    groups?: SortGroup[]; // Nested groups
-}
-
-// Main sorting function
-export function sortLeaderboard(
-    entries: LeaderboardEntry[],
-    config: SortGroup[],
-): LeaderboardEntry[] {
-    return entries.sort((a, b) => {
-        const hierarchyA = getGroupHierarchy(a, config);
-        const hierarchyB = getGroupHierarchy(b, config);
-
-        // Compare hierarchies level by level based on natural array order
-        const minDepth = Math.min(hierarchyA.length, hierarchyB.length);
-        for (let i = 0; i < minDepth; i++) {
-            const parentGroups = (i === 0) ? config : hierarchyA[i - 1].groups;
-            if (!parentGroups) break; // Should not happen with valid hierarchy
-
-            const indexA = parentGroups.findIndex((group) => group === hierarchyA[i]);
-            const indexB = parentGroups.findIndex((group) => group === hierarchyB[i]);
-
-            if (indexA !== indexB) {
-                return indexA - indexB; // Sort by natural group order
-            }
-        }
-
-        // If hierarchies are identical up to the shorter length, the deeper one comes later (though this case is less common)
-        if (hierarchyA.length !== hierarchyB.length) {
-            return hierarchyA.length - hierarchyB.length;
-        }
-
-        // If hierarchies are identical, compare using criteria of the most specific group
-        const mostSpecificGroup = hierarchyA[hierarchyA.length - 1];
-        if (!mostSpecificGroup) return 0; // Should have at least one group if hierarchies match
-
-        for (const criteria of mostSpecificGroup.criteria) {
-            const aValue = criteria.getValue(a);
-            const bValue = criteria.getValue(b);
-
-            // Handle null values
-            if (aValue === null && bValue === null) continue;
-            if (aValue === null) {
-                return criteria.nullHandling === NullHandling.First ? -1 : 1;
-            }
-            if (bValue === null) {
-                return criteria.nullHandling === NullHandling.First ? 1 : -1;
-            }
-
-            // Compare non-null values
-            const comparison = aValue - bValue;
-            if (comparison !== 0) {
-                return criteria.direction === SortDirection.Ascending ? comparison : -comparison;
-            }
-        }
-
-        return 0; // Entries are identical according to all criteria in the group
-    });
-}
 
 // Helper function to find the hierarchy of applicable groups for an entry
 function getGroupHierarchy(

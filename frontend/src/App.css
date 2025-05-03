@@ -90,46 +90,6 @@
     text-align: right;
 }
 
-/* Laps View - REMOVED */
-
-/* Tables */
-/* Keeping shared styles, removing specific .laps-table selector where duplicated */
-.leaderboard-table { /* Keep general table style for leaderboard */
-    border: 1px solid black;
-    border-collapse: collapse;
-}
-
-/* Keep shared cell styles */
-.leaderboard-table td,
-.leaderboard-table th {
-    border: 1px solid black;
-    padding: 4px;
-}
-
-.leaderboard-table td {
-    font-family: monospace;
-}
-
-.leaderboard-table td:nth-child(2) {
-    font-family: inherit;
-}
-
-/* Add alternating row colors for leaderboard */
-.leaderboard-table tbody tr:nth-child(even) {
-    background-color: #222;
-}
-
-.leaderboard-table tbody tr:nth-child(odd) {
-    background-color: #1a1a1a;
-}
-
-/* Update hover effect for better visibility */
-.leaderboard-table tbody tr:hover {
-    background-color: #2a2a2a;
-}
-
-/* Lap Highlighting - REMOVED */
-
 /* Legend */
 .legend-square {
     width: 16px;
@@ -185,14 +145,6 @@
 .done-text {
     color: #888;
     font-style: italic;
-}
-
-/* Channel Display - REMOVED .channel-square and .flex-row */
-.channel-display { /* Keep container style if used elsewhere */
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px; /* Assuming this was shared */
 }
 
 /* Source Info */
@@ -253,48 +205,6 @@
     animation: fadeIn 0.5s ease-in;
     font-size: 0.8em;
     margin-top: 2px;
-}
-
-.leaderboard-table td {
-    padding: 4px 8px;
-    vertical-align: top;
-}
-
-/* Add these new animations to the existing CSS */
-
-@keyframes moveUpAndForward {
-    0% {
-        transform: translateZ(0) translateY(0);
-        background-color: #2a2a2a;
-    }
-    25% {
-        transform: translateZ(50px) translateY(0);
-        background-color: #3a3a3a;
-    }
-    75% {
-        transform: translateZ(50px) translateY(-100%);
-        background-color: #3a3a3a;
-    }
-    100% {
-        transform: translateZ(0) translateY(0);
-        background-color: #2a2a2a;
-    }
-}
-
-/* Update the leaderboard table styles */
-.leaderboard-table {
-    /* ... existing styles ... */
-    perspective: 1000px; /* Add perspective for 3D effect */
-}
-
-.leaderboard-table tbody tr {
-    transition: transform 0.3s ease-out;
-}
-
-.position-improved {
-    animation: moveUpAndForward 1s ease-out;
-    z-index: 10;
-    position: relative;
 }
 
 /* Brackets View Styles */
