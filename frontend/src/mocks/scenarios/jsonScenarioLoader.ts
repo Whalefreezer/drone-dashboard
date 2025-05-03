@@ -20,14 +20,14 @@ type CapturedDataMap = Record<string, SnapshotResult | RaceDataSnapshot>;
  * @returns A promise resolving to an array of MSW handlers, or null if loading fails.
  */
 export async function createHandlersFromJson(scenarioFilename: string): Promise<readonly HttpHandler[] | null> {
-    const jsonPath = `./data/${scenarioFilename}.json`;
+    const jsonPath = `/scenarios/${scenarioFilename}.json`;
     let capturedDataMap: CapturedDataMap;
 
     try {
         console.log(`Loading scenario JSON: ${jsonPath}`);
         // Use dynamic import to load the JSON data
-        const module = await import(/* @vite-ignore */ jsonPath, { assert: { type: 'json' } });
-        capturedDataMap = module.default as CapturedDataMap;
+        const module = await fetch(jsonPath);
+        capturedDataMap = await module.json() as CapturedDataMap;
         console.log(`Successfully loaded scenario: ${scenarioFilename}`);
     } catch (error) {
         console.error(`Failed to load scenario JSON from ${jsonPath}:`, error);
