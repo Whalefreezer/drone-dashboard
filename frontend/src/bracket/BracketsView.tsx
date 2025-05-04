@@ -1,13 +1,12 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
 import {
-    // BracketPilot, // Import from bracket-types.ts
     bracketsDataAtom,
     pilotsAtom,
     racesAtom,
     useQueryAtom,
 } from '../state/index.ts';
-import { BracketPilot } from './bracket-types.ts'; // Correct import location
+import { BracketPilot } from './bracket-types.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 
 export function BracketsView() {

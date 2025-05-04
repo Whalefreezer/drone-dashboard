@@ -1,12 +1,10 @@
 import React from 'react';
-// import { useQueryAtom } from 'jotai'; // Incorrect import
 import {
     bracketsDataAtom,
     findEliminatedPilots,
-    // EliminatedPilot, // Import from bracket-types.ts
-    useQueryAtom, // Correct import location
+    useQueryAtom,
 } from '../state/index.ts';
-import { EliminatedPilot } from './bracket-types.ts'; // Correct import location
+import { EliminatedPilot } from './bracket-types.ts';
 import { getPositionWithSuffix } from '../common/index.ts';
 
 export function EliminatedPilotsView() {

@@ -1,18 +1,13 @@
 import './App.css';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
-    // bracketsDataAtom, // Moved to bracket/
-    // findEliminatedPilots, // Moved to bracket/
-    // pilotsAtom, // Moved to bracket/
     racesAtom,
     roundsDataAtom,
     usePeriodicUpdate,
-    // useQueryAtom, // Moved to bracket/
 } from './state/index.ts';
 import {
     findIndexOfCurrentRace,
     findIndexOfLastRace,
-    // getPositionWithSuffix, // Moved to bracket/
 } from './common/index.ts';
 import { TimeDisplay } from './common/index.ts';
 import { LapsView } from './race/LapsView.tsx';
@@ -98,15 +93,15 @@ function App() {
                     {/* <Legend /> */}
                     {
                         /* <div className="qr-code-container">
-            <QRCodeSVG
-              value="https://nzo.roboenator.com"
-              size={230}
-              bgColor="#FFF"
-              fgColor="#000"
-              level="L"
-              style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
-            />
-          </div> */
+             <QRCodeSVG
+               value="https://nzo.roboenator.com"
+               size={230}
+               bgColor="#FFF"
+               fgColor="#000"
+               level="L"
+               style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
+             />
+           </div> */
                     }
             </div>
         </>
