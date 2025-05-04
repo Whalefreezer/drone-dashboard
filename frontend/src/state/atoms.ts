@@ -1,6 +1,7 @@
 import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
 import { atomFamily, atomWithRefresh, loadable } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/types.ts';
+import { Bracket, BracketPilot, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
@@ -34,18 +35,6 @@ export const eventDataAtom = atomWithSuspenseQuery((get) => ({
     },
     refetchInterval: 10_000,
 }));
-
-export interface BracketPilot {
-    seed: string;
-    name: string;
-    rounds: (number | null)[];
-    points: number;
-}
-
-export interface Bracket {
-    name: string;
-    pilots: BracketPilot[];
-}
 
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
     queryKey: ['bracketsData'],
@@ -282,13 +271,6 @@ export function usePeriodicUpdate(updateFn: () => void, interval: number) {
             return () => clearInterval(intervalId);
         }
     }, [updateFn, interval]);
-}
-
-export interface EliminatedPilot {
-    name: string;
-    bracket: string;
-    position: number;
-    points: number;
 }
 
 export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
