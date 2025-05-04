@@ -196,32 +196,58 @@ To ensure the application remains functional during refactoring:
 2. Internal components (`LapsTable`, `LapsTableHeader`, `LapsTableRow`) will remain within `LapsView.tsx` for now.
 3. Extract `RaceTime` from `App.tsx` to `frontend/src/race/RaceTime.tsx`. (Done)
 
-### Phase 3: Pilot Feature (To Do)
+### Phase 3: Pilot Feature (Done)
 
-1. Create `pilot/` directory with core files.
+1. Create `pilot/` directory with core files. (Done)
 2. Migrate components defined within `App.tsx`:
-   - `PilotChannelView` -> `frontend/src/pilot/PilotChannelView.tsx`
+   - `PilotChannelView` -> `frontend/src/pilot/PilotChannelView.tsx` (Done)
 
-### Phase 4: Leaderboard Feature (To Do)
+### Phase 4: Leaderboard Feature (Done)
 
-1. Create `leaderboard/` directory with core files.
+1. Create `leaderboard/` directory with core files. (Done)
 2. Migrate components defined within `App.tsx`:
-   - `Leaderboard` -> `frontend/src/leaderboard/Leaderboard.tsx`
+   - `Leaderboard` -> `frontend/src/leaderboard/Leaderboard.tsx` (Done)
 
-### Phase 5: Bracket Feature (To Do)
+### Phase 5: Bracket Feature (Done)
 
-1. Create `bracket/` directory with core files.
+1. Create `bracket/` directory with core files. (Done)
 2. Migrate components defined within `App.tsx`:
-   - `BracketsView` -> `frontend/src/bracket/BracketsView.tsx`
-   - `EliminatedPilotsView` -> `frontend/src/bracket/EliminatedPilotsView.tsx`
+   - `BracketsView` -> `frontend/src/bracket/BracketsView.tsx` (Done)
+   - `EliminatedPilotsView` -> `frontend/src/bracket/EliminatedPilotsView.tsx` (Done)
 
-### Phase 6: Feature Hooks
+### Phase 6: Feature Hooks (To Do)
 
-For each feature, create its hooks file with related functionality:
-1. `race-hooks.ts`: Race data and timing
-2. `pilot-hooks.ts`: Pilot data and channels
-3. `leaderboard-hooks.ts`: Leaderboard calculations
-4. `bracket-hooks.ts`: Bracket management
+Extract business logic implemented with hooks from components into dedicated feature hook files.
+
+1.  **`race-hooks.ts`**: Race data and timing (Missing)
+    *   Extract race data fetching/access (`useAtomValue(racesAtom)`) from `App.tsx` and `LapsView.tsx`.
+    *   Extract current/last/next race index logic (`findIndexOfCurrentRace`, `findIndexOfLastRace`) from `App.tsx`.
+    *   Extract logic for getting race subset from `App.tsx`.
+    *   Extract race-specific periodic update logic (`usePeriodicUpdate` usage) from `App.tsx` and `LapsView.tsx`.
+    *   Extract race-specific atom family usage (`useAtom(raceFamilyAtom(raceId))`) from `LapsView.tsx`.
+    *   Extract round data lookup from `LapsView.tsx`.
+    *   Extract max laps calculation from `LapsView.tsx`.
+    *   Extract lap time calculations (fastest, overall fastest) from `LapsTableRow` within `LapsView.tsx`.
+    *   Consider consolidating time-related logic from `RaceTime.tsx` and `TimeDisplay.tsx` here or in a common time hook.
+
+2.  **`pilot-hooks.ts`**: Pilot data and channels (Placeholder exists)
+    *   Extract pilot data access (`useAtomValue(pilotsAtom)`) from `LapsView.tsx` (and potentially other components).
+    *   Extract channel data access (`useAtomValue(channelsDataAtom)`) from `LapsView.tsx` (specifically `LapsTableRow`).
+    *   Extract overall best times access (`useAtomValue(overallBestTimesAtom)`) from `LapsTableRow`.
+    *   Extract pilot/channel lookup logic from `LapsTableRow`.
+    *   Logic for `PilotChannelView` seems minimal and mostly prop-based, but review if any state/effects are added later.
+
+3.  **`leaderboard-hooks.ts`**: Leaderboard calculations (Missing - logic currently in `leaderboard-logic.ts` invoked by hooks in `Leaderboard.tsx`)
+    *   Create hooks (`useLeaderboardData`, `usePositionChanges`) that encapsulate the `useMemo` calls currently in `Leaderboard.tsx` which trigger `calculateLeaderboardData` and `getPositionChanges` from `leaderboard-logic.ts`.
+    *   Move the state atom access (`racesAtom`, `pilotsAtom`, etc.) used for leaderboard calculation into these hooks.
+    *   Move the `isRecentTime` callback logic from `Leaderboard.tsx`.
+    *   Move the animation effect (`useEffect`) logic from `Leaderboard.tsx` into a relevant hook if appropriate.
+
+4.  **`bracket-hooks.ts`**: Bracket management (Missing - placeholder creation mentioned in docs but file not found)
+    *   Extract bracket data access (`useQueryAtom(bracketsDataAtom)`) from `BracketsView.tsx`, `EliminatedPilotsView.tsx`, and `Leaderboard.tsx`.
+    *   Extract the logic for finding the `matchingBracket` based on current race pilots from `BracketsView.tsx`.
+    *   Extract the calculation of `eliminatedPilots` (using `findEliminatedPilots`) from `EliminatedPilotsView.tsx` and `Leaderboard.tsx` into a dedicated hook (e.g., `useEliminatedPilots`).
+    *   Extract bracket pilot lookup logic from `LapsTableRow` in `LapsView.tsx`.
 
 ### Phase 7: Final App Refactoring
 
