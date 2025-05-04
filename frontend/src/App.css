@@ -252,29 +252,52 @@
 }
 
 .bracket-table tbody tr:hover {
-    background-color: #222;
+    background-color: #282828;
 }
 
 .bracket-table td:first-child {
+    width: 40%;
     font-weight: bold;
-    color: #666;
 }
 
 .bracket-table td:nth-child(3) {
-    font-weight: bold;
-    color: #00ff00;
+    text-align: right;
+    font-family: monospace;
 }
 
 /* Eliminated Pilots View */
 .eliminated-pilots {
-    margin-bottom: 16px;
+    flex: 1;
 }
 
 .eliminated-pilots .bracket-table {
-    width: 100%;
+    font-size: 0.85em;
 }
 
 .eliminated-pilots .bracket-table td:nth-child(4) {
-    font-weight: bold;
-    color: #ff4444;
+    font-style: italic;
+    color: #888;
+}
+
+/* Styles moved from App.tsx */
+.app-header {
+    text-align: center;
+    border-bottom: 1px solid #333;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #1a1a1a;
+    z-index: 100;
+}
+
+.app-main-content {
+    /* Combine existing app-container styles with the margin-top from App.tsx */
+    display: flex;
+    justify-content: space-between;
+    width: 100vw;
+    box-sizing: border-box;
+    gap: 4px;
+    padding: 0 16px;
+    margin-top: 40px; /* Added from App.tsx inline style */
 }
