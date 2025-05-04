@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { loadable } from 'jotai/utils';
 import { eventIdAtom, eventDataAtom } from '../state/atoms.ts';
-import { SNAPSHOT_TARGET_ENDPOINTS, RACE_DATA_ENDPOINT_TEMPLATE } from '../mocks/snapshotConstants.ts';
+import { SNAPSHOT_TARGET_ENDPOINTS, RACE_DATA_ENDPOINT_TEMPLATE } from './snapshotConstants.ts';
 import { RaceEvent } from '../types/types.ts';
 
 // Basic styling for the button container

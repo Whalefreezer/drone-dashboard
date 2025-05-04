@@ -1,5 +1,6 @@
 import { Channel, Pilot, Race, Round } from '../types/types.ts';
-import { LeaderboardEntry, ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 
 export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
 

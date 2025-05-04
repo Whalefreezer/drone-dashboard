@@ -3,8 +3,6 @@ import { render, screen, act } from "@testing-library/react"; // Import act
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 import RaceTime from './RaceTime.tsx';
-import { server } from '../mocks/server.ts'; // Import server for test-specific overrides
-import { http } from 'msw'; // Import msw utils for overrides
 
 
 describe('RaceTime', () => {

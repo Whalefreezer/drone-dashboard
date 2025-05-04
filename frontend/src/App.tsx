@@ -1,37 +1,24 @@
 import './App.css';
-import { useEffect, useRef } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
-    Bracket,
     BracketPilot,
     bracketsDataAtom,
-    eventDataAtom,
     findEliminatedPilots,
-    overallBestTimesAtom,
     pilotsAtom,
-    raceFamilyAtom,
     racesAtom,
-    RaceWithProcessedLaps,
     roundsDataAtom,
     usePeriodicUpdate,
     useQueryAtom,
 } from './state/index.ts';
-import { PilotChannel, Pilot, Round } from './types/index.ts';
 import {
     findIndexOfCurrentRace,
     findIndexOfLastRace,
-    getLapClassName,
     getPositionWithSuffix,
-    secondsFromString,
 } from './common/index.ts';
-import { DaySchedule } from './race/index.ts';
 import { TimeDisplay } from './common/index.ts';
 import { LapsView } from './race/LapsView.tsx';
-import Legend from './common/Legend.tsx';
 import RaceTime from './race/RaceTime.tsx';
-import { PilotChannelView } from './pilot/index.ts';
-import ScenarioSelector from './common/ScenarioSelector.tsx';
-import SnapshotControl from './common/SnapshotControl.tsx';
+import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
 

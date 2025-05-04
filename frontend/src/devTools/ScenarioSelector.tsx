@@ -4,8 +4,8 @@ import {
     DEFAULT_SCENARIO_NAME, 
     getHandlersByScenarioName, 
     jsonScenarioFiles // Need this to check if it's a JSON scenario
-} from '../mocks/scenarios/index.ts';
-import { worker } from '../mocks/browser.ts'; // Import the worker instance
+} from './scenarios/index.ts';
+import { worker } from './browser.ts'; // Import the worker instance
 
 // Basic styling for the selector
 const selectorStyle: React.CSSProperties = {

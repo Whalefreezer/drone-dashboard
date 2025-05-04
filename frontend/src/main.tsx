@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './common/ErrorBoundary.tsx';
-import { enableMocking } from './mocks/initialize.tsx';
+import { enableMocking } from './devTools/initialize.tsx';
 
 // Global error handlers
 globalThis.addEventListener('error', (event) => {

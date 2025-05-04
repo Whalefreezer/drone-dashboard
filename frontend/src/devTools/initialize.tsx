@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { worker } from './browser.ts';
 import { DEFAULT_SCENARIO_NAME, getHandlersByScenarioName, scenarioNames } from './scenarios/index.ts';
-import ScenarioSelector from '../common/ScenarioSelector.tsx';
+import ScenarioSelector from './ScenarioSelector.tsx';
 
 /**
  * Enables MSW mocking based on the `?dev=1` URL flag.

@@ -8,8 +8,8 @@ import {
     pilotHasConsecutiveLaps,
     pilotHasLaps,
 } from '../common/utils.ts';
-import { Pilot, Channel, Bracket, RaceWithProcessedLaps } from '../types/index.ts';
-import { findEliminatedPilots } from '../state/atoms.ts'; // Keep this import for now
+import { Pilot, Channel } from '../types/index.ts';
+import { Bracket, findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts'; // Keep this import for now
 import {
     LeaderboardEntry,
     SortDirection,

@@ -8,6 +8,7 @@ import {
     pilotHasConsecutiveLaps,
     pilotHasLaps,
 } from '../common/utils.ts';
+import { LeaderboardEntry, SortGroup, SortDirection, NullHandling } from '../leaderboard/leaderboard-types.ts';
 
 // Helper function to find the hierarchy of applicable groups for an entry
 function getGroupHierarchy(
