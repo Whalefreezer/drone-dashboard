@@ -6,23 +6,17 @@ import {
     usePeriodicUpdate,
 } from './state/index.ts';
 import {
-    findIndexOfCurrentRace,
-    findIndexOfLastRace,
+    TimeDisplay,
 } from './common/index.ts';
-import { TimeDisplay } from './common/index.ts';
-import { LapsView } from './race/LapsView.tsx';
-import RaceTime from './race/RaceTime.tsx';
+import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
-import { BracketsView, EliminatedPilotsView } from './bracket/index.ts';
+import { EliminatedPilotsView } from './bracket/index.ts';
 
 function App() {
     const races = useAtomValue(racesAtom);
     const updateRoundsData = useSetAtom(roundsDataAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const lastRaceIndex = findIndexOfLastRace(races);
-    const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
 
     usePeriodicUpdate(updateRoundsData, 10_000);
 
@@ -48,51 +42,13 @@ function App() {
                 <TimeDisplay />
             </div>
             <div className='app-container' style={{ marginTop: '40px' }}>
-                <div className='races-container'>
-                    {lastRaceIndex !== -1 && (
-                        <div className='race-box last-race'>
-                            <div className='race-header'>
-                                <h3>Last Race</h3>
-                            </div>
-                            <LapsView
-                                key={races[lastRaceIndex].ID}
-                                raceId={races[lastRaceIndex].ID}
-                            />
-                        </div>
-                    )}
-                    {currentRaceIndex !== -1 && (
-                        <div className='race-box current-race'>
-                            <div className='race-header'>
-                                <h3>Current Race</h3>
-                                <div className='race-timer'>
-                                    <RaceTime />
-                                </div>
-                            </div>
-                            <LapsView
-                                key={races[currentRaceIndex].ID}
-                                raceId={races[currentRaceIndex].ID}
-                            />
-                        </div>
-                    )}
-                    <BracketsView />
-                    <div className='race-box next-races'>
-                        <div className='race-header'>
-                            <h3>Next Races</h3>
-                        </div>
-                        {raceSubset.map((race) => (
-                            <LapsView
-                                key={race.ID}
-                                raceId={race.ID}
-                            />
-                        ))}
-                    </div>
-                </div>
-                    <Leaderboard />
-                    <EliminatedPilotsView />
+                <RacesContainer />
+                <Leaderboard />
+                <EliminatedPilotsView />
 
-                    {/* <Legend /> */}
-                    {
-                        /* <div className="qr-code-container">
+                {/* <Legend /> */}
+                {
+                    /* <div className="qr-code-container">
              <QRCodeSVG
                value="https://nzo.roboenator.com"
                size={230}
@@ -102,7 +58,7 @@ function App() {
                style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
              />
            </div> */
-                    }
+                }
             </div>
         </>
     );
