@@ -105,7 +105,6 @@ function App() {
                         ))}
                     </div>
                 </div>
-                <div className='leaderboard-container'>
                     <Leaderboard />
                     {/* <EliminatedPilotsView /> */}
 
@@ -122,7 +121,6 @@ function App() {
             />
           </div> */
                     }
-                </div>
             </div>
         </>
     );

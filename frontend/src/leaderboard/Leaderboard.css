@@ -4,6 +4,11 @@
     flex: 1;
     min-width: 300px;
     margin-left: 0;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
 }
 
 /* --- Table Styles --- */
