@@ -21,9 +21,11 @@ Shared utilities, components, and hooks used across different features.
     -   `Spinner` (default)
 -   **`TimeDisplay.tsx`**:
     -   `TimeDisplay` (default)
+-   **`QRCode.tsx`**:
+    -   `QRCode` (default)
 -   **`index.ts`**:
     -   Exports from `./utils.ts`.
-    -   `TimeDisplay`, `Spinner`, `ErrorBoundary`.
+    -   `TimeDisplay`, `Spinner`, `ErrorBoundary`, `Legend`, `QRCode`.
 -   **`useIdleCursor.ts`**:
     -   `useIdleCursor`
 -   **`utils.ts`**:
@@ -153,9 +155,20 @@ Components and types related to individual pilots.
 ### `race/`
 Components and types related to race display and scheduling. (Note: Hooks file `race-hooks.ts` mentioned in plan but not found in exports).
 
--   **`DaySchedule.tsx`**: (Export not found)
--   **`LapsView.tsx`**: (Export not found)
--   **`RaceTime.tsx`**: (Export not found)
+-   **`DaySchedule.tsx`**:
+    -   `DaySchedule` (default)
+-   **`LapsView.tsx`**:
+    -   `LapsView`
+-   **`RaceTime.tsx`**:
+    -   `RaceTime` (default)
+-   **`RacesContainer.tsx`**:
+    -   `RacesContainer`
+-   **`index.ts`**:
+    -   Exports from `./DaySchedule.tsx`.
+    -   Exports from `./LapsView.tsx`.
+    -   Exports from `./RaceTime.tsx`.
+    -   Exports from `./RacesContainer.tsx`.
+    -   Exports from `./race-utils.ts`.
 
 ### `types/`
 Shared data structures and type definitions.
