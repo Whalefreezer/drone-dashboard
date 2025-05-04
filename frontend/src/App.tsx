@@ -36,18 +36,6 @@ function App() {
                 <EliminatedPilotsView />
 
                 {/* <Legend /> */}
-                {
-                    /* <div className="qr-code-container">
-             <QRCodeSVG
-               value="https://nzo.roboenator.com"
-               size={230}
-               bgColor="#FFF"
-               fgColor="#000"
-               level="L"
-               style={{ backgroundColor: '#FFF', padding: '8px', borderRadius: '4px' }}
-             />
-           </div> */
-                }
             </div>
         </>
     );
