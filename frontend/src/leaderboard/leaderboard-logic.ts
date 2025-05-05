@@ -1,12 +1,19 @@
 import {
+    BestTime,
+    ConsecutiveTime,
     calculateBestTimes,
+    CONSECUTIVE_LAPS,
+} from '../race/race-utils.ts';
+import {
     calculateRacesUntilNext,
+    findIndexOfCurrentRace,
     getEliminationOrderIndex,
-    getEliminationStage,
+    getNormalizedPilotName,
     isPilotEliminated,
     isPilotInEliminationOrder,
     pilotHasConsecutiveLaps,
     pilotHasLaps,
+    getEliminationStage,
 } from '../common/utils.ts';
 import { Pilot, Channel } from '../types/index.ts';
 import {
@@ -18,9 +25,9 @@ import {
     LeaderboardEntry,
     SortDirection,
     NullHandling,
-    SortCriteria,
     SortGroup,
 } from './leaderboard-types.ts';
+import { EliminatedPilot } from '../bracket/bracket-types.ts';
 
 // Logic functions (calculations, sorting) for the Leaderboard feature
 

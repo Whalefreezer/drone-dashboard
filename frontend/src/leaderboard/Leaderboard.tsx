@@ -11,11 +11,10 @@ import {
     findEliminatedPilots,
 } from '../state/index.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
-import { CONSECUTIVE_LAPS } from '../common/utils.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { Pilot, Channel, Bracket, Round } from '../types/index.ts'; // Assuming Round is here
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
+import { CONSECUTIVE_LAPS } from '../race/race-utils.ts';
 
 // Helper function moved from App.tsx
 function formatTimeDifference(newTime: number, oldTime: number): string {

@@ -1,8 +1,7 @@
 import { Channel, Pilot, Race, Round } from '../types/types.ts';
 import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
-
-export const CONSECUTIVE_LAPS = 3; // Central constant for consecutive laps calculation
+import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';
 
 export function getPositionWithSuffix(position: number): string {
     // Handle special cases for 11th, 12th, 13th
@@ -152,126 +151,6 @@ interface PilotEntry {
         position: number;
         points: number;
     } | null;
-}
-
-interface BestTime {
-    time: number;
-    roundId: string;
-    raceNumber: number;
-    lapNumber: number;
-}
-
-interface ConsecutiveTime {
-    time: number;
-    roundId: string;
-    raceNumber: number;
-    startLap: number;
-}
-
-export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
-    const overallFastestLaps = new Map<string, BestTime>();
-    const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
-    const fastestHoleshots = new Map<string, BestTime>();
-    const pilotChannels = new Map<string, string>();
-
-    races.forEach((race) => {
-        race.PilotChannels.forEach((pilotChannel) => {
-            if (!pilotChannels.has(pilotChannel.Pilot)) {
-                pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
-            }
-
-            const racingLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && !lap.isHoleshot
-            );
-
-            const holeshotLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && lap.isHoleshot
-            );
-
-            updateFastestLaps(
-                racingLaps,
-                pilotChannel.Pilot,
-                race,
-                overallFastestLaps,
-            );
-            updateConsecutiveLaps(
-                racingLaps,
-                pilotChannel.Pilot,
-                race,
-                fastestConsecutiveLaps,
-            );
-            updateFastestLaps(
-                holeshotLaps,
-                pilotChannel.Pilot,
-                race,
-                fastestHoleshots,
-            );
-        });
-    });
-
-    return {
-        overallFastestLaps,
-        fastestConsecutiveLaps,
-        fastestHoleshots,
-        pilotChannels,
-    };
-}
-
-function updateFastestLaps(
-    racingLaps: ProcessedLap[],
-    pilotId: string,
-    race: RaceWithProcessedLaps,
-    overallFastestLaps: Map<string, BestTime>,
-) {
-    if (racingLaps.length > 0) {
-        const fastestLap = racingLaps.reduce((fastest, lap) =>
-            lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
-        );
-
-        const currentFastest = overallFastestLaps.get(pilotId);
-        if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
-            overallFastestLaps.set(pilotId, {
-                time: fastestLap.lengthSeconds,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
-                lapNumber: fastestLap.lapNumber,
-            });
-        }
-    }
-}
-
-function updateConsecutiveLaps(
-    racingLaps: ProcessedLap[],
-    pilotId: string,
-    race: RaceWithProcessedLaps,
-    fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
-) {
-    if (racingLaps.length >= CONSECUTIVE_LAPS) {
-        let fastestConsecutive = { time: Infinity, startLap: 0 };
-        for (let i = 0; i < racingLaps.length - (CONSECUTIVE_LAPS - 1); i++) {
-            const consecutiveLapsTime = racingLaps
-                .slice(i, i + CONSECUTIVE_LAPS)
-                .reduce((sum, lap) => sum + lap.lengthSeconds, 0);
-            if (consecutiveLapsTime < fastestConsecutive.time) {
-                fastestConsecutive = {
-                    time: consecutiveLapsTime,
-                    startLap: racingLaps[i].lapNumber,
-                };
-            }
-        }
-
-        const currentFastestConsecutive = fastestConsecutiveLaps.get(pilotId);
-        if (
-            !currentFastestConsecutive ||
-            fastestConsecutive.time < currentFastestConsecutive.time
-        ) {
-            fastestConsecutiveLaps.set(pilotId, {
-                ...fastestConsecutive,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
-            });
-        }
-    }
 }
 
 // --- Consolidated Elimination Logic ---
