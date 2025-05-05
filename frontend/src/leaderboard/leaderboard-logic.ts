@@ -26,6 +26,7 @@ import {
 
 // --- Calculation Logic (from atoms.ts) --- 
 
+
 export function calculateLeaderboardData(
     races: RaceWithProcessedLaps[],
     pilots: Pilot[],
@@ -80,33 +81,14 @@ export function calculateLeaderboardData(
                         pilot.Name.toLowerCase().replace(/\s+/g, ''),
             );
 
-            // Get the pilot's channel with priority:
-            let pilotChannel: Channel | null = null;
-            if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
-                const currentRace = races[currentRaceIndex];
-                const currentChannelId = currentRace.PilotChannels.find((pc) => pc.Pilot === pilot.ID)?.Channel;
-                if (currentChannelId) {
-                    pilotChannel = channels.find((c) => c.ID === currentChannelId) || null;
-                }
-                if (!pilotChannel && racesUntilNext.get(pilot.ID) !== -2) {
-                    for (let i = currentRaceIndex + 1; i < races.length; i++) {
-                        const nextChannelId = races[i].PilotChannels.find((pc) => pc.Pilot === pilot.ID)?.Channel;
-                        if (nextChannelId) {
-                            pilotChannel = channels.find((c) => c.ID === nextChannelId) || null;
-                            break;
-                        }
-                    }
-                }
-                if (!pilotChannel) {
-                    for (let i = currentRaceIndex - 1; i >= 0; i--) {
-                        const lastChannelId = races[i].PilotChannels.find((pc) => pc.Pilot === pilot.ID)?.Channel;
-                        if (lastChannelId) {
-                            pilotChannel = channels.find((c) => c.ID === lastChannelId) || null;
-                            break;
-                        }
-                    }
-                }
-            }
+            // Get the pilot's channel using the extracted function
+            const pilotChannel = getPilotChannelWithPriority(
+                pilot.ID,
+                races,
+                channels,
+                currentRaceIndex,
+                racesUntilNext,
+            );
 
             return {
                 pilot,
@@ -129,6 +111,53 @@ export function calculateLeaderboardData(
     // Sort using the moved function
     return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
 }
+
+// Helper to find the Channel object by ID
+function findChannelById(channels: Channel[], channelId: string | undefined): Channel | null {
+    if (!channelId) return null;
+    return channels.find((c) => c.ID === channelId) || null;
+}
+
+// Helper to find a pilot's channel ID in a specific race
+function getPilotChannelIdInRace(race: RaceWithProcessedLaps | undefined, pilotId: string): string | undefined {
+    return race?.PilotChannels.find((pc) => pc.Pilot === pilotId)?.Channel;
+}
+
+function getPilotChannelWithPriority(
+    pilotId: string,
+    races: RaceWithProcessedLaps[],
+    channels: Channel[],
+    currentRaceIndex: number,
+    racesUntilNextMap: Map<string, number>,
+): Channel | null {
+    const racesUntilNext = racesUntilNextMap.get(pilotId);
+    let foundChannelId: string | undefined = undefined;
+
+    if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
+        // Priority 1: Current Race
+        foundChannelId = getPilotChannelIdInRace(races[currentRaceIndex], pilotId);
+
+        // Priority 2: Next Race (if not in current and not done)
+        if (!foundChannelId && racesUntilNext !== -2) {
+            for (let i = currentRaceIndex + 1; i < races.length; i++) {
+                foundChannelId = getPilotChannelIdInRace(races[i], pilotId);
+                if (foundChannelId) break; // Found the next one
+            }
+        }
+
+        // Priority 3: Last Race (if still not found)
+        if (!foundChannelId) {
+            for (let i = currentRaceIndex - 1; i >= 0; i--) {
+                foundChannelId = getPilotChannelIdInRace(races[i], pilotId);
+                if (foundChannelId) break; // Found the last one
+            }
+        }
+    }
+
+    // Look up the Channel object once at the end based on the found ID
+    return findChannelById(channels, foundChannelId);
+}
+
 
 export function getPositionChanges(
     currentPositions: LeaderboardEntry[],

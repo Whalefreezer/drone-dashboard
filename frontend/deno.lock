@@ -32,6 +32,7 @@
     "npm:jsdom@24.0.0": "24.0.0",
     "npm:jsdom@^26.1.0": "26.1.0",
     "npm:msw@^2.7.5": "2.7.5_@types+node@22.5.4",
+    "npm:qrcode.react@*": "4.2.0_react@19.1.0",
     "npm:qrcode.react@^4.2.0": "4.2.0_react@19.1.0",
     "npm:react-dom@^19.1.0": "19.1.0_react@19.1.0",
     "npm:react@^19.1.0": "19.1.0",
