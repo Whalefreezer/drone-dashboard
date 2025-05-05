@@ -3,9 +3,9 @@ import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { CONSECUTIVE_LAPS } from '../race/race-utils.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
-    useLeaderboardState,
-    useLeaderboardCalculations,
     useLeaderboardAnimation,
+    useLeaderboardCalculations,
+    useLeaderboardState,
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { RaceWithProcessedLaps } from '../state/atoms.ts';

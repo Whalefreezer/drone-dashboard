@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import {
+    Bracket,
+    BracketPilot,
     bracketsDataAtom,
     channelsDataAtom,
     overallBestTimesAtom,
@@ -11,15 +13,9 @@ import {
     roundsDataAtom,
     usePeriodicUpdate,
     useQueryAtom,
-    Bracket,
-    BracketPilot,
 } from '../state/index.ts';
 import { PilotChannel } from '../types/index.ts';
-import {
-    findIndexOfCurrentRace,
-    getLapClassName,
-    getPositionWithSuffix,
-} from '../common/index.ts';
+import { findIndexOfCurrentRace, getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import './LapsView.css';
 
@@ -168,7 +164,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
         ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
         : Infinity;
 
-    const overallFastestLap = race.processedLaps.filter(lap => !lap.isHoleshot).length > 0
+    const overallFastestLap = race.processedLaps.filter((lap) => !lap.isHoleshot).length > 0
         ? Math.min(
             ...race.processedLaps
                 .filter((lap) => !lap.isHoleshot)
@@ -233,7 +229,9 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     }
 
     const lapCells = Array.from({ length: maxLaps + 1 }, (_, i) => {
-        const lapData = pilotLaps.find(lap => (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i));
+        const lapData = pilotLaps.find((lap) =>
+            (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i)
+        );
         if (lapData) {
             const className = getLapClassName(
                 lapData,
@@ -255,4 +253,4 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     cells.push(...lapCells);
 
     return <tr>{cells}</tr>;
-} 
+}

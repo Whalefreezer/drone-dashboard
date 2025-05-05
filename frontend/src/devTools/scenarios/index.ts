@@ -33,7 +33,9 @@ export const DEFAULT_SCENARIO_NAME: string = 'Standard Data'; // Keep default
  * @param name - The display name of the scenario.
  * @returns A promise resolving to the handlers array, or the default handlers if not found/failed.
  */
-export async function getHandlersByScenarioName(name: string | null): Promise<readonly HttpHandler[]> {
+export async function getHandlersByScenarioName(
+    name: string | null,
+): Promise<readonly HttpHandler[]> {
     const scenarioName = name && scenarioNames.includes(name) ? name : DEFAULT_SCENARIO_NAME;
 
     // Remove check for staticScenarios as they are now in jsonScenarioFiles
@@ -47,27 +49,35 @@ export async function getHandlersByScenarioName(name: string | null): Promise<re
         if (jsonHandlers) {
             return jsonHandlers;
         } else {
-            console.warn(`Failed to load JSON scenario "${scenarioName}" from ${filename}.json. Falling back to default.`);
+            console.warn(
+                `Failed to load JSON scenario "${scenarioName}" from ${filename}.json. Falling back to default.`,
+            );
             // Fallback to default if JSON loading fails
             // Need to load the default handlers if the requested one fails
             const defaultFilename = jsonScenarioFiles[DEFAULT_SCENARIO_NAME];
             const defaultHandlers = await createHandlersFromJson(defaultFilename);
-            if(defaultHandlers) {
+            if (defaultHandlers) {
                 return defaultHandlers;
             }
             // If even the default fails, return empty (or handle error appropriately)
-            console.error(`CRITICAL: Failed to load default JSON scenario "${DEFAULT_SCENARIO_NAME}" from ${defaultFilename}.json.`);
+            console.error(
+                `CRITICAL: Failed to load default JSON scenario "${DEFAULT_SCENARIO_NAME}" from ${defaultFilename}.json.`,
+            );
             return [];
         }
     }
 
     // Default fallback (should ideally not be reached if name is validated)
-    console.warn(`Scenario name "${scenarioName}" not found in jsonScenarioFiles. Falling back to default.`);
+    console.warn(
+        `Scenario name "${scenarioName}" not found in jsonScenarioFiles. Falling back to default.`,
+    );
     const defaultFilenameFallback = jsonScenarioFiles[DEFAULT_SCENARIO_NAME];
     const defaultHandlersFallback = await createHandlersFromJson(defaultFilenameFallback);
     if (defaultHandlersFallback) {
         return defaultHandlersFallback;
     }
-    console.error(`CRITICAL: Failed to load default JSON scenario (fallback) "${DEFAULT_SCENARIO_NAME}" from ${defaultFilenameFallback}.json.`);
+    console.error(
+        `CRITICAL: Failed to load default JSON scenario (fallback) "${DEFAULT_SCENARIO_NAME}" from ${defaultFilenameFallback}.json.`,
+    );
     return [];
-} 
+}

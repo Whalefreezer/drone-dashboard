@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { 
-    scenarioNames, 
-    DEFAULT_SCENARIO_NAME, 
-    getHandlersByScenarioName, 
-    jsonScenarioFiles // Need this to check if it's a JSON scenario
+import { useEffect, useState } from 'react';
+import {
+    DEFAULT_SCENARIO_NAME,
+    getHandlersByScenarioName,
+    jsonScenarioFiles, // Need this to check if it's a JSON scenario
+    scenarioNames,
 } from './scenarios/index.ts';
 import { worker } from './browser.ts'; // Import the worker instance
 
@@ -44,19 +44,18 @@ function ScenarioSelector() {
         try {
             // Get handlers, potentially loading from JSON asynchronously
             const newHandlers = await getHandlersByScenarioName(newScenarioName);
-            
+
             // Apply the new handlers
             worker.resetHandlers(...newHandlers);
             console.log(`MSW handlers updated for scenario: "${newScenarioName}"`);
 
             // Force a reload to reflect changes
             window.location.reload();
-
         } catch (error) {
             console.error(`Error applying scenario "${newScenarioName}":`, error);
             // Optionally revert selection or show error state
             setIsLoading(false);
-            // Maybe revert to default? 
+            // Maybe revert to default?
             // localStorage.setItem('mswScenario', DEFAULT_SCENARIO_NAME);
             // window.location.reload();
         }
@@ -65,11 +64,11 @@ function ScenarioSelector() {
 
     return (
         <div style={selectorStyle}>
-            <label htmlFor="msw-scenario-select">
+            <label htmlFor='msw-scenario-select'>
                 {isLoading ? 'Loading Scenario...' : 'MSW Scenario:'}
             </label>
             <select
-                id="msw-scenario-select"
+                id='msw-scenario-select'
                 value={selectedScenario}
                 onChange={handleChange}
                 style={selectElementStyle}
@@ -85,4 +84,4 @@ function ScenarioSelector() {
     );
 }
 
-export default ScenarioSelector; 
+export default ScenarioSelector;

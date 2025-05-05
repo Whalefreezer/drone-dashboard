@@ -1,7 +1,7 @@
-import "../tests/test_setup.ts";
-import { assertEquals } from "@std/assert";
-import { render, cleanup } from "@testing-library/react";
-import { describe, it, beforeEach, afterEach } from "@std/testing/bdd";
+import '../tests/test_setup.ts';
+import { assertEquals } from '@std/assert';
+import { cleanup, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it } from '@std/testing/bdd';
 import TimeDisplay from './TimeDisplay.tsx';
 
 describe('TimeDisplay', () => {
@@ -29,7 +29,7 @@ describe('TimeDisplay', () => {
     });
 
     it('renders 24-hour time format when specified', () => {
-        const { container } = render(<TimeDisplay format="24h" />);
+        const { container } = render(<TimeDisplay format='24h' />);
         assertEquals(container.textContent, '14:30');
     });
 
@@ -41,7 +41,7 @@ describe('TimeDisplay', () => {
     it('applies default styles', () => {
         const { container } = render(<TimeDisplay />);
         const timeDisplay = container.firstChild as HTMLElement;
-        
+
         assertEquals(timeDisplay.style.textAlign, 'center');
         assertEquals(timeDisplay.style.padding, '0.5rem');
         assertEquals(timeDisplay.style.borderBottom, '1px solid #333');
@@ -52,11 +52,11 @@ describe('TimeDisplay', () => {
         const customStyle = { backgroundColor: 'red', color: 'white' };
         const { container } = render(<TimeDisplay style={customStyle} />);
         const timeDisplay = container.firstChild as HTMLElement;
-        
+
         assertEquals(timeDisplay.style.backgroundColor, 'red');
         assertEquals(timeDisplay.style.color, 'white');
         // Default styles should still be present
         assertEquals(timeDisplay.style.textAlign, 'center');
         assertEquals(timeDisplay.style.padding, '0.5rem');
     });
-}); 
+});

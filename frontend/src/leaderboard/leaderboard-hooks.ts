@@ -1,14 +1,14 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { useQueryAtom } from '../state/hooks.ts';
 import {
-    racesAtom,
-    pilotsAtom,
-    channelsDataAtom,
-    roundsDataAtom,
     bracketsDataAtom,
+    channelsDataAtom,
     findEliminatedPilots,
+    pilotsAtom,
+    racesAtom,
     RaceWithProcessedLaps, // Import the correct type
+    roundsDataAtom,
 } from '../state/index.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
@@ -114,4 +114,4 @@ export const useLeaderboardAnimation = (
     }, [currentLeaderboard, positionChanges]);
 
     return animatingRows;
-}; 
+};

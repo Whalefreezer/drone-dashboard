@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai';
-import { pilotsAtom, channelsDataAtom, eventDataAtom } from '../state/index.ts';
+import { channelsDataAtom, eventDataAtom, pilotsAtom } from '../state/index.ts';
 import { PilotChannelViewProps } from './pilot-types.ts';
 
 export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
@@ -27,4 +27,4 @@ export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
             />
         </div>
     );
-} 
+}

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { loadable } from 'jotai/utils';
-import { eventIdAtom, eventDataAtom } from '../state/atoms.ts';
-import { SNAPSHOT_TARGET_ENDPOINTS, RACE_DATA_ENDPOINT_TEMPLATE } from './snapshotConstants.ts';
+import { eventDataAtom, eventIdAtom } from '../state/atoms.ts';
+import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
 import { RaceEvent } from '../types/types.ts';
 
 // Basic styling for the button container
@@ -92,10 +92,10 @@ function SnapshotControl() {
         }
 
         if (eventDataLoadable.state !== 'hasData' || !Array.isArray(eventDataLoadable.data?.data)) {
-             setStatusMessage('Error: Event Data not available or invalid.');
-             setTimeout(() => setStatusMessage(null), 3000);
-             return;
-         }
+            setStatusMessage('Error: Event Data not available or invalid.');
+            setTimeout(() => setStatusMessage(null), 3000);
+            return;
+        }
 
         const eventData = eventDataLoadable.data.data as RaceEvent[];
         const raceIds = eventData[0]?.Races || [];
@@ -129,16 +129,19 @@ function SnapshotControl() {
             };
 
             for (const templatePath of SNAPSHOT_TARGET_ENDPOINTS) {
-                 if (templatePath === RACE_DATA_ENDPOINT_TEMPLATE) {
-                     capturedDataMap[templatePath] = {};
-                     for (const raceId of raceIds) {
-                         capturedDataMap[templatePath][raceId] = await fetchEndpoint(templatePath, raceId);
-                     }
-                 } else {
-                     capturedDataMap[templatePath] = await fetchEndpoint(templatePath);
-                 }
-             }
- 
+                if (templatePath === RACE_DATA_ENDPOINT_TEMPLATE) {
+                    capturedDataMap[templatePath] = {};
+                    for (const raceId of raceIds) {
+                        capturedDataMap[templatePath][raceId] = await fetchEndpoint(
+                            templatePath,
+                            raceId,
+                        );
+                    }
+                } else {
+                    capturedDataMap[templatePath] = await fetchEndpoint(templatePath);
+                }
+            }
+
             // Add scenario context (like the eventId used) to the map
             capturedDataMap['__scenarioContext'] = { eventId: eventId };
 
@@ -148,19 +151,19 @@ function SnapshotControl() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `snapshot-${Date.now()}.json`; 
+            link.download = `snapshot-${Date.now()}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
- 
+
             setStatusMessage('Snapshot downloaded! Check instructions.');
             alert(
-`Snapshot JSON downloaded as ${link.download}.\n\n` +
-`**ACTION REQUIRED:**\n` +
-`1. Move the downloaded file into: public/scenarios/\n` +
-`2. Add the filename (without .json) and a display name to jsonScenarioFiles in: frontend/src/mocks/scenarios/index.ts\n\n` +
-`(See docs/msw-snapshot-feature.md for details)`
+                `Snapshot JSON downloaded as ${link.download}.\n\n` +
+                    `**ACTION REQUIRED:**\n` +
+                    `1. Move the downloaded file into: public/scenarios/\n` +
+                    `2. Add the filename (without .json) and a display name to jsonScenarioFiles in: frontend/src/mocks/scenarios/index.ts\n\n` +
+                    `(See docs/msw-snapshot-feature.md for details)`,
             );
         } catch (error) {
             console.error('Snapshot failed globally:', error);
@@ -168,29 +171,30 @@ function SnapshotControl() {
         } finally {
             setIsCapturing(false);
             if (!fetchError && !statusMessage?.startsWith('Snapshot failed')) {
-                setTimeout(() => setStatusMessage(null), 5000); 
+                setTimeout(() => setStatusMessage(null), 5000);
             }
         }
     };
-    
+
     if (!currentEventId) {
-         return null; 
+        return null;
     }
 
-    const isEventDataReady = eventDataLoadable.state === 'hasData' && Array.isArray(eventDataLoadable.data?.data);
+    const isEventDataReady = eventDataLoadable.state === 'hasData' &&
+        Array.isArray(eventDataLoadable.data?.data);
     const finalStyle = isVisible ? snapshotControlStyle : hiddenStyle;
 
     return (
         <div style={finalStyle}>
             <button
                 onClick={captureAndGenerateJson}
-                disabled={isCapturing || !isEventDataReady} 
+                disabled={isCapturing || !isEventDataReady}
                 style={isCapturing || !isEventDataReady ? buttonDisabledStyle : buttonStyle}
                 title={!isEventDataReady ? 'Waiting for event data...' : ''}
             >
                 {isCapturing ? 'Capturing...' : 'Snapshot Live Data'}
             </button>
-            {statusMessage && <p style={{ marginTop: '5px', color:'#ffcc00' }}>{statusMessage}</p>}
+            {statusMessage && <p style={{ marginTop: '5px', color: '#ffcc00' }}>{statusMessage}</p>}
         </div>
     );
 }

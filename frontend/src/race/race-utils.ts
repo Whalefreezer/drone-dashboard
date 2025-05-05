@@ -197,4 +197,3 @@ function updateTotalRaceTime(
         });
     }
 }
-

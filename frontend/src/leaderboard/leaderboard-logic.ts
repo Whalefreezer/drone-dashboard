@@ -1,38 +1,29 @@
 import {
     BestTime,
-    ConsecutiveTime,
     calculateBestTimes,
     CONSECUTIVE_LAPS,
+    ConsecutiveTime,
 } from '../race/race-utils.ts';
 import {
     calculateRacesUntilNext,
     findIndexOfCurrentRace,
     getEliminationOrderIndex,
+    getEliminationStage,
     getNormalizedPilotName,
     isPilotEliminated,
     isPilotInEliminationOrder,
     pilotHasConsecutiveLaps,
     pilotHasLaps,
-    getEliminationStage,
 } from '../common/utils.ts';
-import { Pilot, Channel } from '../types/index.ts';
-import {
-    findEliminatedPilots,
-    RaceWithProcessedLaps,
-} from '../state/atoms.ts';
+import { Channel, Pilot } from '../types/index.ts';
+import { findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
-import {
-    LeaderboardEntry,
-    SortDirection,
-    NullHandling,
-    SortGroup,
-} from './leaderboard-types.ts';
+import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
 import { EliminatedPilot } from '../bracket/bracket-types.ts';
 
 // Logic functions (calculations, sorting) for the Leaderboard feature
 
-// --- Calculation Logic (from atoms.ts) --- 
-
+// --- Calculation Logic (from atoms.ts) ---
 
 export function calculateLeaderboardData(
     races: RaceWithProcessedLaps[],
@@ -42,8 +33,9 @@ export function calculateLeaderboardData(
     brackets: Bracket[] = [],
 ): LeaderboardEntry[] {
     // Calculate best times
-    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots } =
-        calculateBestTimes(races);
+    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots } = calculateBestTimes(
+        races,
+    );
 
     // Get pilots that are explicitly listed in race PilotChannels
     const scheduledPilots = new Set<string>();
@@ -122,7 +114,10 @@ function findChannelById(channels: Channel[], channelId: string | undefined): Ch
     return channels.find((c) => c.ID === channelId) || null;
 }
 
-function getPilotChannelIdInRace(race: RaceWithProcessedLaps | undefined, pilotId: string): string | undefined {
+function getPilotChannelIdInRace(
+    race: RaceWithProcessedLaps | undefined,
+    pilotId: string,
+): string | undefined {
     return race?.PilotChannels.find((pc) => pc.Pilot === pilotId)?.Channel;
 }
 
@@ -141,14 +136,15 @@ export function getPilotChannelWithPriority(
     ];
 
     // Find the first race in the prioritized list where the pilot exists
-    const raceWithPilot = prioritizedRaces.find(race => getPilotChannelIdInRace(race, pilotId) !== undefined);
+    const raceWithPilot = prioritizedRaces.find((race) =>
+        getPilotChannelIdInRace(race, pilotId) !== undefined
+    );
 
     const foundChannelId = getPilotChannelIdInRace(raceWithPilot, pilotId);
 
     // Look up the Channel object for the found ID
     return findChannelById(channels, foundChannelId);
 }
-
 
 export function getPositionChanges(
     currentPositions: LeaderboardEntry[],
@@ -177,7 +173,7 @@ export function getPositionChanges(
     return changes;
 }
 
-// --- Sorting Logic (from race-utils.ts) --- 
+// --- Sorting Logic (from race-utils.ts) ---
 
 // Main sorting function
 export function sortLeaderboard(
@@ -344,10 +340,26 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
             },
         ],
         groups: [
-            { name: 'Eliminated in Finals', condition: (e) => getEliminationStage(e) === 4, criteria: [] },
-            { name: 'Eliminated in Semis', condition: (e) => getEliminationStage(e) === 3, criteria: [] },
-            { name: 'Eliminated in Quarters', condition: (e) => getEliminationStage(e) === 2, criteria: [] },
-            { name: 'Eliminated in Heats', condition: (e) => getEliminationStage(e) === 1, criteria: [] },
+            {
+                name: 'Eliminated in Finals',
+                condition: (e) => getEliminationStage(e) === 4,
+                criteria: [],
+            },
+            {
+                name: 'Eliminated in Semis',
+                condition: (e) => getEliminationStage(e) === 3,
+                criteria: [],
+            },
+            {
+                name: 'Eliminated in Quarters',
+                condition: (e) => getEliminationStage(e) === 2,
+                criteria: [],
+            },
+            {
+                name: 'Eliminated in Heats',
+                condition: (e) => getEliminationStage(e) === 1,
+                criteria: [],
+            },
         ],
     },
     {
@@ -366,4 +378,4 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
             },
         ],
     },
-]; 
+];

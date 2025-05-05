@@ -21,18 +21,20 @@ const defaultProps: Partial<CoreQRCodeProps> = {
 };
 
 // Our component's props: requires 'value', allows overrides
-type QRCodeProps = Required<Pick<CoreQRCodeProps, 'value'>> & Partial<Omit<CoreQRCodeProps, 'value'>>;
+type QRCodeProps =
+    & Required<Pick<CoreQRCodeProps, 'value'>>
+    & Partial<Omit<CoreQRCodeProps, 'value'>>;
 
 // Wrapper component for QRCodeSVG
 function QRCode({ value, ...rest }: QRCodeProps) {
     const combinedProps: CoreQRCodeProps = { ...defaultProps, ...rest, value };
 
     return (
-        <div className="qr-code-container">
+        <div className='qr-code-container'>
             {/* Type assertion needed as the library's own types might be complex */}
             <QRCodeSVG {...combinedProps as any} />
         </div>
     );
 }
 
-export default QRCode; 
+export default QRCode;

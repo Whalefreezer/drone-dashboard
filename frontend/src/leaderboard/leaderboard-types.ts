@@ -1,4 +1,4 @@
-import { Pilot, Channel } from '../types/index.ts';
+import { Channel, Pilot } from '../types/index.ts';
 
 // Types specific to the Leaderboard feature
 
@@ -51,4 +51,4 @@ export interface SortGroup {
     criteria: SortCriteria[];
     condition?: (entry: LeaderboardEntry) => boolean;
     groups?: SortGroup[]; // Nested groups
-} 
+}

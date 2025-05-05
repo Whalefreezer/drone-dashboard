@@ -3,7 +3,7 @@ export { Leaderboard } from './Leaderboard.tsx';
 export * from './leaderboard-types.ts';
 export {
     calculateLeaderboardData,
+    defaultLeaderboardSortConfig,
     getPositionChanges,
     sortLeaderboard,
-    defaultLeaderboardSortConfig,
 } from './leaderboard-logic.ts';

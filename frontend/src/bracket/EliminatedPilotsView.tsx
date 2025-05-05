@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-    bracketsDataAtom,
-    findEliminatedPilots,
-    useQueryAtom,
-} from '../state/index.ts';
+import { bracketsDataAtom, findEliminatedPilots, useQueryAtom } from '../state/index.ts';
 import { EliminatedPilot } from './bracket-types.ts';
 import { getPositionWithSuffix } from '../common/index.ts';
 
@@ -42,4 +38,4 @@ export function EliminatedPilotsView() {
             </table>
         </div>
     );
-} 
+}

@@ -5,4 +5,4 @@ import { AtomWithSuspenseQueryResult } from 'jotai-tanstack-query';
 export function useQueryAtom<T>(queryAtom: Atom<AtomWithSuspenseQueryResult<T, Error>>): T {
     const { data } = useAtomValue(queryAtom);
     return data;
-} 
+}

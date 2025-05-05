@@ -8,7 +8,7 @@ export function getPositionWithSuffix(position: number): string {
     if (position % 100 >= 11 && position % 100 <= 13) {
         return `${position}th`;
     }
-    
+
     // Handle other cases based on the last digit
     const lastDigit = position % 10;
     const suffix = lastDigit === 1 ? 'st' : lastDigit === 2 ? 'nd' : lastDigit === 3 ? 'rd' : 'th';
@@ -16,7 +16,7 @@ export function getPositionWithSuffix(position: number): string {
 }
 
 export function secondsFromString(time: string): number {
-    const parts = time.split(':').map(part => parseInt(part, 10));
+    const parts = time.split(':').map((part) => parseInt(part, 10));
 
     // Check if any part failed to parse
     if (parts.some(isNaN)) {
@@ -38,7 +38,7 @@ export function secondsFromString(time: string): number {
         // Handle unexpected formats (e.g., single number for seconds, or too many parts)
         // For simplicity, let's assume a single number is seconds, otherwise error.
         if (parts.length === 1) {
-             seconds = parts[0];
+            seconds = parts[0];
         } else {
             console.error(`Unexpected time format length in secondsFromString: ${time}`);
             return NaN;
@@ -47,8 +47,8 @@ export function secondsFromString(time: string): number {
 
     // Ensure all components are valid numbers before calculation
     if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-         console.error(`Parsed NaN component in secondsFromString: ${time}`);
-         return NaN;
+        console.error(`Parsed NaN component in secondsFromString: ${time}`);
+        return NaN;
     }
 
     return hours * 3600 + minutes * 60 + seconds;

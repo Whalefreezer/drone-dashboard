@@ -9,10 +9,10 @@ interface TimeDisplayProps {
     style?: React.CSSProperties;
 }
 
-export default function TimeDisplay({ 
-    format = '12h', 
+export default function TimeDisplay({
+    format = '12h',
     showSeconds = false,
-    style
+    style,
 }: TimeDisplayProps) {
     const [currentTime, setCurrentTime] = useState('');
 
@@ -40,10 +40,10 @@ export default function TimeDisplay({
                 padding: '0.5rem',
                 borderBottom: '1px solid #333',
                 backgroundColor: '#1a1a1a',
-                ...style
+                ...style,
             }}
         >
             {currentTime}
         </div>
     );
-} 
+}

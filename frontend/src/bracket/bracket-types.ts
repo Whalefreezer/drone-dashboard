@@ -15,4 +15,4 @@ export interface EliminatedPilot {
     bracket: string;
     position: number;
     points: number;
-} 
+}

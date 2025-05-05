@@ -12,7 +12,7 @@
 }
 
 /* --- Table Styles --- */
-.leaderboard-table { 
+.leaderboard-table {
     border: 1px solid black;
     border-collapse: collapse;
     width: 100%; /* Ensure table takes available space */
@@ -37,7 +37,8 @@
     font-family: monospace;
 }
 
-.leaderboard-table td:nth-child(2) { /* Pilot name column */
+.leaderboard-table td:nth-child(2) {
+    /* Pilot name column */
     font-family: inherit;
     font-weight: bold;
 }
@@ -153,8 +154,8 @@
 
 /* --- Channel Display (If specific to Leaderboard) --- */
 /* Assuming .channel-display might be shared, keep it minimal or move if confirmed exclusive */
-.channel-display { 
+.channel-display {
     display: flex;
     align-items: center;
-    gap: 4px; 
-} 
+    gap: 4px;
+}

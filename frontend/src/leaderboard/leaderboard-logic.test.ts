@@ -3,9 +3,9 @@ import { assert, assertEquals } from '@std/assert';
 import type { Channel, Pilot } from '../types/types.ts';
 import { ChannelPrefix, ShortBand } from '../types/types.ts';
 import {
-    sortLeaderboard,
     defaultLeaderboardSortConfig,
     getPilotChannelWithPriority,
+    sortLeaderboard,
 } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import type { RaceWithProcessedLaps } from '../state/atoms.ts';
@@ -130,7 +130,7 @@ const createMockRace = (
         PrimaryTimingSystemLocation: '',
         AutoAssignNumbers: false,
         Event: '',
-        Bracket: ''
+        Bracket: '',
     };
 
     return {
@@ -370,4 +370,4 @@ Deno.test('getPilotChannelWithPriority - Channel Not in List', () => {
     ];
     const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0);
     assertEquals(channel, null); // c99 not in allChannels, so findChannelById returns null
-}); 
+});

@@ -32,4 +32,4 @@ function RaceTime() {
     return <div className='race-time'>{timeRemaining.toFixed(1)}</div>;
 }
 
-export default RaceTime; 
+export default RaceTime;

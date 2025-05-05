@@ -1,11 +1,6 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
-import {
-    bracketsDataAtom,
-    pilotsAtom,
-    racesAtom,
-    useQueryAtom,
-} from '../state/index.ts';
+import { bracketsDataAtom, pilotsAtom, racesAtom, useQueryAtom } from '../state/index.ts';
 import { BracketPilot } from './bracket-types.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 
@@ -76,4 +71,4 @@ export function BracketsView() {
             </div>
         </div>
     );
-} 
+}

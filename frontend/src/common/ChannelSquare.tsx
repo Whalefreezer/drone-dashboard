@@ -27,4 +27,4 @@ export function ChannelSquare(
             {change ? '!' : ''}
         </div>
     );
-} 
+}

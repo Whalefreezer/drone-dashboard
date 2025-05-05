@@ -55,4 +55,4 @@ export default function Spinner({ size = 'medium', color = '#ffffff' }: SpinnerP
             }}
         />
     );
-} 
+}

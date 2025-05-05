@@ -1,12 +1,7 @@
 import './App.css';
 import { useSetAtom } from 'jotai';
-import {
-    roundsDataAtom,
-    usePeriodicUpdate,
-} from './state/index.ts';
-import {
-    TimeDisplay,
-} from './common/index.ts';
+import { roundsDataAtom, usePeriodicUpdate } from './state/index.ts';
+import { TimeDisplay } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
@@ -25,12 +20,10 @@ function App() {
         <>
             <SnapshotControl />
 
-            <div
-                className='app-header'
-            >
+            <div className='app-header'>
                 <TimeDisplay />
             </div>
-            <div className='app-main-content' >
+            <div className='app-main-content'>
                 <RacesContainer />
                 <Leaderboard />
                 <EliminatedPilotsView />

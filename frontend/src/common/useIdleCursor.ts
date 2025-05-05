@@ -36,7 +36,7 @@ export function useIdleCursor(): void {
                 clearTimeout(cursorHideTimeoutRef.current);
             }
             // Ensure cursor is visible when hook unmounts
-            document.body.style.cursor = 'default'; 
+            document.body.style.cursor = 'default';
         };
     }, []); // Empty dependency array - run effect once on mount
-} 
+}

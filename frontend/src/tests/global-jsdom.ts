@@ -1,4 +1,4 @@
-import jsdom from "global-jsdom";
+import jsdom from 'global-jsdom';
 
 // Initialize JSDOM globally
-jsdom(); 
+jsdom();
