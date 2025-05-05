@@ -1,96 +1,79 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAtomValue } from 'jotai';
-import { useQueryAtom } from '../state/hooks.ts';
-import './Leaderboard.css'; // Import the moved styles
-import {
-    racesAtom,
-    pilotsAtom,
-    channelsDataAtom,
-    roundsDataAtom,
-    bracketsDataAtom,
-    findEliminatedPilots,
-} from '../state/index.ts';
-import { findIndexOfCurrentRace } from '../common/index.ts';
+import React from 'react';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
-import { LeaderboardEntry } from './leaderboard-types.ts';
 import { CONSECUTIVE_LAPS } from '../race/race-utils.ts';
+import { LeaderboardEntry } from './leaderboard-types.ts';
+import {
+    useLeaderboardState,
+    useLeaderboardCalculations,
+    useLeaderboardAnimation,
+} from './leaderboard-hooks.ts';
+import './Leaderboard.css';
+import { RaceWithProcessedLaps } from '../state/atoms.ts';
+import { Channel, Round } from '../types/types.ts';
 
-// Helper function moved from App.tsx
+// Helper function remains here for now
 function formatTimeDifference(newTime: number, oldTime: number): string {
     const diff = oldTime - newTime;
     return diff > 0 ? `-${diff.toFixed(3)}` : `+${(-diff).toFixed(3)}`;
 }
 
-export const Leaderboard: React.FC = () => {
-    // --- Hooks and State --- 
-    const races = useAtomValue(racesAtom);
-    const pilots = useAtomValue(pilotsAtom);
-    const channels = useAtomValue(channelsDataAtom);
-    const roundDataValue = useAtomValue(roundsDataAtom); // Renamed to avoid conflict with Round type
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const brackets = useQueryAtom(bracketsDataAtom);
-    const eliminatedPilots = findEliminatedPilots(brackets);
-    const [animatingRows, setAnimatingRows] = useState<Set<string>>(new Set());
+// --- Internal Sub-components defined within Leaderboard.tsx ---
 
-    // --- Memoized Calculations --- 
-    const [currentLeaderboard, previousLeaderboard] = useMemo(() => {
-        const current = calculateLeaderboardData(
-            races,
-            pilots,
-            channels,
-            currentRaceIndex,
-            brackets,
-        );
-        const previous = calculateLeaderboardData(
-            races.slice(0, Math.max(0, currentRaceIndex - 1)),
-            pilots,
-            channels,
-            currentRaceIndex - 2,
-            brackets,
-        );
-        return [current, previous];
-    }, [races, pilots, channels, currentRaceIndex, brackets]);
+interface PositionCellProps {
+    pilotId: string;
+    currentPosition: number;
+    positionChanges: Map<string, number>;
+}
 
-    const positionChanges = useMemo(
-        () => getPositionChanges(currentLeaderboard, previousLeaderboard),
-        [currentLeaderboard, previousLeaderboard],
+const PositionCell: React.FC<PositionCellProps> = (
+    { pilotId, currentPosition, positionChanges },
+) => {
+    const prevPos = positionChanges.get(pilotId);
+    const showChange = prevPos && prevPos !== currentPosition;
+    const change = showChange ? prevPos - currentPosition : 0;
+
+    return (
+        <td>
+            <div className='position-container'>
+                <div>{currentPosition}</div>
+                {showChange && change > 0 && (
+                    <span className='position-change'>
+                        ↑{change} from {prevPos}
+                    </span>
+                )}
+                {/* Optionally add indicator for position decrease if needed */}
+            </div>
+        </td>
     );
+};
 
-    // --- Callbacks --- 
-    const isRecentTime = useCallback((roundId: string, raceNumber: number) => {
-        const raceIndex = races.findIndex((race) =>
-            race.Round === roundId && race.RaceNumber === raceNumber
-        );
-        return raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
-    }, [races, currentRaceIndex]);
+interface TimeDisplayCellProps {
+    currentTime: { time: number; roundId: string; raceNumber: number } | null;
+    previousTime: { time: number; roundId: string; raceNumber: number } | null;
+    roundDataValue: Round[];
+    currentRaceIndex: number;
+    races: RaceWithProcessedLaps[]; // Need races to check if time is recent
+}
 
-    const renderPositionChange = useCallback((pilotId: string, currentPos: number) => {
-        const prevPos = positionChanges.get(pilotId);
-        if (!prevPos || prevPos === currentPos) return null;
-        const change = prevPos - currentPos;
-        if (change <= 0) return null;
-        return (
-            <span className='position-change'>
-                ↑{change} from {prevPos}
-            </span>
-        );
-    }, [positionChanges]);
+const TimeDisplayCell: React.FC<TimeDisplayCellProps> = (
+    { currentTime, previousTime, roundDataValue, currentRaceIndex, races },
+) => {
+    if (!currentTime) {
+        return <td>-</td>;
+    }
 
-    const renderTimeWithDiff = useCallback((
-        currentTime: { time: number; roundId: string; raceNumber: number } | null,
-        previousTime: { time: number; roundId: string; raceNumber: number } | null,
-        isRecent: boolean,
-    ) => {
-        if (!currentTime) return '-';
-        const showDiff = previousTime &&
-            previousTime.time !== currentTime.time &&
-            isRecent;
-        // Find round number - ensure roundDataValue is used
-        const roundInfo = roundDataValue.find((r) => r.ID === currentTime.roundId);
-        const roundDisplay = roundInfo ? roundInfo.RoundNumber : '?';
+    // Logic from isRecentTime callback
+    const raceIndex = races.findIndex((race) =>
+        race.Round === currentTime.roundId && race.RaceNumber === currentTime.raceNumber
+    );
+    const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
 
-        return (
+    const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
+    const roundInfo = roundDataValue.find((r) => r.ID === currentTime.roundId);
+    const roundDisplay = roundInfo ? roundInfo.RoundNumber : '?';
+
+    return (
+        <td>
             <div
                 className={isRecent ? 'recent-time' : ''}
                 style={{ display: 'flex', flexDirection: 'column' }}
@@ -101,7 +84,7 @@ export const Leaderboard: React.FC = () => {
                         ({roundDisplay}-{currentTime.raceNumber})
                     </span>
                 </div>
-                {showDiff && (
+                {showDiff && previousTime && (
                     <div
                         style={{
                             fontSize: '0.8em',
@@ -112,29 +95,204 @@ export const Leaderboard: React.FC = () => {
                     </div>
                 )}
             </div>
-        );
-    }, [roundDataValue]); // Dependency updated
+        </td>
+    );
+};
 
-    // --- Effect for Animation --- 
-    useEffect(() => {
-        const newAnimatingRows = new Set<string>();
-        currentLeaderboard.forEach((entry, index) => {
-            const prevPos = positionChanges.get(entry.pilot.ID);
-            if (prevPos && prevPos > index + 1) {
-                newAnimatingRows.add(entry.pilot.ID);
-            }
-        });
-        setAnimatingRows(newAnimatingRows);
-        const timer = setTimeout(() => {
-            setAnimatingRows(new Set());
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, [currentLeaderboard, positionChanges]);
+interface ChannelDisplayCellProps {
+    channel: Channel | null;
+}
 
-    // --- Render Logic --- 
-    if (races.length === 0) {
+const ChannelDisplayCell: React.FC<ChannelDisplayCellProps> = ({ channel }) => {
+    if (!channel) {
+        return <td>-</td>;
+    }
+    return (
+        <td>
+            <div className='channel-display'>
+                {channel.ShortBand}
+                {channel.Number}
+                <ChannelSquare channelID={channel.ID} />
+            </div>
+        </td>
+    );
+};
+
+interface NextRaceCellProps {
+    racesUntilNext: number;
+    isEliminated: boolean;
+}
+
+const NextRaceCell: React.FC<NextRaceCellProps> = (
+    { racesUntilNext, isEliminated },
+) => {
+    let content: React.ReactNode;
+    if (racesUntilNext === -1 && isEliminated) {
+        content = <span className='done-text'>Done</span>;
+    } else if (racesUntilNext === -1) {
+        content = '-';
+    } else if (racesUntilNext === 0) {
+        content = <span className='next-text'>To Staging</span>;
+    } else if (racesUntilNext === -2) {
+        content = <span className='racing-text'>Racing</span>;
+    } else {
+        content = `${racesUntilNext}`;
+    }
+
+    return <td>{content}</td>;
+};
+
+interface LeaderboardRowProps {
+    entry: LeaderboardEntry;
+    previousEntry: LeaderboardEntry | undefined;
+    isEliminated: boolean;
+    isAnimating: boolean;
+    position: number;
+    positionChanges: Map<string, number>;
+    roundDataValue: Round[];
+    currentRaceIndex: number;
+    races: RaceWithProcessedLaps[];
+}
+
+const LeaderboardRow: React.FC<LeaderboardRowProps> = (
+    {
+        entry,
+        previousEntry,
+        isEliminated,
+        isAnimating,
+        position,
+        positionChanges,
+        roundDataValue,
+        currentRaceIndex,
+        races,
+    },
+) => {
+    return (
+        <tr className={isAnimating ? 'position-improved' : ''}>
+            <PositionCell
+                pilotId={entry.pilot.ID}
+                currentPosition={position}
+                positionChanges={positionChanges}
+            />
+            <td>{entry.pilot.Name}</td>
+            <ChannelDisplayCell channel={entry.channel || null} />
+            <td>{entry.totalLaps}</td>
+            <TimeDisplayCell
+                currentTime={entry.bestHoleshot || null}
+                previousTime={previousEntry?.bestHoleshot || null}
+                roundDataValue={roundDataValue}
+                currentRaceIndex={currentRaceIndex}
+                races={races}
+            />
+            <TimeDisplayCell
+                currentTime={entry.bestLap || null}
+                previousTime={previousEntry?.bestLap || null}
+                roundDataValue={roundDataValue}
+                currentRaceIndex={currentRaceIndex}
+                races={races}
+            />
+            <TimeDisplayCell
+                currentTime={entry.consecutiveLaps || null}
+                previousTime={previousEntry?.consecutiveLaps || null}
+                roundDataValue={roundDataValue}
+                currentRaceIndex={currentRaceIndex}
+                races={races}
+            />
+            <NextRaceCell racesUntilNext={entry.racesUntilNext} isEliminated={isEliminated} />
+        </tr>
+    );
+};
+
+interface LeaderboardTableProps {
+    currentLeaderboard: LeaderboardEntry[];
+    previousLeaderboard: LeaderboardEntry[];
+    eliminatedPilots: { name: string }[];
+    animatingRows: Set<string>;
+    positionChanges: Map<string, number>;
+    roundDataValue: Round[];
+    currentRaceIndex: number;
+    races: RaceWithProcessedLaps[];
+}
+
+const LeaderboardTable: React.FC<LeaderboardTableProps> = (
+    {
+        currentLeaderboard,
+        previousLeaderboard,
+        eliminatedPilots,
+        animatingRows,
+        positionChanges,
+        roundDataValue,
+        currentRaceIndex,
+        races,
+    },
+) => {
+    return (
+        <table className='leaderboard-table'>
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Pilot</th>
+                    <th>Chan</th>
+                    <th>Laps</th>
+                    <th>Holeshot</th>
+                    <th>Top Lap</th>
+                    <th>Top {CONSECUTIVE_LAPS} Consec</th>
+                    <th>Next Race In</th>
+                </tr>
+            </thead>
+            <tbody>
+                {currentLeaderboard.map((entry, index) => {
+                    const previousEntry = previousLeaderboard.find(
+                        (prev) => prev.pilot.ID === entry.pilot.ID,
+                    );
+                    const isEliminated = eliminatedPilots.some(
+                        (pilot) =>
+                            pilot.name.toLowerCase().replace(/\s+/g, '') ===
+                                entry.pilot.Name.toLowerCase().replace(/\s+/g, ''),
+                    );
+                    const position = index + 1;
+
+                    return (
+                        <LeaderboardRow
+                            key={entry.pilot.ID}
+                            entry={entry}
+                            previousEntry={previousEntry}
+                            isEliminated={isEliminated}
+                            isAnimating={animatingRows.has(entry.pilot.ID)}
+                            position={position}
+                            positionChanges={positionChanges}
+                            roundDataValue={roundDataValue}
+                            currentRaceIndex={currentRaceIndex}
+                            races={races}
+                        />
+                    );
+                })}
+            </tbody>
+        </table>
+    );
+};
+
+// --- Main Exported Component ---
+
+export const Leaderboard: React.FC = () => {
+    // --- Hooks --- Use the new custom hooks
+    const state = useLeaderboardState();
+    const {
+        currentRaceIndex,
+        eliminatedPilots,
+        currentLeaderboard,
+        previousLeaderboard,
+        positionChanges,
+    } = useLeaderboardCalculations(state);
+    const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
+
+    // Destructure state needed by internal components
+    const { roundDataValue, races } = state;
+
+    // --- Render Logic --- Render the internal table component
+    if (state.races.length === 0) {
         return (
-            <div className='leaderboard-container'> {/* Use container class */} 
+            <div className='leaderboard-container'>
                 <h3>Fastest Laps Overall</h3>
                 <div>No races available</div>
             </div>
@@ -142,108 +300,17 @@ export const Leaderboard: React.FC = () => {
     }
 
     return (
-        <div className='leaderboard-container'> {/* Use container class */} 
-            {/* Optional Title or other elements here */}
-            <table className='leaderboard-table'>
-                <thead>
-                    <tr>
-                        <th>Pos</th>
-                        <th>Pilot</th>
-                        <th>Chan</th>
-                        <th>Laps</th>
-                        <th>Holeshot</th>
-                        <th>Top Lap</th>
-                        <th>Top {CONSECUTIVE_LAPS} Consec</th>
-                        <th>Next Race In</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentLeaderboard.map((entry, index) => {
-                        const previousEntry = previousLeaderboard.find(
-                            (prev) => prev.pilot.ID === entry.pilot.ID,
-                        );
-                        const isEliminated = eliminatedPilots.some(
-                            (pilot) =>
-                                pilot.name.toLowerCase().replace(/\s+/g, '') ===
-                                    entry.pilot.Name.toLowerCase().replace(/\s+/g, ''),
-                        );
-
-                        return (
-                            <tr
-                                key={entry.pilot.ID}
-                                className={animatingRows.has(entry.pilot.ID) ? 'position-improved' : ''}
-                            >
-                                <td>
-                                    <div className='position-container'>
-                                        <div>{index + 1}</div>
-                                        {renderPositionChange(entry.pilot.ID, index + 1)}
-                                    </div>
-                                </td>
-                                <td>{entry.pilot.Name}</td>
-                                <td>
-                                    {entry.channel
-                                        ? (
-                                            <div className='channel-display'>
-                                                {entry.channel.ShortBand}
-                                                {entry.channel.Number}
-                                                <ChannelSquare channelID={entry.channel.ID} />
-                                            </div>
-                                        )
-                                        : '-'}
-                                </td>
-                                <td>{entry.totalLaps}</td>
-                                <td>
-                                    {renderTimeWithDiff(
-                                        entry.bestHoleshot || null,
-                                        previousEntry?.bestHoleshot || null,
-                                        entry.bestHoleshot
-                                            ? isRecentTime(
-                                                entry.bestHoleshot.roundId,
-                                                entry.bestHoleshot.raceNumber,
-                                            )
-                                            : false,
-                                    )}
-                                </td>
-                                <td>
-                                    {renderTimeWithDiff(
-                                        entry.bestLap || null,
-                                        previousEntry?.bestLap || null,
-                                        entry.bestLap
-                                            ? isRecentTime(
-                                                entry.bestLap.roundId,
-                                                entry.bestLap.raceNumber,
-                                            )
-                                            : false,
-                                    )}
-                                </td>
-                                <td>
-                                    {renderTimeWithDiff(
-                                        entry.consecutiveLaps || null,
-                                        previousEntry?.consecutiveLaps || null,
-                                        entry.consecutiveLaps
-                                            ? isRecentTime(
-                                                entry.consecutiveLaps.roundId,
-                                                entry.consecutiveLaps.raceNumber,
-                                            )
-                                            : false,
-                                    )}
-                                </td>
-                                <td>
-                                    {entry.racesUntilNext === -1 && isEliminated
-                                        ? <span className='done-text'>Done</span>
-                                        : entry.racesUntilNext === -1
-                                        ? '-'
-                                        : entry.racesUntilNext === 0
-                                        ? <span className='next-text'>To Staging</span>
-                                        : entry.racesUntilNext === -2
-                                        ? <span className='racing-text'>Racing</span>
-                                        : `${entry.racesUntilNext}`}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+        <div className='leaderboard-container'>
+            <LeaderboardTable
+                currentLeaderboard={currentLeaderboard}
+                previousLeaderboard={previousLeaderboard}
+                eliminatedPilots={eliminatedPilots}
+                animatingRows={animatingRows}
+                positionChanges={positionChanges}
+                roundDataValue={roundDataValue}
+                currentRaceIndex={currentRaceIndex}
+                races={races} // Pass races down for isRecentTime logic
+            />
         </div>
     );
-}; 
+};
