@@ -11,16 +11,8 @@ import './Leaderboard.css';
 import { RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Channel, Round } from '../types/types.ts';
 
-// Helper function remains here for now
-function formatTimeDifference(newTime: number, oldTime: number): string {
-    const diff = oldTime - newTime;
-    return diff > 0 ? `-${diff.toFixed(3)}` : `+${(-diff).toFixed(3)}`;
-}
-
-// --- Main Exported Component ---
 
 export function Leaderboard() {
-    // --- Hooks --- Use the new custom hooks
     const state = useLeaderboardState();
     const {
         currentRaceIndex,
@@ -31,10 +23,7 @@ export function Leaderboard() {
     } = useLeaderboardCalculations(state);
     const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
 
-    // Destructure state needed by internal components
-    const { roundDataValue, races } = state;
 
-    // --- Render Logic --- Render the internal table component
     if (state.races.length === 0) {
         return (
             <div className='leaderboard-container'>
@@ -52,15 +41,13 @@ export function Leaderboard() {
                 eliminatedPilots={eliminatedPilots}
                 animatingRows={animatingRows}
                 positionChanges={positionChanges}
-                roundDataValue={roundDataValue}
+                roundDataValue={state.roundDataValue}
                 currentRaceIndex={currentRaceIndex}
-                races={races} // Pass races down for isRecentTime logic
+                races={state.races}
             />
         </div>
     );
 }
-
-// --- Internal Sub-components ---
 
 interface LeaderboardTableProps {
     currentLeaderboard: LeaderboardEntry[];
@@ -214,7 +201,6 @@ function PositionCell(
                         ↑{change} from {prevPos}
                     </span>
                 )}
-                {/* Optionally add indicator for position decrease if needed */}
             </div>
         </td>
     );
@@ -290,6 +276,12 @@ function TimeDisplayCell(
         </td>
     );
 }
+
+function formatTimeDifference(newTime: number, oldTime: number): string {
+    const diff = oldTime - newTime;
+    return diff > 0 ? `-${diff.toFixed(3)}` : `+${(-diff).toFixed(3)}`;
+}
+
 
 interface NextRaceCellProps {
     racesUntilNext: number;
