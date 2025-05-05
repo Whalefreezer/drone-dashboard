@@ -123,7 +123,7 @@ function getPilotChannelIdInRace(race: RaceWithProcessedLaps | undefined, pilotI
     return race?.PilotChannels.find((pc) => pc.Pilot === pilotId)?.Channel;
 }
 
-function getPilotChannelWithPriority(
+export function getPilotChannelWithPriority(
     pilotId: string,
     races: RaceWithProcessedLaps[],
     channels: Channel[],
