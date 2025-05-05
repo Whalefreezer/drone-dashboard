@@ -275,8 +275,7 @@ Deno.test('getPilotChannelWithPriority - Found in Current Race', () => {
         createMockRace('race0', [createPilotChannel(pilot1.ID, chan1.ID)]),
         createMockRace('race1', [createPilotChannel(pilot1.ID, chan2.ID)]),
     ];
-    const map = new Map([[pilot1.ID, 0]]); // racesUntilNext = 0 means current
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
     assertEquals(channel, chan2); // Should find chan2 in current race (index 1)
 });
 
@@ -286,8 +285,7 @@ Deno.test('getPilotChannelWithPriority - Found in Next Race', () => {
         createMockRace('race1', []), // Pilot 1 not in current
         createMockRace('race2', [createPilotChannel(pilot1.ID, chan3.ID)]),
     ];
-    const map = new Map([[pilot1.ID, 1]]); // racesUntilNext = 1 means next race
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
     assertEquals(channel, chan3); // Should find chan3 in next race (index 2)
 });
 
@@ -298,8 +296,7 @@ Deno.test('getPilotChannelWithPriority - Found in Later Future Race', () => {
         createMockRace('race2', []), // Pilot 1 not in next
         createMockRace('race3', [createPilotChannel(pilot1.ID, chan4.ID)]),
     ];
-    const map = new Map([[pilot1.ID, 2]]); // racesUntilNext = 2 means 2 races away
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
     assertEquals(channel, chan4); // Should find chan4 in race index 3
 });
 
@@ -309,8 +306,7 @@ Deno.test('getPilotChannelWithPriority - Found in Previous Race', () => {
         createMockRace('race1', [createPilotChannel(pilot2.ID, chan2.ID)]),
         createMockRace('race2', []), // Pilot 1 not in current or future
     ];
-    const map = new Map([[pilot1.ID, -1]]); // racesUntilNext = -1 means not scheduled
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 2, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 2);
     assertEquals(channel, chan1); // Should find chan1 in previous race (index 0)
 });
 
@@ -321,8 +317,7 @@ Deno.test('getPilotChannelWithPriority - Found in Earlier Past Race', () => {
         createMockRace('race2', [createPilotChannel(pilot2.ID, chan3.ID)]),
         createMockRace('race3', []), // Pilot 1 not in current or future
     ];
-    const map = new Map([[pilot1.ID, -1]]); // racesUntilNext = -1 means not scheduled
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 3, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 3);
     assertEquals(channel, chan1); // Should find chan1 in earliest past race (index 0)
 });
 
@@ -331,15 +326,13 @@ Deno.test('getPilotChannelWithPriority - Not Found', () => {
         createMockRace('race0', [createPilotChannel(pilot2.ID, chan1.ID)]),
         createMockRace('race1', [createPilotChannel(pilot2.ID, chan2.ID)]),
     ];
-    const map = new Map([[pilot1.ID, -1]]);
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
     assertEquals(channel, null); // Pilot 1 never appears
 });
 
 Deno.test('getPilotChannelWithPriority - Empty Races Array', () => {
     const races: RaceWithProcessedLaps[] = [];
-    const map = new Map([[pilot1.ID, -1]]);
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0);
     assertEquals(channel, null);
 });
 
@@ -348,8 +341,7 @@ Deno.test('getPilotChannelWithPriority - Current Race Index 0', () => {
         createMockRace('race0', [createPilotChannel(pilot1.ID, chan1.ID)]),
         createMockRace('race1', [createPilotChannel(pilot1.ID, chan2.ID)]),
     ];
-    const map = new Map([[pilot1.ID, 0]]);
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0);
     assertEquals(channel, chan1); // Found in current race (index 0)
 });
 
@@ -358,9 +350,8 @@ Deno.test('getPilotChannelWithPriority - Current Race Index Last', () => {
         createMockRace('race0', [createPilotChannel(pilot1.ID, chan1.ID)]),
         createMockRace('race1', [createPilotChannel(pilot1.ID, chan2.ID)]),
     ];
-    const map = new Map([[pilot1.ID, -1]]); // Not in current
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
-    assertEquals(channel, chan1); // Found in previous race (index 0)
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
+    assertEquals(channel, chan2); // Found in current race (index 1)
 });
 
 Deno.test('getPilotChannelWithPriority - Pilot Done (racesUntilNext = -2)', () => {
@@ -369,17 +360,14 @@ Deno.test('getPilotChannelWithPriority - Pilot Done (racesUntilNext = -2)', () =
         createMockRace('race1', []), // Pilot 1 not in current
         createMockRace('race2', [createPilotChannel(pilot1.ID, chan3.ID)]),
     ];
-    const map = new Map([[pilot1.ID, -2]]); // racesUntilNext = -2 means done
-    // Even though pilot is in race 2, because they are marked as done, we look backward.
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1, map);
-    assertEquals(channel, chan1); // Should find chan1 in past race (index 0)
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 1);
+    assertEquals(channel, chan3);
 });
 
 Deno.test('getPilotChannelWithPriority - Channel Not in List', () => {
     const races: RaceWithProcessedLaps[] = [
         createMockRace('race0', [createPilotChannel(pilot1.ID, 'c99')]), // Uses channel c99
     ];
-    const map = new Map([[pilot1.ID, 0]]);
-    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0, map);
+    const channel = getPilotChannelWithPriority(pilot1.ID, races, allChannels, 0);
     assertEquals(channel, null); // c99 not in allChannels, so findChannelById returns null
 }); 

@@ -46,11 +46,11 @@ export function calculateLeaderboardData(
         });
     });
 
-    // Calculate races until next race for each pilot
-    const racesUntilNext = new Map<string, number>();
+    // Calculate races until next race for each pilot (still needed for LeaderboardEntry)
+    const racesUntilNextMap = new Map<string, number>();
     if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
         pilots.forEach((pilot) => {
-            racesUntilNext.set(
+            racesUntilNextMap.set(
                 pilot.ID,
                 calculateRacesUntilNext(races, currentRaceIndex, pilot.ID),
             );
@@ -87,7 +87,6 @@ export function calculateLeaderboardData(
                 races,
                 channels,
                 currentRaceIndex,
-                racesUntilNext,
             );
 
             return {
@@ -96,7 +95,7 @@ export function calculateLeaderboardData(
                 consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
                 bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
                 channel: pilotChannel,
-                racesUntilNext: racesUntilNext.get(pilot.ID) ?? -1,
+                racesUntilNext: racesUntilNextMap.get(pilot.ID) ?? -1,
                 totalLaps: totalLaps.get(pilot.ID) ?? 0,
                 eliminatedInfo: eliminatedInfo
                     ? {
@@ -108,17 +107,14 @@ export function calculateLeaderboardData(
             };
         });
 
-    // Sort using the moved function
     return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
 }
 
-// Helper to find the Channel object by ID
 function findChannelById(channels: Channel[], channelId: string | undefined): Channel | null {
     if (!channelId) return null;
     return channels.find((c) => c.ID === channelId) || null;
 }
 
-// Helper to find a pilot's channel ID in a specific race
 function getPilotChannelIdInRace(race: RaceWithProcessedLaps | undefined, pilotId: string): string | undefined {
     return race?.PilotChannels.find((pc) => pc.Pilot === pilotId)?.Channel;
 }
@@ -128,33 +124,21 @@ export function getPilotChannelWithPriority(
     races: RaceWithProcessedLaps[],
     channels: Channel[],
     currentRaceIndex: number,
-    racesUntilNextMap: Map<string, number>,
 ): Channel | null {
-    const racesUntilNext = racesUntilNextMap.get(pilotId);
-    let foundChannelId: string | undefined = undefined;
+    const currentAndFutureRaces = races.slice(currentRaceIndex);
+    const pastRacesReversed = races.slice(0, currentRaceIndex).reverse();
 
-    if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
-        // Priority 1: Current Race
-        foundChannelId = getPilotChannelIdInRace(races[currentRaceIndex], pilotId);
+    const prioritizedRaces = [
+        ...currentAndFutureRaces,
+        ...pastRacesReversed,
+    ];
 
-        // Priority 2: Next Race (if not in current and not done)
-        if (!foundChannelId && racesUntilNext !== -2) {
-            for (let i = currentRaceIndex + 1; i < races.length; i++) {
-                foundChannelId = getPilotChannelIdInRace(races[i], pilotId);
-                if (foundChannelId) break; // Found the next one
-            }
-        }
+    // Find the first race in the prioritized list where the pilot exists
+    const raceWithPilot = prioritizedRaces.find(race => getPilotChannelIdInRace(race, pilotId) !== undefined);
 
-        // Priority 3: Last Race (if still not found)
-        if (!foundChannelId) {
-            for (let i = currentRaceIndex - 1; i >= 0; i--) {
-                foundChannelId = getPilotChannelIdInRace(races[i], pilotId);
-                if (foundChannelId) break; // Found the last one
-            }
-        }
-    }
+    const foundChannelId = getPilotChannelIdInRace(raceWithPilot, pilotId);
 
-    // Look up the Channel object once at the end based on the found ID
+    // Look up the Channel object for the found ID
     return findChannelById(channels, foundChannelId);
 }
 
