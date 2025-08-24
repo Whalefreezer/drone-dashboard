@@ -11,9 +11,12 @@ import (
 	"os"
 	"strings"
 
+	_ "drone-dashboard/migrations"
+
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 )
 
 //go:embed static/*
@@ -60,6 +63,12 @@ Example:
 
 	// Initialize PocketBase app
 	app := pocketbase.New()
+
+	// Register migrations and enable automigrate when running via `go run`
+	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())
+	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+		Automigrate: isGoRun,
+	})
 
 	// Hook into the serve event to add custom routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
