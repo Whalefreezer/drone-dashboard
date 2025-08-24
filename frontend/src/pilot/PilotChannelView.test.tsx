@@ -13,29 +13,20 @@ import { server } from '../devTools/server.ts';
 const MOCK_EVENT_ID = 'mock-event-123';
 
 // Mock data definitions
-const mockTestPilot = {
+const mockTestPilot: Pilot = {
     ID: 'pilot-test-1',
     Name: 'Tester',
-    Phonetic: 'Tango',
-    TimingSensitivityPercent: 100,
     PracticePilot: false,
+    TimingSensitivityPercent: 100,
     ExternalID: 901,
-    Aircraft: null,
-    BestResult: null,
-    CatchPhrase: null,
-    DiscordID: null,
-    FirstName: null,
-    LastName: null,
-    PhotoPath: null,
-    SillyName: null,
-} as Pilot;
+};
 const mockTestChannel: Channel = {
     ID: 'chan-test-1',
     Number: 5,
     Band: 'R',
     ChannelPrefix: ChannelPrefix.R,
     Frequency: 5865,
-    DisplayName: null,
+    DisplayName: 'R5',
     ExternalID: 902,
     ShortBand: ShortBand.R,
 };
@@ -56,6 +47,7 @@ const mockTestEventData: RaceEvent = {
     PBLaps: 3,
     MinStartDelay: '00:01',
     MaxStartDelay: '00:05',
+    PackLimit: 4,
     PrimaryTimingSystemLocation: '',
     RaceStartIgnoreDetections: '00:01',
     MinLapTime: '00:05',
@@ -66,15 +58,12 @@ const mockTestEventData: RaceEvent = {
     Club: 'Test Club',
     Channels: [mockTestChannel.ID, 'chan-other'],
     ChannelColors: ['#00FF00', '#FF00FF'], // Green for test channel
-    ChannelDisplayNames: [null, null],
+    ChannelDisplayNames: ['R5', 'R7'],
     Enabled: true,
-    MultiGPRaceFormat: '',
     Races: [],
     SyncWithFPVTrackside: false,
     SyncWithMultiGP: false,
-    GenerateHeatsMultiGP: false,
     VisibleOnline: false,
-    Locked: false,
     Track: 'Test Track',
     Sectors: [],
     PilotsRegistered: 1,
@@ -145,11 +134,11 @@ describe('PilotChannelView', () => {
 
     it('renders the default color indicator when channel color is not found', async () => {
         // Modify event data mock
-        const eventDataNoColor = {
+        const eventDataNoColor: RaceEvent = {
             ...mockTestEventData,
             Channels: ['chan-other'],
             ChannelColors: ['#FF00FF'],
-            ChannelDisplayNames: [null],
+            ChannelDisplayNames: [''],
         };
 
         server.use(

@@ -7,7 +7,7 @@ import { findIndexOfCurrentRace } from '../common/index.ts';
 export function BracketsView() {
     const brackets = useQueryAtom(bracketsDataAtom);
     const races = useAtomValue(racesAtom);
-    const pilots = useAtomValue(pilotsAtom);
+    const pilots = useQueryAtom(pilotsAtom);
     const currentRaceIndex = findIndexOfCurrentRace(races);
 
     if (currentRaceIndex === -1) {

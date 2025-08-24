@@ -1,24 +1,23 @@
 import './App.css';
-import { useSetAtom } from 'jotai';
-import { roundsDataAtom, usePeriodicUpdate } from './state/index.ts';
+import { Suspense } from 'react';
 import { TimeDisplay } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
 import { EliminatedPilotsView } from './bracket/index.ts';
+import { SyncCurrentRaceIdNode } from './state/hooks.ts';
 
 function App() {
-    const updateRoundsData = useSetAtom(roundsDataAtom);
-
-    usePeriodicUpdate(updateRoundsData, 10_000);
-
     // Use the custom hook to handle cursor visibility
     useIdleCursor();
 
     return (
         <>
             <SnapshotControl />
+            <Suspense>
+                <SyncCurrentRaceIdNode />
+            </Suspense>
 
             <div className='app-header'>
                 <TimeDisplay />

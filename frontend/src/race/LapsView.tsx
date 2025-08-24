@@ -1,19 +1,15 @@
-import React from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import {
-    bracketsDataAtom,
     channelsDataAtom,
     overallBestTimesAtom,
     pilotsAtom,
     raceFamilyAtom,
-    racesAtom,
     RaceWithProcessedLaps,
     roundsDataAtom,
-    usePeriodicUpdate,
     useQueryAtom,
 } from '../state/index.ts';
 import { PilotChannel } from '../types/index.ts';
-import { findIndexOfCurrentRace, getLapClassName, getPositionWithSuffix } from '../common/index.ts';
+import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
@@ -30,15 +26,9 @@ interface LapsViewProps {
 }
 
 export function LapsView({ raceId }: LapsViewProps) {
-    const roundData = useAtomValue(roundsDataAtom);
-    const [race, updateRace] = useAtom(raceFamilyAtom(raceId));
-    const races = useAtomValue(racesAtom);
-    const pilots = useAtomValue(pilotsAtom);
-    const brackets = useQueryAtom(bracketsDataAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const isCurrentRace = races[currentRaceIndex]?.ID === raceId;
-
-    usePeriodicUpdate(updateRace, isCurrentRace ? 500 : 10_000);
+    const roundData = useQueryAtom(roundsDataAtom);
+    const { data: race } = useAtomValue(raceFamilyAtom(raceId));
+    const pilots = useQueryAtom(pilotsAtom);
 
     const round = roundData.find((r) => r.ID === race.Round);
 
@@ -148,7 +138,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     race: RaceWithProcessedLaps;
     matchingBracket: Bracket | null;
 }) {
-    const pilots = useAtomValue(pilotsAtom);
+    const pilots = useQueryAtom(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
     const overallBestTimes = useAtomValue(overallBestTimesAtom);
 

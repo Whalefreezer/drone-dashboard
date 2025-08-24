@@ -1,10 +1,11 @@
 import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
-import { atomFamily, atomWithRefresh, loadable } from 'jotai/utils';
+import { atomFamily, loadable } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
+import { findIndexOfCurrentRace } from '../common/index.ts';
 
 const UPDATE = true;
 
@@ -45,12 +46,16 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
     // refetchInterval: 10_000,
 }));
 
-export const pilotsAtom = atomWithRefresh(async (get) => {
-    const { data: eventId } = await get(eventIdAtom);
-    const page = await axios.get(`/api/events/${eventId}/Pilots.json`);
-    const json = page.data;
-    return json as Pilot[];
-});
+export const pilotsAtom = atomWithSuspenseQuery<Pilot[]>((get) => ({
+    queryKey: ['pilots'],
+    queryFn: async () => {
+        const { data: eventId } = await get(eventIdAtom);
+        const page = await axios.get(`/api/events/${eventId}/Pilots.json`);
+        return page.data as Pilot[];
+    },
+    staleTime: 10_000,
+    refetchInterval: 10_000,
+}));
 
 export function useCachedAtom<T>(anAtom: Atom<T>) {
     const [cache, setCache] = useState<T | null>(null);
@@ -81,26 +86,38 @@ export const channelsDataAtom = atom(async () => {
     return json as Channel[];
 });
 
-export const roundsDataAtom = atomWithRefresh(async (get) => {
-    const { data: eventId } = await get(eventIdAtom);
-    const page = await axios.get(`/api/events/${eventId}/Rounds.json`);
-    const json = page.data;
-    return json as Round[];
-});
+export const roundsDataAtom = atomWithSuspenseQuery<Round[]>((get) => ({
+    queryKey: ['roundsData'],
+    queryFn: async () => {
+        const { data: eventId } = await get(eventIdAtom);
+        const page = await axios.get(`/api/events/${eventId}/Rounds.json`);
+        return page.data as Round[];
+    },
+    staleTime: 10_000,
+    refetchInterval: 10_000,
+}));
 
 export const racesAtom = atom(async (get) => {
     const { data: event } = await get(eventDataAtom);
     let races = await Promise.all(event[0].Races.map(async (raceId) => {
-        return await get(raceFamilyAtom(raceId));
+        const { data } = await get(raceFamilyAtom(raceId));
+        return data;
     }));
     races = races.filter((race) => race.Valid);
 
-    const rounds = await get(roundsDataAtom);
+    const { data: rounds } = await get(roundsDataAtom);
 
     orderRaces(races, rounds);
 
     return races;
 });
+
+export const currentRaceAtom = atom(async (get) => {
+    const races = await get(racesAtom);
+    const currentRace = findIndexOfCurrentRace(races);
+    return races[currentRace];
+});
+
 
 function orderRaces(races: Race[], rounds: Round[]) {
     return races.sort((a, b) => {
@@ -127,38 +144,83 @@ export interface RaceWithProcessedLaps extends Race {
     processedLaps: ProcessedLap[];
 }
 
-export const raceFamilyAtom = atomFamily((raceId: string) =>
-    atomWithRefresh(async (get) => {
-        const { data: eventId } = await get(eventIdAtom);
-        const page = await axios.get(`/api/events/${eventId}/${raceId}/Race.json`);
-        const json = page.data;
-        const race = json[0] as Race;
+/**
+ * Determines if a race is currently active (started but not ended)
+ */
+function isRaceActive(race: RaceWithProcessedLaps | undefined): boolean {
+    if (!race) return false;
+    const started = !!race.Start && !String(race.Start).startsWith('0');
+    const ended = !!race.End && !String(race.End).startsWith('0');
+    const raceStarted = started && !ended;
+    return raceStarted;
+}
 
-        const processedLaps = race.Laps
-            .map((lap) => {
-                const detection = race.Detections.find((d) => lap.Detection === d.ID);
-                if (!detection || !detection.Valid) return null;
+/**
+ * Calculates processed laps from a race, filtering out invalid detections and sorting by lap number
+ */
+function calculateProcessedLaps(race: Race): ProcessedLap[] {
+    return race.Laps
+        .map((lap) => {
+            const detection = race.Detections.find((d) => lap.Detection === d.ID);
+            if (!detection || !detection.Valid) return null;
+
+            return {
+                id: lap.ID,
+                lapNumber: lap.LapNumber,
+                lengthSeconds: lap.LengthSeconds,
+                pilotId: detection.Pilot,
+                valid: true,
+                startTime: lap.StartTime,
+                endTime: lap.EndTime,
+                isHoleshot: detection.IsHoleshot,
+            } as ProcessedLap;
+        })
+        .filter((lap): lap is ProcessedLap => lap !== null)
+        .sort((a, b) => a.lapNumber - b.lapNumber);
+}
+
+// Synchronous signal for current race ID, updated by UI once data is available.
+// This allows other atoms to read the current race context without awaiting async atoms.
+export const currentRaceIdSignalAtom = atom<string | null>(null);
+
+export const raceFamilyAtom = atomFamily((raceId: string) => {
+    return atomWithSuspenseQuery<RaceWithProcessedLaps>((get) => {
+        // Read a synchronous signal for current race id, if available.
+        const currentRaceId = get(currentRaceIdSignalAtom);
+        const isCurrent = currentRaceId === raceId;
+        return ({
+            queryKey: ['race', raceId],
+            queryFn: async () => {
+                const { data: eventId } = await get(eventIdAtom);
+                const page = await axios.get(`/api/events/${eventId}/${raceId}/Race.json`);
+                const json = page.data;
+                const race = json[0] as Race;
+
+                const processedLaps = calculateProcessedLaps(race);
 
                 return {
-                    id: lap.ID,
-                    lapNumber: lap.LapNumber,
-                    lengthSeconds: lap.LengthSeconds,
-                    pilotId: detection.Pilot,
-                    valid: true,
-                    startTime: lap.StartTime,
-                    endTime: lap.EndTime,
-                    isHoleshot: detection.IsHoleshot,
-                };
-            })
-            .filter((lap): lap is ProcessedLap => lap !== null)
-            .sort((a, b) => a.lapNumber - b.lapNumber);
-
-        return {
-            ...race,
-            processedLaps,
-        } as RaceWithProcessedLaps;
-    })
-);
+                    ...race,
+                    processedLaps,
+                } as RaceWithProcessedLaps;
+            },
+            // Prefer current race context if known; otherwise infer from race Start/End
+            refetchInterval: (query) => {
+                if (isCurrent !== null) {
+                    return isCurrent ? 500 : 10000;
+                }
+                const data = query.state.data as RaceWithProcessedLaps | undefined;
+                return isRaceActive(data) ? 500 : 10000;
+            },
+            staleTime: (query) => {
+                if (isCurrent !== null) {
+                    return isCurrent ? 0 : 10000;
+                }
+                const data = query.state.data as RaceWithProcessedLaps | undefined;
+                return isRaceActive(data) ? 0 : 10000;
+            },
+        });
+    });
+});
 
 export const updateAtom = atom<
     (Record<string, { func: () => void; count: number }>)
@@ -228,15 +290,7 @@ export const overallBestTimesAtom = atom(async (get) => {
     return overallBestTimes;
 });
 
-export function usePeriodicUpdate(updateFn: () => void, interval: number) {
-    useEffect(() => {
-        if (UPDATE) {
-            updateFn(); // Initial update
-            const intervalId = setInterval(updateFn, interval);
-            return () => clearInterval(intervalId);
-        }
-    }, [updateFn, interval]);
-}
+// usePeriodicUpdate has been deprecated in favor of query refetch intervals
 
 export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
     const eliminatedPilots: EliminatedPilot[] = [];
