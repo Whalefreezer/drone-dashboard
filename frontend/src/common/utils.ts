@@ -1,4 +1,4 @@
-import { Channel, Pilot, Race, Round } from '../types/types.ts';
+import { Channel, Pilot, Race, Round } from '../types/index.ts';
 import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';

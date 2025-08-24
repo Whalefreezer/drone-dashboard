@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { useQueryAtom } from '../state/hooks.ts';
 import {
@@ -14,7 +14,7 @@ import { findIndexOfCurrentRace } from '../common/index.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
-import { Channel, Pilot, Round } from '../types/types.ts';
+import { Channel, Pilot, Round } from '../types/index.ts';
 
 // --- Hook 1: Fetching Raw State ---
 interface LeaderboardState {

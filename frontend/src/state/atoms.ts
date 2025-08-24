@@ -1,6 +1,6 @@
 import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
 import { atomFamily, atomWithRefresh, loadable } from 'jotai/utils';
-import { Channel, Pilot, Race, RaceEvent, Round } from '../types/types.ts';
+import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';

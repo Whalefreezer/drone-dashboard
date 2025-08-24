@@ -3,7 +3,7 @@ import { useAtomValue } from 'jotai';
 import { loadable } from 'jotai/utils';
 import { eventDataAtom, eventIdAtom } from '../state/atoms.ts';
 import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
-import { RaceEvent } from '../types/types.ts';
+import { RaceEvent } from '../types/index.ts';
 
 // Basic styling for the button container
 const snapshotControlStyle: React.CSSProperties = {

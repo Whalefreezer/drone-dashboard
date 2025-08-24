@@ -1,8 +1,6 @@
 import React from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import {
-    Bracket,
-    BracketPilot,
     bracketsDataAtom,
     channelsDataAtom,
     overallBestTimesAtom,
@@ -17,6 +15,7 @@ import {
 import { PilotChannel } from '../types/index.ts';
 import { findIndexOfCurrentRace, getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
+import { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 
 const POSITION_POINTS: Record<number, number> = {

@@ -9,7 +9,7 @@ import {
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { RaceWithProcessedLaps } from '../state/atoms.ts';
-import { Channel, Round } from '../types/types.ts';
+import { Channel, Round } from '../types/index.ts';
 
 
 export function Leaderboard() {

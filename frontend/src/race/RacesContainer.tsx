@@ -1,16 +1,11 @@
 import { useAtomValue } from 'jotai';
-import { Race } from '../types/types.ts';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
 import { racesAtom } from '../state/index.ts';
 import { findIndexOfCurrentRace, findIndexOfLastRace } from '../common/index.ts';
 
-interface RacesContainerProps {
-    // No props needed now
-}
-
-export function RacesContainer(/* No props needed */) {
+export function RacesContainer() {
     const races = useAtomValue(racesAtom);
     const currentRaceIndex = findIndexOfCurrentRace(races);
     const lastRaceIndex = findIndexOfLastRace(races);

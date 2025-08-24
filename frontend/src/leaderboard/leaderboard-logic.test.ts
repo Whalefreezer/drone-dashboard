@@ -1,7 +1,7 @@
 /// <reference lib="deno.ns" />
 import { assert, assertEquals } from '@std/assert';
-import type { Channel, Pilot } from '../types/types.ts';
-import { ChannelPrefix, ShortBand } from '../types/types.ts';
+import type { Channel, Pilot, PilotChannel, Race } from '../types/index.ts';
+import { ChannelPrefix, PrimaryTimingSystemLocation, ShortBand } from '../types/index.ts';
 import {
     defaultLeaderboardSortConfig,
     getPilotChannelWithPriority,
@@ -9,8 +9,6 @@ import {
 } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import type { RaceWithProcessedLaps } from '../state/atoms.ts';
-import type { PilotChannel } from '../types/types.ts';
-import type { Race } from '../types/types.ts';
 
 // --- Mock Data (Copied from race-utils.test.ts) ---
 
@@ -18,16 +16,16 @@ const mockPilot = (id: string, name: string): Pilot => ({
     ID: id,
     Name: name,
     Phonetic: name,
-    FirstName: null,
-    LastName: null,
-    SillyName: null,
-    DiscordID: null,
-    Aircraft: null,
-    CatchPhrase: null,
-    BestResult: null,
+    FirstName: undefined,
+    LastName: undefined,
+    SillyName: undefined,
+    DiscordID: undefined,
+    Aircraft: undefined,
+    CatchPhrase: undefined,
+    BestResult: undefined,
     TimingSensitivityPercent: 100,
     PracticePilot: false,
-    PhotoPath: null,
+    PhotoPath: undefined,
     ExternalID: parseInt(id.replace(/\D/g, '')) || 0,
 });
 
@@ -37,7 +35,7 @@ const mockChannel = (id: string, number: number): Channel => ({
     Band: ShortBand.R,
     ChannelPrefix: ChannelPrefix.R,
     Frequency: 5658 + number * 20,
-    DisplayName: null,
+    DisplayName: '',
     ExternalID: parseInt(id.replace(/\D/g, '')) || 0,
     ShortBand: ShortBand.R,
 });
@@ -56,6 +54,7 @@ const createEntry = (
     racesUntilNext: -1,
     totalLaps: 0,
     eliminatedInfo: null,
+    fastestTotalRaceTime: null,
     ...overrides,
 });
 
@@ -117,7 +116,7 @@ const createMockRace = (
     pilotChannels: PilotChannel[],
 ): RaceWithProcessedLaps => {
     // Define base Race properties separately and cast
-    const baseRace: Omit<Race, 'Laps' | 'Detections' | 'PilotChannels'> = {
+    const baseRace: Omit<Race, 'Laps' | 'Detections' | 'PilotChannels' | 'GamePoints'> = {
         ID: id,
         Round: 'r' + (parseInt(id.replace(/\D/g, '')) || 0),
         Valid: true,
@@ -127,7 +126,7 @@ const createMockRace = (
         End: '',
         TotalPausedTime: '',
         TargetLaps: 0,
-        PrimaryTimingSystemLocation: '',
+        PrimaryTimingSystemLocation: PrimaryTimingSystemLocation.EndOfLap,
         AutoAssignNumbers: false,
         Event: '',
         Bracket: '',
