@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
+	"github.com/pocketbase/pocketbase/core"
 )
 
 //go:embed static/*
@@ -32,6 +35,10 @@ Options:
   -port int                 Set the server port (default: 3000)
   -help                     Show this help message
 
+Note: The FPVTrackside API will be available at /fpv-api/* endpoints
+      PocketBase API will be available at /api/* endpoints
+      PocketBase Admin UI will be available at /_/
+
 Example:
   drone-dashboard -fpvtrackside-api="http://localhost:8000" -port=4000
 `, os.Args[0])
@@ -45,30 +52,52 @@ Example:
 	}
 	proxy := httputil.NewSingleHostReverseProxy(apiTarget)
 
-	// Create the main router/multiplexer
-	mux := http.NewServeMux()
-
-	// Handle API requests
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		// Strip /api prefix
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
-		proxy.ServeHTTP(w, r)
-	})
-
 	// Handle static files from embedded filesystem
 	staticContent, err := fs.Sub(staticFiles, "static")
 	if err != nil {
 		log.Fatal("Failed to access static files:", err)
 	}
-	fileServer := http.FileServer(http.FS(staticContent))
-	mux.Handle("/", fileServer)
 
-	// Start the server
-	addr := fmt.Sprintf("0.0.0.0:%d", *port)
-	fmt.Printf("Pointing to FPVTrackside API: %s\n", *fpvtracksideAPI)
-	fmt.Printf("Server running on http://localhost:%d\n", *port)
+	// Initialize PocketBase app
+	app := pocketbase.New()
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatal("Server error:", err)
+	// Hook into the serve event to add custom routes
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		// Add a single route handler that routes based on path
+		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
+			req := c.Request
+			resp := c.Response
+			path := req.URL.Path
+
+			// Handle FPV API proxy requests
+			if strings.HasPrefix(path, "/fpv-api/") {
+				// Strip /fpv-api prefix for the proxy
+				originalPath := path
+				req.URL.Path = strings.TrimPrefix(path, "/fpv-api")
+
+				// Serve the proxy request
+				proxy.ServeHTTP(resp, req)
+
+				// Restore original path
+				req.URL.Path = originalPath
+				return nil
+			}
+
+			// For all other requests, serve static files
+			staticHandler := apis.Static(staticContent, false)
+			return staticHandler(c)
+		})
+
+		fmt.Printf("Pointing to FPVTrackside API: %s\n", *fpvtracksideAPI)
+		fmt.Printf("API proxy available at: /fpv-api/* -> %s\n", *fpvtracksideAPI)
+		fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", *port)
+		fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", *port)
+
+		return se.Next()
+	})
+
+	// Start PocketBase
+	if err := app.Start(); err != nil {
+		log.Fatal("PocketBase startup error:", err)
 	}
 }
