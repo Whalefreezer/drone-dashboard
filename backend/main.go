@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"drone-dashboard/ingest"
 	_ "drone-dashboard/migrations"
 
 	"github.com/pocketbase/pocketbase"
@@ -24,7 +25,7 @@ var staticFiles embed.FS
 
 func main() {
 	// Parse command line flags
-	fpvtracksideAPI := flag.String("fpvtrackside-api", "http://localhost:8080", "FPVTrackside API endpoint")
+	fpvtracksideAPI := flag.String("fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
 	port := flag.Int("port", 3000, "Server port")
 	help := flag.Bool("help", false, "Show help message")
 	flag.Parse()
@@ -34,7 +35,7 @@ func main() {
 Usage: %s [OPTIONS]
 
 Options:
-  -fpvtrackside-api string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
+  -fpvtrackside string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
   -port int                 Set the server port (default: 3000)
   -help                     Show this help message
 
@@ -69,6 +70,7 @@ Example:
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
 		Automigrate: isGoRun,
 	})
+	ingest.RegisterRoutes(app, *fpvtracksideAPI)
 
 	// Hook into the serve event to add custom routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
