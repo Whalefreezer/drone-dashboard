@@ -1,4 +1,4 @@
-import { DbObject } from "./common.ts";
+import { DbObject } from './common.ts';
 
 export interface Pilot extends DbObject {
     Name: string;
@@ -13,7 +13,7 @@ export interface Pilot extends DbObject {
     TimingSensitivityPercent?: number;
     PracticePilot: boolean;
     PhotoPath?: string;
-  }
+}
 
 /** GET /events/{eventId}/Pilots.json */
 export type PilotsJson = Pilot[];

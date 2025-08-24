@@ -11,7 +11,6 @@ import './Leaderboard.css';
 import { RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Channel, Round } from '../types/index.ts';
 
-
 export function Leaderboard() {
     const state = useLeaderboardState();
     const {
@@ -22,7 +21,6 @@ export function Leaderboard() {
         positionChanges,
     } = useLeaderboardCalculations(state);
     const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
-
 
     if (state.races.length === 0) {
         return (
@@ -289,7 +287,6 @@ function formatTimeDifference(newTime: number, oldTime: number): string {
     const diff = oldTime - newTime;
     return diff > 0 ? `-${diff.toFixed(3)}` : `+${(-diff).toFixed(3)}`;
 }
-
 
 interface NextRaceCellProps {
     racesUntilNext: number;

@@ -1,6 +1,4 @@
-import {
-    calculateBestTimes,
-} from '../race/race-utils.ts';
+import { calculateBestTimes } from '../race/race-utils.ts';
 import {
     calculateRacesUntilNext,
     getEliminationOrderIndex,
@@ -15,7 +13,6 @@ import { findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
 
-
 export function calculateLeaderboardData(
     races: RaceWithProcessedLaps[],
     pilots: Pilot[],
@@ -23,9 +20,10 @@ export function calculateLeaderboardData(
     currentRaceIndex: number,
     brackets: Bracket[] = [],
 ): LeaderboardEntry[] {
-    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, fastestTotalRaceTimes } = calculateBestTimes(
-        races,
-    );
+    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, fastestTotalRaceTimes } =
+        calculateBestTimes(
+            races,
+        );
 
     // Get pilots that are explicitly listed in race PilotChannels
     const scheduledPilots = new Set<string>();

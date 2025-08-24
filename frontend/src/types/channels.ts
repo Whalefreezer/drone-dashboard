@@ -1,4 +1,4 @@
-import type { DbObject } from "./common.ts";
+import type { DbObject } from './common.ts';
 
 export interface Channel extends DbObject {
     Number: number;
