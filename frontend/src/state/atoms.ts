@@ -7,8 +7,6 @@ import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 
-const UPDATE = true;
-
 export const eventIdAtom = atomWithSuspenseQuery(() => ({
     queryKey: ['eventId'],
     queryFn: async () => {
@@ -34,6 +32,11 @@ export const eventDataAtom = atomWithSuspenseQuery((get) => ({
     },
     refetchInterval: 10_000,
 }));
+
+export const consecutiveLapsAtom = atom(async (get) => {
+    const { data: eventData } = await get(eventDataAtom);
+    return eventData[0]?.PBLaps ?? 3; // Default to 3 if not available
+});
 
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
     queryKey: ['bracketsData'],
@@ -245,17 +248,17 @@ export function useUpdater(key: string, updater: () => void) {
     }, [updater]);
 }
 
-export function useUpdate() {
-    const update = useAtomValue(updateAtom);
-    useEffect(() => {
-        const interval = setInterval(() => {
-            for (const updater of Object.values(update)) {
-                updater.func();
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [update]);
-}
+// export function useUpdate() {
+//     const update = useAtomValue(updateAtom);
+//     useEffect(() => {
+//         const interval = setInterval(() => {
+//             for (const updater of Object.values(update)) {
+//                 updater.func();
+//             }
+//         }, 1000);
+//         return () => clearInterval(interval);
+//     }, [update]);
+// }
 
 export interface OverallBestTimes {
     overallFastestLap: number;

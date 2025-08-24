@@ -19,10 +19,12 @@ export function calculateLeaderboardData(
     channels: Channel[],
     currentRaceIndex: number,
     brackets: Bracket[] = [],
+    consecutiveLaps: number,
 ): LeaderboardEntry[] {
     const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, fastestTotalRaceTimes } =
         calculateBestTimes(
             races,
+            consecutiveLaps,
         );
 
     // Get pilots that are explicitly listed in race PilotChannels

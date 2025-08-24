@@ -1,9 +1,6 @@
 import { LeaderboardEntry, SortGroup } from '../leaderboard/leaderboard-types.ts';
 import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
 
-// Central constant for consecutive laps calculation
-export const CONSECUTIVE_LAPS = 3;
-
 export interface BestTime {
     time: number;
     roundId: string;
@@ -54,7 +51,7 @@ function getGroupHierarchy(
     return hierarchy;
 }
 
-export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
+export function calculateBestTimes(races: RaceWithProcessedLaps[], consecutiveLaps: number) {
     const overallFastestLaps = new Map<string, BestTime>();
     const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
     const fastestHoleshots = new Map<string, BestTime>();
@@ -86,6 +83,7 @@ export function calculateBestTimes(races: RaceWithProcessedLaps[]) {
                 pilotChannel.Pilot,
                 race,
                 fastestConsecutiveLaps,
+                consecutiveLaps,
             );
             updateFastestLaps(
                 holeshotLaps,
@@ -140,12 +138,13 @@ function updateConsecutiveLaps(
     pilotId: string,
     race: RaceWithProcessedLaps,
     fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
+    consecutiveLaps: number,
 ) {
-    if (racingLaps.length >= CONSECUTIVE_LAPS) {
+    if (racingLaps.length >= consecutiveLaps) {
         let fastestConsecutive = { time: Infinity, startLap: 0 };
-        for (let i = 0; i < racingLaps.length - (CONSECUTIVE_LAPS - 1); i++) {
+        for (let i = 0; i < racingLaps.length - (consecutiveLaps - 1); i++) {
             const consecutiveLapsTime = racingLaps
-                .slice(i, i + CONSECUTIVE_LAPS)
+                .slice(i, i + consecutiveLaps)
                 .reduce((sum, lap) => sum + lap.lengthSeconds, 0);
             if (consecutiveLapsTime < fastestConsecutive.time) {
                 fastestConsecutive = {

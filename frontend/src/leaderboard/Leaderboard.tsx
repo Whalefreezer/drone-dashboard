@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { CONSECUTIVE_LAPS } from '../race/race-utils.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
     useLeaderboardAnimation,
@@ -8,11 +7,13 @@ import {
     useLeaderboardState,
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
-import { RaceWithProcessedLaps } from '../state/atoms.ts';
+import { RaceWithProcessedLaps, consecutiveLapsAtom } from '../state/atoms.ts';
 import { Channel, Round } from '../types/index.ts';
+import { useAtomValue } from 'jotai';
 
 export function Leaderboard() {
     const state = useLeaderboardState();
+    const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
     const {
         currentRaceIndex,
         eliminatedPilots,
@@ -42,6 +43,7 @@ export function Leaderboard() {
                 roundDataValue={state.roundDataValue}
                 currentRaceIndex={currentRaceIndex}
                 races={state.races}
+                consecutiveLaps={consecutiveLaps}
             />
         </div>
     );
@@ -56,6 +58,7 @@ interface LeaderboardTableProps {
     roundDataValue: Round[];
     currentRaceIndex: number;
     races: RaceWithProcessedLaps[];
+    consecutiveLaps: number;
 }
 
 function LeaderboardTable(
@@ -68,6 +71,7 @@ function LeaderboardTable(
         roundDataValue,
         currentRaceIndex,
         races,
+        consecutiveLaps,
     }: LeaderboardTableProps,
 ) {
     return (
@@ -80,7 +84,7 @@ function LeaderboardTable(
                     <th>Laps</th>
                     <th>Holeshot</th>
                     <th>Top Lap</th>
-                    <th>Top {CONSECUTIVE_LAPS} Consec</th>
+                    <th>Top {consecutiveLaps} Consec</th>
                     <th>Fastest Race</th>
                     <th>Next Race In</th>
                 </tr>

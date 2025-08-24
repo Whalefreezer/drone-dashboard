@@ -4,6 +4,7 @@ import { useQueryAtom } from '../state/hooks.ts';
 import {
     bracketsDataAtom,
     channelsDataAtom,
+    consecutiveLapsAtom,
     findEliminatedPilots,
     pilotsAtom,
     racesAtom,
@@ -48,6 +49,7 @@ export const useLeaderboardCalculations = (
     state: LeaderboardState,
 ): LeaderboardCalculations => {
     const { races, pilots, channels, brackets } = state;
+    const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 
     const currentRaceIndex = findIndexOfCurrentRace(races);
     const eliminatedPilots = findEliminatedPilots(brackets);
@@ -59,6 +61,7 @@ export const useLeaderboardCalculations = (
             channels,
             currentRaceIndex,
             brackets,
+            consecutiveLaps,
         );
         // Calculate previous state based on races up to one before the current *displayed* race index
         // Note: currentRaceIndex is the index of the race *currently being fetched/processed*.
@@ -72,9 +75,10 @@ export const useLeaderboardCalculations = (
             // Pass the index relative to the sliced array, effectively the last index of the *previous* state
             previousRaceIndex - 1,
             brackets,
+            consecutiveLaps,
         );
         return [current, previous];
-    }, [races, pilots, channels, currentRaceIndex, brackets]);
+    }, [races, pilots, channels, currentRaceIndex, brackets, consecutiveLaps]);
 
     const positionChanges = useMemo(
         () => getPositionChanges(currentLeaderboard, previousLeaderboard),
