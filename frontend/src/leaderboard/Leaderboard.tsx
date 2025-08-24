@@ -84,7 +84,7 @@ function LeaderboardTable(
                     <th>Laps</th>
                     <th>Holeshot</th>
                     <th>Top Lap</th>
-                    <th>Top {consecutiveLaps} Consec</th>
+                    {consecutiveLaps > 1 && <th>Top {consecutiveLaps} Consec</th>}
                     <th>Fastest Race</th>
                     <th>Next Race In</th>
                 </tr>
@@ -113,6 +113,7 @@ function LeaderboardTable(
                             roundDataValue={roundDataValue}
                             currentRaceIndex={currentRaceIndex}
                             races={races}
+                            consecutiveLaps={consecutiveLaps}
                         />
                     );
                 })}
@@ -131,6 +132,7 @@ interface LeaderboardRowProps {
     roundDataValue: Round[];
     currentRaceIndex: number;
     races: RaceWithProcessedLaps[];
+    consecutiveLaps: number;
 }
 
 function LeaderboardRow(
@@ -144,6 +146,7 @@ function LeaderboardRow(
         roundDataValue,
         currentRaceIndex,
         races,
+        consecutiveLaps,
     }: LeaderboardRowProps,
 ) {
     return (
@@ -170,13 +173,15 @@ function LeaderboardRow(
                 currentRaceIndex={currentRaceIndex}
                 races={races}
             />
-            <TimeDisplayCell
-                currentTime={entry.consecutiveLaps || null}
-                previousTime={previousEntry?.consecutiveLaps || null}
-                roundDataValue={roundDataValue}
-                currentRaceIndex={currentRaceIndex}
-                races={races}
-            />
+            {consecutiveLaps > 1 && (
+                <TimeDisplayCell
+                    currentTime={entry.consecutiveLaps || null}
+                    previousTime={previousEntry?.consecutiveLaps || null}
+                    roundDataValue={roundDataValue}
+                    currentRaceIndex={currentRaceIndex}
+                    races={races}
+                />
+            )}
             <TimeDisplayCell
                 currentTime={entry.fastestTotalRaceTime || null}
                 previousTime={previousEntry?.fastestTotalRaceTime || null}
