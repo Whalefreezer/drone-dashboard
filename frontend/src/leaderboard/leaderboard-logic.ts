@@ -1,15 +1,10 @@
 import {
-    BestTime,
     calculateBestTimes,
-    CONSECUTIVE_LAPS,
-    ConsecutiveTime,
 } from '../race/race-utils.ts';
 import {
     calculateRacesUntilNext,
-    findIndexOfCurrentRace,
     getEliminationOrderIndex,
     getEliminationStage,
-    getNormalizedPilotName,
     isPilotEliminated,
     isPilotInEliminationOrder,
     pilotHasConsecutiveLaps,
@@ -19,11 +14,7 @@ import { Channel, Pilot } from '../types/index.ts';
 import { findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
-import { EliminatedPilot } from '../bracket/bracket-types.ts';
 
-// Logic functions (calculations, sorting) for the Leaderboard feature
-
-// --- Calculation Logic (from atoms.ts) ---
 
 export function calculateLeaderboardData(
     races: RaceWithProcessedLaps[],
@@ -32,8 +23,7 @@ export function calculateLeaderboardData(
     currentRaceIndex: number,
     brackets: Bracket[] = [],
 ): LeaderboardEntry[] {
-    // Calculate best times
-    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots } = calculateBestTimes(
+    const { overallFastestLaps, fastestConsecutiveLaps, fastestHoleshots, fastestTotalRaceTimes } = calculateBestTimes(
         races,
     );
 
@@ -103,6 +93,7 @@ export function calculateLeaderboardData(
                         points: eliminatedInfo.points,
                     }
                     : null,
+                fastestTotalRaceTime: fastestTotalRaceTimes.get(pilot.ID) || null,
             };
         });
 
@@ -173,9 +164,6 @@ export function getPositionChanges(
     return changes;
 }
 
-// --- Sorting Logic (from race-utils.ts) ---
-
-// Main sorting function
 export function sortLeaderboard(
     entries: LeaderboardEntry[],
     config: SortGroup[],

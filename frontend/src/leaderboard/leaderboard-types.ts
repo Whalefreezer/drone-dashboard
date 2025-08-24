@@ -1,4 +1,5 @@
 import { Channel, Pilot } from '../types/index.ts';
+import { TotalRaceTime } from '../race/race-utils.ts';
 
 // Types specific to the Leaderboard feature
 
@@ -19,6 +20,7 @@ export interface LeaderboardEntry {
         roundId: string;
         raceNumber: number;
     } | null;
+    fastestTotalRaceTime: TotalRaceTime | null;
     channel: Channel | null;
     racesUntilNext: number;
     totalLaps: number;

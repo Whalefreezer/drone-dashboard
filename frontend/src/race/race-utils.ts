@@ -22,6 +22,7 @@ export interface TotalRaceTime {
     time: number;
     roundId: string;
     raceNumber: number;
+    lapCount: number;
 }
 
 // Helper function to find the hierarchy of applicable groups for an entry
@@ -194,6 +195,7 @@ function updateTotalRaceTime(
             time: totalTime,
             roundId: race.Round,
             raceNumber: race.RaceNumber,
+            lapCount: race.TargetLaps,
         });
     }
 }

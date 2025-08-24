@@ -83,6 +83,7 @@ function LeaderboardTable(
                     <th>Holeshot</th>
                     <th>Top Lap</th>
                     <th>Top {CONSECUTIVE_LAPS} Consec</th>
+                    <th>Fastest Race</th>
                     <th>Next Race In</th>
                 </tr>
             </thead>
@@ -170,6 +171,13 @@ function LeaderboardRow(
             <TimeDisplayCell
                 currentTime={entry.consecutiveLaps || null}
                 previousTime={previousEntry?.consecutiveLaps || null}
+                roundDataValue={roundDataValue}
+                currentRaceIndex={currentRaceIndex}
+                races={races}
+            />
+            <TimeDisplayCell
+                currentTime={entry.fastestTotalRaceTime || null}
+                previousTime={previousEntry?.fastestTotalRaceTime || null}
                 roundDataValue={roundDataValue}
                 currentRaceIndex={currentRaceIndex}
                 races={races}
