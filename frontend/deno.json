@@ -35,6 +35,7 @@
         "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
         "jsdom": "npm:jsdom@^26.1.0",
         "msw": "npm:msw@^2.7.5",
+        "pocketbase": "npm:pocketbase@^0.26.2",
         "qrcode.react": "npm:qrcode.react@^4.2.0",
         "react": "npm:react@^19.1.0",
         "react-dom": "npm:react-dom@^19.1.0",

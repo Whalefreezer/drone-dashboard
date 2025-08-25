@@ -26,7 +26,7 @@ export const eventIdAtom = atomWithSuspenseQuery(() => ({
     },
 }));
 
-export const eventDataAtom = atomWithSuspenseQuery((get) => ({
+export const eventDataAtom = atomWithSuspenseQuery<RaceEvent[]>((get) => ({
     queryKey: ['eventData'],
     queryFn: async () => {
         const { data: eventId } = await get(eventIdAtom);
@@ -120,7 +120,7 @@ export const roundsDataAtom = atomWithSuspenseQuery<Round[]>((get) => ({
 }));
 
 export const racesAtom = atom(async (get) => {
-    const { data: event } = await get(eventDataAtom);
+    const {data: event} = await get(eventDataAtom);
     let races = await Promise.all(event[0].Races.map(async (raceId) => {
         const { data } = await get(raceFamilyAtom(raceId));
         return data;

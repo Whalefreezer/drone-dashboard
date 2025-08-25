@@ -3,6 +3,7 @@ package migrations
 import (
 	"github.com/pocketbase/pocketbase/core"
 	m "github.com/pocketbase/pocketbase/migrations"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 func init() {
@@ -27,7 +28,9 @@ func init() {
 			&core.TextField{Name: "minLapTime", Max: 32},
 			&core.TextField{Name: "lastOpened", Max: 64},
 		)
-        events.AddIndex("ux_events_source", true, "source, sourceId", "")
+		events.AddIndex("ux_events_source", true, "source, sourceId", "")
+		events.ListRule = types.Pointer("")
+		events.ViewRule = types.Pointer("")
 		if err := app.Save(events); err != nil {
 			return err
 		}
@@ -45,7 +48,9 @@ func init() {
 			&core.NumberField{Name: "order"},
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
-        rounds.AddIndex("ux_rounds_source", true, "source, sourceId", "")
+		rounds.AddIndex("ux_rounds_source", true, "source, sourceId", "")
+		rounds.ListRule = types.Pointer("")
+		rounds.ViewRule = types.Pointer("")
 		if err := app.Save(rounds); err != nil {
 			return err
 		}
@@ -61,7 +66,9 @@ func init() {
 			&core.TextField{Name: "discordId", Max: 64},
 			&core.BoolField{Name: "practicePilot"},
 		)
-        pilots.AddIndex("ux_pilots_source", true, "source, sourceId", "")
+		pilots.AddIndex("ux_pilots_source", true, "source, sourceId", "")
+		pilots.ListRule = types.Pointer("")
+		pilots.ViewRule = types.Pointer("")
 		if err := app.Save(pilots); err != nil {
 			return err
 		}
@@ -78,7 +85,9 @@ func init() {
 			&core.NumberField{Name: "frequency"},
 			&core.TextField{Name: "displayName", Max: 64, Presentable: true},
 		)
-        channels.AddIndex("ux_channels_source", true, "source, sourceId", "")
+		channels.AddIndex("ux_channels_source", true, "source, sourceId", "")
+		channels.ListRule = types.Pointer("")
+		channels.ViewRule = types.Pointer("")
 		if err := app.Save(channels); err != nil {
 			return err
 		}
@@ -92,7 +101,9 @@ func init() {
 			&core.NumberField{Name: "length"},
 			&core.NumberField{Name: "gridSize"},
 		)
-        tracks.AddIndex("ux_tracks_source", true, "source, sourceId", "")
+		tracks.AddIndex("ux_tracks_source", true, "source, sourceId", "")
+		tracks.ListRule = types.Pointer("")
+		tracks.ViewRule = types.Pointer("")
 		if err := app.Save(tracks); err != nil {
 			return err
 		}
@@ -112,7 +123,9 @@ func init() {
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 			&core.RelationField{Name: "round", CollectionId: rounds.Id, MaxSelect: 1},
 		)
-        races.AddIndex("ux_races_source", true, "source, sourceId", "")
+		races.AddIndex("ux_races_source", true, "source, sourceId", "")
+		races.ListRule = types.Pointer("")
+		races.ViewRule = types.Pointer("")
 		if err := app.Save(races); err != nil {
 			return err
 		}
@@ -126,7 +139,9 @@ func init() {
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
-        pilotChannels.AddIndex("ux_pilotChannels_source", true, "source, sourceId", "")
+		pilotChannels.AddIndex("ux_pilotChannels_source", true, "source, sourceId", "")
+		pilotChannels.ListRule = types.Pointer("")
+		pilotChannels.ViewRule = types.Pointer("")
 		if err := app.Save(pilotChannels); err != nil {
 			return err
 		}
@@ -150,7 +165,9 @@ func init() {
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
 		)
-        detections.AddIndex("ux_detections_source", true, "source, sourceId", "")
+		detections.AddIndex("ux_detections_source", true, "source, sourceId", "")
+		detections.ListRule = types.Pointer("")
+		detections.ViewRule = types.Pointer("")
 		if err := app.Save(detections); err != nil {
 			return err
 		}
@@ -166,7 +183,9 @@ func init() {
 			&core.TextField{Name: "endTime", Max: 64},
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 		)
-        laps.AddIndex("ux_laps_source", true, "source, sourceId", "")
+		laps.AddIndex("ux_laps_source", true, "source, sourceId", "")
+		laps.ListRule = types.Pointer("")
+		laps.ViewRule = types.Pointer("")
 		if err := app.Save(laps); err != nil {
 			return err
 		}
@@ -182,7 +201,9 @@ func init() {
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
 		)
-        gamePoints.AddIndex("ux_gamePoints_source", true, "source, sourceId", "")
+		gamePoints.AddIndex("ux_gamePoints_source", true, "source, sourceId", "")
+		gamePoints.ListRule = types.Pointer("")
+		gamePoints.ViewRule = types.Pointer("")
 		if err := app.Save(gamePoints); err != nil {
 			return err
 		}
@@ -201,7 +222,9 @@ func init() {
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "pilot", CollectionId: pilots.Id, MaxSelect: 1},
 		)
-        results.AddIndex("ux_results_source", true, "source, sourceId", "")
+		results.AddIndex("ux_results_source", true, "source, sourceId", "")
+		results.ListRule = types.Pointer("")
+		results.ViewRule = types.Pointer("")
 		if err := app.Save(results); err != nil {
 			return err
 		}
