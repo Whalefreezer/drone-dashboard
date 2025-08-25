@@ -2,6 +2,7 @@ package ingest
 
 import (
     "fmt"
+    "log/slog"
 
     "github.com/pocketbase/pocketbase/core"
 )
@@ -21,6 +22,7 @@ func NewService(app core.App, baseURL string) (*Service, error) {
 
 // Snapshot ingests Event, Pilots, Channels, Rounds for an eventId
 func (s *Service) Snapshot(eventId string) error {
+    slog.Info("ingest.snapshot.start", "eventId", eventId)
     // Fetch
     events, err := s.Client.FetchEvent(eventId)
     if err != nil {
@@ -107,11 +109,13 @@ func (s *Service) Snapshot(eventId string) error {
         }
     }
 
+    slog.Info("ingest.snapshot.done", "eventId", eventId, "pilots", len(pilots), "channels", len(channels), "rounds", len(rounds))
     return nil
 }
 
 // IngestRace fetches and upserts a race and its nested entities
 func (s *Service) IngestRace(eventId, raceId string) error {
+    slog.Info("ingest.race.start", "eventId", eventId, "raceId", raceId)
     // Ensure event exists (and get PB id)
     events, err := s.Client.FetchEvent(eventId)
     if err != nil {
@@ -246,11 +250,13 @@ func (s *Service) IngestRace(eventId, raceId string) error {
         }
     }
 
+    slog.Info("ingest.race.done", "eventId", eventId, "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
     return nil
 }
 
 // IngestResults fetches aggregated results for the event and upserts them
 func (s *Service) IngestResults(eventId string) error {
+    slog.Info("ingest.results.start", "eventId", eventId)
     // Ensure event exists (and get PB id)
     events, err := s.Client.FetchEvent(eventId)
     if err != nil {
@@ -300,5 +306,6 @@ func (s *Service) IngestResults(eventId string) error {
             return err
         }
     }
+    slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
     return nil
 }
