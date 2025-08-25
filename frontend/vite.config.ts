@@ -25,11 +25,16 @@ export default defineConfig(({ mode }) => {
         server: {
             proxy: {
                 '/api': {
-                    target: env.VITE_API_URL || 'http://localhost:8000/',
+                    target: env.VITE_API_URL || 'http://localhost:8090/',
                     // target: 'http://192.168.1.189:8080/',
                     changeOrigin: true,
                     // Optionally remove '/api' prefix when forwarding to the target
                     rewrite: (path) => path.replace(/^\/api/, ''),
+                },
+                '/fpv-api': {
+                    target: env.VITE_API_URL || 'http://localhost:8090/',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/fpv-api/, ''),
                 },
                 // '/brackets': {
                 //   target: 'http://localhost:8000/',

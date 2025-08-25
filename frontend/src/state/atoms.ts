@@ -5,20 +5,23 @@ import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
+import { usePB, usePBRace, pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetFirstEvent } from '../api/pb.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 
 export const eventIdAtom = atomWithSuspenseQuery(() => ({
     queryKey: ['eventId'],
     queryFn: async () => {
-        const response = await axios.get('/api');
-        const text = response.data;
-
-        const match = text.match(
-            /var eventManager = new EventManager\("events\/([a-z0-9-]+)"/,
-        );
-        if (match) {
-            return match[1];
+        // Allow explicit override via env when using PB
+        const envId = getEnvEventIdFallback();
+        if (envId) return envId;
+        if (usePB) {
+            const event = await pbGetFirstEvent();
+            return event?.ID ?? null;
         }
+        const response = await axios.get('/fpv-api');
+        const text = response.data;
+        const match = text.match(/var eventManager = new EventManager\("events\/([a-z0-9-]+)"/);
+        if (match) return match[1];
         return null;
     },
 }));
@@ -27,8 +30,12 @@ export const eventDataAtom = atomWithSuspenseQuery((get) => ({
     queryKey: ['eventData'],
     queryFn: async () => {
         const { data: eventId } = await get(eventIdAtom);
-        const response = await axios.get(`/api/events/${eventId}/Event.json`);
-        return response.data as RaceEvent[];
+        if (usePB) {
+            return await pbFetchEvent(eventId!);
+        } else {
+            const response = await axios.get(`/api/events/${eventId}/Event.json`);
+            return response.data as RaceEvent[];
+        }
     },
     refetchInterval: 10_000,
 }));
@@ -53,8 +60,12 @@ export const pilotsAtom = atomWithSuspenseQuery<Pilot[]>((get) => ({
     queryKey: ['pilots'],
     queryFn: async () => {
         const { data: eventId } = await get(eventIdAtom);
-        const page = await axios.get(`/api/events/${eventId}/Pilots.json`);
-        return page.data as Pilot[];
+        if (usePB) {
+            return await pbFetchPilots(eventId!);
+        } else {
+            const page = await axios.get(`/api/events/${eventId}/Pilots.json`);
+            return page.data as Pilot[];
+        }
     },
     staleTime: 10_000,
     refetchInterval: 10_000,
@@ -84,17 +95,25 @@ export function useCachedAtom<T>(anAtom: Atom<T>) {
 }
 
 export const channelsDataAtom = atom(async () => {
-    const page = await axios.get(`/api/httpfiles/Channels.json`);
-    const json = page.data;
-    return json as Channel[];
+    if (usePB) {
+        return await pbFetchChannels();
+    } else {
+        const page = await axios.get(`/api/httpfiles/Channels.json`);
+        const json = page.data;
+        return json as Channel[];
+    }
 });
 
 export const roundsDataAtom = atomWithSuspenseQuery<Round[]>((get) => ({
     queryKey: ['roundsData'],
     queryFn: async () => {
         const { data: eventId } = await get(eventIdAtom);
-        const page = await axios.get(`/api/events/${eventId}/Rounds.json`);
-        return page.data as Round[];
+        if (usePB) {
+            return await pbFetchRounds(eventId!);
+        } else {
+            const page = await axios.get(`/api/events/${eventId}/Rounds.json`);
+            return page.data as Round[];
+        }
     },
     staleTime: 10_000,
     refetchInterval: 10_000,
@@ -195,9 +214,15 @@ export const raceFamilyAtom = atomFamily((raceId: string) => {
             queryKey: ['race', raceId],
             queryFn: async () => {
                 const { data: eventId } = await get(eventIdAtom);
-                const page = await axios.get(`/api/events/${eventId}/${raceId}/Race.json`);
-                const json = page.data;
-                const race = json[0] as Race;
+                let race: Race;
+                if (usePB && usePBRace) {
+                    const arr = await pbFetchRace(eventId!, raceId);
+                    race = arr[0] as Race;
+                } else {
+                    const page = await axios.get(`/api/events/${eventId}/${raceId}/Race.json`);
+                    const json = page.data;
+                    race = json[0] as Race;
+                }
 
                 const processedLaps = calculateProcessedLaps(race);
 
