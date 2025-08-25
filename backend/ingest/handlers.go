@@ -64,6 +64,25 @@ func RegisterRoutes(app core.App, baseProxy string) {
             }
             return c.JSON(http.StatusOK, map[string]any{"ok": true})
         })
+
+        se.Router.POST("/ingest/events/{eventId}/full", func(c *core.RequestEvent) error {
+            info, err := c.RequestInfo()
+            if err != nil || info.Auth == nil || !info.Auth.IsSuperuser() {
+                return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
+            }
+
+            service, serr := NewService(c.App, baseProxy)
+            if serr != nil {
+                return c.InternalServerError("init service", serr)
+            }
+
+            eventId := c.Request.PathValue("eventId")
+            summary, err := service.Full(eventId)
+            if err != nil {
+                return c.InternalServerError("full ingestion failed", err)
+            }
+            return c.JSON(http.StatusOK, summary)
+        })
         return se.Next()
     })
 }
