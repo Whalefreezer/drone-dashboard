@@ -44,4 +44,4 @@ tasks/
 
 pb_data/
 pocketbase_docs/
-
+__debug_bin*

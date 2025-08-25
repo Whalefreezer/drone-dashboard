@@ -1,9 +1,8 @@
 package ingest
 
 import (
-	"fmt"
-
-	"github.com/pocketbase/pocketbase/core"
+    "github.com/pocketbase/dbx"
+    "github.com/pocketbase/pocketbase/core"
 )
 
 const sourceName = "fpvtrackside"
@@ -16,23 +15,23 @@ type Upserter struct {
 
 func NewUpserter(app core.App) *Upserter { return &Upserter{App: app} }
 
-// findExistingId returns the PB id for a given (source, sourceId) tuple if it exists
+// findExistingId returns the PB id for a given (source, sourceId) if it exists
 func (u *Upserter) findExistingId(collection string, sourceId string) (string, error) {
-	query := fmt.Sprintf("SELECT id FROM %s WHERE source = {:source} AND sourceId = {:sourceId} LIMIT 1", collection)
-	q := u.App.DB().NewQuery(query)
-	q.Bind(map[string]any{"source": sourceName, "sourceId": sourceId})
-
-	var rows []struct{ ID string }
-	err := q.All(&rows)
-	if err != nil {
-		return "", err
-	}
-
-	if len(rows) > 0 {
-		return rows[0].ID, nil
-	}
-
-	return "", nil
+    rec, err := u.App.FindFirstRecordByFilter(collection, "source = {:source} && sourceId = {:sourceId}", dbx.Params{
+        "source":   sourceName,
+        "sourceId": sourceId,
+    })
+    if err == nil && rec != nil {
+        return rec.Id, nil
+    }
+    // Fallback: try by sourceId only to recover older rows
+    rec2, err2 := u.App.FindFirstRecordByFilter(collection, "sourceId = {:sourceId}", dbx.Params{
+        "sourceId": sourceId,
+    })
+    if err2 == nil && rec2 != nil {
+        return rec2.Id, nil
+    }
+    return "", nil
 }
 
 // Upsert creates or updates a record by (source, sourceId)
@@ -48,24 +47,25 @@ func (u *Upserter) Upsert(collection string, sourceId string, fields map[string]
 	}
 
 	var record *core.Record
-	if existingId != "" {
-		record, err = u.App.FindRecordById(col, existingId)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		record = core.NewRecord(col)
-	}
+    if existingId != "" {
+        record, err = u.App.FindRecordById(col, existingId)
+        if err != nil {
+            return "", err
+        }
+    } else {
+        record = core.NewRecord(col)
+    }
 
-	record.Set("source", sourceName)
-	record.Set("sourceId", sourceId)
+    // Set source + sourceId to align with the composite unique index
+    record.Set("source", sourceName)
+    record.Set("sourceId", sourceId)
 	for k, v := range fields {
 		record.Set(k, v)
 	}
 
-	if err := u.App.Save(record); err != nil {
-		return "", err
-	}
+    if err := u.App.Save(record); err != nil {
+        return "", err
+    }
 
 	return record.Id, nil
 }
