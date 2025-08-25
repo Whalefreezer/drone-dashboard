@@ -1,8 +1,6 @@
 {
     "tasks": {
         "dev": "deno run -A --node-modules-dir npm:vite",
-        "dev:pb": "VITE_USE_PB=true deno run -A --node-modules-dir npm:vite",
-        "dev:mock": "VITE_USE_PB=false deno run -A --node-modules-dir npm:vite",
         "build": "deno run -A --node-modules-dir npm:vite build --emptyOutDir",
         "preview": "deno run -A --node-modules-dir npm:vite preview",
         "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/",

@@ -1,24 +1,24 @@
 package main
 
 import (
-    "embed"
-    "flag"
-    "fmt"
-    "io/fs"
-    "log"
-    "net/http/httputil"
-    "net/url"
-    "os"
-    "strings"
+	"embed"
+	"flag"
+	"fmt"
+	"io/fs"
+	"log"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"strings"
 
-    "drone-dashboard/ingest"
-    _ "drone-dashboard/migrations"
-    "drone-dashboard/logger"
+	"drone-dashboard/ingest"
+	"drone-dashboard/logger"
+	_ "drone-dashboard/migrations"
 
-    "github.com/pocketbase/pocketbase"
-    "github.com/pocketbase/pocketbase/apis"
-    "github.com/pocketbase/pocketbase/core"
-    "github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 )
 
 //go:embed static/*
@@ -26,11 +26,11 @@ var staticFiles embed.FS
 
 func main() {
 	// Parse command line flags
-    fpvtracksideAPI := flag.String("fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
-    port := flag.Int("port", 3000, "Server port")
-    logLevel := flag.String("log-level", "info", "Log level: error|warn|info|debug|trace")
-    help := flag.Bool("help", false, "Show help message")
-    flag.Parse()
+	fpvtracksideAPI := flag.String("fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
+	port := flag.Int("port", 3000, "Server port")
+	logLevel := flag.String("log-level", "info", "Log level: error|warn|info|debug|trace")
+	help := flag.Bool("help", false, "Show help message")
+	flag.Parse()
 
 	if *help {
 		fmt.Printf(`
@@ -64,11 +64,11 @@ Example:
 		log.Fatal("Failed to access static files:", err)
 	}
 
-    // Configure logging level
-    logger.Configure(*logLevel)
+	// Configure logging level
+	logger.Configure(*logLevel)
 
-    // Initialize PocketBase app
-    app := pocketbase.New()
+	// Initialize PocketBase app
+	app := pocketbase.New()
 
 	// Register migrations and enable automigrate when running via `go run`
 	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())

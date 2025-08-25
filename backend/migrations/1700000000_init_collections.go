@@ -27,6 +27,7 @@ func init() {
 			&core.TextField{Name: "raceStartIgnoreDetections", Max: 32},
 			&core.TextField{Name: "minLapTime", Max: 32},
 			&core.TextField{Name: "lastOpened", Max: 64},
+			&core.BoolField{Name: "isCurrent"},
 		)
 		events.AddIndex("ux_events_source", true, "source, sourceId", "")
 		events.ListRule = types.Pointer("")

@@ -5,7 +5,7 @@ import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
-import { usePB, usePBRace, pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetFirstEvent } from '../api/pb.ts';
+import { usePB, usePBRace, pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent } from '../api/pb.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 
 export const eventIdAtom = atomWithSuspenseQuery(() => ({
@@ -15,7 +15,7 @@ export const eventIdAtom = atomWithSuspenseQuery(() => ({
         const envId = getEnvEventIdFallback();
         if (envId) return envId;
         if (usePB) {
-            const event = await pbGetFirstEvent();
+            const event = await pbGetCurrentEvent();
             return event?.ID ?? null;
         }
         const response = await axios.get('/fpv-api');

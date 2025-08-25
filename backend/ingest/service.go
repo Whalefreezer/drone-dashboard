@@ -63,6 +63,7 @@ func (s *Service) Snapshot(eventId string) error {
 		"raceStartIgnoreDetections":   e.RaceStartIgnoreDetections,
 		"minLapTime":                  e.MinLapTime,
 		"lastOpened":                  e.LastOpened,
+		"isCurrent":                   true,
 	})
 	if err != nil {
 		return err
@@ -128,7 +129,8 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 
 	e := events[0]
 	eventPBID, err := s.Upserter.Upsert("events", string(e.ID), map[string]any{
-		"name": e.Name,
+		"name":      e.Name,
+		"isCurrent": false,
 	})
 	if err != nil {
 		return err
@@ -257,40 +259,41 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 func (s *Service) IngestResults(eventId string) (int, error) {
 	slog.Info("ingest.results.start", "eventId", eventId)
 	// Ensure event exists (and get PB id)
-    events, err := s.Client.FetchEvent(eventId)
-    if err != nil {
-        return 0, err
-    }
-    if len(events) == 0 {
-        return 0, fmt.Errorf("event not found: %s", eventId)
-    }
+	events, err := s.Client.FetchEvent(eventId)
+	if err != nil {
+		return 0, err
+	}
+	if len(events) == 0 {
+		return 0, fmt.Errorf("event not found: %s", eventId)
+	}
 	e := events[0]
 	eventPBID, err := s.Upserter.Upsert("events", string(e.ID), map[string]any{
-		"name": e.Name,
+		"name":      e.Name,
+		"isCurrent": false,
 	})
-    if err != nil {
-        return 0, err
-    }
+	if err != nil {
+		return 0, err
+	}
 
 	// Fetch results
-    res, err := s.Client.FetchResults(eventId)
-    if err != nil {
-        return 0, err
-    }
+	res, err := s.Client.FetchResults(eventId)
+	if err != nil {
+		return 0, err
+	}
 
 	for _, r := range res {
 		// Resolve optional race id (may be empty GUID in some contexts)
 		var racePBID string
 		if r.Race != "" {
 			racePBID, err = s.Upserter.Upsert("races", string(r.Race), map[string]any{})
-            if err != nil {
-                return 0, err
-            }
-        }
-        pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{})
-        if err != nil {
-            return 0, err
-        }
+			if err != nil {
+				return 0, err
+			}
+		}
+		pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{})
+		if err != nil {
+			return 0, err
+		}
 
 		if _, err := s.Upserter.Upsert("results", string(r.ID), map[string]any{
 			"points":     r.Points,
@@ -301,12 +304,12 @@ func (s *Service) IngestResults(eventId string) (int, error) {
 			"event":      eventPBID,
 			"race":       racePBID,
 			"pilot":      pilotPBID,
-        }); err != nil {
-            return 0, err
-        }
-    }
-    slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
-    return len(res), nil
+		}); err != nil {
+			return 0, err
+		}
+	}
+	slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
+	return len(res), nil
 }
 
 // FullSummary contains simple counters for a full event backfill
@@ -319,24 +322,64 @@ type FullSummary struct {
 	ResultsIngested int    `json:"resultsIngested"`
 }
 
+// setEventAsCurrent sets the specified event as current and makes all other events not current
+func (s *Service) setEventAsCurrent(eventId string) error {
+	slog.Info("ingest.setEventAsCurrent.start", "eventId", eventId)
+
+	// First, set all events to isCurrent = false
+	collection, err := s.Upserter.App.FindCollectionByNameOrId("events")
+	if err != nil {
+		return fmt.Errorf("find events collection: %w", err)
+	}
+
+	// Get all events and set them to not current
+	allEvents, err := s.Upserter.App.FindAllRecords(collection.Name)
+	if err != nil {
+		return fmt.Errorf("find all events: %w", err)
+	}
+
+	for _, event := range allEvents {
+		event.Set("isCurrent", false)
+		if err := s.Upserter.App.Save(event); err != nil {
+			return fmt.Errorf("save event %s as not current: %w", event.Id, err)
+		}
+	}
+
+	// Now set the target event as current by its sourceId
+	targetEvent, err := s.Upserter.App.FindFirstRecordByFilter(collection.Name, "sourceId = {:sourceId}", map[string]any{
+		"sourceId": eventId,
+	})
+	if err != nil {
+		return fmt.Errorf("find target event %s: %w", eventId, err)
+	}
+
+	targetEvent.Set("isCurrent", true)
+	if err := s.Upserter.App.Save(targetEvent); err != nil {
+		return fmt.Errorf("save event %s as current: %w", eventId, err)
+	}
+
+	slog.Info("ingest.setEventAsCurrent.done", "eventId", eventId, "totalEvents", len(allEvents))
+	return nil
+}
+
 // Full orchestrates a full ingestion for an event: snapshot -> all races -> results
 func (s *Service) Full(eventId string) (FullSummary, error) {
 	slog.Info("ingest.full.start", "eventId", eventId)
 
 	// Fetch event to enumerate races
-    events, err := s.Client.FetchEvent(eventId)
-    if err != nil {
-        return FullSummary{EventId: eventId}, fmt.Errorf("fetch event: %w", err)
-    }
-    if len(events) == 0 {
-        return FullSummary{EventId: eventId}, fmt.Errorf("event not found: %s", eventId)
-    }
+	events, err := s.Client.FetchEvent(eventId)
+	if err != nil {
+		return FullSummary{EventId: eventId}, fmt.Errorf("fetch event: %w", err)
+	}
+	if len(events) == 0 {
+		return FullSummary{EventId: eventId}, fmt.Errorf("event not found: %s", eventId)
+	}
 	e := events[0]
 
 	// 1) Snapshot core entities
-    if err := s.Snapshot(eventId); err != nil {
-        return FullSummary{EventId: eventId}, fmt.Errorf("snapshot: %w", err)
-    }
+	if err := s.Snapshot(eventId); err != nil {
+		return FullSummary{EventId: eventId}, fmt.Errorf("snapshot: %w", err)
+	}
 
 	// 2) Races with simple retry and pacing
 	racesProcessed := 0
@@ -369,15 +412,15 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	}
 
 	// 3) Results
-    cnt, err := s.IngestResults(eventId)
-    if err != nil {
-        return FullSummary{
-            EventId:        eventId,
-            RacesProcessed: racesProcessed,
-            RacesSucceeded: racesSucceeded,
-            RacesFailed:    racesFailed,
-        }, fmt.Errorf("results: %w", err)
-    }
+	cnt, err := s.IngestResults(eventId)
+	if err != nil {
+		return FullSummary{
+			EventId:        eventId,
+			RacesProcessed: racesProcessed,
+			RacesSucceeded: racesSucceeded,
+			RacesFailed:    racesFailed,
+		}, fmt.Errorf("results: %w", err)
+	}
 
 	// Count of results is not known without extra query; report 0 as placeholder
 	summary := FullSummary{
@@ -386,8 +429,36 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 		RacesProcessed:  racesProcessed,
 		RacesSucceeded:  racesSucceeded,
 		RacesFailed:     racesFailed,
-        ResultsIngested: cnt,
-    }
+		ResultsIngested: cnt,
+	}
 	slog.Info("ingest.full.done", "eventId", eventId, "processed", racesProcessed, "ok", racesSucceeded, "failed", racesFailed)
+	return summary, nil
+}
+
+// FullAuto fetches the eventId automatically and then performs a full ingestion
+func (s *Service) FullAuto() (FullSummary, error) {
+	slog.Info("ingest.fullAuto.start")
+
+	// Fetch eventId using the same method as frontend
+	eventId, err := s.Client.FetchEventId()
+	if err != nil {
+		return FullSummary{}, fmt.Errorf("fetch eventId: %w", err)
+	}
+
+	slog.Info("ingest.fullAuto.eventId", "eventId", eventId)
+
+	// Perform full ingestion with the fetched eventId
+	summary, err := s.Full(eventId)
+	if err != nil {
+		return summary, err
+	}
+
+	// After successful full ingestion, set this event as current and all others as not current
+	if err := s.setEventAsCurrent(eventId); err != nil {
+		slog.Warn("ingest.fullAuto.setEventAsCurrent.failed", "eventId", eventId, "err", err)
+		// Don't fail the entire operation if setting current status fails
+		// The ingestion was successful, this is just a metadata update
+	}
+
 	return summary, nil
 }

@@ -45,8 +45,8 @@ export async function pbResolveEventPBId(eventId: string): Promise<string | null
     return rec?.id ?? null;
 }
 
-export async function pbGetFirstEvent(): Promise<RaceEvent | null> {
-    const rec = await pbFirst('events');
+export async function pbGetCurrentEvent(): Promise<RaceEvent | null> {
+    const rec = await pbFirst('events', 'isCurrent = true');
     if (!rec) return null;
     return {
         ID: rec.sourceId,
