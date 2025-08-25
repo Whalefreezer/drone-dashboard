@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"net/http/httputil"
-	"net/url"
+	"net/http"
 	"os"
 	"strings"
 
@@ -41,7 +40,7 @@ Options:
   -port int                 Set the server port (default: 3000)
   -help                     Show this help message
 
-Note: The FPVTrackside API will be available at /fpv-api/* endpoints
+Note: The FPVTrackside API will be available at /direct/* endpoints
       PocketBase API will be available at /api/* endpoints
       PocketBase Admin UI will be available at /_/
 
@@ -52,11 +51,11 @@ Example:
 	}
 
 	// Create reverse proxy for API requests
-	apiTarget, err := url.Parse(*fpvtracksideAPI)
-	if err != nil {
-		log.Fatal("Invalid FPVTrackside API URL:", err)
-	}
-	proxy := httputil.NewSingleHostReverseProxy(apiTarget)
+	// apiTarget, err := url.Parse(*fpvtracksideAPI)
+	// if err != nil {
+	// 	log.Fatal("Invalid FPVTrackside API URL:", err)
+	// }
+	// proxy := httputil.NewSingleHostReverseProxy(apiTarget)
 
 	// Handle static files from embedded filesystem
 	staticContent, err := fs.Sub(staticFiles, "static")
@@ -77,6 +76,12 @@ Example:
 	})
 	ingest.RegisterRoutes(app, *fpvtracksideAPI)
 
+	// Create service once for reuse across all proxy requests
+	proxyService, err := ingest.NewService(app, *fpvtracksideAPI)
+	if err != nil {
+		log.Fatal("Failed to create proxy service:", err)
+	}
+
 	// Hook into the serve event to add custom routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Add a single route handler that routes based on path
@@ -86,16 +91,17 @@ Example:
 			path := req.URL.Path
 
 			// Handle FPV API proxy requests
-			if strings.HasPrefix(path, "/fpv-api/") {
-				// Strip /fpv-api prefix for the proxy
-				originalPath := path
-				req.URL.Path = strings.TrimPrefix(path, "/fpv-api")
+			if strings.HasPrefix(path, "/direct/") {
+				// Strip /direct prefix for the proxy
+				newPath := strings.TrimPrefix(path, "/direct/")
+				bytes, err := proxyService.Client.GetBytes(newPath)
+				if err != nil {
+					return c.InternalServerError("fetch event", err)
+				}
+				str := string(bytes)
 
-				// Serve the proxy request
-				proxy.ServeHTTP(resp, req)
-
-				// Restore original path
-				req.URL.Path = originalPath
+				resp.WriteHeader(http.StatusOK)
+				resp.Write([]byte(str))
 				return nil
 			}
 
@@ -105,7 +111,7 @@ Example:
 		})
 
 		fmt.Printf("Pointing to FPVTrackside API: %s\n", *fpvtracksideAPI)
-		fmt.Printf("API proxy available at: /fpv-api/* -> %s\n", *fpvtracksideAPI)
+		fmt.Printf("API proxy available at: /direct/* -> %s\n", *fpvtracksideAPI)
 		fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", *port)
 		fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", *port)
 

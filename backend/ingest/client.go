@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // FPVClient fetches FPVTrackside Browser API via the configured base URL.
@@ -21,34 +22,48 @@ func NewFPVClient(base string) (*FPVClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FPVClient{BaseURL: u, HTTP: &http.Client{}}, nil
+	return &FPVClient{BaseURL: u, HTTP: &http.Client{
+		Timeout: 1 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+			MaxConnsPerHost:   1,
+		},
+	}}, nil
 }
 
-func (c *FPVClient) getJSON(path string, v any) error {
+func (c *FPVClient) GetBytes(path string) ([]byte, error) {
 	u := *c.BaseURL
 	u.Path = path
 	resp, err := c.HTTP.Get(u.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("GET %s: status %d: %s", u.String(), resp.StatusCode, string(b))
+		return nil, fmt.Errorf("GET %s: status %d: %s", u.String(), resp.StatusCode, string(b))
 	}
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(b) == 0 {
-		return fmt.Errorf("GET %s: empty response body", u.String())
+		return nil, fmt.Errorf("GET %s: empty response body", u.String())
+	}
+	return b, nil
+}
+
+func (c *FPVClient) getJSON(path string, v any) error {
+	b, err := c.GetBytes(path)
+	if err != nil {
+		return err
 	}
 	if err := json.Unmarshal(b, v); err != nil {
 		snippet := string(b)
 		if len(snippet) > 200 {
 			snippet = snippet[:200] + "..."
 		}
-		return fmt.Errorf("decode %s: %v; body: %s", u.String(), err, snippet)
+		return fmt.Errorf("decode %s: %v; body: %s", c.BaseURL.String()+path, err, snippet)
 	}
 	return nil
 }

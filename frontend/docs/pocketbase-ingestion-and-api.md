@@ -11,7 +11,7 @@ References:
 
 ### Ingestion sources
 
-- FPVTrackside Browser API base (configurable): `-fpvtrackside-api` flag, proxied as `/fpv-api/*` in `backend/main.go`.
+- FPVTrackside Browser API base (configurable): `-fpvtrackside-api` flag, proxied as `/direct/*` in `backend/main.go`.
 - Endpoints:
   - `/events/{eventId}/Event.json` (single event array)
   - `/events/{eventId}/Pilots.json`
