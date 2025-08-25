@@ -254,43 +254,43 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 }
 
 // IngestResults fetches aggregated results for the event and upserts them
-func (s *Service) IngestResults(eventId string) error {
+func (s *Service) IngestResults(eventId string) (int, error) {
 	slog.Info("ingest.results.start", "eventId", eventId)
 	// Ensure event exists (and get PB id)
-	events, err := s.Client.FetchEvent(eventId)
-	if err != nil {
-		return err
-	}
-	if len(events) == 0 {
-		return fmt.Errorf("event not found: %s", eventId)
-	}
+    events, err := s.Client.FetchEvent(eventId)
+    if err != nil {
+        return 0, err
+    }
+    if len(events) == 0 {
+        return 0, fmt.Errorf("event not found: %s", eventId)
+    }
 	e := events[0]
 	eventPBID, err := s.Upserter.Upsert("events", string(e.ID), map[string]any{
 		"name": e.Name,
 	})
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return 0, err
+    }
 
 	// Fetch results
-	res, err := s.Client.FetchResults(eventId)
-	if err != nil {
-		return err
-	}
+    res, err := s.Client.FetchResults(eventId)
+    if err != nil {
+        return 0, err
+    }
 
 	for _, r := range res {
 		// Resolve optional race id (may be empty GUID in some contexts)
 		var racePBID string
 		if r.Race != "" {
 			racePBID, err = s.Upserter.Upsert("races", string(r.Race), map[string]any{})
-			if err != nil {
-				return err
-			}
-		}
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{})
-		if err != nil {
-			return err
-		}
+            if err != nil {
+                return 0, err
+            }
+        }
+        pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{})
+        if err != nil {
+            return 0, err
+        }
 
 		if _, err := s.Upserter.Upsert("results", string(r.ID), map[string]any{
 			"points":     r.Points,
@@ -301,12 +301,12 @@ func (s *Service) IngestResults(eventId string) error {
 			"event":      eventPBID,
 			"race":       racePBID,
 			"pilot":      pilotPBID,
-		}); err != nil {
-			return err
-		}
-	}
-	slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
-	return nil
+        }); err != nil {
+            return 0, err
+        }
+    }
+    slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
+    return len(res), nil
 }
 
 // FullSummary contains simple counters for a full event backfill
@@ -324,19 +324,19 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	slog.Info("ingest.full.start", "eventId", eventId)
 
 	// Fetch event to enumerate races
-	events, err := s.Client.FetchEvent(eventId)
-	if err != nil {
-		return FullSummary{}, err
-	}
-	if len(events) == 0 {
-		return FullSummary{}, fmt.Errorf("event not found: %s", eventId)
-	}
+    events, err := s.Client.FetchEvent(eventId)
+    if err != nil {
+        return FullSummary{EventId: eventId}, fmt.Errorf("fetch event: %w", err)
+    }
+    if len(events) == 0 {
+        return FullSummary{EventId: eventId}, fmt.Errorf("event not found: %s", eventId)
+    }
 	e := events[0]
 
 	// 1) Snapshot core entities
-	if err := s.Snapshot(eventId); err != nil {
-		return FullSummary{}, err
-	}
+    if err := s.Snapshot(eventId); err != nil {
+        return FullSummary{EventId: eventId}, fmt.Errorf("snapshot: %w", err)
+    }
 
 	// 2) Races with simple retry and pacing
 	racesProcessed := 0
@@ -369,9 +369,15 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	}
 
 	// 3) Results
-	if err := s.IngestResults(eventId); err != nil {
-		return FullSummary{}, err
-	}
+    cnt, err := s.IngestResults(eventId)
+    if err != nil {
+        return FullSummary{
+            EventId:        eventId,
+            RacesProcessed: racesProcessed,
+            RacesSucceeded: racesSucceeded,
+            RacesFailed:    racesFailed,
+        }, fmt.Errorf("results: %w", err)
+    }
 
 	// Count of results is not known without extra query; report 0 as placeholder
 	summary := FullSummary{
@@ -380,8 +386,8 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 		RacesProcessed:  racesProcessed,
 		RacesSucceeded:  racesSucceeded,
 		RacesFailed:     racesFailed,
-		ResultsIngested: 0,
-	}
+        ResultsIngested: cnt,
+    }
 	slog.Info("ingest.full.done", "eventId", eventId, "processed", racesProcessed, "ok", racesSucceeded, "failed", racesFailed)
 	return summary, nil
 }

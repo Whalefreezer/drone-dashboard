@@ -59,10 +59,15 @@ func RegisterRoutes(app core.App, baseProxy string) {
             }
 
             eventId := c.Request.PathValue("eventId")
-            if err := service.IngestResults(eventId); err != nil {
-                return c.InternalServerError("results ingestion failed", err)
+            count, rerr := service.IngestResults(eventId)
+            if rerr != nil {
+                return c.JSON(http.StatusInternalServerError, map[string]any{
+                    "ok":      false,
+                    "message": "Results ingestion failed",
+                    "error":   rerr.Error(),
+                })
             }
-            return c.JSON(http.StatusOK, map[string]any{"ok": true})
+            return c.JSON(http.StatusOK, map[string]any{"ok": true, "count": count})
         })
 
         se.Router.POST("/ingest/events/{eventId}/full", func(c *core.RequestEvent) error {
@@ -77,9 +82,15 @@ func RegisterRoutes(app core.App, baseProxy string) {
             }
 
             eventId := c.Request.PathValue("eventId")
-            summary, err := service.Full(eventId)
-            if err != nil {
-                return c.InternalServerError("full ingestion failed", err)
+            summary, ferr := service.Full(eventId)
+            if ferr != nil {
+                // Return a richer error payload including the detailed error message and partial summary
+                return c.JSON(http.StatusInternalServerError, map[string]any{
+                    "ok":      false,
+                    "message": "Full ingestion failed",
+                    "error":   ferr.Error(),
+                    "summary": summary,
+                })
             }
             return c.JSON(http.StatusOK, summary)
         })
