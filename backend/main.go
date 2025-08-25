@@ -74,13 +74,14 @@ Example:
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
 		Automigrate: isGoRun,
 	})
-	ingest.RegisterRoutes(app, *fpvtracksideAPI)
 
 	// Create service once for reuse across all proxy requests
-	proxyService, err := ingest.NewService(app, *fpvtracksideAPI)
+	ingestService, err := ingest.NewService(app, *fpvtracksideAPI)
 	if err != nil {
 		log.Fatal("Failed to create proxy service:", err)
 	}
+
+	ingest.RegisterRoutes(app, ingestService)
 
 	// Hook into the serve event to add custom routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
@@ -94,7 +95,7 @@ Example:
 			if strings.HasPrefix(path, "/direct/") {
 				// Strip /direct prefix for the proxy
 				newPath := strings.TrimPrefix(path, "/direct/")
-				bytes, err := proxyService.Client.GetBytes(newPath)
+				bytes, err := ingestService.Client.GetBytes(newPath)
 				if err != nil {
 					return c.InternalServerError("fetch event", err)
 				}

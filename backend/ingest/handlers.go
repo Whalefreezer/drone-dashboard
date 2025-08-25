@@ -7,18 +7,13 @@ import (
 )
 
 // RegisterRoutes wires admin-only ingestion endpoints under /ingest/*
-func RegisterRoutes(app core.App, baseProxy string) {
+func RegisterRoutes(app core.App, service *Service) {
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		se.Router.POST("/ingest/events/{eventId}/snapshot", func(c *core.RequestEvent) error {
 			// admin-only guard (temporary: require superuser auth)
 			info, err := c.RequestInfo()
 			if err != nil || info.Auth == nil || !info.Auth.IsSuperuser() {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
-			}
-
-			service, serr := NewService(c.App, baseProxy)
-			if serr != nil {
-				return c.InternalServerError("init service", serr)
 			}
 
 			eventId := c.Request.PathValue("eventId")
@@ -34,11 +29,6 @@ func RegisterRoutes(app core.App, baseProxy string) {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
 			}
 
-			service, serr := NewService(c.App, baseProxy)
-			if serr != nil {
-				return c.InternalServerError("init service", serr)
-			}
-
 			eventId := c.Request.PathValue("eventId")
 			raceId := c.Request.PathValue("raceId")
 			if err := service.IngestRace(eventId, raceId); err != nil {
@@ -51,11 +41,6 @@ func RegisterRoutes(app core.App, baseProxy string) {
 			info, err := c.RequestInfo()
 			if err != nil || info.Auth == nil || !info.Auth.IsSuperuser() {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
-			}
-
-			service, serr := NewService(c.App, baseProxy)
-			if serr != nil {
-				return c.InternalServerError("init service", serr)
 			}
 
 			eventId := c.Request.PathValue("eventId")
@@ -76,11 +61,6 @@ func RegisterRoutes(app core.App, baseProxy string) {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
 			}
 
-			service, serr := NewService(c.App, baseProxy)
-			if serr != nil {
-				return c.InternalServerError("init service", serr)
-			}
-
 			eventId := c.Request.PathValue("eventId")
 			summary, ferr := service.Full(eventId)
 			if ferr != nil {
@@ -99,11 +79,6 @@ func RegisterRoutes(app core.App, baseProxy string) {
 			info, err := c.RequestInfo()
 			if err != nil || info.Auth == nil || !info.Auth.IsSuperuser() {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
-			}
-
-			service, serr := NewService(c.App, baseProxy)
-			if serr != nil {
-				return c.InternalServerError("init service", serr)
 			}
 
 			summary, ferr := service.FullAuto()
