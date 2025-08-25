@@ -50,13 +50,6 @@ Example:
 		os.Exit(0)
 	}
 
-	// Create reverse proxy for API requests
-	// apiTarget, err := url.Parse(*fpvtracksideAPI)
-	// if err != nil {
-	// 	log.Fatal("Invalid FPVTrackside API URL:", err)
-	// }
-	// proxy := httputil.NewSingleHostReverseProxy(apiTarget)
-
 	// Handle static files from embedded filesystem
 	staticContent, err := fs.Sub(staticFiles, "static")
 	if err != nil {

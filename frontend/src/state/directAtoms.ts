@@ -1,11 +1,23 @@
-import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
-import { atomFamily, loadable } from 'jotai/utils';
+import { atom } from 'jotai';
+import { atomFamily } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
-import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
-import { useEffect, useState } from 'react';
+import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import axios from 'axios';
 import { findIndexOfCurrentRace } from '../common/index.ts';
+import { 
+    ProcessedLap, 
+    RaceWithProcessedLaps, 
+    OverallBestTimes,
+    useCachedAtom,
+    updateAtom,
+    useUpdater,
+    isRaceActive,
+    calculateProcessedLaps,
+    orderRaces,
+    findEliminatedPilots,
+    calculateOverallBestTimes
+} from './commonAtoms.ts';
 
 export const eventIdAtom = atomWithSuspenseQuery(() => ({
     queryKey: ['eventId'],
@@ -55,28 +67,8 @@ export const pilotsAtom = atomWithSuspenseQuery<Pilot[]>((get) => ({
     refetchInterval: 10_000,
 }));
 
-export function useCachedAtom<T>(anAtom: Atom<T>) {
-    const [cache, setCache] = useState<T | null>(null);
-
-    const value = useAtomValue(loadable(anAtom));
-
-    if (value.state === 'loading') {
-        if (cache === null) {
-            throw new Promise(() => {});
-        } else {
-            return cache;
-        }
-    }
-
-    if (value.state === 'hasError') {
-        throw value.error;
-    }
-
-    if (value.state === 'hasData') {
-        setCache(value.data);
-        return value.data;
-    }
-}
+// Re-export from common
+export { useCachedAtom };
 
 export const channelsDataAtom = atom(async () => {
     const page = await axios.get(`/direct/httpfiles/Channels.json`);
@@ -116,65 +108,9 @@ export const currentRaceAtom = atom(async (get) => {
     return races[currentRace];
 });
 
-function orderRaces(races: Race[], rounds: Round[]) {
-    return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.ID === a.Round);
-        const bRound = rounds.find((r) => r.ID === b.Round);
-        const orderDiff = (aRound?.Order ?? 0) - (bRound?.Order ?? 0);
-        if (orderDiff !== 0) return orderDiff;
-        return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
-    });
-}
-
-export interface ProcessedLap {
-    id: string;
-    lapNumber: number;
-    lengthSeconds: number;
-    pilotId: string;
-    valid: boolean;
-    startTime: string;
-    endTime: string;
-    isHoleshot: boolean;
-}
-
-export interface RaceWithProcessedLaps extends Race {
-    processedLaps: ProcessedLap[];
-}
-
-/**
- * Determines if a race is currently active (started but not ended)
- */
-function isRaceActive(race: RaceWithProcessedLaps | undefined): boolean {
-    if (!race) return false;
-    const started = !!race.Start && !String(race.Start).startsWith('0');
-    const ended = !!race.End && !String(race.End).startsWith('0');
-    const raceStarted = started && !ended;
-    return raceStarted;
-}
-
-/**
- * Calculates processed laps from a race, filtering out invalid detections and sorting by lap number
- */
-function calculateProcessedLaps(race: Race): ProcessedLap[] {
-    return race.Laps
-        .map((lap) => {
-            const detection = race.Detections.find((d) => lap.Detection === d.ID);
-            if (!detection || !detection.Valid) return null;
-
-            return {
-                id: lap.ID,
-                lapNumber: lap.LapNumber,
-                lengthSeconds: lap.LengthSeconds,
-                pilotId: detection.Pilot,
-                valid: true,
-                startTime: lap.StartTime,
-                endTime: lap.EndTime,
-                isHoleshot: detection.IsHoleshot,
-            } as ProcessedLap;
-        })
-        .filter((lap): lap is ProcessedLap => lap !== null)
-        .sort((a, b) => a.lapNumber - b.lapNumber);
-}
+// Re-export types and functions from common
+export type { ProcessedLap, RaceWithProcessedLaps, OverallBestTimes };
+export { orderRaces, isRaceActive, calculateProcessedLaps };
 
 // Synchronous signal for current race ID, updated by UI once data is available.
 // This allows other atoms to read the current race context without awaiting async atoms.
@@ -219,87 +155,10 @@ export const raceFamilyAtom = atomFamily((raceId: string) => {
     });
 });
 
-export const updateAtom = atom<
-    (Record<string, { func: () => void; count: number }>)
->({});
-
-export function useUpdater(key: string, updater: () => void) {
-    const setUpdate = useSetAtom(updateAtom);
-    useEffect(() => {
-        setUpdate((update) => {
-            update[key] = { func: updater, count: (update[key]?.count ?? 0) + 1 };
-            return update;
-        });
-        return () => {
-            setUpdate((update) => {
-                update[key].count--;
-                if (update[key].count === 0) {
-                    delete update[key];
-                }
-                return update;
-            });
-        };
-    }, [updater]);
-}
-
-export interface OverallBestTimes {
-    overallFastestLap: number;
-    pilotBestLaps: Map<string, number>;
-}
+// Re-export from common
+export { updateAtom, useUpdater, findEliminatedPilots };
 
 export const overallBestTimesAtom = atom(async (get) => {
     const races = await get(racesAtom);
-
-    const overallBestTimes: OverallBestTimes = {
-        overallFastestLap: Infinity,
-        pilotBestLaps: new Map(),
-    };
-
-    races.forEach((race) => {
-        race.processedLaps.forEach((lap) => {
-            if (!lap.isHoleshot) {
-                // Update overall fastest
-                if (lap.lengthSeconds < overallBestTimes.overallFastestLap) {
-                    overallBestTimes.overallFastestLap = lap.lengthSeconds;
-                }
-
-                // Update pilot's personal best
-                const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ?? Infinity;
-                if (lap.lengthSeconds < currentBest) {
-                    overallBestTimes.pilotBestLaps.set(lap.pilotId, lap.lengthSeconds);
-                }
-            }
-        });
-    });
-
-    return overallBestTimes;
+    return calculateOverallBestTimes(races);
 });
-
-export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
-    const eliminatedPilots: EliminatedPilot[] = [];
-
-    brackets.forEach((bracket) => {
-        // Check if bracket is complete by verifying all pilots have all rounds filled
-        const isComplete = bracket.pilots.every((pilot) =>
-            pilot.rounds.every((round) => round !== null)
-        );
-
-        if (isComplete) {
-            // Sort pilots by points to find bottom two
-            const sortedPilots = [...bracket.pilots].sort((a, b) => a.points - b.points);
-            const bottomTwo = sortedPilots.slice(0, 2);
-
-            // Add bottom two pilots to eliminated list
-            bottomTwo.forEach((pilot, index) => {
-                eliminatedPilots.push({
-                    name: pilot.name,
-                    bracket: bracket.name,
-                    position: sortedPilots.length - 1 - index, // Convert to position from bottom
-                    points: pilot.points,
-                });
-            });
-        }
-    });
-
-    return eliminatedPilots;
-}

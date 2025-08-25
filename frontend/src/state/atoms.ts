@@ -1,6 +1,7 @@
 import { usePB } from '../api/pb.ts';
 import * as pbAtoms from './pbAtoms.ts';
 import * as directAtoms from './directAtoms.ts';
+import * as commonAtoms from './commonAtoms.ts';
 
 // Export all atoms based on usePB flag
 export const eventIdAtom = usePB ? pbAtoms.eventIdAtom : directAtoms.eventIdAtom;
@@ -17,12 +18,12 @@ export const raceFamilyAtom = usePB ? pbAtoms.raceFamilyAtom : directAtoms.raceF
 export const updateAtom = usePB ? pbAtoms.updateAtom : directAtoms.updateAtom;
 export const overallBestTimesAtom = usePB ? pbAtoms.overallBestTimesAtom : directAtoms.overallBestTimesAtom;
 
-// Export utility functions
-export const useCachedAtom = usePB ? pbAtoms.useCachedAtom : directAtoms.useCachedAtom;
-export const useUpdater = usePB ? pbAtoms.useUpdater : directAtoms.useUpdater;
-export const findEliminatedPilots = usePB ? pbAtoms.findEliminatedPilots : directAtoms.findEliminatedPilots;
+// Export utility functions from common
+export const useCachedAtom = commonAtoms.useCachedAtom;
+export const useUpdater = commonAtoms.useUpdater;
+export const findEliminatedPilots = commonAtoms.findEliminatedPilots;
 
-// Export types - since both files have identical types, we can export from either
-export type ProcessedLap = pbAtoms.ProcessedLap;
-export type RaceWithProcessedLaps = pbAtoms.RaceWithProcessedLaps;
-export type OverallBestTimes = pbAtoms.OverallBestTimes;
+// Export types from common
+export type ProcessedLap = commonAtoms.ProcessedLap;
+export type RaceWithProcessedLaps = commonAtoms.RaceWithProcessedLaps;
+export type OverallBestTimes = commonAtoms.OverallBestTimes;
