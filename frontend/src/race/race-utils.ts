@@ -1,5 +1,6 @@
 import { LeaderboardEntry, SortGroup } from '../leaderboard/leaderboard-types.ts';
-import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { ProcessedLap } from '../state/atoms.ts';
+import type { RaceData } from './race-types.ts';
 
 export interface BestTime {
     time: number;
@@ -51,7 +52,7 @@ function getGroupHierarchy(
     return hierarchy;
 }
 
-export function calculateBestTimes(races: RaceWithProcessedLaps[], consecutiveLaps: number) {
+export function calculateBestTimes(races: RaceData[], consecutiveLaps: number) {
     const overallFastestLaps = new Map<string, BestTime>();
     const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
     const fastestHoleshots = new Map<string, BestTime>();
@@ -59,40 +60,40 @@ export function calculateBestTimes(races: RaceWithProcessedLaps[], consecutiveLa
     const fastestTotalRaceTimes = new Map<string, TotalRaceTime>();
 
     races.forEach((race) => {
-        race.PilotChannels.forEach((pilotChannel) => {
-            if (!pilotChannels.has(pilotChannel.Pilot)) {
-                pilotChannels.set(pilotChannel.Pilot, pilotChannel.Channel);
+        race.pilotChannels.forEach((pilotChannel) => {
+            if (!pilotChannels.has(pilotChannel.pilotId)) {
+                pilotChannels.set(pilotChannel.pilotId, pilotChannel.channelId);
             }
 
             const racingLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && !lap.isHoleshot
+                lap.pilotId === pilotChannel.pilotId && !lap.isHoleshot
             );
 
             const holeshotLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.Pilot && lap.isHoleshot
+                lap.pilotId === pilotChannel.pilotId && lap.isHoleshot
             );
 
             updateFastestLaps(
                 racingLaps,
-                pilotChannel.Pilot,
+                pilotChannel.pilotId,
                 race,
                 overallFastestLaps,
             );
             updateConsecutiveLaps(
                 racingLaps,
-                pilotChannel.Pilot,
+                pilotChannel.pilotId,
                 race,
                 fastestConsecutiveLaps,
                 consecutiveLaps,
             );
             updateFastestLaps(
                 holeshotLaps,
-                pilotChannel.Pilot,
+                pilotChannel.pilotId,
                 race,
                 fastestHoleshots,
             );
             updateTotalRaceTime(
-                pilotChannel.Pilot,
+                pilotChannel.pilotId,
                 race,
                 holeshotLaps,
                 racingLaps,
@@ -113,7 +114,7 @@ export function calculateBestTimes(races: RaceWithProcessedLaps[], consecutiveLa
 function updateFastestLaps(
     racingLaps: ProcessedLap[],
     pilotId: string,
-    race: RaceWithProcessedLaps,
+    race: RaceData,
     overallFastestLaps: Map<string, BestTime>,
 ) {
     if (racingLaps.length > 0) {
@@ -125,8 +126,8 @@ function updateFastestLaps(
         if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
             overallFastestLaps.set(pilotId, {
                 time: fastestLap.lengthSeconds,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
+                roundId: race.roundId,
+                raceNumber: race.raceNumber,
                 lapNumber: fastestLap.lapNumber,
             });
         }
@@ -136,7 +137,7 @@ function updateFastestLaps(
 function updateConsecutiveLaps(
     racingLaps: ProcessedLap[],
     pilotId: string,
-    race: RaceWithProcessedLaps,
+    race: RaceData,
     fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
     consecutiveLaps: number,
 ) {
@@ -161,8 +162,8 @@ function updateConsecutiveLaps(
         ) {
             fastestConsecutiveLaps.set(pilotId, {
                 ...fastestConsecutive,
-                roundId: race.Round,
-                raceNumber: race.RaceNumber,
+                roundId: race.roundId,
+                raceNumber: race.raceNumber,
             });
         }
     }
@@ -170,21 +171,23 @@ function updateConsecutiveLaps(
 
 function updateTotalRaceTime(
     pilotId: string,
-    race: RaceWithProcessedLaps,
+    race: RaceData,
     holeshotLaps: ProcessedLap[],
     racingLaps: ProcessedLap[],
     fastestTotalRaceTimes: Map<string, TotalRaceTime>,
 ) {
+    const targetLaps = race.targetLaps ?? 3; // Use race targetLaps or default to 3
+    
     if (
-        race.TargetLaps <= 0 || holeshotLaps.length === 0 ||
-        racingLaps.length < race.TargetLaps
+        targetLaps <= 0 || holeshotLaps.length === 0 ||
+        racingLaps.length < targetLaps
     ) {
         return;
     }
 
     const holeshotTime = holeshotLaps[0].lengthSeconds;
     const firstNLapsTime = racingLaps
-        .slice(0, race.TargetLaps)
+        .slice(0, targetLaps)
         .reduce((sum, lap) => sum + lap.lengthSeconds, 0);
     const totalTime = holeshotTime + firstNLapsTime;
 
@@ -192,9 +195,9 @@ function updateTotalRaceTime(
     if (!currentFastest || totalTime < currentFastest.time) {
         fastestTotalRaceTimes.set(pilotId, {
             time: totalTime,
-            roundId: race.Round,
-            raceNumber: race.RaceNumber,
-            lapCount: race.TargetLaps,
+            roundId: race.roundId,
+            raceNumber: race.raceNumber,
+            lapCount: targetLaps,
         });
     }
 }

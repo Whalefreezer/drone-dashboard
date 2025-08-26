@@ -9,5 +9,4 @@ export const findEliminatedPilots = commonAtoms.findEliminatedPilots;
 
 // Export types from common
 export type ProcessedLap = commonAtoms.ProcessedLap;
-export type RaceWithProcessedLaps = commonAtoms.RaceWithProcessedLaps;
 export type OverallBestTimes = commonAtoms.OverallBestTimes;

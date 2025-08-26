@@ -9,12 +9,13 @@ import {
     pilotHasLaps,
 } from '../common/utils.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
-import { findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { findEliminatedPilots } from '../state/atoms.ts';
+import type { RaceData } from '../race/race-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
 
 export function calculateLeaderboardData(
-    races: RaceWithProcessedLaps[],
+    races: RaceData[],
     pilots: PBPilotRecord[],
     channels: PBChannelRecord[],
     currentRaceIndex: number,
@@ -27,11 +28,11 @@ export function calculateLeaderboardData(
             consecutiveLaps,
         );
 
-    // Get pilots that are explicitly listed in race PilotChannels
+    // Get pilots that are explicitly listed in race pilotChannels
     const scheduledPilots = new Set<string>();
     races.forEach((race) => {
-        race.PilotChannels.forEach((pc) => {
-            scheduledPilots.add(pc.Pilot);
+        race.pilotChannels.forEach((pc) => {
+            scheduledPilots.add(pc.pilotId);
         });
     });
 
@@ -105,15 +106,15 @@ function findChannelById(channels: PBChannelRecord[], channelId: string | undefi
 }
 
 function getPilotChannelIdInRace(
-    race: RaceWithProcessedLaps | undefined,
+    race: RaceData | undefined,
     pilotId: string,
 ): string | undefined {
-    return race?.PilotChannels.find((pc) => pc.Pilot === pilotId)?.Channel;
+    return race?.pilotChannels.find((pc) => pc.pilotId === pilotId)?.channelId;
 }
 
 export function getPilotChannelWithPriority(
     pilotId: string,
-    races: RaceWithProcessedLaps[],
+    races: RaceData[],
     channels: PBChannelRecord[],
     currentRaceIndex: number,
 ): PBChannelRecord | null {

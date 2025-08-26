@@ -126,6 +126,7 @@ func init() {
 			&core.TextField{Name: "primaryTimingSystemLocation", Max: 32},
 			&core.BoolField{Name: "valid"},
 			&core.TextField{Name: "bracket", Max: 32},
+			&core.NumberField{Name: "targetLaps"},
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 			&core.RelationField{Name: "round", CollectionId: rounds.Id, MaxSelect: 1},
 		)

@@ -58,6 +58,7 @@ export const raceDataAtom = atomFamily((raceId: string) =>
             start: raceRecord.start,
             end: raceRecord.end,
             bracket: raceRecord.bracket,
+            targetLaps: raceRecord.targetLaps,
             processedLaps,
             pilotChannels,
         };

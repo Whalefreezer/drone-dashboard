@@ -4,17 +4,14 @@ import { atomFamily } from 'jotai/utils';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
-import { findIndexOfCurrentRace } from '../common/index.ts';
+import { allRacesAtom, currentRaceAtom as newCurrentRaceAtom } from '../race/race-atoms.ts';
 import { 
     ProcessedLap, 
-    RaceWithProcessedLaps, 
-    ComputedRace,
     OverallBestTimes,
     useCachedAtom,
     updateAtom,
     useUpdater,
     isRaceActive,
-    calculateProcessedLaps,
     orderRaces,
     findEliminatedPilots,
     calculateOverallBestTimes
@@ -101,111 +98,15 @@ export const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
 export const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
 export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
 
-export const racesAtom = atom(async (get) => {
-    const raceIds = await get(eventRaceIdsAtom);
-    const races = await Promise.all(
-        raceIds.map(async (raceId) => await get(raceFamilyAtom(raceId)))
-    );
-    const validRaces = races.filter((r) => r.Valid);
-    const rounds = await get(roundsDataAtom);
-    orderRaces(validRaces, rounds);
-    return validRaces;
-});
-
-export const currentRaceAtom = atom(async (get) => {
-    const races = await get(racesAtom);
-    const currentRace = findIndexOfCurrentRace(races);
-    return races[currentRace];
-});
+// Use the new PB-native race atoms instead of legacy ComputedRace
+export const racesAtom = allRacesAtom;
+export const currentRaceAtom = newCurrentRaceAtom;
 
 // Re-export types and functions from common
-export type { ProcessedLap, RaceWithProcessedLaps, OverallBestTimes };
-export { orderRaces, isRaceActive, calculateProcessedLaps };
+export type { ProcessedLap, OverallBestTimes };
+export { orderRaces, isRaceActive };
 
-export const raceFamilyAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<RaceWithProcessedLaps> => {
-        const ev = await get(currentEventAtom);
-        const raceRecords = await get(raceRecordsAtom);
-        const raceRec = raceRecords.find(
-            (r) => r.id === raceId && (!ev || r.event === ev.id),
-        );
-        const roundRecords = await get(roundRecordsAtom);
-        const roundGuid = (() => {
-            if (!raceRec?.round) return '';
-            const roundRec = roundRecords.find((rr) => rr.id === raceRec.round);
-            return roundRec?.id ?? '';
-        })();
-        const eventGuid = ev?.id ?? '';
-        const lapRecords = await get(lapRecordsAtom);
-        const laps = lapRecords
-            .filter((l) => l.race === raceRec?.id)
-            .map((l) => ({
-                ID: l.id,
-                Detection: '',
-                LengthSeconds: Number(l.lengthSeconds ?? 0),
-                LapNumber: Number(l.lapNumber ?? 0),
-                StartTime: String(l.startTime ?? ''),
-                EndTime: String(l.endTime ?? ''),
-            }));
-        const detectionRecords = await get(detectionRecordsAtom);
-        const detections = detectionRecords
-            .filter((d) => d.race === raceRec?.id)
-            .map((d) => ({
-                ID: d.id,
-                TimingSystemIndex: Number(d.timingSystemIndex ?? 0),
-                Channel: String(d.channel ?? ''), // PB id
-                Time: String(d.time ?? ''),
-                Peak: Number(d.peak ?? 0),
-                TimingSystemType: String(d.timingSystemType ?? ''),
-                Pilot: String(d.pilot ?? ''), // PB id
-                LapNumber: Number(d.lapNumber ?? 0),
-                Valid: Boolean(d.valid),
-                ValidityType: toValidityType(d.validityType),
-                IsLapEnd: Boolean(d.isLapEnd),
-                RaceSector: Number(d.raceSector ?? 0),
-                IsHoleshot: Boolean(d.isHoleshot),
-            }));
-        const gamePointRecords = await get(gamePointRecordsAtom);
-        const gamePoints = gamePointRecords
-            .filter((g) => g.race === raceRec?.id)
-            .map((g) => ({
-                ID: g.id,
-                Channel: String(g.channel ?? ''), // PB id
-                Pilot: String(g.pilot ?? ''), // PB id
-                Valid: Boolean(g.valid),
-                Time: String(g.time ?? ''),
-            }));
 
-        const pilotChannelRecords = await get(pilotChannelRecordsAtom);
-        const race: ComputedRace = {
-            ID: raceRec?.id ?? raceId,
-            Laps: laps,
-            Detections: detections,
-            GamePoints: gamePoints,
-            Start: String(raceRec?.start ?? ''),
-            End: String(raceRec?.end ?? ''),
-            TotalPausedTime: String(raceRec?.totalPausedTime ?? ''),
-            PilotChannels: pilotChannelRecords
-                .filter((pc) => (!ev || pc.event === ev.id))
-                .map((pc) => ({
-                    ID: pc.id,
-                    Pilot: String(pc.pilot ?? ''), // PB id
-                    Channel: String(pc.channel ?? ''), // PB id
-                })),
-            RaceNumber: Number(raceRec?.raceNumber ?? 0),
-            Round: roundGuid,
-            TargetLaps: Number((raceRec as unknown as { targetLaps?: number })?.targetLaps ?? 0),
-            PrimaryTimingSystemLocation: toPTSL(raceRec?.primaryTimingSystemLocation),
-            Valid: Boolean(raceRec?.valid),
-            AutoAssignNumbers: undefined,
-            Event: eventGuid,
-            Bracket: String(raceRec?.bracket ?? ''),
-        };
-
-        const processedLaps = calculateProcessedLaps(race);
-        return { ...race, processedLaps } as RaceWithProcessedLaps;
-    }),
-);
 
 function toValidityType(v: unknown): ValidityType {
     switch (String(v)) {
@@ -235,5 +136,99 @@ export { updateAtom, useUpdater, findEliminatedPilots };
 
 export const overallBestTimesAtom = atom(async (get) => {
     const races = await get(racesAtom);
-    return calculateOverallBestTimes(races);
+    // Flatten all processed laps from all races
+    const allProcessedLaps = races.flatMap(race => race.processedLaps);
+    return calculateOverallBestTimes(allProcessedLaps);
 });
+
+// ===== NEW FOCUSED ATOMS =====
+
+/**
+ * Processed laps for a specific race - computed from PB records
+ */
+export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
+    atom(async (get): Promise<ProcessedLap[]> => {
+        const lapRecords = await get(lapRecordsAtom);
+        const detectionRecords = await get(detectionRecordsAtom);
+        
+        const laps = lapRecords.filter((l) => l.race === raceId);
+        const detections = detectionRecords.filter((d) => d.race === raceId);
+        
+        return laps
+            .map((lap) => {
+                const detection = detections.find((d) => 
+                    d.lapNumber === lap.lapNumber && d.race === lap.race
+                );
+                if (!detection || !detection.valid) return null;
+                
+                return {
+                    id: lap.id,
+                    lapNumber: lap.lapNumber ?? 0,
+                    lengthSeconds: lap.lengthSeconds ?? 0,
+                    pilotId: detection.pilot ?? '',
+                    valid: detection.valid ?? false,
+                    startTime: lap.startTime ?? '',
+                    endTime: lap.endTime ?? '',
+                    isHoleshot: detection.isHoleshot ?? false,
+                } as ProcessedLap;
+            })
+            .filter((lap): lap is ProcessedLap => lap !== null)
+            .sort((a, b) => a.lapNumber - b.lapNumber);
+    })
+);
+
+/**
+ * Pilot-channel associations for a specific race
+ */
+export const racePilotChannelsAtom = atomFamily((raceId: string) =>
+    atom(async (get): Promise<{ id: string; pilotId: string; channelId: string }[]> => {
+        const pilotChannelRecords = await get(pilotChannelRecordsAtom);
+        return pilotChannelRecords
+            .filter((pc) => pc.race === raceId)
+            .map((pc) => ({
+                id: pc.id,
+                pilotId: pc.pilot ?? '',
+                channelId: pc.channel ?? '',
+            }));
+    })
+);
+
+/**
+ * Race status (active/completed/started) for a specific race
+ */
+export const raceStatusAtom = atomFamily((raceId: string) =>
+    atom(async (get): Promise<{ isActive: boolean; isCompleted: boolean; hasStarted: boolean }> => {
+        const raceRecords = await get(raceRecordsAtom);
+        const race = raceRecords.find((r) => r.id === raceId);
+        if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
+        
+        const hasStarted = !!(race.start && !race.start.startsWith('0'));
+        const hasEnded = !!(race.end && !race.end.startsWith('0'));
+        
+        return {
+            hasStarted,
+            isActive: hasStarted && !hasEnded,
+            isCompleted: hasStarted && hasEnded,
+        };
+    })
+);
+
+/**
+ * All detections for a specific race
+ */
+export const raceDetectionsAtom = atomFamily((raceId: string) =>
+    atom(async (get): Promise<PBDetectionRecord[]> => {
+        const detectionRecords = await get(detectionRecordsAtom);
+        return detectionRecords.filter((d) => d.race === raceId);
+    })
+);
+
+/**
+ * All game points for a specific race
+ */
+export const raceGamePointsAtom = atomFamily((raceId: string) =>
+    atom(async (get): Promise<PBGamePointRecord[]> => {
+        const gamePointRecords = await get(gamePointRecordsAtom);
+        return gamePointRecords.filter((g) => g.race === raceId);
+    })
+);

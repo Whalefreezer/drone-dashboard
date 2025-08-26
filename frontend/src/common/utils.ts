@@ -1,8 +1,8 @@
 import type { PBChannelRecord, PBPilotRecord, PBRoundRecord } from '../api/pbTypes.ts';
-import type { RaceWithProcessedLaps } from '../state/atoms.ts';
 import { ProcessedLap } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';
+import type { RaceData } from '../race/race-types.ts';
 
 export function getPositionWithSuffix(position: number): string {
     // Handle special cases for 11th, 12th, 13th
@@ -55,13 +55,13 @@ export function secondsFromString(time: string): number {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]): RaceWithProcessedLaps[] {
+export function orderRaces(races: RaceData[], rounds: PBRoundRecord[]): RaceData[] {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.id === a.Round);
-        const bRound = rounds.find((r) => r.id === b.Round);
+        const aRound = rounds.find((r) => r.id === a.roundId);
+        const bRound = rounds.find((r) => r.id === b.roundId);
         const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
-        return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
+        return (a.raceNumber ?? 0) - (b.raceNumber ?? 0);
     });
 }
 
@@ -88,13 +88,13 @@ export function getLapClassName(
 }
 
 export function calculateRacesUntilNext(
-    races: RaceWithProcessedLaps[],
+    races: RaceData[],
     currentRaceIndex: number,
     pilotId: string,
 ): number {
     // Check if pilot is in current race
     if (
-        races[currentRaceIndex].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)
+        races[currentRaceIndex].pilotChannels.some((pc) => pc.pilotId === pilotId)
     ) {
         return -2; // Use -2 to indicate current race
     }
@@ -103,7 +103,7 @@ export function calculateRacesUntilNext(
 
     for (let i = currentRaceIndex + 1; i < races.length; i++) {
         if (
-            races[i].PilotChannels.some((pc: { Pilot: string }) => pc.Pilot === pilotId)
+            races[i].pilotChannels.some((pc) => pc.pilotId === pilotId)
         ) {
             return racesCount;
         }
@@ -113,14 +113,14 @@ export function calculateRacesUntilNext(
     return -1; // No upcoming races found
 }
 
-export function findIndexOfLastRace(sortedRaces: RaceWithProcessedLaps[]) {
+export function findIndexOfLastRace(sortedRaces: RaceData[]) {
     const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
     if (currentRaceIndex === -1) {
         return -1;
     }
 
     for (let i = currentRaceIndex - 1; i >= 0; i--) {
-        if (sortedRaces[i].Valid) {
+        if (sortedRaces[i].valid) {
             return i;
         }
     }
@@ -214,19 +214,19 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
 
 // --- Original Sorting Logic (to be potentially removed later) ---
 
-export function findIndexOfCurrentRace(sortedRaces: RaceWithProcessedLaps[]) {
+export function findIndexOfCurrentRace(sortedRaces: RaceData[]) {
     if (!sortedRaces || sortedRaces.length === 0) {
         return -1;
     }
 
     const activeRace = sortedRaces.findIndex((race) => {
-        if (!race.Valid) {
+        if (!race.valid) {
             return false;
         }
-        if (!race.Start || race.Start.startsWith('0')) {
+        if (!race.start || race.start.startsWith('0')) {
             return false;
         }
-        if (!race.End || race.End.startsWith('0')) {
+        if (!race.end || race.end.startsWith('0')) {
             return true;
         }
         return false;
@@ -237,13 +237,13 @@ export function findIndexOfCurrentRace(sortedRaces: RaceWithProcessedLaps[]) {
     }
 
     const lastRace = findLastIndex(sortedRaces, (race) => {
-        if (!race.Valid) {
+        if (!race.valid) {
             return false;
         }
 
         if (
-            race.Start && !race.Start.startsWith('0') && race.End &&
-            !race.End.startsWith('0')
+            race.start && !race.start.startsWith('0') && race.end &&
+            !race.end.startsWith('0')
         ) {
             return true;
         }

@@ -78,6 +78,7 @@ export interface PBRaceRecord extends PBBaseRecord {
     primaryTimingSystemLocation?: string;
     valid?: boolean;
     bracket?: string;
+    targetLaps?: number;
     event?: string; // relation → events.id
     round?: string; // relation → rounds.id
 }

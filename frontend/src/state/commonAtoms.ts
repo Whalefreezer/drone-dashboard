@@ -17,55 +17,7 @@ export interface ProcessedLap {
     isHoleshot: boolean;
 }
 
-export interface ComputedRace {
-    ID: string;
-    Laps: {
-        ID: string;
-        Detection: string;
-        LengthSeconds: number;
-        LapNumber: number;
-        StartTime: string;
-        EndTime: string;
-    }[];
-    Detections: {
-        ID: string;
-        TimingSystemIndex: number;
-        Channel: string;
-        Time: string;
-        Peak: number;
-        TimingSystemType: string;
-        Pilot: string;
-        LapNumber: number;
-        Valid: boolean;
-        ValidityType: string;
-        IsLapEnd: boolean;
-        RaceSector: number;
-        IsHoleshot: boolean;
-    }[];
-    GamePoints: {
-        ID: string;
-        Channel: string;
-        Pilot: string;
-        Valid: boolean;
-        Time: string;
-    }[];
-    Start: string;
-    End: string;
-    TotalPausedTime: string;
-    PilotChannels: { ID: string; Pilot: string; Channel: string }[];
-    RaceNumber: number;
-    Round: string; // round sourceId
-    TargetLaps: number;
-    PrimaryTimingSystemLocation: string;
-    Valid: boolean;
-    AutoAssignNumbers?: boolean;
-    Event: string; // event sourceId
-    Bracket?: string;
-}
 
-export interface RaceWithProcessedLaps extends ComputedRace {
-    processedLaps: ProcessedLap[];
-}
 
 export interface OverallBestTimes {
     overallFastestLap: number;
@@ -121,49 +73,29 @@ export function useUpdater(key: string, updater: () => void) {
 
 /**
  * Determines if a race is currently active (started but not ended)
+ * Updated to work with RaceData from race-types.ts
  */
-export function isRaceActive(race: RaceWithProcessedLaps | undefined): boolean {
+export function isRaceActive(race: { start?: string; end?: string } | undefined): boolean {
     if (!race) return false;
-    const started = !!race.Start && !String(race.Start).startsWith('0');
-    const ended = !!race.End && !String(race.End).startsWith('0');
+    const started = !!race.start && !String(race.start).startsWith('0');
+    const ended = !!race.end && !String(race.end).startsWith('0');
     const raceStarted = started && !ended;
     return raceStarted;
 }
 
-/**
- * Calculates processed laps from a race, filtering out invalid detections and sorting by lap number
- */
-export function calculateProcessedLaps(race: ComputedRace): ProcessedLap[] {
-    return race.Laps
-        .map((lap) => {
-            const detection = race.Detections.find((d) => lap.Detection === d.ID);
-            if (!detection || !detection.Valid) return null;
 
-            return {
-                id: lap.ID,
-                lapNumber: lap.LapNumber,
-                lengthSeconds: lap.LengthSeconds,
-                pilotId: detection.Pilot,
-                valid: true,
-                startTime: lap.StartTime,
-                endTime: lap.EndTime,
-                isHoleshot: detection.IsHoleshot,
-            } as ProcessedLap;
-        })
-        .filter((lap): lap is ProcessedLap => lap !== null)
-        .sort((a, b) => a.lapNumber - b.lapNumber);
-}
 
 /**
  * Orders races by round order and race number
+ * Updated to work with RaceData from race-types.ts
  */
-export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]) {
+export function orderRaces(races: { roundId: string; raceNumber: number }[], rounds: PBRoundRecord[]) {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.id === a.Round);
-        const bRound = rounds.find((r) => r.id === b.Round);
+        const aRound = rounds.find((r) => r.id === a.roundId);
+        const bRound = rounds.find((r) => r.id === b.roundId);
         const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
-        return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
+        return (a.raceNumber ?? 0) - (b.raceNumber ?? 0);
     });
 }
 
@@ -200,29 +132,28 @@ export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
 }
 
 /**
- * Calculates overall best times from all races
+ * Calculates overall best times from all processed laps
+ * Simplified to take processed laps directly instead of race objects
  */
-export function calculateOverallBestTimes(races: RaceWithProcessedLaps[]): OverallBestTimes {
+export function calculateOverallBestTimes(processedLaps: ProcessedLap[]): OverallBestTimes {
     const overallBestTimes: OverallBestTimes = {
         overallFastestLap: Infinity,
         pilotBestLaps: new Map(),
     };
 
-    races.forEach((race) => {
-        race.processedLaps.forEach((lap) => {
-            if (!lap.isHoleshot) {
-                // Update overall fastest
-                if (lap.lengthSeconds < overallBestTimes.overallFastestLap) {
-                    overallBestTimes.overallFastestLap = lap.lengthSeconds;
-                }
-
-                // Update pilot's personal best
-                const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ?? Infinity;
-                if (lap.lengthSeconds < currentBest) {
-                    overallBestTimes.pilotBestLaps.set(lap.pilotId, lap.lengthSeconds);
-                }
+    processedLaps.forEach((lap) => {
+        if (!lap.isHoleshot) {
+            // Update overall fastest
+            if (lap.lengthSeconds < overallBestTimes.overallFastestLap) {
+                overallBestTimes.overallFastestLap = lap.lengthSeconds;
             }
-        });
+
+            // Update pilot's personal best
+            const currentBest = overallBestTimes.pilotBestLaps.get(lap.pilotId) ?? Infinity;
+            if (lap.lengthSeconds < currentBest) {
+                overallBestTimes.pilotBestLaps.set(lap.pilotId, lap.lengthSeconds);
+            }
+        }
     });
 
     return overallBestTimes;

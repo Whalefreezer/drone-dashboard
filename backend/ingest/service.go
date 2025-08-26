@@ -187,6 +187,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 		"primaryTimingSystemLocation": r.PrimaryTimingSystemLocation,
 		"valid":                       r.Valid,
 		"bracket":                     r.Bracket,
+		"targetLaps":                  r.TargetLaps,
 		"event":                       eventPBID,
 		"round":                       roundPBID,
 	})

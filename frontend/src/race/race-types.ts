@@ -32,6 +32,7 @@ export interface RaceData {
     start?: string;
     end?: string;
     bracket?: string;
+    targetLaps?: number;
     
     // Computed race data
     processedLaps: ProcessedLap[];
@@ -143,19 +144,21 @@ export function findCurrentRaceIndex(sortedRaces: RaceData[]): number {
     }
 
     // Step 2: Find last completed race and return next one
-    const lastRace = sortedRaces.findLastIndex((race) => {
-        if (!race.valid) {
-            return false;
-        }
+    const lastRace = sortedRaces.map((race, index) => ({ race, index }))
+        .reverse()
+        .find(({ race }) => {
+            if (!race.valid) {
+                return false;
+            }
 
-        if (
-            race.start && !race.start.startsWith('0') && 
-            race.end && !race.end.startsWith('0')
-        ) {
-            return true; // Both started and ended = completed
-        }
-        return false;
-    });
+            if (
+                race.start && !race.start.startsWith('0') && 
+                race.end && !race.end.startsWith('0')
+            ) {
+                return true; // Both started and ended = completed
+            }
+            return false;
+        })?.index ?? -1;
 
     if (lastRace !== -1) {
         return Math.min(lastRace + 1, sortedRaces.length - 1);

@@ -8,9 +8,9 @@ import {
     findEliminatedPilots,
     pilotsAtom,
     racesAtom,
-    RaceWithProcessedLaps, // Import the correct type
     roundsDataAtom,
 } from '../state/index.ts';
+import type { RaceData } from '../race/race-types.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
@@ -20,7 +20,7 @@ import type { PBRoundRecord } from '../api/pbTypes.ts';
 
 // --- Hook 1: Fetching Raw State ---
 interface LeaderboardState {
-    races: RaceWithProcessedLaps[];
+    races: RaceData[];
     pilots: PBPilotRecord[];
     channels: PBChannelRecord[];
     roundDataValue: PBRoundRecord[];
