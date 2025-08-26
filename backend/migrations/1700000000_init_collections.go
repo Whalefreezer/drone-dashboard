@@ -66,6 +66,7 @@ func init() {
 			&core.TextField{Name: "lastName", Max: 128},
 			&core.TextField{Name: "discordId", Max: 64},
 			&core.BoolField{Name: "practicePilot"},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		pilots.AddIndex("ux_pilots_source", true, "source, sourceId", "")
 		pilots.ListRule = types.Pointer("")
@@ -85,6 +86,9 @@ func init() {
 			&core.TextField{Name: "channelPrefix", Max: 8},
 			&core.NumberField{Name: "frequency"},
 			&core.TextField{Name: "displayName", Max: 64, Presentable: true},
+			&core.TextField{Name: "channelColor", Max: 32},
+			&core.TextField{Name: "channelDisplayName", Max: 64},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		channels.AddIndex("ux_channels_source", true, "source, sourceId", "")
 		channels.ListRule = types.Pointer("")
@@ -101,6 +105,7 @@ func init() {
 			&core.TextField{Name: "name", Max: 255, Presentable: true},
 			&core.NumberField{Name: "length"},
 			&core.NumberField{Name: "gridSize"},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		tracks.AddIndex("ux_tracks_source", true, "source, sourceId", "")
 		tracks.ListRule = types.Pointer("")
@@ -165,6 +170,7 @@ func init() {
 			&core.RelationField{Name: "pilot", CollectionId: pilots.Id, MaxSelect: 1},
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		detections.AddIndex("ux_detections_source", true, "source, sourceId", "")
 		detections.ListRule = types.Pointer("")
@@ -183,6 +189,7 @@ func init() {
 			&core.TextField{Name: "startTime", Max: 64},
 			&core.TextField{Name: "endTime", Max: 64},
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		laps.AddIndex("ux_laps_source", true, "source, sourceId", "")
 		laps.ListRule = types.Pointer("")
@@ -201,6 +208,7 @@ func init() {
 			&core.RelationField{Name: "pilot", CollectionId: pilots.Id, MaxSelect: 1},
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
+			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		gamePoints.AddIndex("ux_gamePoints_source", true, "source, sourceId", "")
 		gamePoints.ListRule = types.Pointer("")

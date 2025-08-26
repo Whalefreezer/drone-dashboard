@@ -70,15 +70,38 @@ func (s *Service) Snapshot(eventId string) error {
 	}
 
 	// Upsert channels (global)
+	// Filter to only the channels referenced by the RaceEvent and attach color/display name overrides by index
+	// Build lookup of allowed channel IDs and index-based metadata
+	allowed := map[string]struct{}{}
+	colorByID := map[string]string{}
+	displayOverrideByID := map[string]string{}
+	for i, chID := range e.Channels {
+		id := string(chID)
+		allowed[id] = struct{}{}
+		if i < len(e.ChannelColors) {
+			colorByID[id] = e.ChannelColors[i]
+		}
+		if i < len(e.ChannelDisplayNames) {
+			displayOverrideByID[id] = e.ChannelDisplayNames[i]
+		}
+	}
 	for _, ch := range channels {
-		if _, err := s.Upserter.Upsert("channels", string(ch.ID), map[string]any{
-			"number":        ch.Number,
-			"band":          ch.Band,
-			"shortBand":     ch.ShortBand,
-			"channelPrefix": ch.ChannelPrefix,
-			"frequency":     ch.Frequency,
-			"displayName":   ch.DisplayName,
-		}); err != nil {
+		id := string(ch.ID)
+		if _, ok := allowed[id]; !ok {
+			continue
+		}
+		fields := map[string]any{
+			"number":             ch.Number,
+			"band":               ch.Band,
+			"shortBand":          ch.ShortBand,
+			"channelPrefix":      ch.ChannelPrefix,
+			"frequency":          ch.Frequency,
+			"displayName":        ch.DisplayName,
+			"channelColor":       colorByID[id],
+			"channelDisplayName": displayOverrideByID[id],
+			"event":              eventPBID,
+		}
+		if _, err := s.Upserter.Upsert("channels", id, fields); err != nil {
 			return err
 		}
 	}
@@ -91,6 +114,7 @@ func (s *Service) Snapshot(eventId string) error {
 			"lastName":      p.LastName,
 			"discordId":     p.DiscordID,
 			"practicePilot": p.PracticePilot,
+			"event":         eventPBID,
 		}); err != nil {
 			return err
 		}
@@ -147,7 +171,9 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 	r := rf[0]
 
 	// Ensure round exists and resolve PB id (rounds should be ingested by snapshot)
-	roundPBID, err := s.Upserter.Upsert("rounds", string(r.Round), map[string]any{})
+	roundPBID, err := s.Upserter.Upsert("rounds", string(r.Round), map[string]any{
+		"event": eventPBID,
+	})
 	if err != nil {
 		return err
 	}
@@ -171,11 +197,15 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 	// PilotChannels for this race (scoped by event)
 	for _, pc := range r.PilotChannels {
 		// resolve pilot, channel
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(pc.Pilot), map[string]any{})
+		pilotPBID, err := s.Upserter.Upsert("pilots", string(pc.Pilot), map[string]any{
+			"event": eventPBID,
+		})
 		if err != nil {
 			return err
 		}
-		channelPBID, err := s.Upserter.Upsert("channels", string(pc.Channel), map[string]any{})
+		channelPBID, err := s.Upserter.Upsert("channels", string(pc.Channel), map[string]any{
+			"event": eventPBID,
+		})
 		if err != nil {
 			return err
 		}
@@ -212,6 +242,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 			"pilot":             pilotPBID,
 			"race":              racePBID,
 			"channel":           channelPBID,
+			"event":             eventPBID,
 		}); err != nil {
 			return err
 		}
@@ -225,6 +256,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 			"startTime":     l.StartTime,
 			"endTime":       l.EndTime,
 			"race":          racePBID,
+			"event":         eventPBID,
 		}); err != nil {
 			return err
 		}
@@ -236,7 +268,9 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 		if err != nil {
 			return err
 		}
-		channelPBID, err := s.Upserter.Upsert("channels", string(gp.Channel), map[string]any{})
+		channelPBID, err := s.Upserter.Upsert("channels", string(gp.Channel), map[string]any{
+			"event": eventPBID,
+		})
 		if err != nil {
 			return err
 		}
@@ -246,6 +280,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 			"pilot":   pilotPBID,
 			"race":    racePBID,
 			"channel": channelPBID,
+			"event":   eventPBID,
 		}); err != nil {
 			return err
 		}
@@ -285,12 +320,16 @@ func (s *Service) IngestResults(eventId string) (int, error) {
 		// Resolve optional race id (may be empty GUID in some contexts)
 		var racePBID string
 		if r.Race != "" {
-			racePBID, err = s.Upserter.Upsert("races", string(r.Race), map[string]any{})
+			racePBID, err = s.Upserter.Upsert("races", string(r.Race), map[string]any{
+				"event": eventPBID,
+			})
 			if err != nil {
 				return 0, err
 			}
 		}
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{})
+		pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{
+			"event": eventPBID,
+		})
 		if err != nil {
 			return 0, err
 		}

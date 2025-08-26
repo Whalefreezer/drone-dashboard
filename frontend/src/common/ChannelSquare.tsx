@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
-import { eventDataAtom } from '../state/index.ts';
+import { channelsDataAtom } from '../state/index.ts';
 import './ChannelSquare.css';
 // import './ChannelSquare.css';
 
@@ -12,12 +12,9 @@ interface ChannelSquareProps {
 export function ChannelSquare(
     { channelID, change }: ChannelSquareProps,
 ) {
-    const eventData = useAtomValue(eventDataAtom);
-
-    const colorIndex = eventData?.[0]?.Channels?.indexOf(channelID);
-    const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
-        ? eventData[0].ChannelColors[colorIndex]
-        : '#888';
+    const channels = useAtomValue(channelsDataAtom);
+    const channel = channels.find((c) => c.sourceId === channelID);
+    const color = channel?.channelColor ?? '#888';
 
     return (
         <div

@@ -45,6 +45,7 @@ export interface PBPilotRecord extends PBBaseRecord {
     lastName?: string;
     discordId?: string;
     practicePilot?: boolean;
+    event?: string; // relation → events.id
 }
 
 // channels
@@ -55,6 +56,9 @@ export interface PBChannelRecord extends PBBaseRecord {
     channelPrefix?: string;
     frequency?: number;
     displayName?: string;
+    channelColor?: string;
+    channelDisplayName?: string;
+    event?: string; // relation → events.id
 }
 
 // tracks
@@ -62,6 +66,7 @@ export interface PBTrackRecord extends PBBaseRecord {
     name?: string;
     length?: number;
     gridSize?: number;
+    event?: string; // relation → events.id
 }
 
 // races
@@ -99,6 +104,7 @@ export interface PBDetectionRecord extends PBBaseRecord {
     pilot?: string; // relation → pilots.id
     race?: string; // relation → races.id
     channel?: string; // relation → channels.id
+    event?: string; // relation → events.id
 }
 
 // laps
@@ -108,6 +114,7 @@ export interface PBLapRecord extends PBBaseRecord {
     startTime?: string;
     endTime?: string;
     race?: string; // relation → races.id
+    event?: string; // relation → events.id
 }
 
 // gamePoints
@@ -117,6 +124,7 @@ export interface PBGamePointRecord extends PBBaseRecord {
     pilot?: string; // relation → pilots.id
     race?: string; // relation → races.id
     channel?: string; // relation → channels.id
+    event?: string; // relation → events.id
 }
 
 // results

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { eventDataAtom, eventIdAtom } from '../state/atoms.ts';
+import { eventRaceIdsAtom, eventIdAtom } from '../state/atoms.ts';
 import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
-import { RaceEvent } from '../types/index.ts';
 
 // Basic styling for the button container
 const snapshotControlStyle: React.CSSProperties = {
@@ -45,7 +44,7 @@ function SnapshotControl() {
     const hideTimeoutRef = useRef<number | null>(null); // Ref for timeout ID
 
     const currentEventId = useAtomValue(eventIdAtom);
-    const eventData = useAtomValue(eventDataAtom);
+    const raceIds = useAtomValue(eventRaceIdsAtom);
 
     // Effect to handle mouse move and visibility timeout
     useEffect(() => {
@@ -82,12 +81,11 @@ function SnapshotControl() {
             return;
         }
 
-        if (!Array.isArray(eventData)) {
+        if (!Array.isArray(raceIds)) {
             setStatusMessage('Error: Event Data not available or invalid.');
             setTimeout(() => setStatusMessage(null), 3000);
             return;
         }
-        const raceIds = (eventData as RaceEvent[])[0]?.Races || [];
 
         setIsCapturing(true);
         setStatusMessage('Capturing live data...');

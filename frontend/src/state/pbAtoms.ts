@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
-import { RaceEvent } from '../types/index.ts';
+// Legacy RaceEvent removed; we expose PBEventRecord and small derived atoms instead
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
@@ -34,10 +34,10 @@ import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
 
 
 // Live events collection; we filter locally for the current event
-const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
+export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
 // Current event PocketBase record (marked by isCurrent)
-const currentEventAtom = atom((get) => {
+export const currentEventAtom = atom((get) => {
     const events = get(eventsAtom);
     const currentEvent = events.find((event) => event.isCurrent);
     return currentEvent || null;
@@ -49,42 +49,17 @@ export const eventIdAtom = atom<string | null>((get) => {
     return ev?.sourceId ?? getEnvEventIdFallback();
 });
 
-export const eventDataAtom = atom((get): RaceEvent[] => {
-    const currentEvent = get(currentEventAtom);
-    if (!currentEvent) return [];
-    const races = get(raceRecordsAtom).filter((r) => r.event === currentEvent.id);
-    const raceIds = races.map((r) => r.sourceId);
-    const e: RaceEvent = {
-        ID: currentEvent.sourceId,
-        EventType: String(currentEvent.eventType ?? ''),
-        Name: String(currentEvent.name ?? ''),
-        Start: String(currentEvent.start ?? ''),
-        End: String(currentEvent.end ?? ''),
-        Laps: Number(currentEvent.laps ?? 0),
-        PBLaps: Number(currentEvent.pbLaps ?? 3),
-        PackLimit: Number(currentEvent.packLimit ?? 0),
-        RaceLength: String(currentEvent.raceLength ?? ''),
-        MinStartDelay: String(currentEvent.minStartDelay ?? ''),
-        MaxStartDelay: String(currentEvent.maxStartDelay ?? ''),
-        PrimaryTimingSystemLocation: String(currentEvent.primaryTimingSystemLocation ?? ''),
-        RaceStartIgnoreDetections: String(currentEvent.raceStartIgnoreDetections ?? ''),
-        MinLapTime: String(currentEvent.minLapTime ?? ''),
-        LastOpened: String(currentEvent.lastOpened ?? ''),
-        PilotChannels: [],
-        RemovedPilots: [],
-        Rounds: [],
-        Races: raceIds,
-        Club: '',
-        Channels: [],
-        Enabled: true,
-        VisibleOnline: true,
-    };
-    return [e];
+// Derived: race sourceIds for the current event
+export const eventRaceIdsAtom = atom((get): string[] => {
+    const ev = get(currentEventAtom);
+    if (!ev) return [];
+    const races = get(raceRecordsAtom).filter((r) => r.event === ev.id);
+    return races.map((r) => r.sourceId);
 });
 
 export const consecutiveLapsAtom = atom((get) => {
-    const eventData = get(eventDataAtom);
-    return eventData[0]?.PBLaps ?? 3; // Default to 3 if not available
+    const ev = get(currentEventAtom);
+    return Number(ev?.pbLaps ?? 3);
 });
 
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
@@ -123,8 +98,7 @@ const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detection
 const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
 
 export const racesAtom = atom((get) => {
-    const eventData = get(eventDataAtom);
-    const raceIds = eventData?.[0]?.Races ?? [];
+    const raceIds = get(eventRaceIdsAtom);
     const races = raceIds
         .map((raceId) => get(raceFamilyAtom(raceId)))
         .filter((r) => r.Valid);
