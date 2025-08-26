@@ -30,7 +30,7 @@ import {
     PBGamePointRecord,
     PBPilotChannelRecord,
 } from '../api/pbTypes.ts';
-import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
+import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
 
 
 
