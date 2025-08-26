@@ -88,8 +88,7 @@ func (u *Upserter) Upsert(collection string, sourceId string, fields map[string]
 		// Check if any of the provided fields have changed
 		for k, v := range fields {
 			existingVar := record.Get(k)
-			if existingVar != v {
-				// if !valuesEqual(existingVar, v) {
+			if !valuesEqual(existingVar, v) {
 				hasChanges = true
 				break
 			}

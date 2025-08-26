@@ -15,12 +15,17 @@ pb.autoCancellation(false);
 export function pbSubscribeByID<T extends PBBaseRecord>(
     collection: string,
     id: string,
-): Atom<Promise<T>> {
+): Atom<Promise<T> | T> {
     const overrideAtom = atom<T | null>(null);
-    const anAtom = atom<Promise<T>, [T], void>(
-        async (get) => {
-            return get(overrideAtom) ?? await pb.collection<T>(collection).getOne(id);
-        },
+    const anAtom = atom<Promise<T> | T, [T], void>(
+            (get, {setSelf}) => {
+                const override = get(overrideAtom);
+                if (override) return override;
+                return pb.collection<T>(collection).getOne(id).then((r) => {
+                    setSelf(r);
+                    return r;
+                });
+            },
         (get, set, update) => {
             set(overrideAtom, update);
         },
@@ -51,10 +56,13 @@ export function pbSubscribeCollection<T extends PBBaseRecord>(
 ): Atom<Promise<T[]> | T[]> {
     const overrideAtom = atom<T[] | null>(null);
     const anAtom = atom<Promise<T[]> | T[], [(prev: T[] | null) => T[]], void>(
-        (get) => {
+        (get, {setSelf}) => {
             const override = get(overrideAtom);
             if (override) return override;
-            return pb.collection<T>(collection).getList().then((r) => r.items);
+            return pb.collection<T>(collection).getList(1, 10_000).then((r) => {
+                setSelf(() => r.items);
+                return r.items;
+            });
         },
         (get, set, update) => {
             set(overrideAtom, update(get(overrideAtom)));
@@ -62,16 +70,16 @@ export function pbSubscribeCollection<T extends PBBaseRecord>(
     );
 
     anAtom.onMount = (set) => {
-        const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (e) => {
+        const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (event) => {
             set((prev: T[] | null) => {
                 const items = prev ? [...prev] : [];
-                if (e.action === 'create' || e.action === 'update') {
-                    const i = items.findIndex((r) => r.id === e.record.id);
-                    if (i !== -1) items[i] = e.record as T;
-                    else items.push(e.record as T);
+                if (event.action === 'create' || event.action === 'update') {
+                    const i = items.findIndex((item) => item.id === event.record.id);
+                    if (i !== -1) items[i] = event.record as T;
+                    else items.push(event.record as T);
                     return items;
                 }
-                if (e.action === 'delete') return items.filter((r) => r.id !== e.record.id);
+                if (event.action === 'delete') return items.filter((item) => item.id !== event.record.id);
                 return items;
             });
         });
