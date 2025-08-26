@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { loadable } from 'jotai/utils';
 import { eventDataAtom, eventIdAtom } from '../state/atoms.ts';
 import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
 import { RaceEvent } from '../types/index.ts';
@@ -45,8 +44,8 @@ function SnapshotControl() {
     const [isVisible, setIsVisible] = useState(false); // Visibility state
     const hideTimeoutRef = useRef<number | null>(null); // Ref for timeout ID
 
-    const eventIdLoadable = useAtomValue(loadable(eventIdAtom));
-    const eventDataLoadable = useAtomValue(loadable(eventDataAtom));
+    const currentEventId = useAtomValue(eventIdAtom);
+    const eventData = useAtomValue(eventDataAtom);
 
     // Effect to handle mouse move and visibility timeout
     useEffect(() => {
@@ -73,32 +72,22 @@ function SnapshotControl() {
         };
     }, []); // Empty dependency array ensures this runs only on mount and unmount
 
-    // Helper to get the actual event ID string from the loadable query result
-    const getEventId = (): string | null => {
-        if (eventIdLoadable.state === 'hasData' && typeof eventIdLoadable.data?.data === 'string') {
-            return eventIdLoadable.data.data;
-        }
-        return null;
-    };
-
-    const currentEventId = getEventId();
+    // currentEventId already read from atom
 
     const captureAndGenerateJson = async () => {
-        const eventId = getEventId();
+        const eventId = currentEventId;
         if (!eventId) {
             setStatusMessage('Error: Event ID not available or invalid.');
             setTimeout(() => setStatusMessage(null), 3000);
             return;
         }
 
-        if (eventDataLoadable.state !== 'hasData' || !Array.isArray(eventDataLoadable.data?.data)) {
+        if (!Array.isArray(eventData)) {
             setStatusMessage('Error: Event Data not available or invalid.');
             setTimeout(() => setStatusMessage(null), 3000);
             return;
         }
-
-        const eventData = eventDataLoadable.data.data as RaceEvent[];
-        const raceIds = eventData[0]?.Races || [];
+        const raceIds = (eventData as RaceEvent[])[0]?.Races || [];
 
         setIsCapturing(true);
         setStatusMessage('Capturing live data...');
@@ -180,8 +169,7 @@ function SnapshotControl() {
         return null;
     }
 
-    const isEventDataReady = eventDataLoadable.state === 'hasData' &&
-        Array.isArray(eventDataLoadable.data?.data);
+    const isEventDataReady = Array.isArray(eventData);
     const finalStyle = isVisible ? snapshotControlStyle : hiddenStyle;
 
     return (

@@ -6,7 +6,6 @@ import {
     raceFamilyAtom,
     RaceWithProcessedLaps,
     roundsDataAtom,
-    useQueryAtom,
 } from '../state/index.ts';
 import { PilotChannel } from '../types/index.ts';
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
@@ -26,9 +25,9 @@ interface LapsViewProps {
 }
 
 export function LapsView({ raceId }: LapsViewProps) {
-    const roundData = useQueryAtom(roundsDataAtom);
-    const { data: race } = useAtomValue(raceFamilyAtom(raceId));
-    const pilots = useQueryAtom(pilotsAtom);
+    const roundData = useAtomValue(roundsDataAtom);
+    const race = useAtomValue(raceFamilyAtom(raceId));
+    const pilots = useAtomValue(pilotsAtom);
 
     const round = roundData.find((r) => r.ID === race.Round);
 
@@ -138,7 +137,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     race: RaceWithProcessedLaps;
     matchingBracket: Bracket | null;
 }) {
-    const pilots = useQueryAtom(pilotsAtom);
+    const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
     const overallBestTimes = useAtomValue(overallBestTimesAtom);
 

@@ -1,11 +1,11 @@
 import { useAtomValue } from 'jotai';
-import { channelsDataAtom, eventDataAtom, pilotsAtom, useQueryAtom } from '../state/index.ts';
+import { channelsDataAtom, eventDataAtom, pilotsAtom } from '../state/index.ts';
 import { PilotChannelViewProps } from './pilot-types.ts';
 
 export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
-    const pilots = useQueryAtom(pilotsAtom);
+    const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
-    const { data: eventData } = useAtomValue(eventDataAtom);
+    const eventData = useAtomValue(eventDataAtom);
 
     const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
     const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;

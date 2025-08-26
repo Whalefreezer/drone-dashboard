@@ -28,9 +28,9 @@ interface LeaderboardState {
 
 export const useLeaderboardState = (): LeaderboardState => {
     const races = useAtomValue(racesAtom);
-    const pilots = useQueryAtom(pilotsAtom);
+    const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
-    const roundDataValue = useQueryAtom(roundsDataAtom);
+    const roundDataValue = useAtomValue(roundsDataAtom);
     const brackets = useQueryAtom(bracketsDataAtom);
 
     return { races, pilots, channels, roundDataValue, brackets };

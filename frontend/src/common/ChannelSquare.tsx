@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQueryAtom } from '../state/index.ts';
+import { useAtomValue } from 'jotai';
 import { eventDataAtom } from '../state/index.ts';
 import './ChannelSquare.css';
 // import './ChannelSquare.css';
@@ -12,7 +12,7 @@ interface ChannelSquareProps {
 export function ChannelSquare(
     { channelID, change }: ChannelSquareProps,
 ) {
-    const eventData = useQueryAtom(eventDataAtom);
+    const eventData = useAtomValue(eventDataAtom);
 
     const colorIndex = eventData?.[0]?.Channels?.indexOf(channelID);
     const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)

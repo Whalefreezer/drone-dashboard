@@ -3,7 +3,7 @@ import { atomFamily } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
-import { pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent, pbSubscribeRecord, pbSubscribeRecords, pbSubscribeCollection } from '../api/pb.ts';
+import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 import { 
     ProcessedLap, 
@@ -18,27 +18,68 @@ import {
     findEliminatedPilots,
     calculateOverallBestTimes
 } from './commonAtoms.ts';
-import { PBEventRecord } from '../api/pbTypes.ts';
+import {
+    PBEventRecord,
+    PBPilotRecord,
+    PBChannelRecord,
+    PBRoundRecord,
+    PBRaceRecord,
+    PBLapRecord,
+    PBDetectionRecord,
+    PBGamePointRecord,
+} from '../api/pbTypes.ts';
+import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
 
 
 
+// Live events collection; we filter locally for the current event
 const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
+// Current event PocketBase record (marked by isCurrent)
 const currentEventAtom = atom((get) => {
     const events = get(eventsAtom);
     const currentEvent = events.find((event) => event.isCurrent);
-
-    return currentEvent;
+    return currentEvent || null;
 });
 
-export const eventDataAtom = atomWithSuspenseQuery<RaceEvent[]>((get) => ({
-    queryKey: ['eventData'],
-    queryFn: async () => {
-        const currentEvent = get(currentEventAtom);
-        return await pbFetchEvent(currentEvent!.sourceId);
-    },
-    refetchInterval: 10_000,
-}));
+// Expose current event sourceId for places that still need the GUID
+export const eventIdAtom = atom<string | null>((get) => {
+    const ev = get(currentEventAtom);
+    return ev?.sourceId ?? getEnvEventIdFallback();
+});
+
+export const eventDataAtom = atom((get): RaceEvent[] => {
+    const currentEvent = get(currentEventAtom);
+    if (!currentEvent) return [];
+    const races = get(raceRecordsAtom).filter((r) => r.event === currentEvent.id);
+    const raceIds = races.map((r) => r.sourceId);
+    const e: RaceEvent = {
+        ID: currentEvent.sourceId,
+        EventType: String(currentEvent.eventType ?? ''),
+        Name: String(currentEvent.name ?? ''),
+        Start: String(currentEvent.start ?? ''),
+        End: String(currentEvent.end ?? ''),
+        Laps: Number(currentEvent.laps ?? 0),
+        PBLaps: Number(currentEvent.pbLaps ?? 3),
+        PackLimit: Number(currentEvent.packLimit ?? 0),
+        RaceLength: String(currentEvent.raceLength ?? ''),
+        MinStartDelay: String(currentEvent.minStartDelay ?? ''),
+        MaxStartDelay: String(currentEvent.maxStartDelay ?? ''),
+        PrimaryTimingSystemLocation: String(currentEvent.primaryTimingSystemLocation ?? ''),
+        RaceStartIgnoreDetections: String(currentEvent.raceStartIgnoreDetections ?? ''),
+        MinLapTime: String(currentEvent.minLapTime ?? ''),
+        LastOpened: String(currentEvent.lastOpened ?? ''),
+        PilotChannels: [],
+        RemovedPilots: [],
+        Rounds: [],
+        Races: raceIds,
+        Club: '',
+        Channels: [],
+        Enabled: true,
+        VisibleOnline: true,
+    };
+    return [e];
+});
 
 export const consecutiveLapsAtom = atom(async (get) => {
     const { data: eventData } = await get(eventDataAtom);
@@ -56,45 +97,70 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
     // refetchInterval: 10_000,
 }));
 
-export const pilotsAtom = atomWithSuspenseQuery<Pilot[]>((get) => ({
-    queryKey: ['pilots'],
-    queryFn: async () => {
-        const { data: eventId } = await get(eventIdAtom);
-        return await pbFetchPilots(eventId!);
-    },
-    staleTime: 10_000,
-    refetchInterval: 10_000,
-}));
+// Subscribe to pilots and map to domain Pilot[]
+const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
+export const pilotsAtom = atom((get): Pilot[] => {
+    const items = get(pilotsRecordsAtom);
+    return items.map((p) => ({
+        ID: p.sourceId,
+        Name: String(p.name ?? ''),
+        FirstName: p.firstName,
+        LastName: p.lastName,
+        DiscordID: p.discordId,
+        PracticePilot: Boolean(p.practicePilot),
+        PhotoPath: undefined,
+    }));
+});
 
 // Re-export from common
 export { useCachedAtom };
 
-export const channelsDataAtom = atom(async () => {
-    return await pbFetchChannels();
+// Subscribe to channels and map to domain Channel[]
+const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
+export const channelsDataAtom = atom((get): Channel[] => {
+    const items = get(channelRecordsAtom);
+    return items.map((c) => ({
+        ID: c.sourceId,
+        Number: Number(c.number ?? 0),
+        Band: String(c.band ?? ''),
+        ShortBand: String(c.shortBand ?? ''),
+        ChannelPrefix: String(c.channelPrefix ?? ''),
+        Frequency: Number(c.frequency ?? 0),
+        DisplayName: String(c.displayName ?? ''),
+    }));
 });
 
-export const roundsDataAtom = atomWithSuspenseQuery<Round[]>((get) => ({
-    queryKey: ['roundsData'],
-    queryFn: async () => {
-        const { data: eventId } = await get(eventIdAtom);
-        return await pbFetchRounds(eventId!);
-    },
-    staleTime: 10_000,
-    refetchInterval: 10_000,
-}));
-
-export const racesAtom = atom(async (get) => {
-    const {data: event} = await get(eventDataAtom);
-    let races = await Promise.all(event[0].Races.map(async (raceId) => {
-        const { data } = await get(raceFamilyAtom(raceId));
-        return data;
+// Subscribe to rounds and map to domain Round[] (filtered by current event)
+const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
+export const roundsDataAtom = atom((get): Round[] => {
+    const ev = get(currentEventAtom);
+    if (!ev) return [];
+    const rounds = get(roundRecordsAtom).filter((r) => r.event === ev.id);
+    return rounds.map((r) => ({
+        ID: r.sourceId,
+        Name: String(r.name ?? ''),
+        RoundNumber: Number(r.roundNumber ?? 0),
+        EventType: String(r.eventType ?? ''),
+        RoundType: String(r.roundType ?? ''),
+        Valid: Boolean(r.valid),
+        Order: Number(r.order ?? 0),
     }));
-    races = races.filter((race) => race.Valid);
+});
 
-    const { data: rounds } = await get(roundsDataAtom);
+// Live records for race and nested collections
+const raceRecordsAtom = pbSubscribeCollection<PBRaceRecord>('races');
+const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
+const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
+const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
 
+export const racesAtom = atom((get) => {
+    const eventData = get(eventDataAtom);
+    const raceIds = eventData?.[0]?.Races ?? [];
+    const races = raceIds
+        .map((raceId) => get(raceFamilyAtom(raceId)))
+        .filter((r) => r.Valid);
+    const rounds = get(roundsDataAtom);
     orderRaces(races, rounds);
-
     return races;
 });
 
@@ -112,43 +178,101 @@ export { orderRaces, isRaceActive, calculateProcessedLaps };
 // This allows other atoms to read the current race context without awaiting async atoms.
 export const currentRaceIdSignalAtom = atom<string | null>(null);
 
-export const raceFamilyAtom = atomFamily((raceId: string) => {
-    return atomWithSuspenseQuery<RaceWithProcessedLaps>((get) => {
-        // Read a synchronous signal for current race id, if available.
-        const currentRaceId = get(currentRaceIdSignalAtom);
-        const isCurrent = currentRaceId === raceId;
-        return ({
-            queryKey: ['race', raceId],
-            queryFn: async () => {
-                const { data: eventId } = await get(eventIdAtom);
-                const arr = await pbFetchRace(eventId!, raceId);
-                const race = arr[0] as Race;
+export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
+    atom((get): RaceWithProcessedLaps => {
+        const ev = get(currentEventAtom);
+        const raceRec = get(raceRecordsAtom).find(
+            (r) => r.sourceId === raceSourceId && (!ev || r.event === ev.id),
+        );
+        const roundGuid = (() => {
+            if (!raceRec?.round) return '';
+            const roundRec = get(roundRecordsAtom).find((rr) => rr.id === raceRec.round);
+            return roundRec?.sourceId ?? '';
+        })();
+        const eventGuid = ev?.sourceId ?? '';
+        const laps = get(lapRecordsAtom)
+            .filter((l) => l.race === raceRec?.id)
+            .map((l) => ({
+                ID: l.sourceId,
+                Detection: '',
+                LengthSeconds: Number(l.lengthSeconds ?? 0),
+                LapNumber: Number(l.lapNumber ?? 0),
+                StartTime: String(l.startTime ?? ''),
+                EndTime: String(l.endTime ?? ''),
+            }));
+        const detections = get(detectionRecordsAtom)
+            .filter((d) => d.race === raceRec?.id)
+            .map((d) => ({
+                ID: d.sourceId,
+                TimingSystemIndex: Number(d.timingSystemIndex ?? 0),
+                Channel: String(d.channel ?? ''),
+                Time: String(d.time ?? ''),
+                Peak: Number(d.peak ?? 0),
+                TimingSystemType: String(d.timingSystemType ?? ''),
+                Pilot: String(d.pilot ?? ''),
+                LapNumber: Number(d.lapNumber ?? 0),
+                Valid: Boolean(d.valid),
+                ValidityType: toValidityType(d.validityType),
+                IsLapEnd: Boolean(d.isLapEnd),
+                RaceSector: Number(d.raceSector ?? 0),
+                IsHoleshot: Boolean(d.isHoleshot),
+            }));
+        const gamePoints = get(gamePointRecordsAtom)
+            .filter((g) => g.race === raceRec?.id)
+            .map((g) => ({
+                ID: g.sourceId,
+                Channel: String(g.channel ?? ''),
+                Pilot: String(g.pilot ?? ''),
+                Valid: Boolean(g.valid),
+                Time: String(g.time ?? ''),
+            }));
 
-                const processedLaps = calculateProcessedLaps(race);
+        const race: Race = {
+            ID: raceRec?.sourceId ?? raceSourceId,
+            Laps: laps,
+            Detections: detections,
+            GamePoints: gamePoints,
+            Start: String(raceRec?.start ?? ''),
+            End: String(raceRec?.end ?? ''),
+            TotalPausedTime: String(raceRec?.totalPausedTime ?? ''),
+            PilotChannels: [],
+            RaceNumber: Number(raceRec?.raceNumber ?? 0),
+            Round: roundGuid,
+            TargetLaps: Number((raceRec as any)?.targetLaps ?? 0),
+            PrimaryTimingSystemLocation: toPTSL(raceRec?.primaryTimingSystemLocation),
+            Valid: Boolean(raceRec?.valid),
+            AutoAssignNumbers: undefined,
+            Event: eventGuid,
+            Bracket: String(raceRec?.bracket ?? ''),
+        };
 
-                return {
-                    ...race,
-                    processedLaps,
-                } as RaceWithProcessedLaps;
-            },
-            // Prefer current race context if known; otherwise infer from race Start/End
-            refetchInterval: (query) => {
-                if (isCurrent !== null) {
-                    return isCurrent ? 500 : 10000;
-                }
-                const data = query.state.data as RaceWithProcessedLaps | undefined;
-                return isRaceActive(data) ? 500 : 10000;
-            },
-            staleTime: (query) => {
-                if (isCurrent !== null) {
-                    return isCurrent ? 0 : 10000;
-                }
-                const data = query.state.data as RaceWithProcessedLaps | undefined;
-                return isRaceActive(data) ? 0 : 10000;
-            },
-        });
-    });
-});
+        const processedLaps = calculateProcessedLaps(race);
+        return { ...race, processedLaps } as RaceWithProcessedLaps;
+    }),
+);
+
+function toValidityType(v: unknown): ValidityType {
+    switch (String(v)) {
+        case ValidityType.Auto:
+            return ValidityType.Auto;
+        case ValidityType.ManualOverride:
+            return ValidityType.ManualOverride;
+        case ValidityType.Marshall:
+            return ValidityType.Marshall;
+        default:
+            return ValidityType.Auto;
+    }
+}
+
+function toPTSL(v: unknown): PrimaryTimingSystemLocation {
+    switch (String(v)) {
+        case PrimaryTimingSystemLocation.Holeshot:
+            return PrimaryTimingSystemLocation.Holeshot;
+        case PrimaryTimingSystemLocation.EndOfLap:
+        default:
+            return PrimaryTimingSystemLocation.EndOfLap;
+    }
+}
 
 // Re-export from common
 export { updateAtom, useUpdater, findEliminatedPilots };
@@ -157,67 +281,3 @@ export const overallBestTimesAtom = atom(async (get) => {
     const races = await get(racesAtom);
     return calculateOverallBestTimes(races);
 });
-
-// Example usage of the new PocketBase subscription atoms with Suspense support
-// These atoms automatically handle initial loading and real-time updates
-
-// Subscribe to all events with real-time updates
-export const eventsSubscriptionAtom = pbSubscribeRecords('events', {
-    filter: 'active = true',
-    sort: 'name'
-});
-
-// Subscribe to a specific current event
-export const currentEventSubscriptionAtom = atom(async (get) => {
-    const { data: eventId } = await get(eventIdAtom);
-    if (!eventId) return null;
-    
-    // Create a dynamic subscription atom for the current event
-    return pbSubscribeRecord('events', eventId, { expand: 'rounds,races' });
-});
-
-// Subscribe to pilots with real-time updates
-export const pilotsSubscriptionAtom = pbSubscribeRecords('pilots', {
-    sort: 'name'
-});
-
-// Example of how to use these in a React component:
-/*
-import { useAtomValue } from 'jotai';
-import { Suspense } from 'react';
-
-function EventsList() {
-    const events = useAtomValue(eventsSubscriptionAtom);
-    return (
-        <ul>
-            {events.map(event => (
-                <li key={event.id}>{event.name}</li>
-            ))}
-        </ul>
-    );
-}
-
-function PilotsList() {
-    const pilots = useAtomValue(pilotsSubscriptionAtom);
-    return (
-        <ul>
-            {pilots.map(pilot => (
-                <li key={pilot.id}>{pilot.name}</li>
-            ))}
-        </ul>
-    );
-}
-
-function App() {
-    return (
-        <div>
-            <Suspense fallback={<div>Loading events...</div>}>
-                <EventsList />
-            </Suspense>
-            <Suspense fallback={<div>Loading pilots...</div>}>
-                <PilotsList />
-            </Suspense>
-        </div>
-    );
-}
-*/

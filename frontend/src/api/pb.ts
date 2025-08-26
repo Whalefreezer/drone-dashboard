@@ -324,10 +324,3 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 export function getEnvEventIdFallback(): string | null {
     return ENV_EVENT_ID || null;
 }
-
-// Export the new subscription functions with Suspense support
-export {
-    pbSubscribeRecord,
-    pbSubscribeRecords,
-    pbSubscribeWithSuspense,
-} from './pbSubscription.ts';

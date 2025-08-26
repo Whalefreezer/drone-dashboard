@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { eventDataAtom, racesAtom, useQueryAtom } from '../state/index.ts'; // Adjusted path
+import { eventDataAtom, racesAtom } from '../state/index.ts'; // Adjusted path
 import { findIndexOfCurrentRace, secondsFromString } from '../common/index.ts'; // Adjusted path
 
 function RaceTime() {
-    const eventData = useQueryAtom(eventDataAtom);
+    const eventData = useAtomValue(eventDataAtom);
     const races = useAtomValue(racesAtom);
     const currentRaceIndex = findIndexOfCurrentRace(races);
     const currentRace = races[currentRaceIndex];
