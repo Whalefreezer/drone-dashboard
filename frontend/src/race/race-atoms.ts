@@ -24,20 +24,24 @@ import {
  * PB-native race atom family - much cleaner than the legacy ComputedRace approach
  */
 export const raceDataAtom = atomFamily((raceId: string) =>
-    atom((get): RaceData | null => {
-        const currentEvent = get(currentEventAtom);
+    atom(async (get): Promise<RaceData | null> => {
+        const currentEvent = await get(currentEventAtom);
         if (!currentEvent) return null;
 
         // Get the PB race record directly
-        const raceRecord = get(raceRecordsAtom).find(
+        const raceRecords = await get(raceRecordsAtom);
+        const raceRecord = raceRecords.find(
             (r) => r.id === raceId && r.event === currentEvent.id,
         );
         if (!raceRecord) return null;
 
         // Get related PB records for this race
-        const laps = get(lapRecordsAtom).filter((l) => l.race === raceId);
-        const detections = get(detectionRecordsAtom).filter((d) => d.race === raceId);
-        const eventPilotChannels = get(pilotChannelRecordsAtom).filter(
+        const lapRecords = await get(lapRecordsAtom);
+        const laps = lapRecords.filter((l) => l.race === raceId);
+        const detectionRecords = await get(detectionRecordsAtom);
+        const detections = detectionRecords.filter((d) => d.race === raceId);
+        const pilotChannelRecords = await get(pilotChannelRecordsAtom);
+        const eventPilotChannels = pilotChannelRecords.filter(
             (pc) => pc.event === currentEvent.id,
         );
 
@@ -64,11 +68,12 @@ export const raceDataAtom = atomFamily((raceId: string) =>
  * Race status atom family for checking if a race is active/completed
  */
 export const raceStatusAtom = atomFamily((raceId: string) =>
-    atom((get): RaceStatus | null => {
-        const currentEvent = get(currentEventAtom);
+    atom(async (get): Promise<RaceStatus | null> => {
+        const currentEvent = await get(currentEventAtom);
         if (!currentEvent) return null;
 
-        const raceRecord = get(raceRecordsAtom).find(
+        const raceRecords = await get(raceRecordsAtom);
+        const raceRecord = raceRecords.find(
             (r) => r.id === raceId && r.event === currentEvent.id,
         );
         if (!raceRecord) return null;
@@ -80,25 +85,26 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
 /**
  * All races for the current event - PB native
  */
-export const allRacesAtom = atom((get): RaceData[] => {
-    const currentEvent = get(currentEventAtom);
+export const allRacesAtom = atom(async (get): Promise<RaceData[]> => {
+    const currentEvent = await get(currentEventAtom);
     if (!currentEvent) return [];
 
-    const raceRecords = get(raceRecordsAtom).filter(
+    const raceRecords = await get(raceRecordsAtom);
+    const validRaceRecords = raceRecords.filter(
         (r) => r.event === currentEvent.id && r.valid !== false,
     );
 
-    return raceRecords
-        .map((record) => get(raceDataAtom(record.id)))
-        .filter((race): race is RaceData => race !== null);
+    const racePromises = validRaceRecords.map(async (record) => await get(raceDataAtom(record.id)));
+    const races = await Promise.all(racePromises);
+    return races.filter((race): race is RaceData => race !== null);
 });
 
 /**
  * Races ordered by round and race number - PB native
  */
-export const orderedRacesAtom = atom((get): RaceData[] => {
-    const races = get(allRacesAtom);
-    const rounds = get(roundRecordsAtom);
+export const orderedRacesAtom = atom(async (get): Promise<RaceData[]> => {
+    const races = await get(allRacesAtom);
+    const rounds = await get(roundRecordsAtom);
 
     return races.sort((a: RaceData, b: RaceData) => {
         const aRound = rounds.find((r) => r.id === a.roundId);
@@ -117,8 +123,8 @@ export const orderedRacesAtom = atom((get): RaceData[] => {
  * 2. If none, find last completed race and return next one  
  * 3. Fallback to first race
  */
-export const currentRaceAtom = atom((get): RaceData | null => {
-    const races = get(orderedRacesAtom);
+export const currentRaceAtom = atom(async (get): Promise<RaceData | null> => {
+    const races = await get(orderedRacesAtom);
     
     if (!races || races.length === 0) {
         return null;
@@ -143,19 +149,21 @@ export const currentRaceAtom = atom((get): RaceData | null => {
     }
 
     // Step 2: Find last completed race and return next one - same logic as findIndexOfCurrentRace
-    const lastCompletedIndex = races.findLastIndex((race) => {
-        if (!race.valid) {
-            return false;
-        }
+    const lastCompletedIndex = races.map((race, index) => ({ race, index }))
+        .reverse()
+        .find(({ race }) => {
+            if (!race.valid) {
+                return false;
+            }
 
-        if (
-            race.start && !race.start.startsWith('0') && 
-            race.end && !race.end.startsWith('0')
-        ) {
-            return true; // Both started and ended = completed
-        }
-        return false;
-    });
+            if (
+                race.start && !race.start.startsWith('0') && 
+                race.end && !race.end.startsWith('0')
+            ) {
+                return true; // Both started and ended = completed
+            }
+            return false;
+        })?.index ?? -1;
 
     if (lastCompletedIndex !== -1) {
         const nextIndex = Math.min(lastCompletedIndex + 1, races.length - 1);
@@ -169,35 +177,37 @@ export const currentRaceAtom = atom((get): RaceData | null => {
 /**
  * Helper to find current race index - uses same logic as findIndexOfCurrentRace
  */
-export const currentRaceIndexAtom = atom((get): number => {
-    const races = get(orderedRacesAtom);
+export const currentRaceIndexAtom = atom(async (get): Promise<number> => {
+    const races = await get(orderedRacesAtom);
     return findCurrentRaceIndex(races);
 });
 
 /**
  * Last completed race - computed at atom level to avoid hook violations
  */
-export const lastCompletedRaceAtom = atom((get): RaceData | null => {
-    const races = get(orderedRacesAtom);
+export const lastCompletedRaceAtom = atom(async (get): Promise<RaceData | null> => {
+    const races = await get(orderedRacesAtom);
     
     if (!races || races.length === 0) {
         return null;
     }
 
     // Find last completed race using same logic as findIndexOfCurrentRace
-    const lastCompletedIndex = races.findLastIndex((race) => {
-        if (!race.valid) {
-            return false;
-        }
+    const lastCompletedIndex = races.map((race, index) => ({ race, index }))
+        .reverse()
+        .find(({ race }) => {
+            if (!race.valid) {
+                return false;
+            }
 
-        if (
-            race.start && !race.start.startsWith('0') && 
-            race.end && !race.end.startsWith('0')
-        ) {
-            return true; // Both started and ended = completed
-        }
-        return false;
-    });
+            if (
+                race.start && !race.start.startsWith('0') && 
+                race.end && !race.end.startsWith('0')
+            ) {
+                return true; // Both started and ended = completed
+            }
+            return false;
+        })?.index ?? -1;
 
     return lastCompletedIndex !== -1 ? races[lastCompletedIndex] : null;
 });
