@@ -105,10 +105,10 @@ export const useLeaderboardAnimation = (
     useEffect(() => {
         const newAnimatingRows = new Set<string>();
         currentLeaderboard.forEach((entry, index) => {
-            const prevPos = positionChanges.get(entry.pilot.sourceId);
+            const prevPos = positionChanges.get(entry.pilot.id);
             // Animate if previous position exists and was worse (higher number) than current
             if (prevPos && prevPos > index + 1) {
-                newAnimatingRows.add(entry.pilot.sourceId);
+                newAnimatingRows.add(entry.pilot.id);
             }
         });
         setAnimatingRows(newAnimatingRows);

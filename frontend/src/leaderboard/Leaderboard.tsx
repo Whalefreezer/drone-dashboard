@@ -91,7 +91,7 @@ function LeaderboardTable(
             </thead>
             <tbody>
                 {currentLeaderboard.map((entry, index) => {
-                    const previousEntry = previousLeaderboard.find((prev) => prev.pilot.sourceId === entry.pilot.sourceId);
+                    const previousEntry = previousLeaderboard.find((prev) => prev.pilot.id === entry.pilot.id);
                     const isEliminated = eliminatedPilots.some(
                         (pilot) =>
                             pilot.name.toLowerCase().replace(/\s+/g, '') ===
@@ -101,11 +101,11 @@ function LeaderboardTable(
 
                     return (
                         <LeaderboardRow
-                            key={entry.pilot.sourceId}
+                            key={entry.pilot.id}
                             entry={entry}
                             previousEntry={previousEntry}
                             isEliminated={isEliminated}
-                            isAnimating={animatingRows.has(entry.pilot.sourceId)}
+                            isAnimating={animatingRows.has(entry.pilot.id)}
                             position={position}
                             positionChanges={positionChanges}
                             roundDataValue={roundDataValue}
@@ -150,7 +150,7 @@ function LeaderboardRow(
     return (
         <tr className={isAnimating ? 'position-improved' : ''}>
             <PositionCell
-                pilotId={entry.pilot.sourceId}
+                pilotId={entry.pilot.id}
                 currentPosition={position}
                 positionChanges={positionChanges}
             />
@@ -261,7 +261,7 @@ function TimeDisplayCell(
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
 
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
-    const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId || r.sourceId === currentTime.roundId);
+    const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId);
     const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
 
     return (

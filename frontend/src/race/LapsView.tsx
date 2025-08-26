@@ -7,7 +7,7 @@ import {
     RaceWithProcessedLaps,
     roundsDataAtom,
 } from '../state/index.ts';
-import type { PilotChannel } from '../types/index.ts';
+// PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
@@ -29,14 +29,14 @@ export function LapsView({ raceId }: LapsViewProps) {
     const race = useAtomValue(raceFamilyAtom(raceId));
     const pilots = useAtomValue(pilotsAtom);
 
-    const round = roundData.find((r) => r.id === race.Round || r.sourceId === race.Round);
+    const round = roundData.find((r) => r.id === race.Round);
 
     const getBracketData = (): Bracket | null => {
         const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
         const racePilotNames = new Set(
             race.PilotChannels
-                .map((pc) => pilots.find((p) => p.id === pc.Pilot || p.sourceId === pc.Pilot)?.name ?? '')
+                .map((pc) => pilots.find((p) => p.id === pc.Pilot)?.name ?? '')
                 .filter((name) => name !== '')
                 .map(normalizeString),
         );
@@ -129,7 +129,7 @@ function LapsTableHeader(
 }
 
 function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }: {
-    pilotChannel: PilotChannel;
+    pilotChannel: { ID: string; Pilot: string; Channel: string };
     position: number;
     maxLaps: number;
     race: RaceWithProcessedLaps;
@@ -139,8 +139,8 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     const channels = useAtomValue(channelsDataAtom);
     const overallBestTimes = useAtomValue(overallBestTimesAtom);
 
-    const pilot = pilots.find((p) => p.id === pilotChannel.Pilot || p.sourceId === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.id === pilotChannel.Channel || c.sourceId === pilotChannel.Channel)!;
+    const pilot = pilots.find((p) => p.id === pilotChannel.Pilot)!;
+    const channel = channels.find((c) => c.id === pilotChannel.Channel)!;
 
     const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.Pilot);
 

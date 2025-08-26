@@ -28,6 +28,7 @@ import {
     PBLapRecord,
     PBDetectionRecord,
     PBGamePointRecord,
+    PBPilotChannelRecord,
 } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
 
@@ -83,6 +84,8 @@ export { useCachedAtom };
 // Channels as PB records
 export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
 export const channelsDataAtom = atom((get) => get(channelRecordsAtom));
+
+export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels');
 
 export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
 export const roundsDataAtom = atom((get): PBRoundRecord[] => {
@@ -178,7 +181,13 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
             Start: String(raceRec?.start ?? ''),
             End: String(raceRec?.end ?? ''),
             TotalPausedTime: String(raceRec?.totalPausedTime ?? ''),
-            PilotChannels: [],
+            PilotChannels: get(pilotChannelRecordsAtom)
+                .filter((pc) => (!ev || pc.event === ev.id))
+                .map((pc) => ({
+                    ID: pc.id,
+                    Pilot: String(pc.pilot ?? ''), // PB id
+                    Channel: String(pc.channel ?? ''), // PB id
+                })),
             RaceNumber: Number(raceRec?.raceNumber ?? 0),
             Round: roundGuid,
             TargetLaps: Number((raceRec as unknown as { targetLaps?: number })?.targetLaps ?? 0),

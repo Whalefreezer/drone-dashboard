@@ -40,8 +40,8 @@ export function calculateLeaderboardData(
     if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
         pilots.forEach((pilot) => {
             racesUntilNextMap.set(
-                pilot.sourceId,
-                calculateRacesUntilNext(races, currentRaceIndex, pilot.sourceId),
+                pilot.id,
+                calculateRacesUntilNext(races, currentRaceIndex, pilot.id),
             );
         });
     }
@@ -61,7 +61,7 @@ export function calculateLeaderboardData(
 
     // Create pilot entries only for pilots in races
     const pilotEntries = pilots
-        .filter((pilot) => scheduledPilots.has(pilot.sourceId))
+        .filter((pilot) => scheduledPilots.has(pilot.id))
         .map((pilot) => {
             // Find if this pilot is eliminated
             const eliminatedInfo = eliminatedPilots.find(
@@ -70,7 +70,7 @@ export function calculateLeaderboardData(
 
             // Get the pilot's channel using the extracted function
             const pilotChannel = getPilotChannelWithPriority(
-                pilot.sourceId,
+                pilot.id,
                 races,
                 channels,
                 currentRaceIndex,
@@ -78,12 +78,12 @@ export function calculateLeaderboardData(
 
             return {
                 pilot,
-                bestLap: overallFastestLaps.get(pilot.sourceId) || null,
-                consecutiveLaps: fastestConsecutiveLaps.get(pilot.sourceId) || null,
-                bestHoleshot: fastestHoleshots.get(pilot.sourceId) || null,
+                bestLap: overallFastestLaps.get(pilot.id) || null,
+                consecutiveLaps: fastestConsecutiveLaps.get(pilot.id) || null,
+                bestHoleshot: fastestHoleshots.get(pilot.id) || null,
                 channel: pilotChannel,
-                racesUntilNext: racesUntilNextMap.get(pilot.sourceId) ?? -1,
-                totalLaps: totalLaps.get(pilot.sourceId) ?? 0,
+                racesUntilNext: racesUntilNextMap.get(pilot.id) ?? -1,
+                totalLaps: totalLaps.get(pilot.id) ?? 0,
                 eliminatedInfo: eliminatedInfo
                     ? {
                         bracket: eliminatedInfo.bracket,
@@ -91,7 +91,7 @@ export function calculateLeaderboardData(
                         points: eliminatedInfo.points,
                     }
                     : null,
-                fastestTotalRaceTime: fastestTotalRaceTimes.get(pilot.sourceId) || null,
+                fastestTotalRaceTime: fastestTotalRaceTimes.get(pilot.id) || null,
             };
         });
 
@@ -101,7 +101,7 @@ export function calculateLeaderboardData(
 function findChannelById(channels: PBChannelRecord[], channelId: string | undefined): PBChannelRecord | null {
     if (!channelId) return null;
     // Prefer PB id; fallback to sourceId during transition
-    return channels.find((c) => c.id === channelId) || channels.find((c) => c.sourceId === channelId) || null;
+    return channels.find((c) => c.id === channelId) || null;
 }
 
 function getPilotChannelIdInRace(
@@ -146,16 +146,16 @@ export function getPositionChanges(
     // Map previous positions for quick lookup
     previousPositions.forEach((entry, index) => {
         if (entry.consecutiveLaps || entry.bestLap) { // Only consider pilots with times
-            previousPositionMap.set(entry.pilot.sourceId, index + 1);
+            previousPositionMap.set(entry.pilot.id, index + 1);
         }
     });
 
     currentPositions.forEach((entry, currentIndex) => {
         // Only consider pilots with times in the current leaderboard
         if (entry.consecutiveLaps || entry.bestLap) {
-            const previousIndexPlusOne = previousPositionMap.get(entry.pilot.sourceId);
+            const previousIndexPlusOne = previousPositionMap.get(entry.pilot.id);
             if (previousIndexPlusOne !== undefined && previousIndexPlusOne !== currentIndex + 1) {
-                changes.set(entry.pilot.sourceId, previousIndexPlusOne); // Store previous 1-based position
+                changes.set(entry.pilot.id, previousIndexPlusOne); // Store previous 1-based position
             }
         }
     });

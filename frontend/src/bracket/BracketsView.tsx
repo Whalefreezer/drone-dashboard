@@ -22,7 +22,7 @@ export function BracketsView() {
     // Get the set of normalized pilot names from the current race
     const currentRacePilotNames = new Set(
         currentRace.PilotChannels
-            .map((pc) => pilots.find((p) => p.id === pc.Pilot || p.sourceId === pc.Pilot)?.name ?? '')
+            .map((pc) => pilots.find((p) => p.id === pc.Pilot)?.name ?? '')
             .filter((name) => name !== '')
             .map(normalizeString),
     );
