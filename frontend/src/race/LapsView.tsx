@@ -7,10 +7,10 @@ import {
     RaceWithProcessedLaps,
     roundsDataAtom,
 } from '../state/index.ts';
-import { PilotChannel } from '../types/index.ts';
+import type { PilotChannel } from '../types/index.ts';
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
+import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 
 const POSITION_POINTS: Record<number, number> = {

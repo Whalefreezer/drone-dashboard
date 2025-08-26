@@ -1,14 +1,14 @@
 import { useAtomValue } from 'jotai';
 import { channelsDataAtom, pilotsAtom } from '../state/index.ts';
-import { PilotChannel } from '../types/index.ts';
+import type { PBPilotChannelRecord } from '../api/pbTypes.ts';
 
 export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
     const pilots = useAtomValue(pilotsAtom);
 
-    const pilot = pilots.find((p) => p.sourceId === pilotChannel.Pilot)!;
+    const pilot = pilots.find((p) => p.id === pilotChannel.pilot)!;
 
     const channels = useAtomValue(channelsDataAtom);
-    const channel = channels.find((c) => c.sourceId === pilotChannel.Channel);
+    const channel = channels.find((c) => c.id === pilotChannel.channel);
     const color = channel?.channelColor ?? '#888';
 
     return (
@@ -26,5 +26,5 @@ export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
 }
 
 export interface PilotChannelViewProps {
-    pilotChannel: PilotChannel;
+    pilotChannel: PBPilotChannelRecord;
 }
