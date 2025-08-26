@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -61,25 +62,88 @@ func (u *Upserter) Upsert(collection string, sourceId string, fields map[string]
 	}
 
 	var record *core.Record
+	var isNewRecord bool
 	if existingId != "" {
 		record, err = u.App.FindRecordById(col, existingId)
 		if err != nil {
 			return "", err
 		}
+		isNewRecord = false
 	} else {
 		record = core.NewRecord(col)
+		isNewRecord = true
 	}
 
-	// Set source + sourceId to align with the composite unique index
-	record.Set("source", sourceName)
-	record.Set("sourceId", sourceId)
-	for k, v := range fields {
-		record.Set(k, v)
+	// Check if any values have changed (only for existing records)
+	hasChanges := false
+	if !isNewRecord {
+		// Always check source and sourceId fields
+		if record.GetString("source") != sourceName {
+			hasChanges = true
+		}
+		if record.GetString("sourceId") != sourceId {
+			hasChanges = true
+		}
+
+		// Check if any of the provided fields have changed
+		for k, v := range fields {
+			existingVar := record.Get(k)
+			if existingVar != v {
+				// if !valuesEqual(existingVar, v) {
+				hasChanges = true
+				break
+			}
+		}
+	} else {
+		// New records always need to be saved
+		hasChanges = true
 	}
 
-	if err := u.App.Save(record); err != nil {
-		return "", err
+	// Only save if there are changes or it's a new record
+	if hasChanges {
+		// Set source + sourceId to align with the composite unique index
+		record.Set("source", sourceName)
+		record.Set("sourceId", sourceId)
+		for k, v := range fields {
+			record.Set(k, v)
+		}
+
+		if err := u.App.Save(record); err != nil {
+			return "", err
+		}
 	}
 
 	return record.Id, nil
+}
+
+// valuesEqual compares two values, handling type conversions for common numeric types
+func valuesEqual(existing, new any) bool {
+	// If types are exactly the same, do direct comparison
+	if reflect.TypeOf(existing) == reflect.TypeOf(new) {
+		return existing == new
+	}
+
+	// Handle nil cases
+	if existing == nil && new == nil {
+		return true
+	}
+	if existing == nil || new == nil {
+		return false
+	}
+
+	// Convert both to float64 for numeric comparison
+	switch v := existing.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		existingFloat := reflect.ValueOf(v).Convert(reflect.TypeOf(float64(0))).Float()
+		switch newV := new.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+			newFloat := reflect.ValueOf(newV).Convert(reflect.TypeOf(float64(0))).Float()
+			return existingFloat == newFloat
+		}
+	}
+
+	// For non-numeric types, try string conversion
+	existingStr := fmt.Sprintf("%v", existing)
+	newStr := fmt.Sprintf("%v", new)
+	return existingStr == newStr
 }
