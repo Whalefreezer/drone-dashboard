@@ -25,9 +25,9 @@ class ErrorBoundary extends React.Component<Props, State> {
     override componentDidUpdate(prevProps: Props, prevState: State) {
         if (!prevState.hasError && this.state.hasError) {
             console.log('Scheduling page reload in 10 seconds...');
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
+            // setTimeout(() => {
+            //     window.location.reload();
+            // }, 3000);
         }
     }
 

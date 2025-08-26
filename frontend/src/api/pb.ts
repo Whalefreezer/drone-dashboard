@@ -9,7 +9,7 @@ export const usePBRace: boolean =
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 
-const pb = new PocketBase('/api');
+const pb = new PocketBase('http://localhost:8090');
 pb.autoCancellation(false);
 
 export function pbSubscribeByID<T extends PBBaseRecord>(collection: string, id: string): Atom<Promise<T>> {
@@ -46,6 +46,9 @@ export function pbSubscribeByID<T extends PBBaseRecord>(collection: string, id: 
 export function pbSubscribeCollection<T extends PBBaseRecord>(collection: string): Atom<T[]> {
     const anAtom = atom<T[]>([]);
     anAtom.onMount = (set) => {
+        pb.collection<T>(collection).getList().then((r) => {
+            set(r.items);
+        });
         const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (e) => {
             set((prev) => {
                 const items = [...prev];

@@ -8,16 +8,16 @@ import { enableMocking } from './devTools/initialize.tsx';
 // Global error handlers
 globalThis.addEventListener('error', (event) => {
     console.error('Global error caught:', event.error);
-    setTimeout(() => {
-        globalThis.location.reload();
-    }, 3000);
+    // setTimeout(() => {
+    //     globalThis.location.reload();
+    // }, 3000);
 });
 
 globalThis.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason);
-    setTimeout(() => {
-        globalThis.location.reload();
-    }, 3000);
+    // setTimeout(() => {
+    //     globalThis.location.reload();
+    // }, 3000);
 });
 
 // Enable mocking (if applicable) then render the main app

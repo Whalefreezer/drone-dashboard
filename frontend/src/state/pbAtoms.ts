@@ -120,10 +120,6 @@ export const currentRaceAtom = atom(async (get) => {
 export type { ProcessedLap, RaceWithProcessedLaps, OverallBestTimes };
 export { orderRaces, isRaceActive, calculateProcessedLaps };
 
-// Synchronous signal for current race ID, updated by UI once data is available.
-// This allows other atoms to read the current race context without awaiting async atoms.
-export const currentRaceIdSignalAtom = atom<string | null>(null);
-
 export const raceFamilyAtom = atomFamily((raceId: string) =>
     atom((get): RaceWithProcessedLaps => {
         const ev = get(currentEventAtom);

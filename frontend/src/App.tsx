@@ -6,7 +6,6 @@ import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
 import { EliminatedPilotsView } from './bracket/index.ts';
-import { SyncCurrentRaceIdNode } from './state/hooks.ts';
 
 function App() {
     // Use the custom hook to handle cursor visibility
@@ -15,9 +14,6 @@ function App() {
     return (
         <>
             <SnapshotControl />
-            <Suspense>
-                <SyncCurrentRaceIdNode />
-            </Suspense>
 
             <div className='app-header'>
                 <TimeDisplay />
