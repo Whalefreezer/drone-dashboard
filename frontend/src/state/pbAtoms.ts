@@ -3,7 +3,7 @@ import { atomFamily } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
-import { pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent, pbSubscribeRecord, pbSubscribeRecords, pbSubscribeCollection, PBRaceEvent } from '../api/pb.ts';
+import { pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent, pbSubscribeRecord, pbSubscribeRecords, pbSubscribeCollection } from '../api/pb.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 import { 
     ProcessedLap, 
@@ -18,10 +18,11 @@ import {
     findEliminatedPilots,
     calculateOverallBestTimes
 } from './commonAtoms.ts';
+import { PBEventRecord } from '../api/pbTypes.ts';
 
 
 
-const eventsAtom = pbSubscribeCollection<PBRaceEvent>('events');
+const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
 const currentEventAtom = atom((get) => {
     const events = get(eventsAtom);

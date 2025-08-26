@@ -2,6 +2,7 @@ import PocketBase from 'npm:pocketbase';
 import type { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
 import { Atom, atom, WritableAtom } from 'jotai';
+import { PBBaseRecord } from './pbTypes.ts';
 
 export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
 export const usePBRace: boolean =
@@ -15,7 +16,7 @@ type PBRecord = { id: string; sourceId: string } & Record<string, unknown>;
 const pb = new PocketBase('/api');
 pb.autoCancellation(false); // TODO(@user): Remove this when we can
 
-export function pbSubscribeByID<T extends PBRecord>(collection: string, id: string): Atom<Promise<T>> {
+export function pbSubscribeByID<T extends PBBaseRecord>(collection: string, id: string): Atom<Promise<T>> {
     const overrideAtom = atom<T | null>(null);
     const anAtom = atom<Promise<T>, [T], void>(
         async (get) => {
@@ -46,7 +47,7 @@ export function pbSubscribeByID<T extends PBRecord>(collection: string, id: stri
     return anAtom;
 }
 
-export function pbSubscribeCollection<T extends PBRecord>(collection: string): Atom<T[]> {
+export function pbSubscribeCollection<T extends PBBaseRecord>(collection: string): Atom<T[]> {
     const anAtom = atom<T[]>([]);
 
     anAtom.onMount = (set) => {
