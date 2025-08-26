@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { eventRaceIdsAtom, eventIdAtom } from '../state/atoms.ts';
+import { eventRaceIdsAtom, currentEventAtom } from '../state/atoms.ts';
 import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
 
 // Basic styling for the button container
@@ -43,7 +43,7 @@ function SnapshotControl() {
     const [isVisible, setIsVisible] = useState(false); // Visibility state
     const hideTimeoutRef = useRef<number | null>(null); // Ref for timeout ID
 
-    const currentEventId = useAtomValue(eventIdAtom);
+    const currentEvent = useAtomValue(currentEventAtom);
     const raceIds = useAtomValue(eventRaceIdsAtom);
 
     // Effect to handle mouse move and visibility timeout
@@ -74,7 +74,7 @@ function SnapshotControl() {
     // currentEventId already read from atom
 
     const captureAndGenerateJson = async () => {
-        const eventId = currentEventId;
+        const eventId = currentEvent?.id;
         if (!eventId) {
             setStatusMessage('Error: Event ID not available or invalid.');
             setTimeout(() => setStatusMessage(null), 3000);
@@ -164,7 +164,7 @@ function SnapshotControl() {
         }
     };
 
-    if (!currentEventId) {
+    if (!currentEvent) {
         return null;
     }
 

@@ -5,47 +5,57 @@ import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
 import { allRacesAtom, currentRaceAtom as newCurrentRaceAtom } from '../race/race-atoms.ts';
-import { 
-    ProcessedLap, 
-    OverallBestTimes,
-    useCachedAtom,
-    updateAtom,
-    useUpdater,
+import {
+    calculateOverallBestTimes,
+    findEliminatedPilots,
     isRaceActive,
     orderRaces,
-    findEliminatedPilots,
-    calculateOverallBestTimes
+    OverallBestTimes,
+    ProcessedLap,
+    updateAtom,
+    useCachedAtom,
+    useUpdater,
 } from './commonAtoms.ts';
 import {
-    PBEventRecord,
-    PBPilotRecord,
     PBChannelRecord,
-    PBRoundRecord,
-    PBRaceRecord,
-    PBLapRecord,
     PBDetectionRecord,
+    PBEventRecord,
     PBGamePointRecord,
+    PBLapRecord,
     PBPilotChannelRecord,
+    PBPilotRecord,
+    PBRaceRecord,
+    PBRoundRecord,
 } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
-
-
+import { derive } from 'jotai-derive';
 
 // Live events collection; we filter locally for the current event
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
-// Current event PocketBase record (marked by isCurrent)
-export const currentEventAtom = atom(async (get) => {
-    const events = await get(eventsAtom);
-    const currentEvent = events.find((event) => event.isCurrent);
-    return currentEvent || null;
-});
+// // Current event PocketBase record (marked by isCurrent)
+// export const currentEventAtom = atom((get) => {
+//     const eventMaybePromise = get(eventsAtom);
 
-// Expose current event ID (prefer PB id; fallback to sourceId only for interop)
-export const eventIdAtom = atom(async (get) => {
-    const ev = await get(currentEventAtom);
-    return ev?.id ?? ev?.sourceId ?? getEnvEventIdFallback();
-});
+//     if (!(eventMaybePromise instanceof Promise)) {
+//         const events = eventMaybePromise;
+//         const currentEvent = events.find((event) => event.isCurrent);
+//         return currentEvent || null;
+//     } else {
+//         return eventMaybePromise.then((events) => {
+//             const currentEvent = events.find((event) => event.isCurrent);
+//             return currentEvent || null;
+//         });
+//     }
+// });
+
+export const currentEventAtom = derive(
+    [eventsAtom],
+    (events) => {
+        const currentEvent = events.find((event) => event.isCurrent);
+        return currentEvent || null;
+    },
+);
 
 // Derived: race ids for the current event (prefer PB id)
 export const eventRaceIdsAtom = atom(async (get): Promise<string[]> => {
@@ -103,10 +113,8 @@ export const racesAtom = allRacesAtom;
 export const currentRaceAtom = newCurrentRaceAtom;
 
 // Re-export types and functions from common
-export type { ProcessedLap, OverallBestTimes };
-export { orderRaces, isRaceActive };
-
-
+export type { OverallBestTimes, ProcessedLap };
+export { isRaceActive, orderRaces };
 
 function toValidityType(v: unknown): ValidityType {
     switch (String(v)) {
@@ -132,12 +140,12 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 }
 
 // Re-export from common
-export { updateAtom, useUpdater, findEliminatedPilots };
+export { findEliminatedPilots, updateAtom, useUpdater };
 
 export const overallBestTimesAtom = atom(async (get) => {
     const races = await get(racesAtom);
     // Flatten all processed laps from all races
-    const allProcessedLaps = races.flatMap(race => race.processedLaps);
+    const allProcessedLaps = races.flatMap((race) => race.processedLaps);
     return calculateOverallBestTimes(allProcessedLaps);
 });
 
@@ -150,17 +158,17 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
     atom(async (get): Promise<ProcessedLap[]> => {
         const lapRecords = await get(lapRecordsAtom);
         const detectionRecords = await get(detectionRecordsAtom);
-        
+
         const laps = lapRecords.filter((l) => l.race === raceId);
         const detections = detectionRecords.filter((d) => d.race === raceId);
-        
+
         return laps
             .map((lap) => {
-                const detection = detections.find((d) => 
+                const detection = detections.find((d) =>
                     d.lapNumber === lap.lapNumber && d.race === lap.race
                 );
                 if (!detection || !detection.valid) return null;
-                
+
                 return {
                     id: lap.id,
                     lapNumber: lap.lapNumber ?? 0,
@@ -201,10 +209,10 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
         const raceRecords = await get(raceRecordsAtom);
         const race = raceRecords.find((r) => r.id === raceId);
         if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
-        
+
         const hasStarted = !!(race.start && !race.start.startsWith('0'));
         const hasEnded = !!(race.end && !race.end.startsWith('0'));
-        
+
         return {
             hasStarted,
             isActive: hasStarted && !hasEnded,

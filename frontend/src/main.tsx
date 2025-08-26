@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './common/ErrorBoundary.tsx';
 import { enableMocking } from './devTools/initialize.tsx';
+import { GenericSuspense } from './common/GenericSuspense.tsx';
 
 // Global error handlers
 globalThis.addEventListener('error', (event) => {
@@ -25,9 +26,9 @@ enableMocking().then(() => {
     createRoot(document.getElementById('root') as HTMLElement).render(
         <StrictMode>
             <ErrorBoundary>
-                <Suspense fallback={<div>Loading...</div>}>
+                <GenericSuspense id='app'>
                     <App />
-                </Suspense>
+                </GenericSuspense>
             </ErrorBoundary>
         </StrictMode>,
     );

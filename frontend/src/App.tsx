@@ -1,11 +1,12 @@
 import './App.css';
-import { Suspense } from 'react';
+
 import { TimeDisplay } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
 import { EliminatedPilotsView } from './bracket/index.ts';
+import { GenericSuspense } from './common/GenericSuspense.tsx';
 
 function App() {
     // Use the custom hook to handle cursor visibility
@@ -13,19 +14,23 @@ function App() {
 
     return (
         <>
-            <SnapshotControl />
+            <GenericSuspense id='snapshot-control'>
+                <SnapshotControl />
+            </GenericSuspense>
 
             <div className='app-header'>
-                <TimeDisplay />
+                <GenericSuspense id='time-display'>
+                    <TimeDisplay />
+                </GenericSuspense>
             </div>
             <div className='app-main-content'>
-                <GenericSuspense>
+                <GenericSuspense id='races-container'>
                     <RacesContainer />
                 </GenericSuspense>
-                <GenericSuspense>
+                <GenericSuspense id='leaderboard'>
                     <Leaderboard />
                 </GenericSuspense>
-                <GenericSuspense>
+                <GenericSuspense id='eliminated-pilots-view'>
                     <EliminatedPilotsView />
                 </GenericSuspense>
 
@@ -35,8 +40,5 @@ function App() {
     );
 }
 
-function GenericSuspense({ children }: { children: React.ReactNode }) {
-    return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
-}
 
 export default App;

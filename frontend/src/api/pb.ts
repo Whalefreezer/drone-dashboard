@@ -48,18 +48,19 @@ export function pbSubscribeByID<T extends PBBaseRecord>(
 
 export function pbSubscribeCollection<T extends PBBaseRecord>(
     collection: string,
-): Atom<Promise<T[]>> {
+): Atom<Promise<T[]> | T[]> {
     const overrideAtom = atom<T[] | null>(null);
-    const anAtom = atom<Promise<T[]>, [(prev: T[] | null) => T[]], void>(
+    const anAtom = atom<Promise<T[]> | T[], [(prev: T[] | null) => T[]], void>(
         (get) => {
             const override = get(overrideAtom);
-            if (override) return Promise.resolve(override);
+            if (override) return override;
             return pb.collection<T>(collection).getList().then((r) => r.items);
         },
         (get, set, update) => {
             set(overrideAtom, update(get(overrideAtom)));
         },
     );
+
     anAtom.onMount = (set) => {
         const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (e) => {
             set((prev: T[] | null) => {
