@@ -159,8 +159,8 @@ export function calculateProcessedLaps(race: ComputedRace): ProcessedLap[] {
  */
 export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]) {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.sourceId === a.Round);
-        const bRound = rounds.find((r) => r.sourceId === b.Round);
+        const aRound = rounds.find((r) => r.id === a.Round || r.sourceId === a.Round);
+        const bRound = rounds.find((r) => r.id === b.Round || r.sourceId === b.Round);
         const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
         return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);

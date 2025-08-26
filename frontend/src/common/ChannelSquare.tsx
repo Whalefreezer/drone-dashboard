@@ -13,7 +13,8 @@ export function ChannelSquare(
     { channelID, change }: ChannelSquareProps,
 ) {
     const channels = useAtomValue(channelsDataAtom);
-    const channel = channels.find((c) => c.sourceId === channelID);
+    // Prefer PB id, fallback to legacy sourceId during transition
+    const channel = channels.find((c) => c.id === channelID) || channels.find((c) => c.sourceId === channelID);
     const color = channel?.channelColor ?? '#888';
 
     return (

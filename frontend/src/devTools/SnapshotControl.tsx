@@ -55,16 +55,16 @@ function SnapshotControl() {
                 clearTimeout(hideTimeoutRef.current);
             }
             // Set new timeout to hide after delay
-            hideTimeoutRef.current = window.setTimeout(() => {
+            hideTimeoutRef.current = globalThis.setTimeout(() => {
                 setIsVisible(false);
             }, HIDE_DELAY);
         };
 
-        window.addEventListener('mousemove', handleMouseMove);
+        globalThis.addEventListener('mousemove', handleMouseMove as EventListener);
 
         // Cleanup function
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
+            globalThis.removeEventListener('mousemove', handleMouseMove as EventListener);
             if (hideTimeoutRef.current) {
                 clearTimeout(hideTimeoutRef.current);
             }
@@ -89,7 +89,7 @@ function SnapshotControl() {
 
         setIsCapturing(true);
         setStatusMessage('Capturing live data...');
-        const capturedDataMap: Record<string, any> = {};
+        const capturedDataMap: Record<string, unknown> = {};
         let fetchError = false;
 
         try {
@@ -117,13 +117,14 @@ function SnapshotControl() {
 
             for (const templatePath of SNAPSHOT_TARGET_ENDPOINTS) {
                 if (templatePath === RACE_DATA_ENDPOINT_TEMPLATE) {
-                    capturedDataMap[templatePath] = {};
+                    const bucket: Record<string, unknown> = {};
                     for (const raceId of raceIds) {
-                        capturedDataMap[templatePath][raceId] = await fetchEndpoint(
+                        bucket[String(raceId)] = await fetchEndpoint(
                             templatePath,
-                            raceId,
+                            String(raceId),
                         );
                     }
+                    capturedDataMap[templatePath] = bucket;
                 } else {
                     capturedDataMap[templatePath] = await fetchEndpoint(templatePath);
                 }
@@ -167,12 +168,13 @@ function SnapshotControl() {
         return null;
     }
 
-    const isEventDataReady = Array.isArray(eventData);
+    const isEventDataReady = Array.isArray(raceIds);
     const finalStyle = isVisible ? snapshotControlStyle : hiddenStyle;
 
     return (
         <div style={finalStyle}>
             <button
+                type='button'
                 onClick={captureAndGenerateJson}
                 disabled={isCapturing || !isEventDataReady}
                 style={isCapturing || !isEventDataReady ? buttonDisabledStyle : buttonStyle}

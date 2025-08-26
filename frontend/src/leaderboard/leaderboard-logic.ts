@@ -100,7 +100,8 @@ export function calculateLeaderboardData(
 
 function findChannelById(channels: PBChannelRecord[], channelId: string | undefined): PBChannelRecord | null {
     if (!channelId) return null;
-    return channels.find((c) => c.sourceId === channelId) || null;
+    // Prefer PB id; fallback to sourceId during transition
+    return channels.find((c) => c.id === channelId) || channels.find((c) => c.sourceId === channelId) || null;
 }
 
 function getPilotChannelIdInRace(

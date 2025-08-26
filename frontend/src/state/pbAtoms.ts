@@ -43,18 +43,18 @@ export const currentEventAtom = atom((get) => {
     return currentEvent || null;
 });
 
-// Expose current event sourceId for places that still need the GUID
+// Expose current event ID (prefer PB id; fallback to sourceId only for interop)
 export const eventIdAtom = atom<string | null>((get) => {
     const ev = get(currentEventAtom);
-    return ev?.sourceId ?? getEnvEventIdFallback();
+    return ev?.id ?? ev?.sourceId ?? getEnvEventIdFallback();
 });
 
-// Derived: race sourceIds for the current event
+// Derived: race ids for the current event (prefer PB id)
 export const eventRaceIdsAtom = atom((get): string[] => {
     const ev = get(currentEventAtom);
     if (!ev) return [];
     const races = get(raceRecordsAtom).filter((r) => r.event === ev.id);
-    return races.map((r) => r.sourceId);
+    return races.map((r) => r.id);
 });
 
 export const consecutiveLapsAtom = atom((get) => {
@@ -121,22 +121,22 @@ export { orderRaces, isRaceActive, calculateProcessedLaps };
 // This allows other atoms to read the current race context without awaiting async atoms.
 export const currentRaceIdSignalAtom = atom<string | null>(null);
 
-export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
+export const raceFamilyAtom = atomFamily((raceId: string) =>
     atom((get): RaceWithProcessedLaps => {
         const ev = get(currentEventAtom);
         const raceRec = get(raceRecordsAtom).find(
-            (r) => r.sourceId === raceSourceId && (!ev || r.event === ev.id),
+            (r) => r.id === raceId && (!ev || r.event === ev.id),
         );
         const roundGuid = (() => {
             if (!raceRec?.round) return '';
             const roundRec = get(roundRecordsAtom).find((rr) => rr.id === raceRec.round);
-            return roundRec?.sourceId ?? '';
+            return roundRec?.id ?? '';
         })();
-        const eventGuid = ev?.sourceId ?? '';
+        const eventGuid = ev?.id ?? '';
         const laps = get(lapRecordsAtom)
             .filter((l) => l.race === raceRec?.id)
             .map((l) => ({
-                ID: l.sourceId,
+                ID: l.id,
                 Detection: '',
                 LengthSeconds: Number(l.lengthSeconds ?? 0),
                 LapNumber: Number(l.lapNumber ?? 0),
@@ -146,13 +146,13 @@ export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
         const detections = get(detectionRecordsAtom)
             .filter((d) => d.race === raceRec?.id)
             .map((d) => ({
-                ID: d.sourceId,
+                ID: d.id,
                 TimingSystemIndex: Number(d.timingSystemIndex ?? 0),
-                Channel: String(d.channel ?? ''),
+                Channel: String(d.channel ?? ''), // PB id
                 Time: String(d.time ?? ''),
                 Peak: Number(d.peak ?? 0),
                 TimingSystemType: String(d.timingSystemType ?? ''),
-                Pilot: String(d.pilot ?? ''),
+                Pilot: String(d.pilot ?? ''), // PB id
                 LapNumber: Number(d.lapNumber ?? 0),
                 Valid: Boolean(d.valid),
                 ValidityType: toValidityType(d.validityType),
@@ -163,15 +163,15 @@ export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
         const gamePoints = get(gamePointRecordsAtom)
             .filter((g) => g.race === raceRec?.id)
             .map((g) => ({
-                ID: g.sourceId,
-                Channel: String(g.channel ?? ''),
-                Pilot: String(g.pilot ?? ''),
+                ID: g.id,
+                Channel: String(g.channel ?? ''), // PB id
+                Pilot: String(g.pilot ?? ''), // PB id
                 Valid: Boolean(g.valid),
                 Time: String(g.time ?? ''),
             }));
 
         const race: ComputedRace = {
-            ID: raceRec?.sourceId ?? raceSourceId,
+            ID: raceRec?.id ?? raceId,
             Laps: laps,
             Detections: detections,
             GamePoints: gamePoints,
@@ -181,7 +181,7 @@ export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
             PilotChannels: [],
             RaceNumber: Number(raceRec?.raceNumber ?? 0),
             Round: roundGuid,
-            TargetLaps: Number((raceRec as any)?.targetLaps ?? 0),
+            TargetLaps: Number((raceRec as unknown as { targetLaps?: number })?.targetLaps ?? 0),
             PrimaryTimingSystemLocation: toPTSL(raceRec?.primaryTimingSystemLocation),
             Valid: Boolean(raceRec?.valid),
             AutoAssignNumbers: undefined,

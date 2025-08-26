@@ -8,7 +8,6 @@ import {
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { RaceWithProcessedLaps, consecutiveLapsAtom } from '../state/atoms.ts';
-import type { PBRoundRecord } from '../api/pbTypes.ts';
 import type { PBChannelRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import { useAtomValue } from 'jotai';
 
@@ -233,7 +232,8 @@ function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
             <div className='channel-display'>
                 {channel.shortBand}
                 {channel.number}
-                <ChannelSquare channelID={channel.sourceId} />
+                {/* Prefer PB id; ChannelSquare will fallback to sourceId if needed */}
+                <ChannelSquare channelID={channel.id} />
             </div>
         </td>
     );
@@ -261,7 +261,7 @@ function TimeDisplayCell(
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
 
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
-    const roundInfo = roundDataValue.find((r) => r.sourceId === currentTime.roundId);
+    const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId || r.sourceId === currentTime.roundId);
     const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
 
     return (

@@ -29,14 +29,14 @@ export function LapsView({ raceId }: LapsViewProps) {
     const race = useAtomValue(raceFamilyAtom(raceId));
     const pilots = useAtomValue(pilotsAtom);
 
-    const round = roundData.find((r) => r.sourceId === race.Round);
+    const round = roundData.find((r) => r.id === race.Round || r.sourceId === race.Round);
 
     const getBracketData = (): Bracket | null => {
         const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
         const racePilotNames = new Set(
             race.PilotChannels
-                .map((pc) => pilots.find((p) => p.sourceId === pc.Pilot)?.name ?? '')
+                .map((pc) => pilots.find((p) => p.id === pc.Pilot || p.sourceId === pc.Pilot)?.name ?? '')
                 .filter((name) => name !== '')
                 .map(normalizeString),
         );
@@ -139,8 +139,8 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
     const channels = useAtomValue(channelsDataAtom);
     const overallBestTimes = useAtomValue(overallBestTimesAtom);
 
-    const pilot = pilots.find((p) => p.sourceId === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.sourceId === pilotChannel.Channel)!;
+    const pilot = pilots.find((p) => p.id === pilotChannel.Pilot || p.sourceId === pilotChannel.Pilot)!;
+    const channel = channels.find((c) => c.id === pilotChannel.Channel || c.sourceId === pilotChannel.Channel)!;
 
     const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.Pilot);
 

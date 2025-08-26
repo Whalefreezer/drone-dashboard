@@ -1,6 +1,6 @@
 import type { PBChannelRecord, PBPilotRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import type { RaceWithProcessedLaps } from '../state/atoms.ts';
-import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
+import { ProcessedLap } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';
 
@@ -57,8 +57,8 @@ export function secondsFromString(time: string): number {
 
 export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]): RaceWithProcessedLaps[] {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.sourceId === a.Round);
-        const bRound = rounds.find((r) => r.sourceId === b.Round);
+        const aRound = rounds.find((r) => r.id === a.Round || r.sourceId === a.Round);
+        const bRound = rounds.find((r) => r.id === b.Round || r.sourceId === b.Round);
         const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
         return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
