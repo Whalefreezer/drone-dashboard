@@ -41,13 +41,13 @@ export const raceDataAtom = atomFamily((raceId: string) =>
         const detectionRecords = await get(detectionRecordsAtom);
         const detections = detectionRecords.filter((d) => d.race === raceId);
         const pilotChannelRecords = await get(pilotChannelRecordsAtom);
-        const eventPilotChannels = pilotChannelRecords.filter(
-            (pc) => pc.event === currentEvent.id,
+        const racePilotChannels = pilotChannelRecords.filter(
+            (pc) => pc.race === raceId,
         );
 
         // Compute processed data directly from PB records
         const processedLaps = computeProcessedLaps(laps, detections);
-        const pilotChannels = computePilotChannelAssociations(eventPilotChannels);
+        const pilotChannels = computePilotChannelAssociations(racePilotChannels);
 
         return {
             id: raceRecord.id,

@@ -86,6 +86,7 @@ export interface PBRaceRecord extends PBBaseRecord {
 export interface PBPilotChannelRecord extends PBBaseRecord {
     pilot?: string; // relation → pilots.id
     channel?: string; // relation → channels.id
+    race?: string; // relation → races.id
     event?: string; // relation → events.id (context)
 }
 

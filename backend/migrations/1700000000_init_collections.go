@@ -143,6 +143,7 @@ func init() {
 			&core.TextField{Name: "source", Max: 32},
 			&core.RelationField{Name: "pilot", CollectionId: pilots.Id, MaxSelect: 1},
 			&core.RelationField{Name: "channel", CollectionId: channels.Id, MaxSelect: 1},
+			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)
 		pilotChannels.AddIndex("ux_pilotChannels_source", true, "source, sourceId", "")

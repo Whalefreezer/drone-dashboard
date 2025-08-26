@@ -212,6 +212,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 		if _, err := s.Upserter.Upsert("pilotChannels", string(pc.ID), map[string]any{
 			"pilot":   pilotPBID,
 			"channel": channelPBID,
+			"race":    racePBID,
 			"event":   eventPBID,
 		}); err != nil {
 			return err
