@@ -102,7 +102,7 @@ export async function createHandlersFromJson(
         if (templatePath === RACE_DATA_ENDPOINT_TEMPLATE) {
             // Handle parameterized race data
             handlers.push(
-                http.get(fullMockUrl, ({ params }) => {
+                http.get(fullMockUrl, ({ params }: { params: { raceId: string } }) => {
                     const raceId = params.raceId as string;
                     const raceDataSnapshot = resultOrMap as RaceDataSnapshot;
                     const raceResult = raceDataSnapshot[raceId];

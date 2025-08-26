@@ -28,7 +28,7 @@ import {
     PBRoundRecord,
 } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
-import { derive } from 'jotai-derive';
+import { eagerAtom } from 'jotai-eager';
 
 // Live events collection; we filter locally for the current event
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
@@ -49,24 +49,23 @@ export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 //     }
 // });
 
-export const currentEventAtom = derive(
-    [eventsAtom],
-    (events) => {
-        const currentEvent = events.find((event) => event.isCurrent);
-        return currentEvent || null;
-    },
-);
+
+export const currentEventAtom = eagerAtom((get) => {
+    const events = get(eventsAtom);
+    const currentEvent = events.find((event) => event.isCurrent);
+    return currentEvent || null;
+});
 
 // Derived: race ids for the current event (prefer PB id)
-export const eventRaceIdsAtom = atom(async (get): Promise<string[]> => {
-    const ev = await get(currentEventAtom);
+export const eventRaceIdsAtom = eagerAtom((get) => {
+    const ev = get(currentEventAtom);
     if (!ev) return [];
-    const races = await get(raceRecordsAtom);
+    const races = get(raceRecordsAtom);
     return races.filter((r) => r.event === ev.id).map((r) => r.id);
 });
 
-export const consecutiveLapsAtom = atom(async (get) => {
-    const ev = await get(currentEventAtom);
+export const consecutiveLapsAtom = eagerAtom((get) => {
+    const ev = get(currentEventAtom);
     return Number(ev?.pbLaps ?? 3);
 });
 
@@ -83,22 +82,22 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 
 // Pilots as PB records
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = atom(async (get) => await get(pilotsRecordsAtom));
+export const pilotsAtom = eagerAtom((get) => get(pilotsRecordsAtom));
 
 // Re-export from common
 export { useCachedAtom };
 
 // Channels as PB records
 export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
-export const channelsDataAtom = atom(async (get) => await get(channelRecordsAtom));
+export const channelsDataAtom = eagerAtom((get) => get(channelRecordsAtom));
 
 export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels');
 
 export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
-export const roundsDataAtom = atom(async (get): Promise<PBRoundRecord[]> => {
-    const ev = await get(currentEventAtom);
+export const roundsDataAtom = eagerAtom((get) => {
+    const ev = get(currentEventAtom);
     if (!ev) return [];
-    const rounds = await get(roundRecordsAtom);
+    const rounds = get(roundRecordsAtom);
     return rounds.filter((r) => r.event === ev.id);
 });
 
@@ -142,8 +141,8 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 // Re-export from common
 export { findEliminatedPilots, updateAtom, useUpdater };
 
-export const overallBestTimesAtom = atom(async (get) => {
-    const races = await get(racesAtom);
+export const overallBestTimesAtom = eagerAtom((get) => {
+    const races = get(racesAtom);
     // Flatten all processed laps from all races
     const allProcessedLaps = races.flatMap((race) => race.processedLaps);
     return calculateOverallBestTimes(allProcessedLaps);
@@ -155,9 +154,9 @@ export const overallBestTimesAtom = atom(async (get) => {
  * Processed laps for a specific race - computed from PB records
  */
 export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<ProcessedLap[]> => {
-        const lapRecords = await get(lapRecordsAtom);
-        const detectionRecords = await get(detectionRecordsAtom);
+    eagerAtom((get) => {
+        const lapRecords = get(lapRecordsAtom);
+        const detectionRecords = get(detectionRecordsAtom);
 
         const laps = lapRecords.filter((l) => l.race === raceId);
         const detections = detectionRecords.filter((d) => d.race === raceId);
@@ -189,8 +188,8 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
  * Pilot-channel associations for a specific race
  */
 export const racePilotChannelsAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<{ id: string; pilotId: string; channelId: string }[]> => {
-        const pilotChannelRecords = await get(pilotChannelRecordsAtom);
+    eagerAtom((get) => {
+        const pilotChannelRecords = get(pilotChannelRecordsAtom);
         return pilotChannelRecords
             .filter((pc) => pc.race === raceId)
             .map((pc) => ({
@@ -205,8 +204,8 @@ export const racePilotChannelsAtom = atomFamily((raceId: string) =>
  * Race status (active/completed/started) for a specific race
  */
 export const raceStatusAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<{ isActive: boolean; isCompleted: boolean; hasStarted: boolean }> => {
-        const raceRecords = await get(raceRecordsAtom);
+    eagerAtom((get) => {
+        const raceRecords = get(raceRecordsAtom);
         const race = raceRecords.find((r) => r.id === raceId);
         if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
 
@@ -225,8 +224,8 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
  * All detections for a specific race
  */
 export const raceDetectionsAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<PBDetectionRecord[]> => {
-        const detectionRecords = await get(detectionRecordsAtom);
+    eagerAtom((get) => {
+        const detectionRecords = get(detectionRecordsAtom);
         return detectionRecords.filter((d) => d.race === raceId);
     })
 );
@@ -235,8 +234,8 @@ export const raceDetectionsAtom = atomFamily((raceId: string) =>
  * All game points for a specific race
  */
 export const raceGamePointsAtom = atomFamily((raceId: string) =>
-    atom(async (get): Promise<PBGamePointRecord[]> => {
-        const gamePointRecords = await get(gamePointRecordsAtom);
+    eagerAtom((get) => {
+        const gamePointRecords = get(gamePointRecordsAtom);
         return gamePointRecords.filter((g) => g.race === raceId);
     })
 );
