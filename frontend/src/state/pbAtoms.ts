@@ -38,28 +38,28 @@ import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
 // Current event PocketBase record (marked by isCurrent)
-export const currentEventAtom = atom((get) => {
-    const events = get(eventsAtom);
+export const currentEventAtom = atom(async (get) => {
+    const events = await get(eventsAtom);
     const currentEvent = events.find((event) => event.isCurrent);
     return currentEvent || null;
 });
 
 // Expose current event ID (prefer PB id; fallback to sourceId only for interop)
-export const eventIdAtom = atom<string | null>((get) => {
-    const ev = get(currentEventAtom);
+export const eventIdAtom = atom(async (get) => {
+    const ev = await get(currentEventAtom);
     return ev?.id ?? ev?.sourceId ?? getEnvEventIdFallback();
 });
 
 // Derived: race ids for the current event (prefer PB id)
-export const eventRaceIdsAtom = atom((get): string[] => {
-    const ev = get(currentEventAtom);
+export const eventRaceIdsAtom = atom(async (get): Promise<string[]> => {
+    const ev = await get(currentEventAtom);
     if (!ev) return [];
-    const races = get(raceRecordsAtom).filter((r) => r.event === ev.id);
-    return races.map((r) => r.id);
+    const races = await get(raceRecordsAtom);
+    return races.filter((r) => r.event === ev.id).map((r) => r.id);
 });
 
-export const consecutiveLapsAtom = atom((get) => {
-    const ev = get(currentEventAtom);
+export const consecutiveLapsAtom = atom(async (get) => {
+    const ev = await get(currentEventAtom);
     return Number(ev?.pbLaps ?? 3);
 });
 
@@ -76,22 +76,23 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 
 // Pilots as PB records
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = atom((get) => get(pilotsRecordsAtom));
+export const pilotsAtom = atom(async (get) => await get(pilotsRecordsAtom));
 
 // Re-export from common
 export { useCachedAtom };
 
 // Channels as PB records
 export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
-export const channelsDataAtom = atom((get) => get(channelRecordsAtom));
+export const channelsDataAtom = atom(async (get) => await get(channelRecordsAtom));
 
 export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels');
 
 export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
-export const roundsDataAtom = atom((get): PBRoundRecord[] => {
-    const ev = get(currentEventAtom);
+export const roundsDataAtom = atom(async (get): Promise<PBRoundRecord[]> => {
+    const ev = await get(currentEventAtom);
     if (!ev) return [];
-    return get(roundRecordsAtom).filter((r) => r.event === ev.id);
+    const rounds = await get(roundRecordsAtom);
+    return rounds.filter((r) => r.event === ev.id);
 });
 
 // Live records for race and nested collections
@@ -100,14 +101,15 @@ export const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
 export const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
 export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
 
-export const racesAtom = atom((get) => {
-    const raceIds = get(eventRaceIdsAtom);
-    const races = raceIds
-        .map((raceId) => get(raceFamilyAtom(raceId)))
-        .filter((r) => r.Valid);
-    const rounds = get(roundsDataAtom);
-    orderRaces(races, rounds);
-    return races;
+export const racesAtom = atom(async (get) => {
+    const raceIds = await get(eventRaceIdsAtom);
+    const races = await Promise.all(
+        raceIds.map(async (raceId) => await get(raceFamilyAtom(raceId)))
+    );
+    const validRaces = races.filter((r) => r.Valid);
+    const rounds = await get(roundsDataAtom);
+    orderRaces(validRaces, rounds);
+    return validRaces;
 });
 
 export const currentRaceAtom = atom(async (get) => {
@@ -121,18 +123,21 @@ export type { ProcessedLap, RaceWithProcessedLaps, OverallBestTimes };
 export { orderRaces, isRaceActive, calculateProcessedLaps };
 
 export const raceFamilyAtom = atomFamily((raceId: string) =>
-    atom((get): RaceWithProcessedLaps => {
-        const ev = get(currentEventAtom);
-        const raceRec = get(raceRecordsAtom).find(
+    atom(async (get): Promise<RaceWithProcessedLaps> => {
+        const ev = await get(currentEventAtom);
+        const raceRecords = await get(raceRecordsAtom);
+        const raceRec = raceRecords.find(
             (r) => r.id === raceId && (!ev || r.event === ev.id),
         );
+        const roundRecords = await get(roundRecordsAtom);
         const roundGuid = (() => {
             if (!raceRec?.round) return '';
-            const roundRec = get(roundRecordsAtom).find((rr) => rr.id === raceRec.round);
+            const roundRec = roundRecords.find((rr) => rr.id === raceRec.round);
             return roundRec?.id ?? '';
         })();
         const eventGuid = ev?.id ?? '';
-        const laps = get(lapRecordsAtom)
+        const lapRecords = await get(lapRecordsAtom);
+        const laps = lapRecords
             .filter((l) => l.race === raceRec?.id)
             .map((l) => ({
                 ID: l.id,
@@ -142,7 +147,8 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
                 StartTime: String(l.startTime ?? ''),
                 EndTime: String(l.endTime ?? ''),
             }));
-        const detections = get(detectionRecordsAtom)
+        const detectionRecords = await get(detectionRecordsAtom);
+        const detections = detectionRecords
             .filter((d) => d.race === raceRec?.id)
             .map((d) => ({
                 ID: d.id,
@@ -159,7 +165,8 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
                 RaceSector: Number(d.raceSector ?? 0),
                 IsHoleshot: Boolean(d.isHoleshot),
             }));
-        const gamePoints = get(gamePointRecordsAtom)
+        const gamePointRecords = await get(gamePointRecordsAtom);
+        const gamePoints = gamePointRecords
             .filter((g) => g.race === raceRec?.id)
             .map((g) => ({
                 ID: g.id,
@@ -169,6 +176,7 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
                 Time: String(g.time ?? ''),
             }));
 
+        const pilotChannelRecords = await get(pilotChannelRecordsAtom);
         const race: ComputedRace = {
             ID: raceRec?.id ?? raceId,
             Laps: laps,
@@ -177,7 +185,7 @@ export const raceFamilyAtom = atomFamily((raceId: string) =>
             Start: String(raceRec?.start ?? ''),
             End: String(raceRec?.end ?? ''),
             TotalPausedTime: String(raceRec?.totalPausedTime ?? ''),
-            PilotChannels: get(pilotChannelRecordsAtom)
+            PilotChannels: pilotChannelRecords
                 .filter((pc) => (!ev || pc.event === ev.id))
                 .map((pc) => ({
                     ID: pc.id,

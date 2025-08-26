@@ -11,7 +11,6 @@ import {
     raceRecordsAtom,
     roundRecordsAtom,
 } from '../state/pbAtoms.ts';
-import type { PBRoundRecord } from '../api/pbTypes.ts';
 import {
     computePilotChannelAssociations,
     computeProcessedLaps,
@@ -86,11 +85,11 @@ export const allRacesAtom = atom((get): RaceData[] => {
     if (!currentEvent) return [];
 
     const raceRecords = get(raceRecordsAtom).filter(
-        (r: any) => r.event === currentEvent.id && r.valid !== false,
+        (r) => r.event === currentEvent.id && r.valid !== false,
     );
 
     return raceRecords
-        .map((record: any) => get(raceDataAtom(record.id)))
+        .map((record) => get(raceDataAtom(record.id)))
         .filter((race): race is RaceData => race !== null);
 });
 

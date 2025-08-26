@@ -43,15 +43,23 @@ export function pbSubscribeByID<T extends PBBaseRecord>(collection: string, id: 
     return anAtom;
 }
 
-export function pbSubscribeCollection<T extends PBBaseRecord>(collection: string): Atom<T[]> {
-    const anAtom = atom<T[]>([]);
+export function pbSubscribeCollection<T extends PBBaseRecord>(collection: string): Atom<Promise<T[]>> {
+    const overrideAtom = atom<T[] | null>(null);
+    const anAtom = atom<Promise<T[]>, [(prev: T[] | null) => T[]], void>(
+        async (get) => {
+            return get(overrideAtom) ?? (await pb.collection<T>(collection).getList()).items;
+        },
+        (get, set, update) => {
+            set(overrideAtom, update(get(overrideAtom)));
+        },
+    );
     anAtom.onMount = (set) => {
-        pb.collection<T>(collection).getList().then((r) => {
-            set(r.items);
-        });
+        // pb.collection<T>(collection).getList().then((r) => {
+        //     set(r.items);
+        // });
         const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (e) => {
-            set((prev) => {
-                const items = [...prev];
+            set((prev: T[] | null) => {
+                const items = prev ? [...prev] : [];
                 if (e.action === 'create' || e.action === 'update') {
                     const i = items.findIndex((r) => r.id === e.record.id);
                     if (i !== -1) items[i] = e.record as T; else items.push(e.record as T);
