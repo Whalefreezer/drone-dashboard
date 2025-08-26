@@ -2,29 +2,30 @@ import { useAtomValue } from 'jotai';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
-import { racesAtom } from '../state/index.ts';
-import { findIndexOfCurrentRace, findIndexOfLastRace } from '../common/index.ts';
+import { orderedRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastCompletedRaceAtom } from './race-atoms.ts';
 
 export function RacesContainer() {
-    const races = useAtomValue(racesAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
-    const lastRaceIndex = findIndexOfLastRace(races);
+    const races = useAtomValue(orderedRacesAtom);
+    const currentRace = useAtomValue(currentRaceAtom);
+    const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
+    const lastCompletedRace = useAtomValue(lastCompletedRaceAtom);
+    
     const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
 
     return (
         <div className='races-container'>
-            {lastRaceIndex !== -1 && (
+            {lastCompletedRace && (
                 <div className='race-box last-race'>
                     <div className='race-header'>
                         <h3>Last Race</h3>
                     </div>
                     <LapsView
-                        key={races[lastRaceIndex].ID}
-                        raceId={races[lastRaceIndex].ID}
+                        key={lastCompletedRace.id}
+                        raceId={lastCompletedRace.id}
                     />
                 </div>
             )}
-            {currentRaceIndex !== -1 && (
+            {currentRace && (
                 <div className='race-box current-race'>
                     <div className='race-header'>
                         <h3>Current Race</h3>
@@ -33,8 +34,8 @@ export function RacesContainer() {
                         </div>
                     </div>
                     <LapsView
-                        key={races[currentRaceIndex].ID}
-                        raceId={races[currentRaceIndex].ID}
+                        key={currentRace.id}
+                        raceId={currentRace.id}
                     />
                 </div>
             )}
@@ -45,8 +46,8 @@ export function RacesContainer() {
                 </div>
                 {raceSubset.map((race) => (
                     <LapsView
-                        key={race.ID}
-                        raceId={race.ID}
+                        key={race.id}
+                        raceId={race.id}
                     />
                 ))}
             </div>

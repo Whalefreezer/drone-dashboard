@@ -95,10 +95,10 @@ export const roundsDataAtom = atom((get): PBRoundRecord[] => {
 });
 
 // Live records for race and nested collections
-const raceRecordsAtom = pbSubscribeCollection<PBRaceRecord>('races');
-const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
-const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
-const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
+export const raceRecordsAtom = pbSubscribeCollection<PBRaceRecord>('races');
+export const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
+export const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
+export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
 
 export const racesAtom = atom((get) => {
     const raceIds = get(eventRaceIdsAtom);

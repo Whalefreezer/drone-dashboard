@@ -1,0 +1,204 @@
+// PB-native race atoms
+// This replaces the legacy raceFamilyAtom with a cleaner, more direct approach
+
+import { atom } from 'jotai';
+import { atomFamily } from 'jotai/utils';
+import {
+    currentEventAtom,
+    detectionRecordsAtom,
+    lapRecordsAtom,
+    pilotChannelRecordsAtom,
+    raceRecordsAtom,
+    roundRecordsAtom,
+} from '../state/pbAtoms.ts';
+import type { PBRoundRecord } from '../api/pbTypes.ts';
+import {
+    computePilotChannelAssociations,
+    computeProcessedLaps,
+    computeRaceStatus,
+    findCurrentRaceIndex,
+    RaceData,
+    RaceStatus,
+} from './race-types.ts';
+
+/**
+ * PB-native race atom family - much cleaner than the legacy ComputedRace approach
+ */
+export const raceDataAtom = atomFamily((raceId: string) =>
+    atom((get): RaceData | null => {
+        const currentEvent = get(currentEventAtom);
+        if (!currentEvent) return null;
+
+        // Get the PB race record directly
+        const raceRecord = get(raceRecordsAtom).find(
+            (r) => r.id === raceId && r.event === currentEvent.id,
+        );
+        if (!raceRecord) return null;
+
+        // Get related PB records for this race
+        const laps = get(lapRecordsAtom).filter((l) => l.race === raceId);
+        const detections = get(detectionRecordsAtom).filter((d) => d.race === raceId);
+        const eventPilotChannels = get(pilotChannelRecordsAtom).filter(
+            (pc) => pc.event === currentEvent.id,
+        );
+
+        // Compute processed data directly from PB records
+        const processedLaps = computeProcessedLaps(laps, detections);
+        const pilotChannels = computePilotChannelAssociations(eventPilotChannels);
+
+        return {
+            id: raceRecord.id,
+            raceNumber: raceRecord.raceNumber ?? 0,
+            roundId: raceRecord.round ?? '',
+            eventId: raceRecord.event ?? '',
+            valid: raceRecord.valid ?? false,
+            start: raceRecord.start,
+            end: raceRecord.end,
+            bracket: raceRecord.bracket,
+            processedLaps,
+            pilotChannels,
+        };
+    })
+);
+
+/**
+ * Race status atom family for checking if a race is active/completed
+ */
+export const raceStatusAtom = atomFamily((raceId: string) =>
+    atom((get): RaceStatus | null => {
+        const currentEvent = get(currentEventAtom);
+        if (!currentEvent) return null;
+
+        const raceRecord = get(raceRecordsAtom).find(
+            (r) => r.id === raceId && r.event === currentEvent.id,
+        );
+        if (!raceRecord) return null;
+
+        return computeRaceStatus(raceRecord);
+    })
+);
+
+/**
+ * All races for the current event - PB native
+ */
+export const allRacesAtom = atom((get): RaceData[] => {
+    const currentEvent = get(currentEventAtom);
+    if (!currentEvent) return [];
+
+    const raceRecords = get(raceRecordsAtom).filter(
+        (r: any) => r.event === currentEvent.id && r.valid !== false,
+    );
+
+    return raceRecords
+        .map((record: any) => get(raceDataAtom(record.id)))
+        .filter((race): race is RaceData => race !== null);
+});
+
+/**
+ * Races ordered by round and race number - PB native
+ */
+export const orderedRacesAtom = atom((get): RaceData[] => {
+    const races = get(allRacesAtom);
+    const rounds = get(roundRecordsAtom);
+
+    return races.sort((a: RaceData, b: RaceData) => {
+        const aRound = rounds.find((r) => r.id === a.roundId);
+        const bRound = rounds.find((r) => r.id === b.roundId);
+        const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
+        if (orderDiff !== 0) return orderDiff;
+        return a.raceNumber - b.raceNumber;
+    });
+});
+
+/**
+ * Current race detection - PB native
+ * 
+ * Uses identical logic to common/utils.ts findIndexOfCurrentRace():
+ * 1. Find active race (valid, started, not ended)
+ * 2. If none, find last completed race and return next one  
+ * 3. Fallback to first race
+ */
+export const currentRaceAtom = atom((get): RaceData | null => {
+    const races = get(orderedRacesAtom);
+    
+    if (!races || races.length === 0) {
+        return null;
+    }
+
+    // Step 1: Find active race (valid, started, not ended) - same logic as findIndexOfCurrentRace
+    const activeRaceIndex = races.findIndex((race) => {
+        if (!race.valid) {
+            return false;
+        }
+        if (!race.start || race.start.startsWith('0')) {
+            return false;
+        }
+        if (!race.end || race.end.startsWith('0')) {
+            return true; // Started but not ended = active
+        }
+        return false;
+    });
+
+    if (activeRaceIndex !== -1) {
+        return races[activeRaceIndex];
+    }
+
+    // Step 2: Find last completed race and return next one - same logic as findIndexOfCurrentRace
+    const lastCompletedIndex = races.findLastIndex((race) => {
+        if (!race.valid) {
+            return false;
+        }
+
+        if (
+            race.start && !race.start.startsWith('0') && 
+            race.end && !race.end.startsWith('0')
+        ) {
+            return true; // Both started and ended = completed
+        }
+        return false;
+    });
+
+    if (lastCompletedIndex !== -1) {
+        const nextIndex = Math.min(lastCompletedIndex + 1, races.length - 1);
+        return races[nextIndex];
+    }
+
+    // Step 3: Fallback to first race if no completed races - same logic as findIndexOfCurrentRace
+    return races[0] || null;
+});
+
+/**
+ * Helper to find current race index - uses same logic as findIndexOfCurrentRace
+ */
+export const currentRaceIndexAtom = atom((get): number => {
+    const races = get(orderedRacesAtom);
+    return findCurrentRaceIndex(races);
+});
+
+/**
+ * Last completed race - computed at atom level to avoid hook violations
+ */
+export const lastCompletedRaceAtom = atom((get): RaceData | null => {
+    const races = get(orderedRacesAtom);
+    
+    if (!races || races.length === 0) {
+        return null;
+    }
+
+    // Find last completed race using same logic as findIndexOfCurrentRace
+    const lastCompletedIndex = races.findLastIndex((race) => {
+        if (!race.valid) {
+            return false;
+        }
+
+        if (
+            race.start && !race.start.startsWith('0') && 
+            race.end && !race.end.startsWith('0')
+        ) {
+            return true; // Both started and ended = completed
+        }
+        return false;
+    });
+
+    return lastCompletedIndex !== -1 ? races[lastCompletedIndex] : null;
+});

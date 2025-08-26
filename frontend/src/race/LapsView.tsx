@@ -3,10 +3,10 @@ import {
     channelsDataAtom,
     overallBestTimesAtom,
     pilotsAtom,
-    raceFamilyAtom,
-    RaceWithProcessedLaps,
     roundsDataAtom,
 } from '../state/index.ts';
+import { raceDataAtom } from './race-atoms.ts';
+import type { RaceData } from './race-types.ts';
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
@@ -26,17 +26,19 @@ interface LapsViewProps {
 
 export function LapsView({ raceId }: LapsViewProps) {
     const roundData = useAtomValue(roundsDataAtom);
-    const race = useAtomValue(raceFamilyAtom(raceId));
+    const race = useAtomValue(raceDataAtom(raceId));
     const pilots = useAtomValue(pilotsAtom);
 
-    const round = roundData.find((r) => r.id === race.Round);
+    if (!race) return null;
+
+    const round = roundData.find((r) => r.id === race.roundId);
 
     const getBracketData = (): Bracket | null => {
         const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
         const racePilotNames = new Set(
-            race.PilotChannels
-                .map((pc) => pilots.find((p) => p.id === pc.Pilot)?.name ?? '')
+            race.pilotChannels
+                .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
                 .filter((name) => name !== '')
                 .map(normalizeString),
         );
@@ -50,7 +52,7 @@ export function LapsView({ raceId }: LapsViewProps) {
         <div className='laps-view'>
             <div className='race-info'>
                 <div className='race-number'>
-                    {round?.roundNumber}-{race.RaceNumber}
+                    {round?.roundNumber}-{race.raceNumber}
                     {matchingBracket && (
                         <span style={{ marginLeft: '8px', color: '#888' }}>
                             ({matchingBracket.name})
@@ -64,10 +66,10 @@ export function LapsView({ raceId }: LapsViewProps) {
 }
 
 function LapsTable(
-    { race, matchingBracket }: { race: RaceWithProcessedLaps; matchingBracket: Bracket | null },
+    { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
 ) {
-    const pilotsWithLaps = race.PilotChannels.map((pilotChannel) => {
-        const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.Pilot).length;
+    const pilotsWithLaps = race.pilotChannels.map((pilotChannel) => {
+        const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
         return { pilotChannel, completedLaps };
     }).sort((a, b) => b.completedLaps - a.completedLaps);
 
@@ -79,7 +81,7 @@ function LapsTable(
             <tbody>
                 {pilotsWithLaps.map((pilotData, index) => (
                     <LapsTableRow
-                        key={pilotData.pilotChannel.ID}
+                        key={pilotData.pilotChannel.id}
                         pilotChannel={pilotData.pilotChannel}
                         position={index + 1}
                         maxLaps={maxLaps}
@@ -129,20 +131,20 @@ function LapsTableHeader(
 }
 
 function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }: {
-    pilotChannel: { ID: string; Pilot: string; Channel: string };
+    pilotChannel: { id: string; pilotId: string; channelId: string };
     position: number;
     maxLaps: number;
-    race: RaceWithProcessedLaps;
+    race: RaceData;
     matchingBracket: Bracket | null;
 }) {
     const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
     const overallBestTimes = useAtomValue(overallBestTimesAtom);
 
-    const pilot = pilots.find((p) => p.id === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.id === pilotChannel.Channel)!;
+    const pilot = pilots.find((p) => p.id === pilotChannel.pilotId)!;
+    const channel = channels.find((c) => c.id === pilotChannel.channelId)!;
 
-    const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.Pilot);
+    const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
 
     const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
 
@@ -184,7 +186,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
             <div className='flex-row'>
                 {channel.shortBand}
                 {channel.number}
-                <ChannelSquare channelID={pilotChannel.Channel} />
+                <ChannelSquare channelID={pilotChannel.channelId} />
             </div>
         </td>,
     ];
@@ -222,7 +224,7 @@ function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }
             const className = getLapClassName(
                 lapData,
                 overallBestTimes.overallFastestLap,
-                overallBestTimes.pilotBestLaps.get(pilotChannel.Pilot),
+                overallBestTimes.pilotBestLaps.get(pilotChannel.pilotId),
                 overallFastestLap,
                 fastestLap,
             );
