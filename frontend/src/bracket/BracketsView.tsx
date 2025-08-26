@@ -21,9 +21,9 @@ export function BracketsView() {
 
     // Get the set of normalized pilot names from the current race
     const currentRacePilotNames = new Set(
-        currentRace.PilotChannels
-            .map((pc) => pilots.find((p) => p.id === pc.Pilot)?.name ?? '')
-            .filter((name) => name !== '')
+        currentRace.pilotChannels
+            .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
+            .filter((name: string) => name !== '')
             .map(normalizeString),
     );
 
@@ -34,7 +34,7 @@ export function BracketsView() {
         );
 
         return bracketPilotNames.size === currentRacePilotNames.size &&
-            Array.from(currentRacePilotNames).every((name) => bracketPilotNames.has(name));
+            Array.from(currentRacePilotNames).every((name: string) => bracketPilotNames.has(name));
     });
 
     if (!matchingBracket) return null;

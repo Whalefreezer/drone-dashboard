@@ -14,8 +14,8 @@ function RaceTime() {
 
     useEffect(() => {
         // Only start countdown if race has started
-        if (currentRace.Start) {
-            const currentRaceStart = new Date(currentRace.Start).valueOf() / 1000;
+        if (currentRace?.start) {
+            const currentRaceStart = new Date(currentRace.start).valueOf() / 1000;
             const currentRaceEnd = currentRaceStart + raceLength;
 
             const interval = setInterval(() => {
@@ -27,7 +27,7 @@ function RaceTime() {
         } else {
             setTimeRemaining(raceLength);
         }
-    }, [currentRace.Start, raceLength]);
+    }, [currentRace?.start, raceLength]);
 
     return <div className='race-time'>{timeRemaining.toFixed(1)}</div>;
 }

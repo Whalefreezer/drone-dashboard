@@ -7,7 +7,8 @@ import {
     useLeaderboardState,
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
-import { RaceWithProcessedLaps, consecutiveLapsAtom } from '../state/atoms.ts';
+import { consecutiveLapsAtom } from '../state/atoms.ts';
+import type { RaceData } from '../race/race-types.ts';
 import type { PBChannelRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import { useAtomValue } from 'jotai';
 
@@ -57,7 +58,7 @@ interface LeaderboardTableProps {
     positionChanges: Map<string, number>;
     roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
-    races: RaceWithProcessedLaps[];
+    races: RaceData[];
     consecutiveLaps: number;
 }
 
@@ -129,7 +130,7 @@ interface LeaderboardRowProps {
     positionChanges: Map<string, number>;
     roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
-    races: RaceWithProcessedLaps[];
+    races: RaceData[];
     consecutiveLaps: number;
 }
 
@@ -244,7 +245,7 @@ interface TimeDisplayCellProps {
     previousTime: { time: number; roundId: string; raceNumber: number } | null;
     roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
-    races: RaceWithProcessedLaps[]; // Need races to check if time is recent
+    races: RaceData[]; // Need races to check if time is recent
 }
 
 function TimeDisplayCell(
@@ -256,7 +257,7 @@ function TimeDisplayCell(
 
     // Logic from isRecentTime callback
     const raceIndex = races.findIndex((race) =>
-        race.Round === currentTime.roundId && race.RaceNumber === currentTime.raceNumber
+        race.roundId === currentTime.roundId && race.raceNumber === currentTime.raceNumber
     );
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
 
