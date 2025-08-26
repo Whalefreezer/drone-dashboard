@@ -1,6 +1,6 @@
 import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
 import { loadable } from 'jotai/utils';
-import { Race, Round } from '../types/index.ts';
+import type { PBRoundRecord } from '../api/pbTypes.ts';
 import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
 import { findIndexOfCurrentRace } from '../common/index.ts';
@@ -17,7 +17,53 @@ export interface ProcessedLap {
     isHoleshot: boolean;
 }
 
-export interface RaceWithProcessedLaps extends Race {
+export interface ComputedRace {
+    ID: string;
+    Laps: {
+        ID: string;
+        Detection: string;
+        LengthSeconds: number;
+        LapNumber: number;
+        StartTime: string;
+        EndTime: string;
+    }[];
+    Detections: {
+        ID: string;
+        TimingSystemIndex: number;
+        Channel: string;
+        Time: string;
+        Peak: number;
+        TimingSystemType: string;
+        Pilot: string;
+        LapNumber: number;
+        Valid: boolean;
+        ValidityType: string;
+        IsLapEnd: boolean;
+        RaceSector: number;
+        IsHoleshot: boolean;
+    }[];
+    GamePoints: {
+        ID: string;
+        Channel: string;
+        Pilot: string;
+        Valid: boolean;
+        Time: string;
+    }[];
+    Start: string;
+    End: string;
+    TotalPausedTime: string;
+    PilotChannels: { ID: string; Pilot: string; Channel: string }[];
+    RaceNumber: number;
+    Round: string; // round sourceId
+    TargetLaps: number;
+    PrimaryTimingSystemLocation: string;
+    Valid: boolean;
+    AutoAssignNumbers?: boolean;
+    Event: string; // event sourceId
+    Bracket?: string;
+}
+
+export interface RaceWithProcessedLaps extends ComputedRace {
     processedLaps: ProcessedLap[];
 }
 
@@ -87,7 +133,7 @@ export function isRaceActive(race: RaceWithProcessedLaps | undefined): boolean {
 /**
  * Calculates processed laps from a race, filtering out invalid detections and sorting by lap number
  */
-export function calculateProcessedLaps(race: Race): ProcessedLap[] {
+export function calculateProcessedLaps(race: ComputedRace): ProcessedLap[] {
     return race.Laps
         .map((lap) => {
             const detection = race.Detections.find((d) => lap.Detection === d.ID);
@@ -111,11 +157,11 @@ export function calculateProcessedLaps(race: Race): ProcessedLap[] {
 /**
  * Orders races by round order and race number
  */
-export function orderRaces(races: Race[], rounds: Round[]) {
+export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]) {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.ID === a.Round);
-        const bRound = rounds.find((r) => r.ID === b.Round);
-        const orderDiff = (aRound?.Order ?? 0) - (bRound?.Order ?? 0);
+        const aRound = rounds.find((r) => r.sourceId === a.Round);
+        const bRound = rounds.find((r) => r.sourceId === b.Round);
+        const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
         return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
     });

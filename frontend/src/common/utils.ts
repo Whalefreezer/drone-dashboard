@@ -1,4 +1,5 @@
-import { Channel, Pilot, Race, Round } from '../types/index.ts';
+import type { PBChannelRecord, PBPilotRecord, PBRoundRecord } from '../api/pbTypes.ts';
+import type { RaceWithProcessedLaps } from '../state/atoms.ts';
 import { ProcessedLap, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';
@@ -54,11 +55,11 @@ export function secondsFromString(time: string): number {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-export function orderRaces(races: Race[], rounds: Round[]): Race[] {
+export function orderRaces(races: RaceWithProcessedLaps[], rounds: PBRoundRecord[]): RaceWithProcessedLaps[] {
     return races.sort((a, b) => {
-        const aRound = rounds.find((r) => r.ID === a.Round);
-        const bRound = rounds.find((r) => r.ID === b.Round);
-        const orderDiff = (aRound?.Order ?? 0) - (bRound?.Order ?? 0);
+        const aRound = rounds.find((r) => r.sourceId === a.Round);
+        const bRound = rounds.find((r) => r.sourceId === b.Round);
+        const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
         if (orderDiff !== 0) return orderDiff;
         return (a.RaceNumber ?? 0) - (b.RaceNumber ?? 0);
     });
@@ -112,7 +113,7 @@ export function calculateRacesUntilNext(
     return -1; // No upcoming races found
 }
 
-export function findIndexOfLastRace(sortedRaces: Race[]) {
+export function findIndexOfLastRace(sortedRaces: RaceWithProcessedLaps[]) {
     const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
     if (currentRaceIndex === -1) {
         return -1;
@@ -139,10 +140,10 @@ export function findLastIndex<T>(
 }
 
 interface PilotEntry {
-    pilot: Pilot;
+    pilot: PBPilotRecord;
     bestLap: BestTime | null;
     consecutiveLaps: ConsecutiveTime | null;
-    channel: Channel | null;
+    channel: PBChannelRecord | null;
     racesUntilNext: number;
     totalLaps: number;
     bestHoleshot: BestTime | null;
@@ -172,7 +173,7 @@ export function getEliminationOrderIndex(pilotName: string): number {
 // --- New Helper Functions for Sorting ---
 
 export function isPilotInEliminationOrder(entry: LeaderboardEntry): boolean {
-    return getEliminationOrderIndex(entry.pilot.Name) !== -1;
+    return getEliminationOrderIndex(entry.pilot.name) !== -1;
 }
 
 export function pilotHasLaps(entry: LeaderboardEntry): boolean {
@@ -213,7 +214,7 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
 
 // --- Original Sorting Logic (to be potentially removed later) ---
 
-export function findIndexOfCurrentRace(sortedRaces: Race[]) {
+export function findIndexOfCurrentRace(sortedRaces: RaceWithProcessedLaps[]) {
     if (!sortedRaces || sortedRaces.length === 0) {
         return -1;
     }

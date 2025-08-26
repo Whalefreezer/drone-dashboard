@@ -15,14 +15,15 @@ import { findIndexOfCurrentRace } from '../common/index.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
-import { Channel, Pilot, Round } from '../types/index.ts';
+import type { PBPilotRecord, PBChannelRecord } from '../api/pbTypes.ts';
+import type { PBRoundRecord } from '../api/pbTypes.ts';
 
 // --- Hook 1: Fetching Raw State ---
 interface LeaderboardState {
     races: RaceWithProcessedLaps[];
-    pilots: Pilot[];
-    channels: Channel[];
-    roundDataValue: Round[];
+    pilots: PBPilotRecord[];
+    channels: PBChannelRecord[];
+    roundDataValue: PBRoundRecord[];
     brackets: Bracket[];
 }
 
@@ -104,10 +105,10 @@ export const useLeaderboardAnimation = (
     useEffect(() => {
         const newAnimatingRows = new Set<string>();
         currentLeaderboard.forEach((entry, index) => {
-            const prevPos = positionChanges.get(entry.pilot.ID);
+            const prevPos = positionChanges.get(entry.pilot.sourceId);
             // Animate if previous position exists and was worse (higher number) than current
             if (prevPos && prevPos > index + 1) {
-                newAnimatingRows.add(entry.pilot.ID);
+                newAnimatingRows.add(entry.pilot.sourceId);
             }
         });
         setAnimatingRows(newAnimatingRows);

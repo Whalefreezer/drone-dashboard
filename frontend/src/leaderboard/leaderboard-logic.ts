@@ -8,15 +8,15 @@ import {
     pilotHasConsecutiveLaps,
     pilotHasLaps,
 } from '../common/utils.ts';
-import { Channel, Pilot } from '../types/index.ts';
+import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { findEliminatedPilots, RaceWithProcessedLaps } from '../state/atoms.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
 
 export function calculateLeaderboardData(
     races: RaceWithProcessedLaps[],
-    pilots: Pilot[],
-    channels: Channel[],
+    pilots: PBPilotRecord[],
+    channels: PBChannelRecord[],
     currentRaceIndex: number,
     brackets: Bracket[] = [],
     consecutiveLaps: number,
@@ -40,8 +40,8 @@ export function calculateLeaderboardData(
     if (currentRaceIndex >= 0 && currentRaceIndex < races.length) {
         pilots.forEach((pilot) => {
             racesUntilNextMap.set(
-                pilot.ID,
-                calculateRacesUntilNext(races, currentRaceIndex, pilot.ID),
+                pilot.sourceId,
+                calculateRacesUntilNext(races, currentRaceIndex, pilot.sourceId),
             );
         });
     }
@@ -61,18 +61,16 @@ export function calculateLeaderboardData(
 
     // Create pilot entries only for pilots in races
     const pilotEntries = pilots
-        .filter((pilot) => scheduledPilots.has(pilot.ID))
+        .filter((pilot) => scheduledPilots.has(pilot.sourceId))
         .map((pilot) => {
             // Find if this pilot is eliminated
             const eliminatedInfo = eliminatedPilots.find(
-                (ep) =>
-                    ep.name.toLowerCase().replace(/\s+/g, '') ===
-                        pilot.Name.toLowerCase().replace(/\s+/g, ''),
+                (ep) => ep.name.toLowerCase().replace(/\s+/g, '') === pilot.name.toLowerCase().replace(/\s+/g, ''),
             );
 
             // Get the pilot's channel using the extracted function
             const pilotChannel = getPilotChannelWithPriority(
-                pilot.ID,
+                pilot.sourceId,
                 races,
                 channels,
                 currentRaceIndex,
@@ -80,12 +78,12 @@ export function calculateLeaderboardData(
 
             return {
                 pilot,
-                bestLap: overallFastestLaps.get(pilot.ID) || null,
-                consecutiveLaps: fastestConsecutiveLaps.get(pilot.ID) || null,
-                bestHoleshot: fastestHoleshots.get(pilot.ID) || null,
+                bestLap: overallFastestLaps.get(pilot.sourceId) || null,
+                consecutiveLaps: fastestConsecutiveLaps.get(pilot.sourceId) || null,
+                bestHoleshot: fastestHoleshots.get(pilot.sourceId) || null,
                 channel: pilotChannel,
-                racesUntilNext: racesUntilNextMap.get(pilot.ID) ?? -1,
-                totalLaps: totalLaps.get(pilot.ID) ?? 0,
+                racesUntilNext: racesUntilNextMap.get(pilot.sourceId) ?? -1,
+                totalLaps: totalLaps.get(pilot.sourceId) ?? 0,
                 eliminatedInfo: eliminatedInfo
                     ? {
                         bracket: eliminatedInfo.bracket,
@@ -93,16 +91,16 @@ export function calculateLeaderboardData(
                         points: eliminatedInfo.points,
                     }
                     : null,
-                fastestTotalRaceTime: fastestTotalRaceTimes.get(pilot.ID) || null,
+                fastestTotalRaceTime: fastestTotalRaceTimes.get(pilot.sourceId) || null,
             };
         });
 
     return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
 }
 
-function findChannelById(channels: Channel[], channelId: string | undefined): Channel | null {
+function findChannelById(channels: PBChannelRecord[], channelId: string | undefined): PBChannelRecord | null {
     if (!channelId) return null;
-    return channels.find((c) => c.ID === channelId) || null;
+    return channels.find((c) => c.sourceId === channelId) || null;
 }
 
 function getPilotChannelIdInRace(
@@ -115,9 +113,9 @@ function getPilotChannelIdInRace(
 export function getPilotChannelWithPriority(
     pilotId: string,
     races: RaceWithProcessedLaps[],
-    channels: Channel[],
+    channels: PBChannelRecord[],
     currentRaceIndex: number,
-): Channel | null {
+): PBChannelRecord | null {
     const currentAndFutureRaces = races.slice(currentRaceIndex);
     const pastRacesReversed = races.slice(0, currentRaceIndex).reverse();
 
@@ -147,16 +145,16 @@ export function getPositionChanges(
     // Map previous positions for quick lookup
     previousPositions.forEach((entry, index) => {
         if (entry.consecutiveLaps || entry.bestLap) { // Only consider pilots with times
-            previousPositionMap.set(entry.pilot.ID, index + 1);
+            previousPositionMap.set(entry.pilot.sourceId, index + 1);
         }
     });
 
     currentPositions.forEach((entry, currentIndex) => {
         // Only consider pilots with times in the current leaderboard
         if (entry.consecutiveLaps || entry.bestLap) {
-            const previousIndexPlusOne = previousPositionMap.get(entry.pilot.ID);
+            const previousIndexPlusOne = previousPositionMap.get(entry.pilot.sourceId);
             if (previousIndexPlusOne !== undefined && previousIndexPlusOne !== currentIndex + 1) {
-                changes.set(entry.pilot.ID, previousIndexPlusOne); // Store previous 1-based position
+                changes.set(entry.pilot.sourceId, previousIndexPlusOne); // Store previous 1-based position
             }
         }
     });
@@ -256,7 +254,7 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
                 condition: isPilotInEliminationOrder,
                 criteria: [
                     {
-                        getValue: (entry) => getEliminationOrderIndex(entry.pilot.Name),
+                        getValue: (entry) => getEliminationOrderIndex(entry.pilot.name),
                         direction: SortDirection.Ascending,
                         nullHandling: NullHandling.Last,
                     },
@@ -304,7 +302,7 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
                         nullHandling: NullHandling.Last,
                     },
                     {
-                        getValue: (entry) => entry.channel?.Number ?? null,
+                        getValue: (entry) => entry.channel?.number ?? null,
                         direction: SortDirection.Ascending,
                         nullHandling: NullHandling.Last,
                     },
@@ -360,7 +358,7 @@ export const defaultLeaderboardSortConfig: SortGroup[] = [
                 nullHandling: NullHandling.Last,
             },
             {
-                getValue: (entry) => entry.channel?.Number ?? null,
+                getValue: (entry) => entry.channel?.number ?? null,
                 direction: SortDirection.Ascending,
                 nullHandling: NullHandling.Last,
             },

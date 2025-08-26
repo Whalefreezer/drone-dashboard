@@ -1,10 +1,10 @@
-import { Channel, Pilot } from '../types/index.ts';
+import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { TotalRaceTime } from '../race/race-utils.ts';
 
 // Types specific to the Leaderboard feature
 
 export interface LeaderboardEntry {
-    pilot: Pilot;
+    pilot: PBPilotRecord;
     bestLap: {
         time: number;
         roundId: string;
@@ -21,7 +21,7 @@ export interface LeaderboardEntry {
         raceNumber: number;
     } | null;
     fastestTotalRaceTime: TotalRaceTime | null;
-    channel: Channel | null;
+    channel: PBChannelRecord | null;
     racesUntilNext: number;
     totalLaps: number;
     eliminatedInfo: {

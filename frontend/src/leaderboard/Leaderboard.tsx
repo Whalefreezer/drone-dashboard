@@ -8,7 +8,8 @@ import {
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { RaceWithProcessedLaps, consecutiveLapsAtom } from '../state/atoms.ts';
-import { Channel, Round } from '../types/index.ts';
+import type { PBRoundRecord } from '../api/pbTypes.ts';
+import type { PBChannelRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import { useAtomValue } from 'jotai';
 
 export function Leaderboard() {
@@ -55,7 +56,7 @@ interface LeaderboardTableProps {
     eliminatedPilots: { name: string }[];
     animatingRows: Set<string>;
     positionChanges: Map<string, number>;
-    roundDataValue: Round[];
+    roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
     races: RaceWithProcessedLaps[];
     consecutiveLaps: number;
@@ -91,23 +92,21 @@ function LeaderboardTable(
             </thead>
             <tbody>
                 {currentLeaderboard.map((entry, index) => {
-                    const previousEntry = previousLeaderboard.find(
-                        (prev) => prev.pilot.ID === entry.pilot.ID,
-                    );
+                    const previousEntry = previousLeaderboard.find((prev) => prev.pilot.sourceId === entry.pilot.sourceId);
                     const isEliminated = eliminatedPilots.some(
                         (pilot) =>
                             pilot.name.toLowerCase().replace(/\s+/g, '') ===
-                                entry.pilot.Name.toLowerCase().replace(/\s+/g, ''),
+                                entry.pilot.name.toLowerCase().replace(/\s+/g, ''),
                     );
                     const position = index + 1;
 
                     return (
                         <LeaderboardRow
-                            key={entry.pilot.ID}
+                            key={entry.pilot.sourceId}
                             entry={entry}
                             previousEntry={previousEntry}
                             isEliminated={isEliminated}
-                            isAnimating={animatingRows.has(entry.pilot.ID)}
+                            isAnimating={animatingRows.has(entry.pilot.sourceId)}
                             position={position}
                             positionChanges={positionChanges}
                             roundDataValue={roundDataValue}
@@ -129,7 +128,7 @@ interface LeaderboardRowProps {
     isAnimating: boolean;
     position: number;
     positionChanges: Map<string, number>;
-    roundDataValue: Round[];
+    roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
     races: RaceWithProcessedLaps[];
     consecutiveLaps: number;
@@ -152,11 +151,11 @@ function LeaderboardRow(
     return (
         <tr className={isAnimating ? 'position-improved' : ''}>
             <PositionCell
-                pilotId={entry.pilot.ID}
+                pilotId={entry.pilot.sourceId}
                 currentPosition={position}
                 positionChanges={positionChanges}
             />
-            <td>{entry.pilot.Name}</td>
+            <td>{entry.pilot.name}</td>
             <ChannelDisplayCell channel={entry.channel || null} />
             <td>{entry.totalLaps}</td>
             <TimeDisplayCell
@@ -222,7 +221,7 @@ function PositionCell(
 }
 
 interface ChannelDisplayCellProps {
-    channel: Channel | null;
+    channel: PBChannelRecord | null;
 }
 
 function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
@@ -232,9 +231,9 @@ function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
     return (
         <td>
             <div className='channel-display'>
-                {channel.ShortBand}
-                {channel.Number}
-                <ChannelSquare channelID={channel.ID} />
+                {channel.shortBand}
+                {channel.number}
+                <ChannelSquare channelID={channel.sourceId} />
             </div>
         </td>
     );
@@ -243,7 +242,7 @@ function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
 interface TimeDisplayCellProps {
     currentTime: { time: number; roundId: string; raceNumber: number } | null;
     previousTime: { time: number; roundId: string; raceNumber: number } | null;
-    roundDataValue: Round[];
+    roundDataValue: PBRoundRecord[];
     currentRaceIndex: number;
     races: RaceWithProcessedLaps[]; // Need races to check if time is recent
 }
@@ -262,8 +261,8 @@ function TimeDisplayCell(
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
 
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
-    const roundInfo = roundDataValue.find((r) => r.ID === currentTime.roundId);
-    const roundDisplay = roundInfo ? roundInfo.RoundNumber : '?';
+    const roundInfo = roundDataValue.find((r) => r.sourceId === currentTime.roundId);
+    const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
 
     return (
         <td>

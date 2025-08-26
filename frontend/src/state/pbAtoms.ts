@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
-import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
+import { RaceEvent } from '../types/index.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
@@ -8,6 +8,7 @@ import { findIndexOfCurrentRace } from '../common/index.ts';
 import { 
     ProcessedLap, 
     RaceWithProcessedLaps, 
+    ComputedRace,
     OverallBestTimes,
     useCachedAtom,
     updateAtom,
@@ -81,8 +82,8 @@ export const eventDataAtom = atom((get): RaceEvent[] => {
     return [e];
 });
 
-export const consecutiveLapsAtom = atom(async (get) => {
-    const { data: eventData } = await get(eventDataAtom);
+export const consecutiveLapsAtom = atom((get) => {
+    const eventData = get(eventDataAtom);
     return eventData[0]?.PBLaps ?? 3; // Default to 3 if not available
 });
 
@@ -97,54 +98,22 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
     // refetchInterval: 10_000,
 }));
 
-// Subscribe to pilots and map to domain Pilot[]
-const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = atom((get): Pilot[] => {
-    const items = get(pilotsRecordsAtom);
-    return items.map((p) => ({
-        ID: p.sourceId,
-        Name: String(p.name ?? ''),
-        FirstName: p.firstName,
-        LastName: p.lastName,
-        DiscordID: p.discordId,
-        PracticePilot: Boolean(p.practicePilot),
-        PhotoPath: undefined,
-    }));
-});
+// Pilots as PB records
+export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
+export const pilotsAtom = atom((get) => get(pilotsRecordsAtom));
 
 // Re-export from common
 export { useCachedAtom };
 
-// Subscribe to channels and map to domain Channel[]
-const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
-export const channelsDataAtom = atom((get): Channel[] => {
-    const items = get(channelRecordsAtom);
-    return items.map((c) => ({
-        ID: c.sourceId,
-        Number: Number(c.number ?? 0),
-        Band: String(c.band ?? ''),
-        ShortBand: String(c.shortBand ?? ''),
-        ChannelPrefix: String(c.channelPrefix ?? ''),
-        Frequency: Number(c.frequency ?? 0),
-        DisplayName: String(c.displayName ?? ''),
-    }));
-});
+// Channels as PB records
+export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
+export const channelsDataAtom = atom((get) => get(channelRecordsAtom));
 
-// Subscribe to rounds and map to domain Round[] (filtered by current event)
-const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
-export const roundsDataAtom = atom((get): Round[] => {
+export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
+export const roundsDataAtom = atom((get): PBRoundRecord[] => {
     const ev = get(currentEventAtom);
     if (!ev) return [];
-    const rounds = get(roundRecordsAtom).filter((r) => r.event === ev.id);
-    return rounds.map((r) => ({
-        ID: r.sourceId,
-        Name: String(r.name ?? ''),
-        RoundNumber: Number(r.roundNumber ?? 0),
-        EventType: String(r.eventType ?? ''),
-        RoundType: String(r.roundType ?? ''),
-        Valid: Boolean(r.valid),
-        Order: Number(r.order ?? 0),
-    }));
+    return get(roundRecordsAtom).filter((r) => r.event === ev.id);
 });
 
 // Live records for race and nested collections
@@ -227,7 +196,7 @@ export const raceFamilyAtom = atomFamily((raceSourceId: string) =>
                 Time: String(g.time ?? ''),
             }));
 
-        const race: Race = {
+        const race: ComputedRace = {
             ID: raceRec?.sourceId ?? raceSourceId,
             Laps: laps,
             Detections: detections,

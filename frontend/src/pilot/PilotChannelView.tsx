@@ -7,8 +7,8 @@ export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
     const channels = useAtomValue(channelsDataAtom);
     const eventData = useAtomValue(eventDataAtom);
 
-    const pilot = pilots.find((p) => p.ID === pilotChannel.Pilot)!;
-    const channel = channels.find((c) => c.ID === pilotChannel.Channel)!;
+    const pilot = pilots.find((p) => p.sourceId === pilotChannel.Pilot)!;
+    const channel = channels.find((c) => c.sourceId === pilotChannel.Channel)!;
 
     const colorIndex = eventData?.[0]?.Channels?.indexOf(pilotChannel.Channel);
     const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
@@ -18,8 +18,8 @@ export function PilotChannelView({ pilotChannel }: PilotChannelViewProps) {
     return (
         <div className='pilot-channel'>
             <div className='pilot-info'>
-                {pilot.Name} {channel.ShortBand}
-                {channel.Number}
+                {pilot.name} {channel.shortBand}
+                {channel.number}
             </div>
             <div
                 className='color-indicator'
