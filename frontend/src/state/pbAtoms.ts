@@ -3,7 +3,7 @@ import { atomFamily } from 'jotai/utils';
 import { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
-import { pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent } from '../api/pb.ts';
+import { pbFetchChannels, pbFetchEvent, pbFetchPilots, pbFetchRace, pbFetchRounds, getEnvEventIdFallback, pbGetCurrentEvent, pbSubscribeRecord, pbSubscribeRecords, pbSubscribeCollection, PBRaceEvent } from '../api/pb.ts';
 import { findIndexOfCurrentRace } from '../common/index.ts';
 import { 
     ProcessedLap, 
@@ -19,22 +19,22 @@ import {
     calculateOverallBestTimes
 } from './commonAtoms.ts';
 
-export const eventIdAtom = atomWithSuspenseQuery(() => ({
-    queryKey: ['eventId'],
-    queryFn: async () => {
-        // Allow explicit override via env when using PB
-        const envId = getEnvEventIdFallback();
-        if (envId) return envId;
-        const event = await pbGetCurrentEvent();
-        return event?.ID ?? null;
-    },
-}));
+
+
+const eventsAtom = pbSubscribeCollection<PBRaceEvent>('events');
+
+const currentEventAtom = atom((get) => {
+    const events = get(eventsAtom);
+    const currentEvent = events.find((event) => event.isCurrent);
+
+    return currentEvent;
+});
 
 export const eventDataAtom = atomWithSuspenseQuery<RaceEvent[]>((get) => ({
     queryKey: ['eventData'],
     queryFn: async () => {
-        const { data: eventId } = await get(eventIdAtom);
-        return await pbFetchEvent(eventId!);
+        const currentEvent = get(currentEventAtom);
+        return await pbFetchEvent(currentEvent!.sourceId);
     },
     refetchInterval: 10_000,
 }));
@@ -156,3 +156,67 @@ export const overallBestTimesAtom = atom(async (get) => {
     const races = await get(racesAtom);
     return calculateOverallBestTimes(races);
 });
+
+// Example usage of the new PocketBase subscription atoms with Suspense support
+// These atoms automatically handle initial loading and real-time updates
+
+// Subscribe to all events with real-time updates
+export const eventsSubscriptionAtom = pbSubscribeRecords('events', {
+    filter: 'active = true',
+    sort: 'name'
+});
+
+// Subscribe to a specific current event
+export const currentEventSubscriptionAtom = atom(async (get) => {
+    const { data: eventId } = await get(eventIdAtom);
+    if (!eventId) return null;
+    
+    // Create a dynamic subscription atom for the current event
+    return pbSubscribeRecord('events', eventId, { expand: 'rounds,races' });
+});
+
+// Subscribe to pilots with real-time updates
+export const pilotsSubscriptionAtom = pbSubscribeRecords('pilots', {
+    sort: 'name'
+});
+
+// Example of how to use these in a React component:
+/*
+import { useAtomValue } from 'jotai';
+import { Suspense } from 'react';
+
+function EventsList() {
+    const events = useAtomValue(eventsSubscriptionAtom);
+    return (
+        <ul>
+            {events.map(event => (
+                <li key={event.id}>{event.name}</li>
+            ))}
+        </ul>
+    );
+}
+
+function PilotsList() {
+    const pilots = useAtomValue(pilotsSubscriptionAtom);
+    return (
+        <ul>
+            {pilots.map(pilot => (
+                <li key={pilot.id}>{pilot.name}</li>
+            ))}
+        </ul>
+    );
+}
+
+function App() {
+    return (
+        <div>
+            <Suspense fallback={<div>Loading events...</div>}>
+                <EventsList />
+            </Suspense>
+            <Suspense fallback={<div>Loading pilots...</div>}>
+                <PilotsList />
+            </Suspense>
+        </div>
+    );
+}
+*/

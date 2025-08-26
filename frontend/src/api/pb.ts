@@ -1,6 +1,7 @@
 import PocketBase from 'npm:pocketbase';
 import type { Channel, Pilot, Race, RaceEvent, Round } from '../types/index.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../types/common.ts';
+import { Atom, atom, WritableAtom } from 'jotai';
 
 export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
 export const usePBRace: boolean =
@@ -9,10 +10,74 @@ export const usePBRace: boolean =
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 
-type PBRecord = { id: string; sourceId: string } & Record<string, any>;
+type PBRecord = { id: string; sourceId: string } & Record<string, unknown>;
 
 const pb = new PocketBase('/api');
-pb.autoCancellation(false); // TODO: Remove this when we can
+pb.autoCancellation(false); // TODO(@user): Remove this when we can
+
+export function pbSubscribeByID<T extends PBRecord>(collection: string, id: string): Atom<Promise<T>> {
+    const overrideAtom = atom<T | null>(null);
+    const anAtom = atom<Promise<T>, [T], void>(
+        async (get) => {
+            return get(overrideAtom) ?? await pb.collection<T>(collection).getOne(id);
+        },
+        (get, set, update) => {
+            set(overrideAtom, update);
+        },
+    );
+
+    anAtom.onMount = (set) => {
+        console.log(`Subscribing to ${collection}:${id}`);
+
+        const unsubscribePromise = pb.collection<T>(collection).subscribe(id, (e) => {
+            console.log(`Subscription event for ${collection}:${id}`, e.action);
+            if (e.action === 'create' || e.action === 'update') {
+                set(e.record as T);
+            } else if (e.action === 'delete') {
+                // setAtom(null);
+            }
+        });
+
+        return () => {
+            unsubscribePromise.then((unsub) => unsub());
+        };
+    };
+
+    return anAtom;
+}
+
+export function pbSubscribeCollection<T extends PBRecord>(collection: string): Atom<T[]> {
+    const anAtom = atom<T[]>([]);
+
+    anAtom.onMount = (set) => {
+        console.log(`Subscribing to ${collection}`);
+
+        const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (e) => {
+            console.log(`Subscription event for ${collection}`, e.action);
+            set((prev) => {
+                const newItems = [...prev];
+                if (e.action === 'create' || e.action === 'update') {
+                    const existingIndex = prev.findIndex((r) => r.id === e.record.id);
+                    if (existingIndex !== -1) {
+                        newItems[existingIndex] = e.record;
+                    } else {
+                        newItems.push(e.record);
+                    }
+                    return newItems;
+                } else if (e.action === 'delete') {
+                    return newItems.filter((r) => r.id !== e.record.id);
+                }
+                return newItems;
+            });
+        });
+
+        return () => {
+            unsubscribePromise.then((unsub) => unsub());
+        };
+    };
+
+    return anAtom;
+}
 
 async function pbList(
     collection: string,
@@ -66,7 +131,7 @@ export async function pbFetchEvent(eventId: string): Promise<RaceEvent[]> {
     // Minimal Event shape to satisfy current UI usage
     const e: RaceEvent = {
         ID: event.sourceId,
-        EventType: event.eventType ?? '',
+        EventType: String(event.eventType ?? ''),
         Name: String(event.name ?? ''),
         Start: String(event.start ?? ''),
         End: String(event.end ?? ''),
@@ -92,13 +157,39 @@ export async function pbFetchEvent(eventId: string): Promise<RaceEvent[]> {
     return [e];
 }
 
+export interface PBRaceEvent extends PBRecord {
+    isCurrent: boolean;
+    sourceId: string;
+    eventType: string;
+    name: string;
+    start: string;
+    end: string;
+    laps: number;
+    pbLaps: number;
+    packLimit: number;
+    raceLength: string;
+    minStartDelay: string;
+    maxStartDelay: string;
+    primaryTimingSystemLocation: string;
+    raceStartIgnoreDetections: string;
+    minLapTime: string;
+    lastOpened: string;
+    pilotChannels: string[];
+    removedPilots: string[];
+    rounds: string[];
+    club: string;
+    channels: string[];
+    enabled: boolean;
+    visibleOnline: boolean;
+}
+
 export async function pbFetchRounds(eventId: string): Promise<Round[]> {
     const eventPBId = await pbResolveEventPBId(eventId);
     if (!eventPBId) return [];
     const rounds = await pbList('rounds', { filter: `event.id = "${eventPBId}"`, sort: 'order' });
     return rounds.map((r) => ({
         ID: r.sourceId,
-        Name: r.name ?? '',
+        Name: String(r.name ?? ''),
         RoundNumber: Number(r.roundNumber ?? 0),
         EventType: String(r.eventType ?? ''),
         RoundType: String(r.roundType ?? ''),
@@ -200,7 +291,7 @@ export async function pbFetchRace(eventId: string, raceId: string): Promise<Race
         Valid: Boolean(raceRec.valid),
         AutoAssignNumbers: undefined,
         Event: eventGuid,
-        Bracket: raceRec.bracket,
+        Bracket: String(raceRec.bracket ?? ''),
     };
 
     return [r];
@@ -232,3 +323,10 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 export function getEnvEventIdFallback(): string | null {
     return ENV_EVENT_ID || null;
 }
+
+// Export the new subscription functions with Suspense support
+export {
+    pbSubscribeRecord,
+    pbSubscribeRecords,
+    pbSubscribeWithSuspense,
+} from './pbSubscription.ts';
