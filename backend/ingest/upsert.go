@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"fmt"
+
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -32,6 +34,18 @@ func (u *Upserter) findExistingId(collection string, sourceId string) (string, e
 		return rec2.Id, nil
 	}
 	return "", nil
+}
+
+// GetExistingId returns the PB id for a given (source, sourceId) if it exists, or error if not found
+func (u *Upserter) GetExistingId(collection string, sourceId string) (string, error) {
+	id, err := u.findExistingId(collection, sourceId)
+	if err != nil {
+		return "", err
+	}
+	if id == "" {
+		return "", fmt.Errorf("entity not found: collection=%s, sourceId=%s", collection, sourceId)
+	}
+	return id, nil
 }
 
 // Upsert creates or updates a record by (source, sourceId)

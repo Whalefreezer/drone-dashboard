@@ -19,14 +19,24 @@ function App() {
                 <TimeDisplay />
             </div>
             <div className='app-main-content'>
-                <RacesContainer />
-                <Leaderboard />
-                <EliminatedPilotsView />
+                <GenericSuspense>
+                    <RacesContainer />
+                </GenericSuspense>
+                <GenericSuspense>
+                    <Leaderboard />
+                </GenericSuspense>
+                <GenericSuspense>
+                    <EliminatedPilotsView />
+                </GenericSuspense>
 
                 {/* <Legend /> */}
             </div>
         </>
     );
+}
+
+function GenericSuspense({ children }: { children: React.ReactNode }) {
+    return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
 }
 
 export default App;

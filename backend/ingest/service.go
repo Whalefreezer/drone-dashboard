@@ -142,20 +142,8 @@ func (s *Service) Snapshot(eventId string) error {
 // IngestRace fetches and upserts a race and its nested entities
 func (s *Service) IngestRace(eventId, raceId string) error {
 	slog.Info("ingest.race.start", "eventId", eventId, "raceId", raceId)
-	// Ensure event exists (and get PB id)
-	events, err := s.Client.FetchEvent(eventId)
-	if err != nil {
-		return err
-	}
-	if len(events) == 0 {
-		return fmt.Errorf("event not found: %s", eventId)
-	}
-
-	e := events[0]
-	eventPBID, err := s.Upserter.Upsert("events", string(e.ID), map[string]any{
-		"name":      e.Name,
-		"isCurrent": false,
-	})
+	// Get existing event PB id (event should already exist from snapshot)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
 	if err != nil {
 		return err
 	}
@@ -170,10 +158,8 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 	}
 	r := rf[0]
 
-	// Ensure round exists and resolve PB id (rounds should be ingested by snapshot)
-	roundPBID, err := s.Upserter.Upsert("rounds", string(r.Round), map[string]any{
-		"event": eventPBID,
-	})
+	// Get existing round PB id (round should already exist from snapshot)
+	roundPBID, err := s.Upserter.GetExistingId("rounds", string(r.Round))
 	if err != nil {
 		return err
 	}
@@ -197,16 +183,12 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 
 	// PilotChannels for this race (scoped by event)
 	for _, pc := range r.PilotChannels {
-		// resolve pilot, channel
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(pc.Pilot), map[string]any{
-			"event": eventPBID,
-		})
+		// Get existing pilot and channel PB ids (should already exist from snapshot)
+		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(pc.Pilot))
 		if err != nil {
 			return err
 		}
-		channelPBID, err := s.Upserter.Upsert("channels", string(pc.Channel), map[string]any{
-			"event": eventPBID,
-		})
+		channelPBID, err := s.Upserter.GetExistingId("channels", string(pc.Channel))
 		if err != nil {
 			return err
 		}
@@ -222,11 +204,11 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 
 	// Detections
 	for _, d := range r.Detections {
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(d.Pilot), map[string]any{})
+		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(d.Pilot))
 		if err != nil {
 			return err
 		}
-		channelPBID, err := s.Upserter.Upsert("channels", string(d.Channel), map[string]any{})
+		channelPBID, err := s.Upserter.GetExistingId("channels", string(d.Channel))
 		if err != nil {
 			return err
 		}
@@ -266,13 +248,11 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 
 	// GamePoints
 	for _, gp := range r.GamePoints {
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(gp.Pilot), map[string]any{})
+		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(gp.Pilot))
 		if err != nil {
 			return err
 		}
-		channelPBID, err := s.Upserter.Upsert("channels", string(gp.Channel), map[string]any{
-			"event": eventPBID,
-		})
+		channelPBID, err := s.Upserter.GetExistingId("channels", string(gp.Channel))
 		if err != nil {
 			return err
 		}
@@ -295,19 +275,8 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 // IngestResults fetches aggregated results for the event and upserts them
 func (s *Service) IngestResults(eventId string) (int, error) {
 	slog.Info("ingest.results.start", "eventId", eventId)
-	// Ensure event exists (and get PB id)
-	events, err := s.Client.FetchEvent(eventId)
-	if err != nil {
-		return 0, err
-	}
-	if len(events) == 0 {
-		return 0, fmt.Errorf("event not found: %s", eventId)
-	}
-	e := events[0]
-	eventPBID, err := s.Upserter.Upsert("events", string(e.ID), map[string]any{
-		"name":      e.Name,
-		"isCurrent": false,
-	})
+	// Get existing event PB id (event should already exist from snapshot)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
 	if err != nil {
 		return 0, err
 	}
@@ -322,16 +291,12 @@ func (s *Service) IngestResults(eventId string) (int, error) {
 		// Resolve optional race id (may be empty GUID in some contexts)
 		var racePBID string
 		if r.Race != "" {
-			racePBID, err = s.Upserter.Upsert("races", string(r.Race), map[string]any{
-				"event": eventPBID,
-			})
+			racePBID, err = s.Upserter.GetExistingId("races", string(r.Race))
 			if err != nil {
 				return 0, err
 			}
 		}
-		pilotPBID, err := s.Upserter.Upsert("pilots", string(r.Pilot), map[string]any{
-			"event": eventPBID,
-		})
+		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(r.Pilot))
 		if err != nil {
 			return 0, err
 		}
@@ -367,36 +332,24 @@ type FullSummary struct {
 func (s *Service) setEventAsCurrent(eventId string) error {
 	slog.Info("ingest.setEventAsCurrent.start", "eventId", eventId)
 
-	// First, set all events to isCurrent = false
 	collection, err := s.Upserter.App.FindCollectionByNameOrId("events")
 	if err != nil {
 		return fmt.Errorf("find events collection: %w", err)
 	}
 
-	// Get all events and set them to not current
+	// Get all events and set the correct isCurrent value in one loop
 	allEvents, err := s.Upserter.App.FindAllRecords(collection.Name)
 	if err != nil {
 		return fmt.Errorf("find all events: %w", err)
 	}
 
 	for _, event := range allEvents {
-		event.Set("isCurrent", false)
+		// Check if this is the target event by comparing sourceId
+		isCurrent := event.GetString("sourceId") == eventId
+		event.Set("isCurrent", isCurrent)
 		if err := s.Upserter.App.Save(event); err != nil {
-			return fmt.Errorf("save event %s as not current: %w", event.Id, err)
+			return fmt.Errorf("save event %s with isCurrent=%t: %w", event.Id, isCurrent, err)
 		}
-	}
-
-	// Now set the target event as current by its sourceId
-	targetEvent, err := s.Upserter.App.FindFirstRecordByFilter(collection.Name, "sourceId = {:sourceId}", map[string]any{
-		"sourceId": eventId,
-	})
-	if err != nil {
-		return fmt.Errorf("find target event %s: %w", eventId, err)
-	}
-
-	targetEvent.Set("isCurrent", true)
-	if err := s.Upserter.App.Save(targetEvent); err != nil {
-		return fmt.Errorf("save event %s as current: %w", eventId, err)
 	}
 
 	slog.Info("ingest.setEventAsCurrent.done", "eventId", eventId, "totalEvents", len(allEvents))

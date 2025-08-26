@@ -30,6 +30,7 @@
         "axios": "npm:axios@^1.9.0",
         "global-jsdom": "npm:global-jsdom@^26.0.0",
         "jotai": "npm:jotai@^2.12.3",
+        "jotai-derive": "npm:jotai-derive@^0.1.3",
         "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
         "jsdom": "npm:jsdom@^26.1.0",
         "msw": "npm:msw@^2.7.5",
