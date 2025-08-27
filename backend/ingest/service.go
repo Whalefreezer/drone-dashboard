@@ -21,19 +21,20 @@ func NewService(app core.App, baseURL string) (*Service, error) {
 	return &Service{Client: client, Upserter: NewUpserter(app)}, nil
 }
 
-// Snapshot ingests Event, Pilots, Channels, Rounds for an eventId
-func (s *Service) Snapshot(eventId string) error {
-	slog.Debug("ingest.snapshot.start", "eventId", eventId)
+// Snapshot ingests Event, Pilots, Channels, Rounds for an eventSourceId
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) Snapshot(eventSourceId string) error {
+	slog.Debug("ingest.snapshot.start", "eventSourceId", eventSourceId)
 	// Fetch
-	events, err := s.Client.FetchEvent(eventId)
+	events, err := s.Client.FetchEvent(eventSourceId)
 	if err != nil {
 		return err
 	}
 	if len(events) == 0 {
-		return fmt.Errorf("event not found: %s", eventId)
+		return fmt.Errorf("event not found: %s", eventSourceId)
 	}
 
-	pilots, err := s.Client.FetchPilots(eventId)
+	pilots, err := s.Client.FetchPilots(eventSourceId)
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (s *Service) Snapshot(eventId string) error {
 	if err != nil {
 		return err
 	}
-	rounds, err := s.Client.FetchRounds(eventId)
+	rounds, err := s.Client.FetchRounds(eventSourceId)
 	if err != nil {
 		return err
 	}
@@ -135,19 +136,20 @@ func (s *Service) Snapshot(eventId string) error {
 		}
 	}
 
-	slog.Info("ingest.snapshot.done", "eventId", eventId, "pilots", len(pilots), "channels", len(channels), "rounds", len(rounds))
+	slog.Info("ingest.snapshot.done", "eventSourceId", eventSourceId, "pilots", len(pilots), "channels", len(channels), "rounds", len(rounds))
 	return nil
 }
 
-// IngestEventMeta fetches and upserts the core Event record for an eventId
-func (s *Service) IngestEventMeta(eventId string) error {
-	slog.Debug("ingest.event.start", "eventId", eventId)
-	events, err := s.Client.FetchEvent(eventId)
+// IngestEventMeta fetches and upserts the core Event record for an eventSourceId
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) IngestEventMeta(eventSourceId string) error {
+	slog.Debug("ingest.event.start", "eventSourceId", eventSourceId)
+	events, err := s.Client.FetchEvent(eventSourceId)
 	if err != nil {
 		return err
 	}
 	if len(events) == 0 {
-		return fmt.Errorf("event not found: %s", eventId)
+		return fmt.Errorf("event not found: %s", eventSourceId)
 	}
 	e := events[0]
 	return s.IngestEventMetaFromData(e)
@@ -181,14 +183,15 @@ func (s *Service) IngestEventMetaFromData(e RaceEvent) error {
 	return nil
 }
 
-// IngestPilots fetches and upserts pilots for the eventId
-func (s *Service) IngestPilots(eventId string) error {
-	slog.Debug("ingest.pilots.start", "eventId", eventId)
-	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+// IngestPilots fetches and upserts pilots for the eventSourceId
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) IngestPilots(eventSourceId string) error {
+	slog.Debug("ingest.pilots.start", "eventSourceId", eventSourceId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {
 		return err
 	}
-	pilots, err := s.Client.FetchPilots(eventId)
+	pilots, err := s.Client.FetchPilots(eventSourceId)
 	if err != nil {
 		return err
 	}
@@ -204,23 +207,24 @@ func (s *Service) IngestPilots(eventId string) error {
 			return err
 		}
 	}
-	slog.Info("ingest.pilots.done", "eventId", eventId, "pilots", len(pilots))
+	slog.Info("ingest.pilots.done", "eventSourceId", eventSourceId, "pilots", len(pilots))
 	return nil
 }
 
 // IngestChannels fetches and upserts only the channels referenced by the event
-func (s *Service) IngestChannels(eventId string) error {
-	slog.Debug("ingest.channels.start", "eventId", eventId)
-	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) IngestChannels(eventSourceId string) error {
+	slog.Debug("ingest.channels.start", "eventSourceId", eventSourceId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {
 		return err
 	}
-	events, err := s.Client.FetchEvent(eventId)
+	events, err := s.Client.FetchEvent(eventSourceId)
 	if err != nil {
 		return err
 	}
 	if len(events) == 0 {
-		return fmt.Errorf("event not found: %s", eventId)
+		return fmt.Errorf("event not found: %s", eventSourceId)
 	}
 	e := events[0]
 	channels, err := s.Client.FetchChannels()
@@ -263,18 +267,19 @@ func (s *Service) IngestChannels(eventId string) error {
 		}
 		count++
 	}
-	slog.Info("ingest.channels.done", "eventId", eventId, "channels", count)
+	slog.Info("ingest.channels.done", "eventSourceId", eventSourceId, "channels", count)
 	return nil
 }
 
-// IngestRounds fetches and upserts rounds for the eventId
-func (s *Service) IngestRounds(eventId string) error {
-	slog.Debug("ingest.rounds.start", "eventId", eventId)
-	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+// IngestRounds fetches and upserts rounds for the eventSourceId
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) IngestRounds(eventSourceId string) error {
+	slog.Debug("ingest.rounds.start", "eventSourceId", eventSourceId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {
 		return err
 	}
-	rounds, err := s.Client.FetchRounds(eventId)
+	rounds, err := s.Client.FetchRounds(eventSourceId)
 	if err != nil {
 		return err
 	}
@@ -291,21 +296,23 @@ func (s *Service) IngestRounds(eventId string) error {
 			return err
 		}
 	}
-	slog.Info("ingest.rounds.done", "eventId", eventId, "rounds", len(rounds))
+	slog.Info("ingest.rounds.done", "eventSourceId", eventSourceId, "rounds", len(rounds))
 	return nil
 }
 
 // IngestRace fetches and upserts a race and its nested entities
-func (s *Service) IngestRace(eventId, raceId string) error {
-	slog.Debug("ingest.race.start", "eventId", eventId, "raceId", raceId)
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+// raceId: The external system's race identifier (not PocketBase ID)
+func (s *Service) IngestRace(eventSourceId, raceId string) error {
+	slog.Debug("ingest.race.start", "eventSourceId", eventSourceId, "raceId", raceId)
 	// Get existing event PB id (event should already exist from snapshot)
-	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {
 		return err
 	}
 
 	// Fetch race payload
-	rf, err := s.Client.FetchRace(eventId, raceId)
+	rf, err := s.Client.FetchRace(eventSourceId, raceId)
 	if err != nil {
 		return err
 	}
@@ -424,21 +431,22 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 		}
 	}
 
-	slog.Info("ingest.race.done", "eventId", eventId, "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
+	slog.Info("ingest.race.done", "eventSourceId", eventSourceId, "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
 	return nil
 }
 
 // IngestResults fetches aggregated results for the event and upserts them
-func (s *Service) IngestResults(eventId string) (int, error) {
-	slog.Debug("ingest.results.start", "eventId", eventId)
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) IngestResults(eventSourceId string) (int, error) {
+	slog.Debug("ingest.results.start", "eventSourceId", eventSourceId)
 	// Get existing event PB id (event should already exist from snapshot)
-	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {
 		return 0, err
 	}
 
 	// Fetch results
-	res, err := s.Client.FetchResults(eventId)
+	res, err := s.Client.FetchResults(eventSourceId)
 	if err != nil {
 		return 0, err
 	}
@@ -470,7 +478,7 @@ func (s *Service) IngestResults(eventId string) (int, error) {
 			return 0, err
 		}
 	}
-	slog.Info("ingest.results.done", "eventId", eventId, "results", len(res))
+	slog.Info("ingest.results.done", "eventSourceId", eventSourceId, "results", len(res))
 	return len(res), nil
 }
 
@@ -485,8 +493,9 @@ type FullSummary struct {
 }
 
 // setEventAsCurrent sets the specified event as current and makes all other events not current
-func (s *Service) setEventAsCurrent(eventId string) error {
-	slog.Debug("ingest.setEventAsCurrent.start", "eventId", eventId)
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) setEventAsCurrent(eventSourceId string) error {
+	slog.Debug("ingest.setEventAsCurrent.start", "eventSourceId", eventSourceId)
 
 	collection, err := s.Upserter.App.FindCollectionByNameOrId("events")
 	if err != nil {
@@ -501,34 +510,35 @@ func (s *Service) setEventAsCurrent(eventId string) error {
 
 	for _, event := range allEvents {
 		// Check if this is the target event by comparing sourceId
-		isCurrent := event.GetString("sourceId") == eventId
+		isCurrent := event.GetString("sourceId") == eventSourceId
 		event.Set("isCurrent", isCurrent)
 		if err := s.Upserter.App.Save(event); err != nil {
 			return fmt.Errorf("save event %s with isCurrent=%t: %w", event.Id, isCurrent, err)
 		}
 	}
 
-	slog.Info("ingest.setEventAsCurrent.done", "eventId", eventId, "totalEvents", len(allEvents))
+	slog.Info("ingest.setEventAsCurrent.done", "eventSourceId", eventSourceId, "totalEvents", len(allEvents))
 	return nil
 }
 
 // Full orchestrates a full ingestion for an event: snapshot -> all races -> results
-func (s *Service) Full(eventId string) (FullSummary, error) {
-	slog.Debug("ingest.full.start", "eventId", eventId)
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (s *Service) Full(eventSourceId string) (FullSummary, error) {
+	slog.Debug("ingest.full.start", "eventSourceId", eventSourceId)
 
 	// Fetch event to enumerate races
-	events, err := s.Client.FetchEvent(eventId)
+	events, err := s.Client.FetchEvent(eventSourceId)
 	if err != nil {
-		return FullSummary{EventId: eventId}, fmt.Errorf("fetch event: %w", err)
+		return FullSummary{EventId: eventSourceId}, fmt.Errorf("fetch event: %w", err)
 	}
 	if len(events) == 0 {
-		return FullSummary{EventId: eventId}, fmt.Errorf("event not found: %s", eventId)
+		return FullSummary{EventId: eventSourceId}, fmt.Errorf("event not found: %s", eventSourceId)
 	}
 	e := events[0]
 
 	// 1) Snapshot core entities
-	if err := s.Snapshot(eventId); err != nil {
-		return FullSummary{EventId: eventId}, fmt.Errorf("snapshot: %w", err)
+	if err := s.Snapshot(eventSourceId); err != nil {
+		return FullSummary{EventId: eventSourceId}, fmt.Errorf("snapshot: %w", err)
 	}
 
 	// 2) Races with simple retry and pacing
@@ -546,7 +556,7 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 			}
 			if err := s.IngestRace(string(e.ID), string(raceID)); err != nil {
 				lastErr = err
-				slog.Warn("ingest.full.race.retry", "eventId", eventId, "raceId", raceID, "attempt", attempt+1, "err", err)
+				slog.Warn("ingest.full.race.retry", "eventSourceId", eventSourceId, "raceId", raceID, "attempt", attempt+1, "err", err)
 				continue
 			}
 			// success
@@ -562,10 +572,10 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	}
 
 	// 3) Results
-	cnt, err := s.IngestResults(eventId)
+	cnt, err := s.IngestResults(eventSourceId)
 	if err != nil {
 		return FullSummary{
-			EventId:        eventId,
+			EventId:        eventSourceId,
 			RacesProcessed: racesProcessed,
 			RacesSucceeded: racesSucceeded,
 			RacesFailed:    racesFailed,
@@ -575,13 +585,13 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	// Count of results is not known without extra query; report 0 as placeholder
 	summary := FullSummary{
 		Ok:              true,
-		EventId:         eventId,
+		EventId:         eventSourceId,
 		RacesProcessed:  racesProcessed,
 		RacesSucceeded:  racesSucceeded,
 		RacesFailed:     racesFailed,
 		ResultsIngested: cnt,
 	}
-	slog.Info("ingest.full.done", "eventId", eventId, "processed", racesProcessed, "ok", racesSucceeded, "failed", racesFailed)
+	slog.Info("ingest.full.done", "eventSourceId", eventSourceId, "processed", racesProcessed, "ok", racesSucceeded, "failed", racesFailed)
 	return summary, nil
 }
 

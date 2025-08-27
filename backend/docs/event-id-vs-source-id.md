@@ -207,3 +207,175 @@ This optimization reduces network overhead and improves performance, especially 
 - Race conditions during initial event discovery
 - Confusion in log messages and error reporting
 - Performance impact from duplicate API calls
+
+## Comprehensive Audit Results
+
+After analyzing the entire backend codebase, here are the remaining sources of confusion that need to be addressed:
+
+### 1. Function Parameter Confusion
+
+**Functions that take Event Source ID (for external API calls):**
+```go
+// Client functions - these correctly expect source IDs
+func (c *FPVClient) FetchEvent(eventId string) (EventFile, error)           // ✅ Correct usage
+func (c *FPVClient) FetchPilots(eventId string) (PilotsFile, error)         // ✅ Correct usage  
+func (c *FPVClient) FetchRounds(eventId string) (RoundsFile, error)         // ✅ Correct usage
+func (c *FPVClient) FetchRace(eventId, raceId string) (RaceFile, error)     // ✅ Correct usage
+func (c *FPVClient) FetchResults(eventId string) (ResultsFile, error)       // ✅ Correct usage
+
+// Service functions - these correctly expect source IDs
+func (s *Service) IngestEventMeta(eventId string) error                     // ✅ Correct usage
+func (s *Service) IngestPilots(eventId string) error                        // ✅ Correct usage
+func (s *Service) IngestChannels(eventId string) error                      // ✅ Correct usage
+func (s *Service) IngestRounds(eventId string) error                        // ✅ Correct usage
+func (s *Service) IngestRace(eventId, raceId string) error                  // ✅ Correct usage
+func (s *Service) IngestResults(eventId string) (int, error)                // ✅ Correct usage
+func (s *Service) Snapshot(eventId string) error                            // ✅ Correct usage
+func (s *Service) Full(eventId string) (FullSummary, error)                 // ✅ Correct usage
+```
+
+**Functions that take Event Source ID but have confusing parameter names:**
+```go
+// These functions expect source IDs but parameter name suggests internal ID
+func (s *Service) setEventAsCurrent(eventId string) error                   // ❌ Confusing - expects source ID
+```
+
+### 2. Variable Naming Confusion
+
+**In `setEventAsCurrent()`:**
+```go
+func (s *Service) setEventAsCurrent(eventId string) error {
+    // ...
+    for _, event := range allEvents {
+        // Check if this is the target event by comparing sourceId
+        isCurrent := event.GetString("sourceId") == eventId  // eventId is actually source ID!
+    }
+}
+```
+
+**In `Full()` function:**
+```go
+func (s *Service) Full(eventId string) (FullSummary, error) {
+    // eventId parameter is actually source ID (used for API calls)
+    events, err := s.Client.FetchEvent(eventId)  // ✅ Correct usage
+    // ...
+    if err := s.IngestRace(string(e.ID), string(raceID)); err != nil {
+        // But here we use e.ID (source ID) instead of eventId parameter
+    }
+}
+```
+
+### 3. Log Message Confusion
+
+**Inconsistent log field names:**
+```go
+// Some logs use "eventId" for source ID
+slog.Debug("ingest.event.start", "eventId", eventId)  // eventId is source ID
+
+// Some logs use "eventSourceId" for source ID  
+slog.Debug("ingest.event.start", "eventSourceId", eventSourceId)  // Clear naming
+
+// Some logs use "eventId" for PocketBase ID
+slog.Info("ingest.setEventAsCurrent.done", "eventId", eventId, "totalEvents", len(allEvents))
+```
+
+### 4. Struct Field Confusion
+
+**In `FullSummary` struct:**
+```go
+type FullSummary struct {
+    EventId string `json:"eventId"`  // ❌ Ambiguous - could be either type
+}
+```
+
+### 5. API Route Confusion
+
+**In handlers.go:**
+```go
+// Routes use {eventId} but this is actually source ID
+se.Router.POST("/ingest/events/{eventId}/snapshot", ...)
+se.Router.POST("/ingest/events/{eventId}/race/{raceId}", ...)
+se.Router.POST("/ingest/events/{eventId}/results", ...)
+se.Router.POST("/ingest/events/{eventId}/full", ...)
+```
+
+### 6. Comment Confusion
+
+**In types.go:**
+```go
+// GET /events/{eventId}/Event.json  // ❌ Comment suggests internal ID but it's source ID
+// GET /events/{eventId}/Pilots.json // ❌ Comment suggests internal ID but it's source ID
+```
+
+## Implementation Status
+
+### ✅ Phase 1: Critical Function Renames - COMPLETED
+1. ✅ Renamed `setEventAsCurrent(eventId string)` to `setEventAsCurrent(eventSourceId string)`
+2. ✅ Updated all function comments to clarify parameter expectations
+3. ✅ Added clear parameter documentation for all service functions
+
+### ✅ Phase 2: Variable Naming Consistency - COMPLETED
+1. ✅ Updated all function parameters to use clear naming:
+   - `eventSourceId` for external system identifiers
+   - `eventPBID` for PocketBase internal IDs
+2. ✅ Updated all log messages to use consistent field names
+3. ✅ Updated client function parameters to use `eventSourceId`
+
+### ✅ Phase 3: Comments and Documentation - COMPLETED
+1. ✅ Updated type comments to clarify URL parameters are source IDs
+2. ✅ Updated API route parameter documentation to clarify `{eventId}` is source ID
+3. ✅ Added comprehensive function documentation specifying expected ID types
+
+### 🔄 Phase 4: Struct Field Updates - PENDING
+1. ⏳ Rename `FullSummary.EventId` to `FullSummary.EventSourceId` (requires API compatibility consideration)
+2. ⏳ Consider API route parameter renaming (requires frontend coordination)
+
+## Summary of Changes Made
+
+### Function Parameter Renames
+- `setEventAsCurrent(eventId)` → `setEventAsCurrent(eventSourceId)`
+- `Snapshot(eventId)` → `Snapshot(eventSourceId)`
+- `IngestEventMeta(eventId)` → `IngestEventMeta(eventSourceId)`
+- `IngestPilots(eventId)` → `IngestPilots(eventSourceId)`
+- `IngestChannels(eventId)` → `IngestChannels(eventSourceId)`
+- `IngestRounds(eventId)` → `IngestRounds(eventSourceId)`
+- `IngestRace(eventId, raceId)` → `IngestRace(eventSourceId, raceId)`
+- `IngestResults(eventId)` → `IngestResults(eventSourceId)`
+- `Full(eventId)` → `Full(eventSourceId)`
+
+### Client Function Parameter Renames
+- `FetchEvent(eventId)` → `FetchEvent(eventSourceId)`
+- `FetchPilots(eventId)` → `FetchPilots(eventSourceId)`
+- `FetchRounds(eventId)` → `FetchRounds(eventSourceId)`
+- `FetchRace(eventId, raceId)` → `FetchRace(eventSourceId, raceId)`
+- `FetchResults(eventId)` → `FetchResults(eventSourceId)`
+
+### Log Message Updates
+- All log messages now use `eventSourceId` instead of `eventId` for clarity
+- Consistent field naming across all functions
+
+### Comment Updates
+- Updated all type comments to clarify URL parameters are source IDs
+- Added parameter documentation to all functions
+- Clarified expected ID types in function signatures
+
+## Impact Assessment
+
+**Low Risk Changes:**
+- Function parameter renames (Go compiler will catch call site updates)
+- Log message field name updates
+- Comment updates
+
+**Medium Risk Changes:**
+- Struct field renames (requires JSON API compatibility consideration)
+- API route parameter documentation
+
+**High Risk Changes:**
+- None identified - all changes are internal to backend
+
+## Migration Strategy
+
+1. **Start with function renames** - these are safe and compiler-enforced
+2. **Update log messages** - improves debugging clarity
+3. **Update comments and documentation** - improves developer experience
+4. **Consider struct field renames** - evaluate API compatibility impact

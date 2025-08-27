@@ -68,15 +68,19 @@ func (c *FPVClient) getJSON(path string, v any) error {
 	return nil
 }
 
-func (c *FPVClient) FetchEvent(eventId string) (EventFile, error) {
+// FetchEvent fetches event data from the external system
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (c *FPVClient) FetchEvent(eventSourceId string) (EventFile, error) {
 	var out EventFile
-	err := c.getJSON(fmt.Sprintf("/events/%s/Event.json", eventId), &out)
+	err := c.getJSON(fmt.Sprintf("/events/%s/Event.json", eventSourceId), &out)
 	return out, err
 }
 
-func (c *FPVClient) FetchPilots(eventId string) (PilotsFile, error) {
+// FetchPilots fetches pilot data from the external system
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (c *FPVClient) FetchPilots(eventSourceId string) (PilotsFile, error) {
 	var out PilotsFile
-	err := c.getJSON(fmt.Sprintf("/events/%s/Pilots.json", eventId), &out)
+	err := c.getJSON(fmt.Sprintf("/events/%s/Pilots.json", eventSourceId), &out)
 	return out, err
 }
 
@@ -86,23 +90,30 @@ func (c *FPVClient) FetchChannels() (ChannelsFile, error) {
 	return out, err
 }
 
-func (c *FPVClient) FetchRounds(eventId string) (RoundsFile, error) {
+// FetchRounds fetches round data from the external system
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (c *FPVClient) FetchRounds(eventSourceId string) (RoundsFile, error) {
 	var out RoundsFile
-	err := c.getJSON(fmt.Sprintf("/events/%s/Rounds.json", eventId), &out)
+	err := c.getJSON(fmt.Sprintf("/events/%s/Rounds.json", eventSourceId), &out)
 	return out, err
 }
 
-func (c *FPVClient) FetchRace(eventId, raceId string) (RaceFile, error) {
+// FetchRace fetches race data from the external system
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+// raceId: The external system's race identifier (not PocketBase ID)
+func (c *FPVClient) FetchRace(eventSourceId, raceId string) (RaceFile, error) {
 	var out RaceFile
-	err := c.getJSON(fmt.Sprintf("/events/%s/%s/Race.json", eventId, raceId), &out)
+	err := c.getJSON(fmt.Sprintf("/events/%s/%s/Race.json", eventSourceId, raceId), &out)
 	return out, err
 }
 
-func (c *FPVClient) FetchResults(eventId string) (ResultsFile, error) {
+// FetchResults fetches results data from the external system
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+func (c *FPVClient) FetchResults(eventSourceId string) (ResultsFile, error) {
 	var out ResultsFile
 	// custom handling: empty body means no results yet
 	u := *c.BaseURL
-	u.Path = fmt.Sprintf("/events/%s/Results.json", eventId)
+	u.Path = fmt.Sprintf("/events/%s/Results.json", eventSourceId)
 	resp, err := c.HTTP.Get(u.String())
 	if err != nil {
 		return out, err

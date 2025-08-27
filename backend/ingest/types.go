@@ -7,7 +7,7 @@ package ingest
 type Guid = string
 
 // EventFile is an array with a single RaceEvent
-// GET /events/{eventId}/Event.json
+// GET /events/{eventSourceId}/Event.json
 // Note: fields subset as needed for ingestion
 // Field names match JSON exactly
 
@@ -38,7 +38,7 @@ type RaceEvent struct {
 type EventFile = []RaceEvent
 
 // Pilots
-// GET /events/{eventId}/Pilots.json
+// GET /events/{eventSourceId}/Pilots.json
 
 type Pilot struct {
 	ID            Guid   `json:"ID"`
@@ -68,7 +68,7 @@ type Channel struct {
 type ChannelsFile = []Channel
 
 // Rounds
-// GET /events/{eventId}/Rounds.json
+// GET /events/{eventSourceId}/Rounds.json
 
 type Round struct {
 	ID          Guid   `json:"ID"`
@@ -83,7 +83,7 @@ type Round struct {
 type RoundsFile = []Round
 
 // Race
-// GET /events/{eventId}/{raceId}/Race.json (array with 1 item)
+// GET /events/{eventSourceId}/{raceId}/Race.json (array with 1 item)
 
 type Detection struct {
 	ID                Guid   `json:"ID"`
@@ -143,7 +143,7 @@ type Race struct {
 type RaceFile = []Race
 
 // Results
-// GET /events/{eventId}/Results.json and per-race Result.json
+// GET /events/{eventSourceId}/Results.json and per-race Result.json
 
 type Result struct {
 	ID         Guid   `json:"ID"`
@@ -159,5 +159,3 @@ type Result struct {
 }
 
 type ResultsFile = []Result
-
-
