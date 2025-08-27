@@ -130,8 +130,8 @@ func (c *FPVClient) FetchResults(eventId string) (ResultsFile, error) {
 	return out, nil
 }
 
-// FetchEventId fetches the current event ID using the same regex as the frontend
-func (c *FPVClient) FetchEventId() (string, error) {
+// FetchEventSourceId fetches the current event source ID from the external system using the same regex as the frontend
+func (c *FPVClient) FetchEventSourceId() (string, error) {
 	u := *c.BaseURL
 	u.Path = "/"
 	resp, err := c.HTTP.Get(u.String())

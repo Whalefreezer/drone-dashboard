@@ -578,27 +578,27 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 	return summary, nil
 }
 
-// FullAuto fetches the eventId automatically and then performs a full ingestion
+// FullAuto fetches the event sourceId automatically and then performs a full ingestion
 func (s *Service) FullAuto() (FullSummary, error) {
 	slog.Debug("ingest.fullAuto.start")
 
-	// Fetch eventId using the same method as frontend
-	eventId, err := s.Client.FetchEventId()
+	// Fetch event sourceId using the same method as frontend
+	eventSourceId, err := s.Client.FetchEventSourceId()
 	if err != nil {
-		return FullSummary{}, fmt.Errorf("fetch eventId: %w", err)
+		return FullSummary{}, fmt.Errorf("fetch event sourceId: %w", err)
 	}
 
-	slog.Info("ingest.fullAuto.eventId", "eventId", eventId)
+	slog.Info("ingest.fullAuto.eventSourceId", "eventSourceId", eventSourceId)
 
-	// Perform full ingestion with the fetched eventId
-	summary, err := s.Full(eventId)
+	// Perform full ingestion with the fetched event sourceId
+	summary, err := s.Full(eventSourceId)
 	if err != nil {
 		return summary, err
 	}
 
 	// After successful full ingestion, set this event as current and all others as not current
-	if err := s.setEventAsCurrent(eventId); err != nil {
-		slog.Warn("ingest.fullAuto.setEventAsCurrent.failed", "eventId", eventId, "err", err)
+	if err := s.setEventAsCurrent(eventSourceId); err != nil {
+		slog.Warn("ingest.fullAuto.setEventAsCurrent.failed", "eventSourceId", eventSourceId, "err", err)
 		// Don't fail the entire operation if setting current status fails
 		// The ingestion was successful, this is just a metadata update
 	}
