@@ -96,63 +96,60 @@ func (m *Manager) StartLoops(ctx context.Context) {
 // -------------------- Discovery --------------------
 
 func (m *Manager) runDiscovery() {
-	// Determine current event id; prefer PB current event if present
-	eventId := m.findCurrentEventPBID() // returns PB id if available
-	var eventSourceId string
-	if eventId != "" {
-		// Resolve sourceId from PB event
-		if col, err := m.App.FindCollectionByNameOrId("events"); err == nil {
-			if ev, err := m.App.FindRecordById(col, eventId); err == nil && ev != nil {
-				eventSourceId = ev.GetString("sourceId")
-			}
-		}
-	}
-	// Fallback to upstream if PB current event is not set
-	if eventSourceId == "" {
-		id, err := m.Service.Client.FetchEventSourceId()
-		if err != nil {
-			slog.Warn("scheduler.discovery.fetchEventSourceId.error", "err", err)
-			return
-		}
-		eventSourceId = id
-		// Try to get PB id if exists
-		if pbid, err := m.Service.Upserter.GetExistingId("events", eventSourceId); err == nil {
-			eventId = pbid
-		}
-	}
-	if eventId == "" {
-		id, err := m.Service.Client.FetchEventSourceId()
-		if err != nil {
-			slog.Warn("scheduler.discovery.fetchEventSourceId.error", "err", err)
-			return
-		}
-		eventId = id
-	}
+	// Always fetch from external system rather than preferring existing current event.
+	// This ensures we work with the live event data and avoids stale references.
+	// The previous logic tried to prefer existing current events but created
+	// race conditions where targets were created before events existed in DB.
 
-	// Fetch event to list races
-	events, err := m.Service.Client.FetchEvent(eventSourceId)
-	if err != nil || len(events) == 0 {
-		slog.Warn("scheduler.discovery.fetchEvent.error", "eventId", eventId, "err", err)
+	// 1. Get event source ID from external system
+	eventSourceId, err := m.Service.Client.FetchEventSourceId()
+	if err != nil {
+		slog.Warn("scheduler.discovery.fetchEventSourceId.error", "err", err)
 		return
 	}
-	e := events[0]
 
+	// 2. Fetch event data to validate it exists and get race information
+	events, err := m.Service.Client.FetchEvent(eventSourceId)
+	if err != nil || len(events) == 0 {
+		slog.Warn("scheduler.discovery.fetchEvent.error", "eventSourceId", eventSourceId, "err", err)
+		return
+	}
+	eventData := events[0]
+
+	// 3. Ingest event metadata FIRST to ensure it exists in database
+	// Use the already-fetched event data to avoid duplicate API call
+	if err := m.Service.IngestEventMetaFromData(eventData); err != nil {
+		slog.Warn("scheduler.discovery.ingestEventMeta.error", "eventSourceId", eventSourceId, "err", err)
+		return
+	}
+
+	// 4. Now get the PocketBase event ID (guaranteed to exist after ingestion)
+	eventPBID, err := m.Service.Upserter.GetExistingId("events", eventSourceId)
+	if err != nil {
+		slog.Warn("scheduler.discovery.getExistingId.error", "eventSourceId", eventSourceId, "err", err)
+		return
+	}
+
+	// 5. Create targets with proper PocketBase ID for relations
 	now := time.Now()
 
 	// Seed event-related targets (per-endpoint granularity)
-	m.upsertTarget("event", eventSourceId, eventId, m.Cfg.FullInterval, now)
-	m.upsertTarget("pilots", eventSourceId, eventId, m.Cfg.FullInterval, now)
-	m.upsertTarget("channels", eventSourceId, eventId, m.Cfg.FullInterval, now)
-	m.upsertTarget("rounds", eventSourceId, eventId, m.Cfg.FullInterval, now)
+	m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	// Seed results target
-	m.upsertTarget("results", eventSourceId, eventId, m.Cfg.ResultsInterval, now)
-	// Seed one race target per race id
-	for _, rid := range e.Races {
-		m.upsertTarget("race", string(rid), eventId, m.Cfg.RaceIdle, now)
+	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
+
+	// Seed one race target per race ID from the fetched event data
+	for _, raceID := range eventData.Races {
+		m.upsertTarget("race", string(raceID), eventPBID, m.Cfg.RaceIdle, now)
 	}
 
-	// Optionally: prune orphaned targets for this eventId
-	m.pruneOrphans(eventId, e.Races)
+	// Optionally: prune orphaned targets for this event
+	m.pruneOrphans(eventPBID, eventData.Races)
+
+	slog.Info("scheduler.discovery.completed", "eventSourceId", eventSourceId, "eventPBID", eventPBID, "races", len(eventData.Races))
 }
 
 func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time) {

@@ -150,7 +150,14 @@ func (s *Service) IngestEventMeta(eventId string) error {
 		return fmt.Errorf("event not found: %s", eventId)
 	}
 	e := events[0]
-	_, err = s.Upserter.Upsert("events", string(e.ID), map[string]any{
+	return s.IngestEventMetaFromData(e)
+}
+
+// IngestEventMetaFromData upserts the core Event record using pre-fetched event data
+func (s *Service) IngestEventMetaFromData(e RaceEvent) error {
+	eventSourceId := string(e.ID)
+	slog.Debug("ingest.event.start", "eventSourceId", eventSourceId)
+	_, err := s.Upserter.Upsert("events", eventSourceId, map[string]any{
 		"name":                        e.Name,
 		"eventType":                   e.EventType,
 		"start":                       e.Start,
@@ -170,7 +177,7 @@ func (s *Service) IngestEventMeta(eventId string) error {
 	if err != nil {
 		return err
 	}
-	slog.Info("ingest.event.done", "eventId", eventId)
+	slog.Info("ingest.event.done", "eventSourceId", eventSourceId)
 	return nil
 }
 
