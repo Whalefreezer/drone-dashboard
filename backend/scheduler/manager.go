@@ -91,7 +91,29 @@ func (m *Manager) StartLoops(ctx context.Context) {
 
 func (m *Manager) runDiscovery() {
     // Determine current event id; prefer PB current event if present
-    eventId := m.findCurrentEventId()
+    eventId := m.findCurrentEventPBID() // returns PB id if available
+    var eventSourceId string
+    if eventId != "" {
+        // Resolve sourceId from PB event
+        if col, err := m.App.FindCollectionByNameOrId("events"); err == nil {
+            if ev, err := m.App.FindRecordById(col, eventId); err == nil && ev != nil {
+                eventSourceId = ev.GetString("sourceId")
+            }
+        }
+    }
+    // Fallback to upstream if PB current event is not set
+    if eventSourceId == "" {
+        id, err := m.Service.Client.FetchEventId()
+        if err != nil {
+            slog.Warn("scheduler.discovery.fetchEventId.error", "err", err)
+            return
+        }
+        eventSourceId = id
+        // Try to get PB id if exists
+        if pbid, err := m.Service.Upserter.GetExistingId("events", eventSourceId); err == nil {
+            eventId = pbid
+        }
+    }
     if eventId == "" {
         id, err := m.Service.Client.FetchEventId()
         if err != nil {
@@ -102,7 +124,7 @@ func (m *Manager) runDiscovery() {
     }
 
     // Fetch event to list races
-    events, err := m.Service.Client.FetchEvent(eventId)
+    events, err := m.Service.Client.FetchEvent(eventSourceId)
     if err != nil || len(events) == 0 {
         slog.Warn("scheduler.discovery.fetchEvent.error", "eventId", eventId, "err", err)
         return
@@ -112,12 +134,12 @@ func (m *Manager) runDiscovery() {
     now := time.Now()
 
     // Seed event-related targets (per-endpoint granularity)
-    m.upsertTarget("event", eventId, eventId, m.Cfg.FullInterval, now)
-    m.upsertTarget("pilots", eventId, eventId, m.Cfg.FullInterval, now)
-    m.upsertTarget("channels", eventId, eventId, m.Cfg.FullInterval, now)
-    m.upsertTarget("rounds", eventId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("event", eventSourceId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("pilots", eventSourceId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("channels", eventSourceId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("rounds", eventSourceId, eventId, m.Cfg.FullInterval, now)
     // Seed results target
-    m.upsertTarget("results", eventId, eventId, m.Cfg.ResultsInterval, now)
+    m.upsertTarget("results", eventSourceId, eventId, m.Cfg.ResultsInterval, now)
     // Seed one race target per race id
     for _, rid := range e.Races {
         m.upsertTarget("race", string(rid), eventId, m.Cfg.RaceIdle, now)
@@ -127,7 +149,7 @@ func (m *Manager) runDiscovery() {
     m.pruneOrphans(eventId, e.Races)
 }
 
-func (m *Manager) upsertTarget(t string, sourceId string, eventId string, interval time.Duration, now time.Time) {
+func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time) {
     colName := "ingest_targets"
     rec, _ := m.App.FindFirstRecordByFilter(colName, "type = {:t} && sourceId = {:sid}", dbx.Params{"t": t, "sid": sourceId})
     // Compute staggered nextDueAt if missing
@@ -150,7 +172,9 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventId string, interv
         rec.Set("type", t)
         rec.Set("sourceId", sourceId)
     }
-    rec.Set("eventId", eventId)
+    if eventPBID != "" {
+        rec.Set("event", eventPBID)
+    }
     rec.Set("intervalMs", int(interval.Milliseconds()))
     rec.Set("enabled", true)
     rec.Set("priority", rec.GetInt("priority")) // keep existing priority if any
@@ -160,14 +184,15 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventId string, interv
     }
 }
 
-func (m *Manager) pruneOrphans(eventId string, validRaceIds []ingest.Guid) {
+func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
     // Build set of valid races
     valid := map[string]struct{}{}
     for _, r := range validRaceIds { valid[string(r)] = struct{}{} }
     all, err := m.App.FindAllRecords("ingest_targets")
     if err != nil { return }
     for _, r := range all {
-        if r.GetString("eventId") != eventId { continue }
+        if eventPBID == "" { continue }
+        if r.GetString("event") != eventPBID { continue }
         t := r.GetString("type")
         sid := r.GetString("sourceId")
         if t == "race" {
@@ -205,21 +230,22 @@ func (m *Manager) drainOnce() {
         r := it.rec
         t := r.GetString("type")
         sid := r.GetString("sourceId")
-        eventId := r.GetString("eventId")
+        // Resolve event sourceId from relation
+        eventSourceId := m.resolveEventSourceIdFromTarget(r)
         var err error
         switch t {
         case "event":
-            err = m.Service.IngestEventMeta(eventId)
+            err = m.Service.IngestEventMeta(eventSourceId)
         case "pilots":
-            err = m.Service.IngestPilots(eventId)
+            err = m.Service.IngestPilots(eventSourceId)
         case "channels":
-            err = m.Service.IngestChannels(eventId)
+            err = m.Service.IngestChannels(eventSourceId)
         case "rounds":
-            err = m.Service.IngestRounds(eventId)
+            err = m.Service.IngestRounds(eventSourceId)
         case "race":
-            err = m.Service.IngestRace(eventId, sid)
+            err = m.Service.IngestRace(eventSourceId, sid)
         case "results":
-            _, err = m.Service.IngestResults(eventId)
+            _, err = m.Service.IngestResults(eventSourceId)
         default:
             slog.Warn("scheduler.worker.unknownType", "type", t)
         }
@@ -256,8 +282,8 @@ func max(a, b int) int { if a > b { return a } ; return b }
 // -------------------- Active Race --------------------
 
 func (m *Manager) ensureActiveRacePriority() {
-    eventId := m.findCurrentEventId()
-    if eventId == "" { return }
+    eventPBID := m.findCurrentEventPBID()
+    if eventPBID == "" { return }
 
     // Load races for event
     races, err := m.App.FindAllRecords("races")
@@ -267,7 +293,7 @@ func (m *Manager) ensureActiveRacePriority() {
     activeRaceId := ""
     // first find active (valid && started && not ended)
     for _, r := range races {
-        if r.GetString("event") != eventId { continue }
+        if r.GetString("event") != eventPBID { continue }
         if !r.GetBool("valid") { continue }
         start := r.GetString("start")
         end := r.GetString("end")
@@ -289,7 +315,7 @@ func (m *Manager) ensureActiveRacePriority() {
         rec = core.NewRecord(col)
         rec.Set("type", "race")
         rec.Set("sourceId", activeRaceId)
-        rec.Set("eventId", eventId)
+        rec.Set("event", eventPBID)
     }
     rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
     rec.Set("priority", max(rec.GetInt("priority"), 100))
@@ -300,13 +326,20 @@ func (m *Manager) ensureActiveRacePriority() {
 
 // -------------------- Helpers --------------------
 
-func (m *Manager) findCurrentEventId() string {
-    // Prefer PB events.isCurrent
+func (m *Manager) findCurrentEventPBID() string {
     rec, err := m.App.FindFirstRecordByFilter("events", "isCurrent = true", nil)
-    if err == nil && rec != nil {
-        return rec.GetString("sourceId")
-    }
+    if err == nil && rec != nil { return rec.Id }
     return ""
+}
+
+func (m *Manager) resolveEventSourceIdFromTarget(rec *core.Record) string {
+    pbid := rec.GetString("event")
+    if pbid == "" { return "" }
+    col, err := m.App.FindCollectionByNameOrId("events")
+    if err != nil { return "" }
+    ev, err := m.App.FindRecordById(col, pbid)
+    if err != nil || ev == nil { return "" }
+    return ev.GetString("sourceId")
 }
 
 func hash32(s string) uint32 {

@@ -194,7 +194,7 @@ func registerRaceUpdateHook(app core.App) {
                     r = core.NewRecord(col)
                     r.Set("type", "race")
                     r.Set("sourceId", rec.Id)
-                    r.Set("eventId", rec.GetString("event"))
+                    r.Set("event", rec.GetString("event"))
                 }
             }
             if r != nil {
