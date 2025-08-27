@@ -111,8 +111,11 @@ func (m *Manager) runDiscovery() {
 
     now := time.Now()
 
-    // Seed snapshot target (pilots/channels/rounds)
-    m.upsertTarget("event_snapshot", eventId, eventId, m.Cfg.FullInterval, now)
+    // Seed event-related targets (per-endpoint granularity)
+    m.upsertTarget("event", eventId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("pilots", eventId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("channels", eventId, eventId, m.Cfg.FullInterval, now)
+    m.upsertTarget("rounds", eventId, eventId, m.Cfg.FullInterval, now)
     // Seed results target
     m.upsertTarget("results", eventId, eventId, m.Cfg.ResultsInterval, now)
     // Seed one race target per race id
@@ -205,8 +208,14 @@ func (m *Manager) drainOnce() {
         eventId := r.GetString("eventId")
         var err error
         switch t {
-        case "event_snapshot":
-            err = m.Service.Snapshot(eventId)
+        case "event":
+            err = m.Service.IngestEventMeta(eventId)
+        case "pilots":
+            err = m.Service.IngestPilots(eventId)
+        case "channels":
+            err = m.Service.IngestChannels(eventId)
+        case "rounds":
+            err = m.Service.IngestRounds(eventId)
         case "race":
             err = m.Service.IngestRace(eventId, sid)
         case "results":

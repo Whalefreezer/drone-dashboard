@@ -23,7 +23,7 @@ func NewService(app core.App, baseURL string) (*Service, error) {
 
 // Snapshot ingests Event, Pilots, Channels, Rounds for an eventId
 func (s *Service) Snapshot(eventId string) error {
-	slog.Info("ingest.snapshot.start", "eventId", eventId)
+	slog.Debug("ingest.snapshot.start", "eventId", eventId)
 	// Fetch
 	events, err := s.Client.FetchEvent(eventId)
 	if err != nil {
@@ -139,9 +139,158 @@ func (s *Service) Snapshot(eventId string) error {
 	return nil
 }
 
+// IngestEventMeta fetches and upserts the core Event record for an eventId
+func (s *Service) IngestEventMeta(eventId string) error {
+	slog.Debug("ingest.event.start", "eventId", eventId)
+	events, err := s.Client.FetchEvent(eventId)
+	if err != nil {
+		return err
+	}
+	if len(events) == 0 {
+		return fmt.Errorf("event not found: %s", eventId)
+	}
+	e := events[0]
+	_, err = s.Upserter.Upsert("events", string(e.ID), map[string]any{
+		"name":                        e.Name,
+		"eventType":                   e.EventType,
+		"start":                       e.Start,
+		"end":                         e.End,
+		"laps":                        e.Laps,
+		"pbLaps":                      e.PBLaps,
+		"packLimit":                   e.PackLimit,
+		"raceLength":                  e.RaceLength,
+		"minStartDelay":               e.MinStartDelay,
+		"maxStartDelay":               e.MaxStartDelay,
+		"primaryTimingSystemLocation": e.PrimaryTimingSystemLocation,
+		"raceStartIgnoreDetections":   e.RaceStartIgnoreDetections,
+		"minLapTime":                  e.MinLapTime,
+		"lastOpened":                  e.LastOpened,
+		"isCurrent":                   true,
+	})
+	if err != nil {
+		return err
+	}
+	slog.Info("ingest.event.done", "eventId", eventId)
+	return nil
+}
+
+// IngestPilots fetches and upserts pilots for the eventId
+func (s *Service) IngestPilots(eventId string) error {
+	slog.Debug("ingest.pilots.start", "eventId", eventId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+	if err != nil {
+		return err
+	}
+	pilots, err := s.Client.FetchPilots(eventId)
+	if err != nil {
+		return err
+	}
+	for _, p := range pilots {
+		if _, err := s.Upserter.Upsert("pilots", string(p.ID), map[string]any{
+			"name":          p.Name,
+			"firstName":     p.FirstName,
+			"lastName":      p.LastName,
+			"discordId":     p.DiscordID,
+			"practicePilot": p.PracticePilot,
+			"event":         eventPBID,
+		}); err != nil {
+			return err
+		}
+	}
+	slog.Info("ingest.pilots.done", "eventId", eventId, "pilots", len(pilots))
+	return nil
+}
+
+// IngestChannels fetches and upserts only the channels referenced by the event
+func (s *Service) IngestChannels(eventId string) error {
+	slog.Debug("ingest.channels.start", "eventId", eventId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+	if err != nil {
+		return err
+	}
+	events, err := s.Client.FetchEvent(eventId)
+	if err != nil {
+		return err
+	}
+	if len(events) == 0 {
+		return fmt.Errorf("event not found: %s", eventId)
+	}
+	e := events[0]
+	channels, err := s.Client.FetchChannels()
+	if err != nil {
+		return err
+	}
+	// Build allowed set and color/display overrides
+	allowed := map[string]struct{}{}
+	colorByID := map[string]string{}
+	displayOverrideByID := map[string]string{}
+	for i, chID := range e.Channels {
+		id := string(chID)
+		allowed[id] = struct{}{}
+		if i < len(e.ChannelColors) {
+			colorByID[id] = e.ChannelColors[i]
+		}
+		if i < len(e.ChannelDisplayNames) {
+			displayOverrideByID[id] = e.ChannelDisplayNames[i]
+		}
+	}
+	count := 0
+	for _, ch := range channels {
+		id := string(ch.ID)
+		if _, ok := allowed[id]; !ok {
+			continue
+		}
+		fields := map[string]any{
+			"number":             ch.Number,
+			"band":               ch.Band,
+			"shortBand":          ch.ShortBand,
+			"channelPrefix":      ch.ChannelPrefix,
+			"frequency":          ch.Frequency,
+			"displayName":        ch.DisplayName,
+			"channelColor":       colorByID[id],
+			"channelDisplayName": displayOverrideByID[id],
+			"event":              eventPBID,
+		}
+		if _, err := s.Upserter.Upsert("channels", id, fields); err != nil {
+			return err
+		}
+		count++
+	}
+	slog.Info("ingest.channels.done", "eventId", eventId, "channels", count)
+	return nil
+}
+
+// IngestRounds fetches and upserts rounds for the eventId
+func (s *Service) IngestRounds(eventId string) error {
+	slog.Debug("ingest.rounds.start", "eventId", eventId)
+	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
+	if err != nil {
+		return err
+	}
+	rounds, err := s.Client.FetchRounds(eventId)
+	if err != nil {
+		return err
+	}
+	for _, r := range rounds {
+		if _, err := s.Upserter.Upsert("rounds", string(r.ID), map[string]any{
+			"name":        r.Name,
+			"roundNumber": r.RoundNumber,
+			"eventType":   r.EventType,
+			"roundType":   r.RoundType,
+			"valid":       r.Valid,
+			"order":       r.Order,
+			"event":       eventPBID,
+		}); err != nil {
+			return err
+		}
+	}
+	slog.Info("ingest.rounds.done", "eventId", eventId, "rounds", len(rounds))
+	return nil
+}
+
 // IngestRace fetches and upserts a race and its nested entities
 func (s *Service) IngestRace(eventId, raceId string) error {
-	slog.Info("ingest.race.start", "eventId", eventId, "raceId", raceId)
+	slog.Debug("ingest.race.start", "eventId", eventId, "raceId", raceId)
 	// Get existing event PB id (event should already exist from snapshot)
 	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
 	if err != nil {
@@ -274,7 +423,7 @@ func (s *Service) IngestRace(eventId, raceId string) error {
 
 // IngestResults fetches aggregated results for the event and upserts them
 func (s *Service) IngestResults(eventId string) (int, error) {
-	slog.Info("ingest.results.start", "eventId", eventId)
+	slog.Debug("ingest.results.start", "eventId", eventId)
 	// Get existing event PB id (event should already exist from snapshot)
 	eventPBID, err := s.Upserter.GetExistingId("events", eventId)
 	if err != nil {
@@ -330,7 +479,7 @@ type FullSummary struct {
 
 // setEventAsCurrent sets the specified event as current and makes all other events not current
 func (s *Service) setEventAsCurrent(eventId string) error {
-	slog.Info("ingest.setEventAsCurrent.start", "eventId", eventId)
+	slog.Debug("ingest.setEventAsCurrent.start", "eventId", eventId)
 
 	collection, err := s.Upserter.App.FindCollectionByNameOrId("events")
 	if err != nil {
@@ -358,7 +507,7 @@ func (s *Service) setEventAsCurrent(eventId string) error {
 
 // Full orchestrates a full ingestion for an event: snapshot -> all races -> results
 func (s *Service) Full(eventId string) (FullSummary, error) {
-	slog.Info("ingest.full.start", "eventId", eventId)
+	slog.Debug("ingest.full.start", "eventId", eventId)
 
 	// Fetch event to enumerate races
 	events, err := s.Client.FetchEvent(eventId)
@@ -431,7 +580,7 @@ func (s *Service) Full(eventId string) (FullSummary, error) {
 
 // FullAuto fetches the eventId automatically and then performs a full ingestion
 func (s *Service) FullAuto() (FullSummary, error) {
-	slog.Info("ingest.fullAuto.start")
+	slog.Debug("ingest.fullAuto.start")
 
 	// Fetch eventId using the same method as frontend
 	eventId, err := s.Client.FetchEventId()

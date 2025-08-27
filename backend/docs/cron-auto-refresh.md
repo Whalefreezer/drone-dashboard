@@ -57,12 +57,15 @@ Start these loops from `app.OnServe()` (or immediately after wiring routes) and 
 - Compute and apply a phase offset per target, e.g. `offset = hash(sourceId) % intervalMs`, so `nextDueAt = now + offset`.
 - Remove orphaned targets for absent items.
 
-2) Worker loop (Ticker ~200ms)
+- 2) Worker loop (Ticker ~200ms)
 - Select up to `N` enabled, due targets ordered by `(nextDueAt asc, priority desc)`.
 - For each target type, call the appropriate ingestion method:
-  - `event_snapshot` → `ingestService.Snapshot(eventId)`
-  - `race` → `ingestService.IngestRace(eventId, raceId)`
-  - `results` → `ingestService.IngestResults(eventId)`
+  - `event` → `IngestEventMeta(eventId)` (Event.json)
+  - `pilots` → `IngestPilots(eventId)` (Pilots.json)
+  - `channels` → `IngestChannels(eventId)` (Channels.json)
+  - `rounds` → `IngestRounds(eventId)` (Rounds.json)
+  - `race` → `IngestRace(eventId, raceId)`
+  - `results` → `IngestResults(eventId)`
 - On success, set `lastFetchedAt=now`, recompute interval (see Active Race), and set `nextDueAt=now+interval` (+ small jitter 0–150ms).
 - On error, set `lastStatus` and push `nextDueAt` out with backoff (e.g., +1s, +2s, +4s … capped).
 
