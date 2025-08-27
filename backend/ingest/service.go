@@ -366,6 +366,7 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 	}
 
 	// Detections
+	detectionPBIDMap := make(map[string]string) // sourceId -> PB ID
 	for _, d := range r.Detections {
 		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(d.Pilot))
 		if err != nil {
@@ -375,7 +376,7 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := s.Upserter.Upsert("detections", string(d.ID), map[string]any{
+		detectionPBID, err := s.Upserter.Upsert("detections", string(d.ID), map[string]any{
 			"timingSystemIndex": d.TimingSystemIndex,
 			"time":              d.Time,
 			"peak":              d.Peak,
@@ -390,18 +391,31 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 			"race":              racePBID,
 			"channel":           channelPBID,
 			"event":             eventPBID,
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
+		detectionPBIDMap[string(d.ID)] = detectionPBID
 	}
 
 	// Laps
 	for _, l := range r.Laps {
+		// Get detection PB id from our map if the lap has a detection reference
+		var detectionPBID string
+		if l.Detection != "" {
+			if pbID, exists := detectionPBIDMap[string(l.Detection)]; exists {
+				detectionPBID = pbID
+			} else {
+				return fmt.Errorf("lap references detection %s that was not found in race", l.Detection)
+			}
+		}
+
 		if _, err := s.Upserter.Upsert("laps", string(l.ID), map[string]any{
 			"lapNumber":     l.LapNumber,
 			"lengthSeconds": l.LengthSeconds,
 			"startTime":     l.StartTime,
 			"endTime":       l.EndTime,
+			"detection":     detectionPBID,
 			"race":          racePBID,
 			"event":         eventPBID,
 		}); err != nil {

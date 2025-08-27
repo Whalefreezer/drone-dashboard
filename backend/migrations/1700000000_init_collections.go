@@ -190,6 +190,7 @@ func init() {
 			&core.NumberField{Name: "lengthSeconds"},
 			&core.TextField{Name: "startTime", Max: 64},
 			&core.TextField{Name: "endTime", Max: 64},
+			&core.RelationField{Name: "detection", CollectionId: detections.Id, MaxSelect: 1},
 			&core.RelationField{Name: "race", CollectionId: races.Id, MaxSelect: 1},
 			&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1},
 		)

@@ -69,9 +69,7 @@ export function computeProcessedLaps(
         .map((lap) => {
             // For now, we'll match detections by lap number and race
             // This may need adjustment based on actual PB relationship structure
-            const detection = detections.find((d) => 
-                d.lapNumber === lap.lapNumber && d.race === lap.race
-            );
+            const detection = detections.find((d) => lap.detection === d.id);
             if (!detection || !detection.valid) return null;
             
             return {
