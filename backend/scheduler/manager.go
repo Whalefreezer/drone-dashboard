@@ -476,6 +476,39 @@ func (m *Manager) ensureActiveRacePriority() {
 	}
 }
 
+// RegisterHooks sets up record update hooks to trigger active race priority updates
+func (m *Manager) RegisterHooks() {
+	// Hook for race updates
+	m.App.OnRecordAfterUpdateSuccess("races").BindFunc(func(e *core.RecordEvent) error {
+		// Only trigger if this race belongs to the current event
+		eventId := e.Record.GetString("event")
+		if eventId == "" {
+			return nil
+		}
+
+		currentEvent := m.findCurrentEventPBID()
+		if eventId == currentEvent {
+			m.ensureActiveRacePriority()
+		}
+		return nil
+	})
+
+	// Hook for round updates
+	m.App.OnRecordAfterUpdateSuccess("rounds").BindFunc(func(e *core.RecordEvent) error {
+		// Only trigger if this round belongs to the current event
+		eventId := e.Record.GetString("event")
+		if eventId == "" {
+			return nil
+		}
+
+		currentEvent := m.findCurrentEventPBID()
+		if eventId == currentEvent {
+			m.ensureActiveRacePriority()
+		}
+		return nil
+	})
+}
+
 // -------------------- Helpers --------------------
 
 func (m *Manager) findCurrentEventPBID() string {

@@ -48,6 +48,9 @@ func main() {
 	// Scheduler manager
 	manager := scheduler.NewManager(app, ingestService, scheduler.Config{})
 
+	// Register record hooks for active race priority updates
+	manager.RegisterHooks()
+
 	// Register server lifecycle and routes
 	registerServe(app, staticContent, ingestService, manager, flags)
 
