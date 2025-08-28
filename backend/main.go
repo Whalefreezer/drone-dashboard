@@ -17,12 +17,13 @@ import (
 	_ "drone-dashboard/migrations"
 	"drone-dashboard/scheduler"
 
+	"strconv"
+
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
-	"strconv"
 )
 
 //go:embed static/*
@@ -67,6 +68,31 @@ type CLIFlags struct {
 	Port          int
 	LogLevel      string
 	IngestEnabled bool
+}
+
+// getServerSetting retrieves a server setting value by key with optional default
+func getServerSetting(app core.App, key string, defaultValue string) string {
+	rec, err := app.FindFirstRecordByFilter("server_settings", "key = {:key}", dbx.Params{"key": key})
+	if err != nil || rec == nil {
+		return defaultValue
+	}
+	value := rec.GetString("value")
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+// getServerSettingInt retrieves a server setting as an integer with optional default
+func getServerSettingInt(app core.App, key string, defaultValue int) int {
+	value := getServerSetting(app, key, "")
+	if value == "" {
+		return defaultValue
+	}
+	if n, err := strconv.Atoi(value); err == nil {
+		return n
+	}
+	return defaultValue
 }
 
 func parseFlags() CLIFlags {
@@ -172,47 +198,140 @@ func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
 		rec = core.NewRecord(col)
 		rec.Set("key", "scheduler.enabled")
 	}
-	if enabled {
-		rec.Set("value", "true")
-	} else {
-		rec.Set("value", "false")
-	}
+	rec.Set("value", strconv.FormatBool(enabled))
 	_ = app.Save(rec)
 }
 
 func registerRaceUpdateHook(app core.App) {
 	app.OnRecordAfterUpdateSuccess("races").BindFunc(func(e *core.RecordEvent) error {
 		rec := e.Record
-		start := rec.GetString("start")
-		end := rec.GetString("end")
-		valid := rec.GetBool("valid")
-		if valid && start != "" && !strings.HasPrefix(start, "0") && (end == "" || strings.HasPrefix(end, "0")) {
-			r, _ := app.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": rec.Id})
-			if r == nil {
-				col, err := app.FindCollectionByNameOrId("ingest_targets")
-				if err == nil {
-					r = core.NewRecord(col)
-					r.Set("type", "race")
-					r.Set("sourceId", rec.Id)
-					r.Set("event", rec.GetString("event"))
-				}
+		eventId := rec.GetString("event")
+		if eventId == "" {
+			return nil
+		}
+
+		// Get current race using the same logic as currentRaceAtom
+		currentRace := findCurrentRace(app, eventId)
+		if currentRace == nil {
+			return nil
+		}
+
+		// Create or update ingest target for the current race
+		r, _ := app.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRace.Id})
+		if r == nil {
+			col, err := app.FindCollectionByNameOrId("ingest_targets")
+			if err == nil {
+				r = core.NewRecord(col)
+				r.Set("type", "race")
+				r.Set("sourceId", currentRace.Id)
+				r.Set("event", currentRace.GetString("event"))
 			}
-			if r != nil {
-				activeMs := 200
-				if srec, err := app.FindFirstRecordByFilter("server_settings", "key = 'scheduler.raceActiveMs'", nil); err == nil && srec != nil {
-					if v := srec.GetString("value"); v != "" {
-						if n, convErr := strconv.Atoi(v); convErr == nil {
-							activeMs = n
-						}
-					}
-				}
-				r.Set("intervalMs", activeMs)
-				r.Set("priority", 100)
-				r.Set("enabled", true)
-				r.Set("nextDueAt", time.Now().UnixMilli())
-				_ = app.Save(r)
-			}
+		}
+		if r != nil {
+			activeMs := getServerSettingInt(app, "scheduler.raceActiveMs", 200)
+			r.Set("intervalMs", activeMs)
+			r.Set("priority", 100)
+			r.Set("enabled", true)
+			r.Set("nextDueAt", time.Now().UnixMilli())
+			_ = app.Save(r)
 		}
 		return nil
 	})
+}
+
+// findCurrentRace determines the current race using the same logic as currentRaceAtom
+// This uses a single SQL query with proper joins and ordering
+func findCurrentRace(app core.App, eventId string) *core.Record {
+	// Query to find current race with proper ordering by round order and race number
+	// This follows the exact same logic as currentRaceAtom:
+	// 1. Find active race (valid, started, not ended)
+	// 2. If none, find last completed race and return next one
+	// 3. Fallback to first race
+
+	query := `
+		WITH ordered_races AS (
+			SELECT 
+				r.id,
+				r.raceNumber,
+				r.start,
+				r.end,
+				r.valid,
+				r.event,
+				round.order as round_order,
+				-- Determine if race is active (started but not ended)
+				CASE 
+					WHEN r.valid = 1 
+						AND r.start IS NOT NULL 
+						AND r.start != '' 
+						AND r.start NOT LIKE '0%'
+						AND (r.end IS NULL OR r.end = '' OR r.end LIKE '0%')
+					THEN 1 
+					ELSE 0 
+				END as is_active,
+				-- Determine if race is completed (started and ended)
+				CASE 
+					WHEN r.valid = 1 
+						AND r.start IS NOT NULL 
+						AND r.start != '' 
+						AND r.start NOT LIKE '0%'
+						AND r.end IS NOT NULL 
+						AND r.end != '' 
+						AND r.end NOT LIKE '0%'
+					THEN 1 
+					ELSE 0 
+				END as is_completed,
+				ROW_NUMBER() OVER (
+					ORDER BY round.order ASC, r.raceNumber ASC
+				) as race_order
+			FROM races r
+			LEFT JOIN rounds round ON r.round = round.id
+			WHERE r.event = {:eventId}
+		),
+		active_race AS (
+			SELECT id FROM ordered_races 
+			WHERE is_active = 1 
+			ORDER BY race_order ASC 
+			LIMIT 1
+		),
+		last_completed_race AS (
+			SELECT race_order FROM ordered_races 
+			WHERE is_completed = 1 
+			ORDER BY race_order DESC 
+			LIMIT 1
+		),
+		next_after_completed AS (
+			SELECT r.id 
+			FROM ordered_races r
+			CROSS JOIN last_completed_race lcr
+			WHERE r.race_order = lcr.race_order + 1
+		),
+		first_race AS (
+			SELECT id FROM ordered_races 
+			ORDER BY race_order ASC 
+			LIMIT 1
+		)
+		SELECT 
+			COALESCE(
+				(SELECT id FROM active_race),
+				(SELECT id FROM next_after_completed),
+				(SELECT id FROM first_race)
+			) as current_race_id
+	`
+
+	var result struct {
+		CurrentRaceId string `db:"current_race_id"`
+	}
+
+	err := app.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result)
+	if err != nil || result.CurrentRaceId == "" {
+		return nil
+	}
+
+	// Fetch the actual race record
+	race, err := app.FindRecordById("races", result.CurrentRaceId)
+	if err != nil {
+		return nil
+	}
+
+	return race
 }
