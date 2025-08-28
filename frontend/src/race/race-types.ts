@@ -33,6 +33,7 @@ export interface RaceData {
     end?: string;
     bracket?: string;
     targetLaps?: number;
+    raceOrder?: number;
     
     // Computed race data
     processedLaps: ProcessedLap[];

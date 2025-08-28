@@ -26,6 +26,7 @@ import {
     PBPilotRecord,
     PBRaceRecord,
     PBRoundRecord,
+    PBClientKVRecord,
 } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
 import { eagerAtom } from 'jotai-eager';
@@ -103,6 +104,7 @@ export const roundsDataAtom = eagerAtom((get) => {
 
 // Live records for race and nested collections
 export const raceRecordsAtom = pbSubscribeCollection<PBRaceRecord>('races');
+export const clientKVRecordsAtom = pbSubscribeCollection<PBClientKVRecord>('client_kv');
 export const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
 export const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
 export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
@@ -110,6 +112,23 @@ export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('ga
 // Use the new PB-native race atoms instead of legacy ComputedRace
 export const racesAtom = allRacesAtom;
 export const currentRaceAtom = newCurrentRaceAtom;
+
+// Current order from client_kv for the current event
+export const currentOrderKVAtom = eagerAtom((get) => {
+    const ev = get(currentEventAtom);
+    if (!ev) return null as null | { order?: number; raceId?: string };
+    const kv = get(clientKVRecordsAtom);
+    const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder' && r.event === ev.id);
+    if (!record || !record.value) return null;
+    try {
+        const parsed = JSON.parse(record.value);
+        const order = typeof parsed.order === 'number' ? parsed.order : undefined;
+        const raceId = typeof parsed.raceId === 'string' ? parsed.raceId : undefined;
+        return { order, raceId };
+    } catch {
+        return null;
+    }
+});
 
 // Re-export types and functions from common
 export type { OverallBestTimes, ProcessedLap };

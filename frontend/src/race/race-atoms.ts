@@ -8,7 +8,7 @@ import {
     lapRecordsAtom,
     pilotChannelRecordsAtom,
     raceRecordsAtom,
-    roundRecordsAtom,
+    currentOrderKVAtom,
 } from '../state/pbAtoms.ts';
 import {
     computePilotChannelAssociations,
@@ -59,6 +59,7 @@ export const raceDataAtom = atomFamily((raceId: string) =>
             end: raceRecord.end,
             bracket: raceRecord.bracket,
             targetLaps: raceRecord.targetLaps,
+            raceOrder: raceRecord.raceOrder,
             processedLaps,
             pilotChannels,
         };
@@ -96,24 +97,16 @@ export const allRacesAtom = eagerAtom((get): RaceData[] => {
     );
 
     const races = validRaceRecords.map((record) => get(raceDataAtom(record.id)));
-    return races.filter((race): race is RaceData => race !== null);
-});
-
-/**
- * Races ordered by round and race number - PB native
- */
-export const orderedRacesAtom = eagerAtom((get): RaceData[] => {
-    const races = get(allRacesAtom);
-    const rounds = get(roundRecordsAtom);
-
-    return races.sort((a: RaceData, b: RaceData) => {
-        const aRound = rounds.find((r) => r.id === a.roundId);
-        const bRound = rounds.find((r) => r.id === b.roundId);
-        const orderDiff = (aRound?.order ?? 0) - (bRound?.order ?? 0);
-        if (orderDiff !== 0) return orderDiff;
-        return a.raceNumber - b.raceNumber;
+    const validRaces = races.filter((race): race is RaceData => race !== null);
+    
+    return validRaces.sort((a: RaceData, b: RaceData) => {
+        const ao = a.raceOrder ?? 0;
+        const bo = b.raceOrder ?? 0;
+        return ao - bo;
     });
 });
+
+
 
 /**
  * Current race detection - PB native
@@ -124,53 +117,21 @@ export const orderedRacesAtom = eagerAtom((get): RaceData[] => {
  * 3. Fallback to first race
  */
 export const currentRaceAtom = eagerAtom((get): RaceData | null => {
-    const races = get(orderedRacesAtom);
-    
-    if (!races || races.length === 0) {
-        return null;
-    }
+    const races = get(allRacesAtom);
+    if (!races || races.length === 0) return null;
 
-    // Step 1: Find active race (valid, started, not ended) - same logic as findIndexOfCurrentRace
-    const activeRaceIndex = races.findIndex((race) => {
-        if (!race.valid) {
-            return false;
+    // Use backend-published current order (client_kv) only
+    const kv = get(currentOrderKVAtom);
+    if (kv) {
+        if (kv.raceId) {
+            const byId = races.find((r) => r.id === kv.raceId);
+            if (byId) return byId;
         }
-        if (!race.start || race.start.startsWith('0')) {
-            return false;
+        if (kv.order && kv.order > 0 && kv.order <= races.length) {
+            return races[kv.order - 1];
         }
-        if (!race.end || race.end.startsWith('0')) {
-            return true; // Started but not ended = active
-        }
-        return false;
-    });
-
-    if (activeRaceIndex !== -1) {
-        return races[activeRaceIndex];
     }
-
-    // Step 2: Find last completed race and return next one - same logic as findIndexOfCurrentRace
-    const lastCompletedIndex = races.map((race, index) => ({ race, index }))
-        .reverse()
-        .find(({ race }) => {
-            if (!race.valid) {
-                return false;
-            }
-
-            if (
-                race.start && !race.start.startsWith('0') && 
-                race.end && !race.end.startsWith('0')
-            ) {
-                return true; // Both started and ended = completed
-            }
-            return false;
-        })?.index ?? -1;
-
-    if (lastCompletedIndex !== -1) {
-        const nextIndex = Math.min(lastCompletedIndex + 1, races.length - 1);
-        return races[nextIndex];
-    }
-
-    // Step 3: Fallback to first race if no completed races - same logic as findIndexOfCurrentRace
+    // Minimal default without local detection heuristics
     return races[0] || null;
 });
 
@@ -178,7 +139,7 @@ export const currentRaceAtom = eagerAtom((get): RaceData | null => {
  * Helper to find current race index - uses same logic as findIndexOfCurrentRace
  */
 export const currentRaceIndexAtom = eagerAtom((get): number => {
-    const races = get(orderedRacesAtom);
+    const races = get(allRacesAtom);
     return findCurrentRaceIndex(races);
 });
 
@@ -186,7 +147,7 @@ export const currentRaceIndexAtom = eagerAtom((get): number => {
  * Last completed race - computed at atom level to avoid hook violations
  */
 export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
-    const races = get(orderedRacesAtom);
+    const races = get(allRacesAtom);
     
     if (!races || races.length === 0) {
         return null;

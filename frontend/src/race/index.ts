@@ -9,7 +9,7 @@ export {
     raceDataAtom, 
     raceStatusAtom, 
     allRacesAtom, 
-    orderedRacesAtom, 
+ 
     currentRaceAtom, 
     currentRaceIndexAtom,
     lastCompletedRaceAtom

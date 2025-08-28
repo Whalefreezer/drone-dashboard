@@ -1,11 +1,9 @@
 // PocketBase collection record types inferred from backend/migrations/1700000000_init_collections.go
 // These mirror the fields created in the initial migration to aid type‑safe PB usage on the frontend.
 
-// Common base for PocketBase records
+// Common base for PocketBase records (frontend only needs PB id)
 export interface PBBaseRecord {
     id: string;
-    sourceId: string; // remote GUID from FPVTrackside (unique per source)
-    source?: string; // provenance tag, e.g., 'fpvtrackside'
 }
 
 // events
@@ -79,8 +77,18 @@ export interface PBRaceRecord extends PBBaseRecord {
     valid?: boolean;
     bracket?: string;
     targetLaps?: number;
+    raceOrder?: number;
     event?: string; // relation → events.id
     round?: string; // relation → rounds.id
+}
+
+// client_kv (generic client-facing state)
+export interface PBClientKVRecord extends PBBaseRecord {
+    namespace: string;
+    key: string;
+    value?: string; // JSON payload
+    event?: string; // relation → events.id
+    expiresAt?: number;
 }
 
 // pilotChannels
@@ -155,4 +163,3 @@ export type AnyPBRecord =
     | PBLapRecord
     | PBGamePointRecord
     | PBResultRecord;
-

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"log/slog"
@@ -40,57 +41,45 @@ func NewManager(app core.App, service *ingest.Service, cfg Config) *Manager {
 
 // StartLoops spawns the discovery, worker, and active race goroutines.
 func (m *Manager) StartLoops(ctx context.Context) {
-	// seed defaults if missing
-	m.ensureDefaultSettings()
-	// load settings-derived config
-	m.loadConfigFromDB()
-	// Discovery loop
-	go func() {
-		ticker := time.NewTicker(m.Cfg.FullInterval)
-		defer ticker.Stop()
-		for {
-			if m.isEnabled() {
-				m.runDiscovery()
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-			}
-		}
-	}()
+    // seed defaults if missing
+    m.ensureDefaultSettings()
+    // load settings-derived config
+    m.loadConfigFromDB()
+    // initial promotion of active race / order publish
+    if m.isEnabled() {
+        m.ensureActiveRacePriority()
+    }
+    // Discovery loop
+    go func() {
+        ticker := time.NewTicker(m.Cfg.FullInterval)
+        defer ticker.Stop()
+        for {
+            if m.isEnabled() {
+                m.runDiscovery()
+            }
+            select {
+            case <-ctx.Done():
+                return
+            case <-ticker.C:
+            }
+        }
+    }()
 
-	// Worker loop
-	go func() {
-		ticker := time.NewTicker(m.Cfg.WorkerInterval)
-		defer ticker.Stop()
-		for {
-			if m.isEnabled() {
-				m.drainOnce()
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-			}
-		}
-	}()
-
-	// Active race loop
-	go func() {
-		ticker := time.NewTicker(m.Cfg.ActiveCheck)
-		defer ticker.Stop()
-		for {
-			if m.isEnabled() {
-				m.ensureActiveRacePriority()
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-			}
-		}
-	}()
+    // Worker loop
+    go func() {
+        ticker := time.NewTicker(m.Cfg.WorkerInterval)
+        defer ticker.Stop()
+        for {
+            if m.isEnabled() {
+                m.drainOnce()
+            }
+            select {
+            case <-ctx.Done():
+                return
+            case <-ticker.C:
+            }
+        }
+    }()
 }
 
 // -------------------- Discovery --------------------
@@ -146,10 +135,13 @@ func (m *Manager) runDiscovery() {
 		m.upsertTarget("race", string(raceID), eventPBID, m.Cfg.RaceIdle, now)
 	}
 
-	// Optionally: prune orphaned targets for this event
-	m.pruneOrphans(eventPBID, eventData.Races)
+    // Optionally: prune orphaned targets for this event
+    m.pruneOrphans(eventPBID, eventData.Races)
 
-	slog.Info("scheduler.discovery.completed", "eventSourceId", eventSourceId, "eventPBID", eventPBID, "races", len(eventData.Races))
+    slog.Info("scheduler.discovery.completed", "eventSourceId", eventSourceId, "eventPBID", eventPBID, "races", len(eventData.Races))
+
+    // After reconciling targets/races, ensure active race priority and publish current order
+    m.ensureActiveRacePriority()
 }
 
 func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time) {
@@ -311,113 +303,126 @@ func max(a, b int) int {
 
 // -------------------- Active Race --------------------
 
-// findCurrentRace determines the current race using the same logic as currentRaceAtom
-// This uses a single SQL query with proper joins and ordering
-func (m *Manager) findCurrentRace(eventId string) string {
-	// Query to find current race with proper ordering by round order and race number
-	// This follows the exact same logic as currentRaceAtom:
-	// 1. Find active race (valid, started, not ended)
-	// 2. If none, find last completed race and return next one
-	// 3. Fallback to first race
+// findCurrentRaceWithOrder returns the current race id and its computed order (1-based)
+// using the same logic as findCurrentRace/currentRaceAtom. The order is computed from
+// rounds.order ASC, race.raceNumber ASC.
+func (m *Manager) findCurrentRaceWithOrder(eventId string) (string, int) {
+    // Uses precomputed races.raceOrder to avoid window functions here.
+    query := `
+        WITH rs AS (
+            SELECT id, raceOrder, start, end, valid
+            FROM races
+            WHERE event = {:eventId}
+        ),
+        active AS (
+            SELECT id, raceOrder FROM rs
+            WHERE valid = 1
+              AND start IS NOT NULL AND start != '' AND start NOT LIKE '0%'
+              AND (end IS NULL OR end = '' OR end LIKE '0%')
+            ORDER BY raceOrder ASC LIMIT 1
+        ),
+        last_completed AS (
+            SELECT raceOrder FROM rs
+            WHERE valid = 1
+              AND start IS NOT NULL AND start != '' AND start NOT LIKE '0%'
+              AND end IS NOT NULL AND end != '' AND end NOT LIKE '0%'
+            ORDER BY raceOrder DESC LIMIT 1
+        ),
+        next_after_completed AS (
+            SELECT r.id, r.raceOrder FROM rs r, last_completed lc
+            WHERE r.raceOrder = lc.raceOrder + 1
+        ),
+        first_race AS (
+            SELECT id, raceOrder FROM rs ORDER BY raceOrder ASC LIMIT 1
+        )
+        SELECT 
+          COALESCE((SELECT id FROM active), (SELECT id FROM next_after_completed), (SELECT id FROM first_race)) AS current_race_id,
+          COALESCE((SELECT raceOrder FROM active), (SELECT raceOrder FROM next_after_completed), (SELECT raceOrder FROM first_race)) AS current_race_order
+    `
 
-	query := `
-		WITH ordered_races AS (
-			SELECT 
-				r.id,
-				r.raceNumber,
-				r.start,
-				r.end,
-				r.valid,
-				r.event,
-				round."order" as round_order,
-				-- Determine if race is active (started but not ended)
-				CASE 
-					WHEN r.valid = 1 
-						AND r.start IS NOT NULL 
-						AND r.start != '' 
-						AND r.start NOT LIKE '0%'
-						AND (r.end IS NULL OR r.end = '' OR r.end LIKE '0%')
-					THEN 1 
-					ELSE 0 
-				END as is_active,
-				-- Determine if race is completed (started and ended)
-				CASE 
-					WHEN r.valid = 1 
-						AND r.start IS NOT NULL 
-						AND r.start != '' 
-						AND r.start NOT LIKE '0%'
-						AND r.end IS NOT NULL 
-						AND r.end != '' 
-						AND r.end NOT LIKE '0%'
-					THEN 1 
-					ELSE 0 
-				END as is_completed,
-				ROW_NUMBER() OVER (
-					ORDER BY round."order" ASC, r.raceNumber ASC
-				) as race_order
-			FROM races r
-			LEFT JOIN rounds round ON r.round = round.id
-			WHERE r.event = {:eventId}
-		),
-		active_race AS (
-			SELECT id FROM ordered_races 
-			WHERE is_active = 1 
-			ORDER BY race_order ASC 
-			LIMIT 1
-		),
-		last_completed_race AS (
-			SELECT race_order FROM ordered_races 
-			WHERE is_completed = 1 
-			ORDER BY race_order DESC 
-			LIMIT 1
-		),
-		next_after_completed AS (
-			SELECT r.id 
-			FROM ordered_races r
-			CROSS JOIN last_completed_race lcr
-			WHERE r.race_order = lcr.race_order + 1
-		),
-		first_race AS (
-			SELECT id FROM ordered_races 
-			ORDER BY race_order ASC 
-			LIMIT 1
-		)
-		SELECT 
-			COALESCE(
-				(SELECT id FROM active_race),
-				(SELECT id FROM next_after_completed),
-				(SELECT id FROM first_race)
-			) as current_race_id
-	`
+    var result struct {
+        CurrentRaceId    string `db:"current_race_id"`
+        CurrentRaceOrder int    `db:"current_race_order"`
+    }
+    if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result); err != nil {
+        slog.Warn("scheduler.findCurrentRaceWithOrder.query.error", "eventId", eventId, "err", err)
+        return "", 0
+    }
+    if result.CurrentRaceId == "" {
+        return "", 0
+    }
+    return result.CurrentRaceId, result.CurrentRaceOrder
+}
 
-	var result struct {
-		CurrentRaceId string `db:"current_race_id"`
-	}
+// recalculateRaceOrder updates races.raceOrder for all races in the event using a single SQL statement.
+func (m *Manager) recalculateRaceOrder(eventId string) {
+    query := `
+        WITH ordered AS (
+            SELECT r.id, ROW_NUMBER() OVER (
+                ORDER BY round."order" ASC, r.raceNumber ASC
+            ) AS pos
+            FROM races r
+            LEFT JOIN rounds round ON r.round = round.id
+            WHERE r.event = {:eventId}
+        )
+        UPDATE races
+        SET raceOrder = (
+            SELECT pos FROM ordered WHERE ordered.id = races.id
+        )
+        WHERE event = {:eventId}
+    `
+    if _, err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).Execute(); err != nil {
+        slog.Warn("scheduler.recalculateRaceOrder.update.error", "eventId", eventId, "err", err)
+    }
+}
 
-	err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result)
-	if err != nil {
-		slog.Warn("scheduler.findCurrentRace.query.error", "eventId", eventId, "err", err)
-		return ""
-	}
-	if result.CurrentRaceId == "" {
-		slog.Warn("scheduler.findCurrentRace.noRace", "eventId", eventId)
-		return ""
-	}
+// publishCurrentOrderKV writes the current order and race id into client_kv for the event.
+func (m *Manager) publishCurrentOrderKV(eventId, raceId string, order int) {
+    if eventId == "" || raceId == "" || order <= 0 {
+        return
+    }
+    // Build JSON value
+    payload := map[string]any{
+        "order":      order,
+        "raceId":     raceId,
+        "computedAt": time.Now().UnixMilli(),
+    }
+    b, _ := json.Marshal(payload)
 
-	return result.CurrentRaceId
+    // find existing kv
+    rec, _ := m.App.FindFirstRecordByFilter(
+        "client_kv",
+        "namespace = {:ns} && key = {:k} && event = {:e}",
+        dbx.Params{"ns": "race", "k": "currentOrder", "e": eventId},
+    )
+    if rec == nil {
+        col, err := m.App.FindCollectionByNameOrId("client_kv")
+        if err != nil {
+            return
+        }
+        rec = core.NewRecord(col)
+        rec.Set("namespace", "race")
+        rec.Set("key", "currentOrder")
+        rec.Set("event", eventId)
+    }
+    rec.Set("value", string(b))
+    _ = m.App.Save(rec)
 }
 
 func (m *Manager) ensureActiveRacePriority() {
-	eventPBID := m.findCurrentEventPBID()
-	if eventPBID == "" {
-		return
-	}
+    eventPBID := m.findCurrentEventPBID()
+    if eventPBID == "" {
+        return
+    }
 
-	// Step 1: Find the current race
-	currentRaceId := m.findCurrentRace(eventPBID)
-	if currentRaceId == "" {
-		return // nothing to promote; discovery will keep idle intervals
-	}
+    // Keep raceOrder up to date before publishing/using it
+    m.recalculateRaceOrder(eventPBID)
+
+    // Step 1: Find the current race and order
+    currentRaceId, currentOrder := m.findCurrentRaceWithOrder(eventPBID)
+    if currentRaceId == "" {
+        return // nothing to promote; discovery will keep idle intervals
+    }
 
 	// Step 2: Update all race ingest targets
 	// Set current race to active interval, all others to idle interval
@@ -451,62 +456,58 @@ func (m *Manager) ensureActiveRacePriority() {
 		"nowMs":         now.UnixMilli(),
 	}).Execute()
 
-	if err != nil {
-		slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceId", currentRaceId, "err", err)
-		return
-	}
+    if err != nil {
+        slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceId", currentRaceId, "err", err)
+        return
+    }
 
 	// Ensure current race target exists if it doesn't already
 	rec, _ := m.App.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRaceId})
-	if rec == nil {
-		// create target if missing
-		col, err := m.App.FindCollectionByNameOrId("ingest_targets")
-		if err != nil {
-			return
-		}
-		rec = core.NewRecord(col)
-		rec.Set("type", "race")
-		rec.Set("sourceId", currentRaceId)
-		rec.Set("event", eventPBID)
-		rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
-		rec.Set("priority", 100)
-		rec.Set("enabled", true)
-		rec.Set("nextDueAt", now.UnixMilli())
-		_ = m.App.Save(rec)
-	}
+    if rec == nil {
+        // create target if missing
+        col, err := m.App.FindCollectionByNameOrId("ingest_targets")
+        if err != nil {
+            return
+        }
+        rec = core.NewRecord(col)
+        rec.Set("type", "race")
+        rec.Set("sourceId", currentRaceId)
+        rec.Set("event", eventPBID)
+        rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
+        rec.Set("priority", 100)
+        rec.Set("enabled", true)
+        rec.Set("nextDueAt", now.UnixMilli())
+        _ = m.App.Save(rec)
+    }
+
+    // Publish current order for clients
+    m.publishCurrentOrderKV(eventPBID, currentRaceId, currentOrder)
 }
 
 // RegisterHooks sets up record update hooks to trigger active race priority updates
 func (m *Manager) RegisterHooks() {
-	// Hook for race updates
-	m.App.OnRecordAfterUpdateSuccess("races").BindFunc(func(e *core.RecordEvent) error {
-		// Only trigger if this race belongs to the current event
-		eventId := e.Record.GetString("event")
-		if eventId == "" {
-			return nil
-		}
-
-		currentEvent := m.findCurrentEventPBID()
-		if eventId == currentEvent {
-			m.ensureActiveRacePriority()
-		}
-		return nil
-	})
-
-	// Hook for round updates
-	m.App.OnRecordAfterUpdateSuccess("rounds").BindFunc(func(e *core.RecordEvent) error {
-		// Only trigger if this round belongs to the current event
-		eventId := e.Record.GetString("event")
-		if eventId == "" {
-			return nil
-		}
-
-		currentEvent := m.findCurrentEventPBID()
-		if eventId == currentEvent {
-			m.ensureActiveRacePriority()
-		}
-		return nil
-	})
+    // Common handler for collections that reference event
+    register := func(col string) {
+        m.App.OnRecordAfterUpdateSuccess(col).BindFunc(func(e *core.RecordEvent) error {
+            eventId := e.Record.GetString("event")
+            if eventId == "" {
+                return nil
+            }
+            if eventId == m.findCurrentEventPBID() {
+                m.ensureActiveRacePriority()
+            }
+            return nil
+        })
+    }
+    for _, col := range []string{"races", "rounds"} {
+        register(col)
+    }
+    // Also react on events updates (e.g., isCurrent flips)
+    m.App.OnRecordAfterUpdateSuccess("events").BindFunc(func(e *core.RecordEvent) error {
+        // Any change might affect current event selection; recompute
+        m.ensureActiveRacePriority()
+        return nil
+    })
 }
 
 // -------------------- Helpers --------------------

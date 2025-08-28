@@ -2,10 +2,10 @@ import { useAtomValue } from 'jotai';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
-import { orderedRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastCompletedRaceAtom } from './race-atoms.ts';
+import { allRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastCompletedRaceAtom } from './race-atoms.ts';
 
 export function RacesContainer() {
-    const races = useAtomValue(orderedRacesAtom);
+    const races = useAtomValue(allRacesAtom);
     const currentRace = useAtomValue(currentRaceAtom);
     const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
     const lastCompletedRace = useAtomValue(lastCompletedRaceAtom);
