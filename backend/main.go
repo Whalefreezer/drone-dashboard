@@ -157,6 +157,10 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
+
+		// Set up initial race ingest target after everything is ready
+		setupInitialRaceIngestTarget(app)
+
 		// Start loops
 		ctx := context.Background()
 		manager.StartLoops(ctx)
@@ -202,6 +206,51 @@ func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
 	_ = app.Save(rec)
 }
 
+// setupRaceIngestTarget creates or updates an ingest target for the current race
+func setupRaceIngestTarget(app core.App, eventId string, context string) {
+	// Get current race using the same logic as currentRaceAtom
+	currentRace := findCurrentRace(app, eventId)
+	if currentRace == nil {
+		log.Printf("No current race found for %s", context)
+		return
+	}
+
+	// Create or update ingest target for the current race
+	r, _ := app.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRace.Id})
+	if r == nil {
+		col, err := app.FindCollectionByNameOrId("ingest_targets")
+		if err == nil {
+			r = core.NewRecord(col)
+			r.Set("type", "race")
+			r.Set("sourceId", currentRace.Id)
+			r.Set("event", currentRace.GetString("event"))
+		}
+	}
+	if r != nil {
+		activeMs := getServerSettingInt(app, "scheduler.raceActiveMs", 200)
+		r.Set("intervalMs", activeMs)
+		r.Set("priority", 100)
+		r.Set("enabled", true)
+		r.Set("nextDueAt", time.Now().UnixMilli())
+		_ = app.Save(r)
+		log.Printf("Race ingest target set up for race: %s (%s)", currentRace.Id, context)
+	}
+}
+
+// setupInitialRaceIngestTarget sets up the initial race ingest target on startup
+func setupInitialRaceIngestTarget(app core.App) {
+	// Find the current event
+	currentEvent, err := app.FindFirstRecordByFilter("events", "isCurrent = 1", nil)
+	if err != nil || currentEvent == nil {
+		log.Printf("No current event found for initial race ingest target setup")
+		return
+	}
+
+	eventId := currentEvent.Id
+	log.Printf("Setting up initial race ingest target for event: %s", eventId)
+	setupRaceIngestTarget(app, eventId, "startup")
+}
+
 func registerRaceUpdateHook(app core.App) {
 	app.OnRecordAfterUpdateSuccess("races").BindFunc(func(e *core.RecordEvent) error {
 		rec := e.Record
@@ -210,31 +259,7 @@ func registerRaceUpdateHook(app core.App) {
 			return nil
 		}
 
-		// Get current race using the same logic as currentRaceAtom
-		currentRace := findCurrentRace(app, eventId)
-		if currentRace == nil {
-			return nil
-		}
-
-		// Create or update ingest target for the current race
-		r, _ := app.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRace.Id})
-		if r == nil {
-			col, err := app.FindCollectionByNameOrId("ingest_targets")
-			if err == nil {
-				r = core.NewRecord(col)
-				r.Set("type", "race")
-				r.Set("sourceId", currentRace.Id)
-				r.Set("event", currentRace.GetString("event"))
-			}
-		}
-		if r != nil {
-			activeMs := getServerSettingInt(app, "scheduler.raceActiveMs", 200)
-			r.Set("intervalMs", activeMs)
-			r.Set("priority", 100)
-			r.Set("enabled", true)
-			r.Set("nextDueAt", time.Now().UnixMilli())
-			_ = app.Save(r)
-		}
+		setupRaceIngestTarget(app, eventId, "race update")
 		return nil
 	})
 }
@@ -257,7 +282,7 @@ func findCurrentRace(app core.App, eventId string) *core.Record {
 				r.end,
 				r.valid,
 				r.event,
-				round.order as round_order,
+				round."order" as round_order,
 				-- Determine if race is active (started but not ended)
 				CASE 
 					WHEN r.valid = 1 
@@ -281,55 +306,100 @@ func findCurrentRace(app core.App, eventId string) *core.Record {
 					ELSE 0 
 				END as is_completed,
 				ROW_NUMBER() OVER (
-					ORDER BY round.order ASC, r.raceNumber ASC
+					ORDER BY round."order" ASC, r.raceNumber ASC
 				) as race_order
 			FROM races r
 			LEFT JOIN rounds round ON r.round = round.id
 			WHERE r.event = {:eventId}
-		),
-		active_race AS (
-			SELECT id FROM ordered_races 
-			WHERE is_active = 1 
-			ORDER BY race_order ASC 
-			LIMIT 1
-		),
-		last_completed_race AS (
-			SELECT race_order FROM ordered_races 
-			WHERE is_completed = 1 
-			ORDER BY race_order DESC 
-			LIMIT 1
-		),
-		next_after_completed AS (
-			SELECT r.id 
-			FROM ordered_races r
-			CROSS JOIN last_completed_race lcr
-			WHERE r.race_order = lcr.race_order + 1
-		),
-		first_race AS (
-			SELECT id FROM ordered_races 
-			ORDER BY race_order ASC 
-			LIMIT 1
 		)
 		SELECT 
-			COALESCE(
-				(SELECT id FROM active_race),
-				(SELECT id FROM next_after_completed),
-				(SELECT id FROM first_race)
-			) as current_race_id
+			id,
+			raceNumber,
+			start,
+			end,
+			valid,
+			event,
+			round_order,
+			is_active,
+			is_completed,
+			race_order
+		FROM ordered_races
+		ORDER BY race_order ASC
 	`
 
-	var result struct {
-		CurrentRaceId string `db:"current_race_id"`
+	var results []struct {
+		Id          string `db:"id"`
+		RaceNumber  int    `db:"raceNumber"`
+		Start       string `db:"start"`
+		End         string `db:"end"`
+		Valid       bool   `db:"valid"`
+		Event       string `db:"event"`
+		RoundOrder  int    `db:"round_order"`
+		IsActive    int    `db:"is_active"`
+		IsCompleted int    `db:"is_completed"`
+		RaceOrder   int    `db:"race_order"`
 	}
 
-	err := app.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result)
-	if err != nil || result.CurrentRaceId == "" {
+	err := app.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).All(&results)
+	if err != nil {
+		log.Printf("  Error querying races for event %s: %v", eventId, err)
+		return nil
+	}
+	if len(results) == 0 {
+		log.Printf("  No races found for event %s", eventId)
+		return nil
+	}
+
+	// Debug logging
+
+	// Apply the same logic as currentRaceAtom
+	var currentRaceId string
+
+	// Step 1: Find active race (valid, started, not ended)
+	for _, r := range results {
+		if r.IsActive == 1 {
+			currentRaceId = r.Id
+			log.Printf("  Selected active race: %d", r.RaceNumber)
+			break
+		}
+	}
+
+	// Step 2: If none, find last completed race and return next one
+	if currentRaceId == "" {
+		var lastCompletedOrder int = -1
+		for _, r := range results {
+			if r.IsCompleted == 1 {
+				lastCompletedOrder = r.RaceOrder
+			}
+		}
+
+		if lastCompletedOrder != -1 {
+			nextOrder := lastCompletedOrder + 1
+			for _, r := range results {
+				if r.RaceOrder == nextOrder {
+					currentRaceId = r.Id
+					log.Printf("  Selected next race after completed: %d", r.RaceNumber)
+					break
+				}
+			}
+		}
+	}
+
+	// Step 3: Fallback to first race
+	if currentRaceId == "" && len(results) > 0 {
+		currentRaceId = results[0].Id
+		log.Printf("  Selected first race as fallback: %d", results[0].RaceNumber)
+	}
+
+	if currentRaceId == "" {
+		log.Printf("  No current race found")
 		return nil
 	}
 
 	// Fetch the actual race record
-	race, err := app.FindRecordById("races", result.CurrentRaceId)
+	race, err := app.FindRecordById("races", currentRaceId)
 	if err != nil {
+		log.Printf("  Error fetching race record: %v", err)
 		return nil
 	}
 
