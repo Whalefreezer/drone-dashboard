@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"drone-dashboard/ingest"
 	"drone-dashboard/logger"
@@ -52,8 +51,8 @@ func main() {
 	// Register server lifecycle and routes
 	registerServe(app, staticContent, ingestService, manager, flags)
 
-	// Register record hooks
-	registerRaceUpdateHook(app)
+	// Note: Race ingest targets are managed by the scheduler manager
+	// which automatically sets correct intervals for active races
 
 	// Start PocketBase
 	if err := app.Start(); err != nil {
@@ -206,163 +205,9 @@ func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
 	_ = app.Save(rec)
 }
 
-// setupRaceIngestTarget creates or updates an ingest target for the current race
-func setupRaceIngestTarget(app core.App, eventId string, context string) {
-	// Get current race using the same logic as currentRaceAtom
-	currentRace := findCurrentRace(app, eventId)
-	if currentRace == nil {
-		log.Printf("No current race found for %s", context)
-		return
-	}
-
-	// Create or update ingest target for the current race
-	r, _ := app.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRace.Id})
-	if r == nil {
-		col, err := app.FindCollectionByNameOrId("ingest_targets")
-		if err == nil {
-			r = core.NewRecord(col)
-			r.Set("type", "race")
-			r.Set("sourceId", currentRace.Id)
-			r.Set("event", currentRace.GetString("event"))
-		}
-	}
-	if r != nil {
-		activeMs := getServerSettingInt(app, "scheduler.raceActiveMs", 200)
-		r.Set("intervalMs", activeMs)
-		r.Set("priority", 100)
-		r.Set("enabled", true)
-		r.Set("nextDueAt", time.Now().UnixMilli())
-		_ = app.Save(r)
-		log.Printf("Race ingest target set up for race: %s (%s)", currentRace.Id, context)
-	}
-}
-
 // setupInitialRaceIngestTarget sets up the initial race ingest target on startup
 func setupInitialRaceIngestTarget(app core.App) {
-	// Find the current event
-	currentEvent, err := app.FindFirstRecordByFilter("events", "isCurrent = 1", nil)
-	if err != nil || currentEvent == nil {
-		log.Printf("No current event found for initial race ingest target setup")
-		return
-	}
-
-	eventId := currentEvent.Id
-	log.Printf("Setting up initial race ingest target for event: %s", eventId)
-	setupRaceIngestTarget(app, eventId, "startup")
-}
-
-func registerRaceUpdateHook(app core.App) {
-	app.OnRecordAfterUpdateSuccess("races").BindFunc(func(e *core.RecordEvent) error {
-		rec := e.Record
-		eventId := rec.GetString("event")
-		if eventId == "" {
-			return nil
-		}
-
-		setupRaceIngestTarget(app, eventId, "race update")
-		return nil
-	})
-}
-
-// findCurrentRace determines the current race using the same logic as currentRaceAtom
-// This uses a single SQL query with proper joins and ordering
-func findCurrentRace(app core.App, eventId string) *core.Record {
-	// Query to find current race with proper ordering by round order and race number
-	// This follows the exact same logic as currentRaceAtom:
-	// 1. Find active race (valid, started, not ended)
-	// 2. If none, find last completed race and return next one
-	// 3. Fallback to first race
-
-	query := `
-		WITH ordered_races AS (
-			SELECT 
-				r.id,
-				r.raceNumber,
-				r.start,
-				r.end,
-				r.valid,
-				r.event,
-				round."order" as round_order,
-				-- Determine if race is active (started but not ended)
-				CASE 
-					WHEN r.valid = 1 
-						AND r.start IS NOT NULL 
-						AND r.start != '' 
-						AND r.start NOT LIKE '0%'
-						AND (r.end IS NULL OR r.end = '' OR r.end LIKE '0%')
-					THEN 1 
-					ELSE 0 
-				END as is_active,
-				-- Determine if race is completed (started and ended)
-				CASE 
-					WHEN r.valid = 1 
-						AND r.start IS NOT NULL 
-						AND r.start != '' 
-						AND r.start NOT LIKE '0%'
-						AND r.end IS NOT NULL 
-						AND r.end != '' 
-						AND r.end NOT LIKE '0%'
-					THEN 1 
-					ELSE 0 
-				END as is_completed,
-				ROW_NUMBER() OVER (
-					ORDER BY round."order" ASC, r.raceNumber ASC
-				) as race_order
-			FROM races r
-			LEFT JOIN rounds round ON r.round = round.id
-			WHERE r.event = {:eventId}
-		),
-		active_race AS (
-			SELECT id FROM ordered_races 
-			WHERE is_active = 1 
-			ORDER BY race_order ASC 
-			LIMIT 1
-		),
-		last_completed_race AS (
-			SELECT race_order FROM ordered_races 
-			WHERE is_completed = 1 
-			ORDER BY race_order DESC 
-			LIMIT 1
-		),
-		next_after_completed AS (
-			SELECT r.id 
-			FROM ordered_races r
-			CROSS JOIN last_completed_race lcr
-			WHERE r.race_order = lcr.race_order + 1
-		),
-		first_race AS (
-			SELECT id FROM ordered_races 
-			ORDER BY race_order ASC 
-			LIMIT 1
-		)
-		SELECT 
-			COALESCE(
-				(SELECT id FROM active_race),
-				(SELECT id FROM next_after_completed),
-				(SELECT id FROM first_race)
-			) as current_race_id
-	`
-
-	var result struct {
-		CurrentRaceId string `db:"current_race_id"`
-	}
-
-	err := app.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result)
-	if err != nil {
-		log.Printf("  Error querying races for event %s: %v", eventId, err)
-		return nil
-	}
-	if result.CurrentRaceId == "" {
-		log.Printf("  No current race found for event %s", eventId)
-		return nil
-	}
-
-	// Fetch the actual race record
-	race, err := app.FindRecordById("races", result.CurrentRaceId)
-	if err != nil {
-		log.Printf("  Error fetching race record: %v", err)
-		return nil
-	}
-
-	return race
+	// The scheduler manager automatically handles race ingest targets
+	// and sets correct intervals for active races via ensureActiveRacePriority()
+	log.Printf("Race ingest targets will be managed by scheduler")
 }

@@ -311,41 +311,116 @@ func max(a, b int) int {
 
 // -------------------- Active Race --------------------
 
+// findCurrentRace determines the current race using the same logic as currentRaceAtom
+// This uses a single SQL query with proper joins and ordering
+func (m *Manager) findCurrentRace(eventId string) string {
+	// Query to find current race with proper ordering by round order and race number
+	// This follows the exact same logic as currentRaceAtom:
+	// 1. Find active race (valid, started, not ended)
+	// 2. If none, find last completed race and return next one
+	// 3. Fallback to first race
+
+	query := `
+		WITH ordered_races AS (
+			SELECT 
+				r.id,
+				r.raceNumber,
+				r.start,
+				r.end,
+				r.valid,
+				r.event,
+				round."order" as round_order,
+				-- Determine if race is active (started but not ended)
+				CASE 
+					WHEN r.valid = 1 
+						AND r.start IS NOT NULL 
+						AND r.start != '' 
+						AND r.start NOT LIKE '0%'
+						AND (r.end IS NULL OR r.end = '' OR r.end LIKE '0%')
+					THEN 1 
+					ELSE 0 
+				END as is_active,
+				-- Determine if race is completed (started and ended)
+				CASE 
+					WHEN r.valid = 1 
+						AND r.start IS NOT NULL 
+						AND r.start != '' 
+						AND r.start NOT LIKE '0%'
+						AND r.end IS NOT NULL 
+						AND r.end != '' 
+						AND r.end NOT LIKE '0%'
+					THEN 1 
+					ELSE 0 
+				END as is_completed,
+				ROW_NUMBER() OVER (
+					ORDER BY round."order" ASC, r.raceNumber ASC
+				) as race_order
+			FROM races r
+			LEFT JOIN rounds round ON r.round = round.id
+			WHERE r.event = {:eventId}
+		),
+		active_race AS (
+			SELECT id FROM ordered_races 
+			WHERE is_active = 1 
+			ORDER BY race_order ASC 
+			LIMIT 1
+		),
+		last_completed_race AS (
+			SELECT race_order FROM ordered_races 
+			WHERE is_completed = 1 
+			ORDER BY race_order DESC 
+			LIMIT 1
+		),
+		next_after_completed AS (
+			SELECT r.id 
+			FROM ordered_races r
+			CROSS JOIN last_completed_race lcr
+			WHERE r.race_order = lcr.race_order + 1
+		),
+		first_race AS (
+			SELECT id FROM ordered_races 
+			ORDER BY race_order ASC 
+			LIMIT 1
+		)
+		SELECT 
+			COALESCE(
+				(SELECT id FROM active_race),
+				(SELECT id FROM next_after_completed),
+				(SELECT id FROM first_race)
+			) as current_race_id
+	`
+
+	var result struct {
+		CurrentRaceId string `db:"current_race_id"`
+	}
+
+	err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result)
+	if err != nil {
+		slog.Warn("scheduler.findCurrentRace.query.error", "eventId", eventId, "err", err)
+		return ""
+	}
+	if result.CurrentRaceId == "" {
+		slog.Warn("scheduler.findCurrentRace.noRace", "eventId", eventId)
+		return ""
+	}
+
+	return result.CurrentRaceId
+}
+
 func (m *Manager) ensureActiveRacePriority() {
 	eventPBID := m.findCurrentEventPBID()
 	if eventPBID == "" {
 		return
 	}
 
-	// Load races for event
-	races, err := m.App.FindAllRecords("races")
-	if err != nil {
-		return
-	}
-
-	// Determine active race per frontend logic
-	activeRaceId := ""
-	// first find active (valid && started && not ended)
-	for _, r := range races {
-		if r.GetString("event") != eventPBID {
-			continue
-		}
-		if !r.GetBool("valid") {
-			continue
-		}
-		start := r.GetString("start")
-		end := r.GetString("end")
-		if start != "" && !strings.HasPrefix(start, "0") && (end == "" || strings.HasPrefix(end, "0")) {
-			activeRaceId = r.Id
-			break
-		}
-	}
-	if activeRaceId == "" {
+	// Use the shared findCurrentRace logic
+	currentRaceId := m.findCurrentRace(eventPBID)
+	if currentRaceId == "" {
 		return // nothing to promote; discovery will keep idle intervals
 	}
 
-	// Promote active race target to fast interval and higher priority
-	rec, _ := m.App.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": activeRaceId})
+	// Promote current race target to fast interval and higher priority
+	rec, _ := m.App.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRaceId})
 	if rec == nil {
 		// create target if missing
 		col, err := m.App.FindCollectionByNameOrId("ingest_targets")
@@ -354,7 +429,7 @@ func (m *Manager) ensureActiveRacePriority() {
 		}
 		rec = core.NewRecord(col)
 		rec.Set("type", "race")
-		rec.Set("sourceId", activeRaceId)
+		rec.Set("sourceId", currentRaceId)
 		rec.Set("event", eventPBID)
 	}
 	rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
