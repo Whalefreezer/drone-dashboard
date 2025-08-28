@@ -1,20 +1,19 @@
 package scheduler
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"hash/fnv"
-	"log/slog"
-	"math/rand"
-	"sort"
-	"strings"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "hash/fnv"
+    "log/slog"
+    "math/rand"
+    "strings"
+    "time"
 
-	"drone-dashboard/ingest"
+    "drone-dashboard/ingest"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
+    "github.com/pocketbase/dbx"
+    "github.com/pocketbase/pocketbase/core"
 )
 
 type Config struct {
@@ -30,13 +29,13 @@ type Config struct {
 }
 
 type Manager struct {
-	App     core.App
-	Service *ingest.Service
-	Cfg     Config
+    App     core.App
+    Service *ingest.Service
+    Cfg     Config
 }
 
 func NewManager(app core.App, service *ingest.Service, cfg Config) *Manager {
-	return &Manager{App: app, Service: service, Cfg: cfg}
+    return &Manager{App: app, Service: service, Cfg: cfg}
 }
 
 // StartLoops spawns the discovery, worker, and active race goroutines.
@@ -210,62 +209,52 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 // -------------------- Worker --------------------
 
 func (m *Manager) drainOnce() {
-	all, err := m.App.FindAllRecords("ingest_targets")
-	if err != nil {
-		return
-	}
-	nowMs := time.Now().UnixMilli()
-	// Filter due & enabled
-	type item struct {
-		rec  *core.Record
-		next int
-		prio int
-	}
-	var due []item
-	for _, r := range all {
-		if !r.GetBool("enabled") {
-			continue
-		}
-		nd := int64(r.GetInt("nextDueAt"))
-		if nd <= nowMs {
-			due = append(due, item{rec: r, next: int(nd), prio: r.GetInt("priority")})
-		}
-	}
-	sort.Slice(due, func(i, j int) bool {
-		if due[i].next == due[j].next {
-			return due[i].prio > due[j].prio
-		}
-		return due[i].next < due[j].next
-	})
-	// Take up to burst
-	if len(due) > m.Cfg.Burst {
-		due = due[:m.Cfg.Burst]
-	}
-	for _, it := range due {
-		r := it.rec
-		t := r.GetString("type")
-		sid := r.GetString("sourceId")
-		// Resolve event sourceId from relation
-		eventSourceId := m.resolveEventSourceIdFromTarget(r)
-		var err error
-		switch t {
-		case "event":
-			err = m.Service.IngestEventMeta(eventSourceId)
-		case "pilots":
-			err = m.Service.IngestPilots(eventSourceId)
-		case "channels":
-			err = m.Service.IngestChannels(eventSourceId)
-		case "rounds":
-			err = m.Service.IngestRounds(eventSourceId)
-		case "race":
-			err = m.Service.IngestRace(eventSourceId, sid)
-		case "results":
-			_, err = m.Service.IngestResults(eventSourceId)
-		default:
-			slog.Warn("scheduler.worker.unknownType", "type", t)
-		}
-		m.reschedule(r, err)
-	}
+    nowMs := time.Now().UnixMilli()
+    // Query only due & enabled targets ordered by nextDueAt, priority
+    type dueRow struct {
+        ID         string `db:"id"`
+        Type       string `db:"type"`
+        SourceID   string `db:"sourceId"`
+        Event      string `db:"event"`
+        IntervalMs int    `db:"intervalMs"`
+        Priority   int    `db:"priority"`
+    }
+    var rows []dueRow
+    q := `SELECT id, type, sourceId, event, intervalMs, priority
+          FROM ingest_targets
+          WHERE enabled = 1 AND nextDueAt <= {:now}
+          ORDER BY nextDueAt ASC, priority DESC
+          LIMIT {:lim}`
+    if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
+        return
+    }
+    if len(rows) == 0 {
+        return
+    }
+    for _, rw := range rows {
+        t := rw.Type
+        sid := rw.SourceID
+        // Resolve event sourceId from event relation id
+        eventSourceId := m.resolveEventSourceIdByPBID(rw.Event)
+        var runErr error
+        switch t {
+        case "event":
+            runErr = m.Service.IngestEventMeta(eventSourceId)
+        case "pilots":
+            runErr = m.Service.IngestPilots(eventSourceId)
+        case "channels":
+            runErr = m.Service.IngestChannels(eventSourceId)
+        case "rounds":
+            runErr = m.Service.IngestRounds(eventSourceId)
+        case "race":
+            runErr = m.Service.IngestRace(eventSourceId, sid)
+        case "results":
+            _, runErr = m.Service.IngestResults(eventSourceId)
+        default:
+            slog.Warn("scheduler.worker.unknownType", "type", t)
+        }
+        m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)
+    }
 }
 
 func (m *Manager) reschedule(rec *core.Record, runErr error) {
@@ -274,24 +263,74 @@ func (m *Manager) reschedule(rec *core.Record, runErr error) {
 	if interval <= 0 {
 		interval = m.Cfg.RaceIdle
 	}
-	// backoff on error
-	if runErr != nil {
+	// compute nextDueAt via helper and set status
+	hadError := runErr != nil
+	if hadError {
 		rec.Set("lastStatus", fmt.Sprintf("error: %v", runErr))
-		// simple capped backoff: +1s up to interval*4
-		backoff := time.Second
-		if bo := 4 * interval; backoff > bo {
-			backoff = bo
-		}
-		rec.Set("nextDueAt", now.Add(backoff).UnixMilli())
 	} else {
 		rec.Set("lastStatus", "ok")
 		rec.Set("lastFetchedAt", now.UnixMilli())
-		jitter := time.Duration(rand.Intn(max(0, m.Cfg.JitterMs))) * time.Millisecond
-		rec.Set("nextDueAt", now.Add(interval).Add(jitter).UnixMilli())
 	}
-	if err := m.App.Save(rec); err != nil {
-		slog.Warn("scheduler.reschedule.save.error", "err", err)
-	}
+	rec.Set("nextDueAt", m.nextDueAt(now, interval, hadError))
+    if err := m.App.Save(rec); err != nil {
+        slog.Warn("scheduler.reschedule.save.error", "err", err)
+    }
+}
+
+// rescheduleRow updates scheduling fields using the already selected row (no extra read).
+func (m *Manager) rescheduleRow(id string, intervalMs int, runErr error) {
+    now := time.Now()
+    interval := time.Duration(intervalMs) * time.Millisecond
+    if interval <= 0 {
+        interval = m.Cfg.RaceIdle
+    }
+    hadError := runErr != nil
+    if hadError {
+        _, _ = m.App.DB().NewQuery(`UPDATE ingest_targets
+            SET lastStatus = {:st}, nextDueAt = {:nd}
+            WHERE id = {:id}
+        `).Bind(dbx.Params{
+            "st": fmt.Sprintf("error: %v", runErr),
+            "nd": m.nextDueAt(now, interval, true),
+            "id": id,
+        }).Execute()
+        return
+    }
+    // success path
+    _, _ = m.App.DB().NewQuery(`UPDATE ingest_targets
+        SET lastStatus = 'ok', lastFetchedAt = {:lf}, nextDueAt = {:nd}
+        WHERE id = {:id}
+    `).Bind(dbx.Params{
+        "lf": now.UnixMilli(),
+        "nd": m.nextDueAt(now, interval, false),
+        "id": id,
+    }).Execute()
+}
+
+// nextDueAt computes the next due time given interval, jitter, and error state.
+// On success: now + interval + jitter (jitter <= min(Cfg.JitterMs, interval/10)).
+// On error: now + min(1s, 4*interval).
+func (m *Manager) nextDueAt(now time.Time, interval time.Duration, hadError bool) int64 {
+    if hadError {
+        backoff := time.Second
+        if bo := 4 * interval; backoff > bo {
+            backoff = bo
+        }
+        return now.Add(backoff).UnixMilli()
+    }
+    intervalMs := int(interval / time.Millisecond)
+    jitterCapMs := m.Cfg.JitterMs
+    if cap2 := intervalMs / 10; cap2 < jitterCapMs {
+        jitterCapMs = cap2
+    }
+    if jitterCapMs < 0 {
+        jitterCapMs = 0
+    }
+    jitter := 0
+    if jitterCapMs > 0 {
+        jitter = rand.Intn(jitterCapMs)
+    }
+    return now.Add(interval).Add(time.Duration(jitter) * time.Millisecond).UnixMilli()
 }
 
 func max(a, b int) int {
@@ -424,64 +463,54 @@ func (m *Manager) ensureActiveRacePriority() {
         return // nothing to promote; discovery will keep idle intervals
     }
 
-	// Step 2: Update all race ingest targets
-	// Set current race to active interval, all others to idle interval
-	query := `
-		UPDATE ingest_targets 
-		SET 
-			intervalMs = CASE 
-				WHEN sourceId = {:currentRaceId} 
-				THEN {:activeMs} 
-				ELSE {:idleMs} 
-			END,
-			priority = CASE 
-				WHEN sourceId = {:currentRaceId} 
-				THEN 100 
-				ELSE priority 
-			END,
-			nextDueAt = CASE 
-				WHEN sourceId = {:currentRaceId} 
-				THEN {:nowMs} 
-				ELSE nextDueAt 
-			END
-		WHERE type = 'race' AND event = {:eventId}
-	`
+    // Step 2: Update all race ingest targets
+    // Set current race to active interval, all others to idle interval.
+    // Only update rows that actually need changing to avoid unnecessary writes.
+    query := `
+        UPDATE ingest_targets
+        SET
+            intervalMs = CASE
+                WHEN sourceId = {:currentRaceId}
+                THEN {:activeMs}
+                ELSE {:idleMs}
+            END,
+            priority = CASE
+                WHEN sourceId = {:currentRaceId}
+                THEN 100
+                ELSE 0
+            END,
+            nextDueAt = CASE
+                WHEN sourceId = {:currentRaceId} AND (intervalMs != {:activeMs} OR priority != 100)
+                THEN {:nowMs}
+                ELSE nextDueAt
+            END
+        WHERE type = 'race' AND event = {:eventId}
+          AND (
+              (sourceId = {:currentRaceId} AND (intervalMs != {:activeMs} OR priority != 100))
+              OR
+              (sourceId != {:currentRaceId} AND (intervalMs != {:idleMs} OR priority != 0))
+          )
+    `
 
-	now := time.Now()
-	_, err := m.App.DB().NewQuery(query).Bind(dbx.Params{
-		"eventId":       eventPBID,
-		"currentRaceId": currentRaceId,
-		"activeMs":      int(m.Cfg.RaceActive.Milliseconds()),
-		"idleMs":        int(m.Cfg.RaceIdle.Milliseconds()),
-		"nowMs":         now.UnixMilli(),
-	}).Execute()
+    now := time.Now()
+    res, err := m.App.DB().NewQuery(query).Bind(dbx.Params{
+        "eventId":       eventPBID,
+        "currentRaceId": currentRaceId,
+        "activeMs":      int(m.Cfg.RaceActive.Milliseconds()),
+        "idleMs":        int(m.Cfg.RaceIdle.Milliseconds()),
+        "nowMs":         now.UnixMilli(),
+    }).Execute()
 
     if err != nil {
         slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceId", currentRaceId, "err", err)
         return
     }
-
-	// Ensure current race target exists if it doesn't already
-	rec, _ := m.App.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRaceId})
-    if rec == nil {
-        // create target if missing
-        col, err := m.App.FindCollectionByNameOrId("ingest_targets")
-        if err != nil {
-            return
+    // Publish current order for clients if rows changed
+    if res != nil {
+        if n, _ := res.RowsAffected(); n > 0 {
+            m.publishCurrentOrderKV(eventPBID, currentRaceId, currentOrder)
         }
-        rec = core.NewRecord(col)
-        rec.Set("type", "race")
-        rec.Set("sourceId", currentRaceId)
-        rec.Set("event", eventPBID)
-        rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
-        rec.Set("priority", 100)
-        rec.Set("enabled", true)
-        rec.Set("nextDueAt", now.UnixMilli())
-        _ = m.App.Save(rec)
     }
-
-    // Publish current order for clients
-    m.publishCurrentOrderKV(eventPBID, currentRaceId, currentOrder)
 }
 
 // RegisterHooks sets up record update hooks to trigger active race priority updates
@@ -520,20 +549,20 @@ func (m *Manager) findCurrentEventPBID() string {
 	return ""
 }
 
-func (m *Manager) resolveEventSourceIdFromTarget(rec *core.Record) string {
-	pbid := rec.GetString("event")
-	if pbid == "" {
-		return ""
-	}
-	col, err := m.App.FindCollectionByNameOrId("events")
-	if err != nil {
-		return ""
-	}
-	ev, err := m.App.FindRecordById(col, pbid)
-	if err != nil || ev == nil {
-		return ""
-	}
-	return ev.GetString("sourceId")
+// resolveEventSourceIdByPBID resolves the upstream sourceId from an event PB id.
+func (m *Manager) resolveEventSourceIdByPBID(pbid string) string {
+    if pbid == "" {
+        return ""
+    }
+    col, err := m.App.FindCollectionByNameOrId("events")
+    if err != nil {
+        return ""
+    }
+    ev, err := m.App.FindRecordById(col, pbid)
+    if err != nil || ev == nil {
+        return ""
+    }
+    return ev.GetString("sourceId")
 }
 
 func hash32(s string) uint32 {
