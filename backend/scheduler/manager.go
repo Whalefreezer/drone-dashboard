@@ -413,13 +413,50 @@ func (m *Manager) ensureActiveRacePriority() {
 		return
 	}
 
-	// Use the shared findCurrentRace logic
+	// Step 1: Find the current race
 	currentRaceId := m.findCurrentRace(eventPBID)
 	if currentRaceId == "" {
 		return // nothing to promote; discovery will keep idle intervals
 	}
 
-	// Promote current race target to fast interval and higher priority
+	// Step 2: Update all race ingest targets
+	// Set current race to active interval, all others to idle interval
+	query := `
+		UPDATE ingest_targets 
+		SET 
+			intervalMs = CASE 
+				WHEN sourceId = {:currentRaceId} 
+				THEN {:activeMs} 
+				ELSE {:idleMs} 
+			END,
+			priority = CASE 
+				WHEN sourceId = {:currentRaceId} 
+				THEN 100 
+				ELSE priority 
+			END,
+			nextDueAt = CASE 
+				WHEN sourceId = {:currentRaceId} 
+				THEN {:nowMs} 
+				ELSE nextDueAt 
+			END
+		WHERE type = 'race' AND event = {:eventId}
+	`
+
+	now := time.Now()
+	_, err := m.App.DB().NewQuery(query).Bind(dbx.Params{
+		"eventId":       eventPBID,
+		"currentRaceId": currentRaceId,
+		"activeMs":      int(m.Cfg.RaceActive.Milliseconds()),
+		"idleMs":        int(m.Cfg.RaceIdle.Milliseconds()),
+		"nowMs":         now.UnixMilli(),
+	}).Execute()
+
+	if err != nil {
+		slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceId", currentRaceId, "err", err)
+		return
+	}
+
+	// Ensure current race target exists if it doesn't already
 	rec, _ := m.App.FindFirstRecordByFilter("ingest_targets", "type = 'race' && sourceId = {:sid}", dbx.Params{"sid": currentRaceId})
 	if rec == nil {
 		// create target if missing
@@ -431,12 +468,12 @@ func (m *Manager) ensureActiveRacePriority() {
 		rec.Set("type", "race")
 		rec.Set("sourceId", currentRaceId)
 		rec.Set("event", eventPBID)
+		rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
+		rec.Set("priority", 100)
+		rec.Set("enabled", true)
+		rec.Set("nextDueAt", now.UnixMilli())
+		_ = m.App.Save(rec)
 	}
-	rec.Set("intervalMs", int(m.Cfg.RaceActive.Milliseconds()))
-	rec.Set("priority", max(rec.GetInt("priority"), 100))
-	rec.Set("enabled", true)
-	rec.Set("nextDueAt", time.Now().UnixMilli())
-	_ = m.App.Save(rec)
 }
 
 // -------------------- Helpers --------------------
