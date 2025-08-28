@@ -257,26 +257,6 @@ func (m *Manager) drainOnce() {
     }
 }
 
-func (m *Manager) reschedule(rec *core.Record, runErr error) {
-	now := time.Now()
-	interval := time.Duration(rec.GetInt("intervalMs")) * time.Millisecond
-	if interval <= 0 {
-		interval = m.Cfg.RaceIdle
-	}
-	// compute nextDueAt via helper and set status
-	hadError := runErr != nil
-	if hadError {
-		rec.Set("lastStatus", fmt.Sprintf("error: %v", runErr))
-	} else {
-		rec.Set("lastStatus", "ok")
-		rec.Set("lastFetchedAt", now.UnixMilli())
-	}
-	rec.Set("nextDueAt", m.nextDueAt(now, interval, hadError))
-    if err := m.App.Save(rec); err != nil {
-        slog.Warn("scheduler.reschedule.save.error", "err", err)
-    }
-}
-
 // rescheduleRow updates scheduling fields using the already selected row (no extra read).
 func (m *Manager) rescheduleRow(id string, intervalMs int, runErr error) {
     now := time.Now()
