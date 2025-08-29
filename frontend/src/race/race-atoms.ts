@@ -51,6 +51,7 @@ export const raceDataAtom = atomFamily((raceId: string) =>
 
         return {
             id: raceRecord.id,
+            sourceId: raceRecord.sourceId,
             raceNumber: raceRecord.raceNumber ?? 0,
             roundId: raceRecord.round ?? '',
             eventId: raceRecord.event ?? '',
@@ -123,12 +124,15 @@ export const currentRaceAtom = eagerAtom((get): RaceData | null => {
     // Use backend-published current order (client_kv) only
     const kv = get(currentOrderKVAtom);
     if (kv) {
-        if (kv.raceId) {
-            const byId = races.find((r) => r.id === kv.raceId);
-            if (byId) return byId;
+        // First try to match by sourceId
+        if (kv.sourceId) {
+            const bySourceId = races.find((r) => r.sourceId === kv.sourceId);
+            if (bySourceId) return bySourceId;
         }
-        if (kv.order && kv.order > 0 && kv.order <= races.length) {
-            return races[kv.order - 1];
+        // Fallback to raceOrder if sourceId match fails
+        else if (kv.order && kv.order > 0) {
+            const byRaceOrder = races.find((r) => r.raceOrder === kv.order);
+            if (byRaceOrder) return byRaceOrder;
         }
     }
     // Minimal default without local detection heuristics

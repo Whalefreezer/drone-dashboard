@@ -69,6 +69,8 @@ export interface PBTrackRecord extends PBBaseRecord {
 
 // races
 export interface PBRaceRecord extends PBBaseRecord {
+    sourceId?: string;
+    source?: string;
     raceNumber?: number;
     start?: string;
     end?: string;

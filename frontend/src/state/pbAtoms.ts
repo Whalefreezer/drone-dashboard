@@ -116,15 +116,15 @@ export const currentRaceAtom = newCurrentRaceAtom;
 // Current order from client_kv for the current event
 export const currentOrderKVAtom = eagerAtom((get) => {
     const ev = get(currentEventAtom);
-    if (!ev) return null as null | { order?: number; raceId?: string };
+    if (!ev) return null as null | { order?: number; sourceId?: string };
     const kv = get(clientKVRecordsAtom);
     const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder' && r.event === ev.id);
     if (!record || !record.value) return null;
     try {
         const parsed = JSON.parse(record.value);
         const order = typeof parsed.order === 'number' ? parsed.order : undefined;
-        const raceId = typeof parsed.raceId === 'string' ? parsed.raceId : undefined;
-        return { order, raceId };
+        const sourceId = typeof parsed.sourceId === 'string' ? parsed.sourceId : undefined;
+        return { order, sourceId };
     } catch {
         return null;
     }

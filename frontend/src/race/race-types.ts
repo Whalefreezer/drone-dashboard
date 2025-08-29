@@ -25,6 +25,7 @@ export interface ProcessedLap {
 export interface RaceData {
     // Basic race metadata from PBRaceRecord
     id: string;
+    sourceId?: string;
     raceNumber: number;
     roundId: string;
     eventId: string;
@@ -34,7 +35,7 @@ export interface RaceData {
     bracket?: string;
     targetLaps?: number;
     raceOrder?: number;
-    
+
     // Computed race data
     processedLaps: ProcessedLap[];
     pilotChannels: PilotChannelAssociation[];

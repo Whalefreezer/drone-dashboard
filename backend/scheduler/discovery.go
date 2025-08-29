@@ -54,7 +54,7 @@ func (m *Manager) runDiscovery() {
 	// Seed event-related targets (per-endpoint granularity)
 	m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
-	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.ChannelsInterval, now)
 	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	// Seed results target
 	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)

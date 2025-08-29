@@ -9,27 +9,29 @@ import (
 )
 
 type Config struct {
-	FullInterval    time.Duration
-	WorkerInterval  time.Duration
-	RaceActive      time.Duration
-	RaceIdle        time.Duration
-	ResultsInterval time.Duration
-	Concurrency     int
-	Burst           int
-	JitterMs        int
+	FullInterval     time.Duration
+	WorkerInterval   time.Duration
+	RaceActive       time.Duration
+	RaceIdle         time.Duration
+	ResultsInterval  time.Duration
+	ChannelsInterval time.Duration
+	Concurrency      int
+	Burst            int
+	JitterMs         int
 }
 
 func (m *Manager) ensureDefaultSettings() {
 	defaults := map[string]string{
-		"scheduler.enabled":          "true",
-		"scheduler.fullIntervalMs":   "10000",
-		"scheduler.workerIntervalMs": "200",
-		"scheduler.raceActiveMs":     "200",
-		"scheduler.raceIdleMs":       "10000",
-		"scheduler.resultsMs":        "10000",
-		"scheduler.jitterMs":         "150",
-		"scheduler.burst":            "2",
-		"scheduler.concurrency":      "1",
+		"scheduler.enabled":            "true",
+		"scheduler.fullIntervalMs":     "10000",
+		"scheduler.workerIntervalMs":   "200",
+		"scheduler.raceActiveMs":       "200",
+		"scheduler.raceIdleMs":         "10000",
+		"scheduler.resultsMs":          "10000",
+		"scheduler.channelsIntervalMs": "60000",
+		"scheduler.jitterMs":           "150",
+		"scheduler.burst":              "2",
+		"scheduler.concurrency":        "1",
 	}
 	col, err := m.App.FindCollectionByNameOrId("server_settings")
 	if err != nil {
@@ -64,6 +66,7 @@ func (m *Manager) loadConfigFromDB() {
 	m.Cfg.RaceActive = time.Duration(readInt("scheduler.raceActiveMs", 200)) * time.Millisecond
 	m.Cfg.RaceIdle = time.Duration(readInt("scheduler.raceIdleMs", 5000)) * time.Millisecond
 	m.Cfg.ResultsInterval = time.Duration(readInt("scheduler.resultsMs", 2000)) * time.Millisecond
+	m.Cfg.ChannelsInterval = time.Duration(readInt("scheduler.channelsIntervalMs", 60000)) * time.Millisecond
 	m.Cfg.Burst = readInt("scheduler.burst", 2)
 	m.Cfg.Concurrency = readInt("scheduler.concurrency", 1)
 	m.Cfg.JitterMs = readInt("scheduler.jitterMs", 150)

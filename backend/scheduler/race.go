@@ -104,7 +104,7 @@ func (m *Manager) publishCurrentOrderKV(eventId, raceId string, order int) {
 	// Build JSON value
 	payload := map[string]any{
 		"order":      order,
-		"raceId":     raceId,
+		"sourceId":   raceId,
 		"computedAt": time.Now().UnixMilli(),
 	}
 	b, _ := json.Marshal(payload)
@@ -130,12 +130,26 @@ func (m *Manager) publishCurrentOrderKV(eventId, raceId string, order int) {
 		rec.Set("value", newValue)
 		_ = m.App.Save(rec)
 	} else {
-		// Only save if the value has actually changed
+		// Only save if the meaningful values (order and raceId) have actually changed
 		existingValue := rec.GetString("value")
-		if existingValue != newValue {
-			rec.Set("value", newValue)
-			_ = m.App.Save(rec)
+
+		// Parse existing JSON to compare meaningful fields
+		var existingPayload map[string]any
+		if err := json.Unmarshal([]byte(existingValue), &existingPayload); err == nil {
+			// Compare only the meaningful fields, ignore computedAt
+			existingOrder, existingOrderOk := existingPayload["order"].(float64)
+			existingSourceId, existingSourceIdOk := existingPayload["sourceId"].(string)
+
+			if existingOrderOk && existingSourceIdOk &&
+				int(existingOrder) == order && existingSourceId == raceId {
+				// Values haven't changed, no need to save
+				return
+			}
 		}
+
+		// Values have changed or we couldn't parse existing JSON, save new value
+		rec.Set("value", newValue)
+		_ = m.App.Save(rec)
 	}
 }
 
