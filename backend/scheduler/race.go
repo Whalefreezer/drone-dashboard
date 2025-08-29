@@ -1,12 +1,13 @@
 package scheduler
 
 import (
-	"encoding/json"
-	"log/slog"
-	"time"
+    "encoding/json"
+    "log/slog"
+    "time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
+    "drone-dashboard/ingest"
+    "github.com/pocketbase/dbx"
+    "github.com/pocketbase/pocketbase/core"
 )
 
 // -------------------- Active Race --------------------
@@ -75,54 +76,9 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 // Valid races get sequential raceOrder numbers, invalid races get raceOrder set to 0.
 // Only processes races where the raceOrder would actually change.
 func (m *Manager) recalculateRaceOrder(eventId string) {
-	// Calculate new raceOrder values and compare with current values, only returning changed records
-	query := `
-		WITH ordered AS (
-			SELECT r.id, ROW_NUMBER() OVER (
-				ORDER BY round."order" ASC, r.raceNumber ASC
-			) AS pos
-			FROM races r
-			LEFT JOIN rounds round ON r.round = round.id
-			WHERE r.event = {:eventId} AND r.valid = 1
-		),
-		race_orders AS (
-			SELECT r.id, r.raceOrder AS current_order,
-				   CASE
-					   WHEN r.valid = 1 THEN (SELECT pos FROM ordered WHERE ordered.id = r.id)
-					   ELSE 0
-				   END AS new_race_order
-			FROM races r
-			WHERE r.event = {:eventId}
-		)
-		SELECT id, new_race_order
-		FROM race_orders
-		WHERE current_order != new_race_order
-	`
-
-	type raceOrderResult struct {
-		ID           string `db:"id"`
-		NewRaceOrder int    `db:"new_race_order"`
-	}
-
-	var results []raceOrderResult
-	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).All(&results); err != nil {
-		slog.Warn("scheduler.recalculateRaceOrder.query.error", "eventId", eventId, "err", err)
-		return
-	}
-
-	// Update all races returned by the query (SQL already filtered to only changed records)
-	for _, result := range results {
-		race, err := m.App.FindRecordById("races", result.ID)
-		if err != nil {
-			slog.Warn("scheduler.recalculateRaceOrder.find.error", "raceId", result.ID, "err", err)
-			continue
-		}
-
-		race.Set("raceOrder", result.NewRaceOrder)
-		if err := m.App.Save(race); err != nil {
-			slog.Warn("scheduler.recalculateRaceOrder.save.error", "raceId", result.ID, "err", err)
-		}
-	}
+    if err := ingest.RecalculateRaceOrder(m.App, eventId); err != nil {
+        slog.Warn("scheduler.recalculateRaceOrder.error", "eventId", eventId, "err", err)
+    }
 }
 
 // publishCurrentOrderKV writes the current order and race id into client_kv for the event.
