@@ -60,34 +60,37 @@ func (m *Manager) drainOnce() {
 	}
 }
 
-// rescheduleRow updates scheduling fields using the already selected row (no extra read).
+// rescheduleRow updates scheduling fields using the DAO to ensure subscriptions trigger.
 func (m *Manager) rescheduleRow(id string, intervalMs int, runErr error) {
 	now := time.Now()
 	interval := time.Duration(intervalMs) * time.Millisecond
 	if interval <= 0 {
 		interval = m.Cfg.RaceIdle
 	}
-	hadError := runErr != nil
-	if hadError {
-		_, _ = m.App.DB().NewQuery(`UPDATE ingest_targets
-		    SET lastStatus = {:st}, nextDueAt = {:nd}
-		    WHERE id = {:id}
-		`).Bind(dbx.Params{
-			"st": fmt.Sprintf("error: %v", runErr),
-			"nd": m.nextDueAt(now, interval, true),
-			"id": id,
-		}).Execute()
+
+	// Find the record using DAO
+	record, err := m.App.FindRecordById("ingest_targets", id)
+	if err != nil {
+		slog.Warn("scheduler.rescheduleRow.find.error", "id", id, "err", err)
 		return
 	}
-	// success path
-	_, _ = m.App.DB().NewQuery(`UPDATE ingest_targets
-	    SET lastStatus = 'ok', lastFetchedAt = {:lf}, nextDueAt = {:nd}
-	    WHERE id = {:id}
-	`).Bind(dbx.Params{
-		"lf": now.UnixMilli(),
-		"nd": m.nextDueAt(now, interval, false),
-		"id": id,
-	}).Execute()
+
+	hadError := runErr != nil
+	if hadError {
+		// Update fields for error case
+		record.Set("lastStatus", fmt.Sprintf("error: %v", runErr))
+		record.Set("nextDueAt", m.nextDueAt(now, interval, true))
+	} else {
+		// Update fields for success case
+		record.Set("lastStatus", "ok")
+		record.Set("lastFetchedAt", now.UnixMilli())
+		record.Set("nextDueAt", m.nextDueAt(now, interval, false))
+	}
+
+	// Save the record using DAO to trigger subscriptions
+	if err := m.App.Save(record); err != nil {
+		slog.Warn("scheduler.rescheduleRow.save.error", "id", id, "err", err)
+	}
 }
 
 // nextDueAt computes the next due time given interval, jitter, and error state.

@@ -86,7 +86,8 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		nextDueMs = now.Add(phase).UnixMilli()
 	}
 
-	if rec == nil {
+	isNewRecord := rec == nil
+	if isNewRecord {
 		col, err := m.App.FindCollectionByNameOrId(colName)
 		if err != nil {
 			slog.Warn("scheduler.upsertTarget.collection.error", "err", err)
@@ -95,13 +96,14 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		rec = core.NewRecord(col)
 		rec.Set("type", t)
 		rec.Set("sourceId", sourceId)
+		rec.Set("intervalMs", int(interval.Milliseconds()))
+		rec.Set("enabled", true)
+		rec.Set("priority", 0) // default priority for new records
 	}
 	if eventPBID != "" {
 		rec.Set("event", eventPBID)
 	}
-	rec.Set("intervalMs", int(interval.Milliseconds()))
-	rec.Set("enabled", true)
-	rec.Set("priority", rec.GetInt("priority")) // keep existing priority if any
+	// Only update nextDueAt for existing records to avoid overriding ensureActiveRacePriority settings
 	rec.Set("nextDueAt", nextDueMs)
 	if err := m.App.Save(rec); err != nil {
 		slog.Warn("scheduler.upsertTarget.save.error", "type", t, "sourceId", sourceId, "err", err)

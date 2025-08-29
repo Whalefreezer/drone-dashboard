@@ -73,7 +73,9 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 
 // recalculateRaceOrder updates races.raceOrder for all races in the event.
 // Valid races get sequential raceOrder numbers, invalid races get raceOrder set to 0.
+// Only processes races where the raceOrder would actually change.
 func (m *Manager) recalculateRaceOrder(eventId string) {
+	// Calculate new raceOrder values and compare with current values, only returning changed records
 	query := `
 		WITH ordered AS (
 			SELECT r.id, ROW_NUMBER() OVER (
@@ -82,16 +84,44 @@ func (m *Manager) recalculateRaceOrder(eventId string) {
 			FROM races r
 			LEFT JOIN rounds round ON r.round = round.id
 			WHERE r.event = {:eventId} AND r.valid = 1
+		),
+		race_orders AS (
+			SELECT r.id, r.raceOrder AS current_order,
+				   CASE
+					   WHEN r.valid = 1 THEN (SELECT pos FROM ordered WHERE ordered.id = r.id)
+					   ELSE 0
+				   END AS new_race_order
+			FROM races r
+			WHERE r.event = {:eventId}
 		)
-		UPDATE races
-		SET raceOrder = CASE
-			WHEN valid = 1 THEN (SELECT pos FROM ordered WHERE ordered.id = races.id)
-			ELSE 0
-		END
-		WHERE event = {:eventId}
+		SELECT id, new_race_order
+		FROM race_orders
+		WHERE current_order != new_race_order
 	`
-	if _, err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).Execute(); err != nil {
-		slog.Warn("scheduler.recalculateRaceOrder.update.error", "eventId", eventId, "err", err)
+
+	type raceOrderResult struct {
+		ID           string `db:"id"`
+		NewRaceOrder int    `db:"new_race_order"`
+	}
+
+	var results []raceOrderResult
+	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).All(&results); err != nil {
+		slog.Warn("scheduler.recalculateRaceOrder.query.error", "eventId", eventId, "err", err)
+		return
+	}
+
+	// Update all races returned by the query (SQL already filtered to only changed records)
+	for _, result := range results {
+		race, err := m.App.FindRecordById("races", result.ID)
+		if err != nil {
+			slog.Warn("scheduler.recalculateRaceOrder.find.error", "raceId", result.ID, "err", err)
+			continue
+		}
+
+		race.Set("raceOrder", result.NewRaceOrder)
+		if err := m.App.Save(race); err != nil {
+			slog.Warn("scheduler.recalculateRaceOrder.save.error", "raceId", result.ID, "err", err)
+		}
 	}
 }
 
@@ -171,25 +201,16 @@ func (m *Manager) ensureActiveRacePriority() {
 
 	// Step 2: Update all race ingest targets
 	// Set current race to active interval, all others to idle interval.
-	// Only update rows that actually need changing to avoid unnecessary writes.
+	// SQL query already filters to only return targets that need updating.
+
+	// First, find all ingest targets that need updating
+	activeMs := int(m.Cfg.RaceActive.Milliseconds())
+	idleMs := int(m.Cfg.RaceIdle.Milliseconds())
+	now := time.Now()
+
 	query := `
-		UPDATE ingest_targets
-		SET
-			intervalMs = CASE
-				WHEN sourceId = {:currentRaceSourceId}
-				THEN {:activeMs}
-				ELSE {:idleMs}
-			END,
-			priority = CASE
-				WHEN sourceId = {:currentRaceSourceId}
-				THEN 100
-				ELSE 0
-			END,
-			nextDueAt = CASE
-				WHEN sourceId = {:currentRaceSourceId} AND (intervalMs != {:activeMs} OR priority != 100)
-				THEN {:nowMs}
-				ELSE nextDueAt
-			END
+		SELECT id, sourceId, intervalMs, priority
+		FROM ingest_targets
 		WHERE type = 'race' AND event = {:eventId}
 		  AND (
 			  (sourceId = {:currentRaceSourceId} AND (intervalMs != {:activeMs} OR priority != 100))
@@ -198,24 +219,64 @@ func (m *Manager) ensureActiveRacePriority() {
 		  )
 	`
 
-	now := time.Now()
-	res, err := m.App.DB().NewQuery(query).Bind(dbx.Params{
+	type targetResult struct {
+		ID         string `db:"id"`
+		SourceID   string `db:"sourceId"`
+		IntervalMs int    `db:"intervalMs"`
+		Priority   int    `db:"priority"`
+	}
+
+	var targets []targetResult
+	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{
 		"eventId":             eventPBID,
 		"currentRaceSourceId": string(currentRaceSourceId), // Convert RaceSourceID to string for SQL
-		"activeMs":            int(m.Cfg.RaceActive.Milliseconds()),
-		"idleMs":              int(m.Cfg.RaceIdle.Milliseconds()),
-		"nowMs":               now.UnixMilli(),
-	}).Execute()
-
-	if err != nil {
-		slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceSourceId", currentRaceSourceId, "err", err)
+		"activeMs":            activeMs,
+		"idleMs":              idleMs,
+	}).All(&targets); err != nil {
+		slog.Warn("scheduler.ensureActiveRacePriority.query.error", "eventId", eventPBID, "currentRaceSourceId", currentRaceSourceId, "err", err)
 		return
 	}
-	// Publish current order for clients if rows changed
-	if res != nil {
-		if n, _ := res.RowsAffected(); n > 0 {
-			m.publishCurrentOrderKV(eventPBID, string(currentRaceSourceId), currentOrder)
+
+	// Update each target using DAO to ensure subscriptions trigger
+	rowsAffected := 0
+	for _, target := range targets {
+		record, err := m.App.FindRecordById("ingest_targets", target.ID)
+		if err != nil {
+			slog.Warn("scheduler.ensureActiveRacePriority.find.error", "targetId", target.ID, "err", err)
+			continue
 		}
+
+		// Determine new values based on whether this is the current race
+		isCurrentRace := target.SourceID == string(currentRaceSourceId)
+
+		var newIntervalMs, newPriority int
+		if isCurrentRace {
+			newIntervalMs = activeMs
+			newPriority = 100
+		} else {
+			newIntervalMs = idleMs
+			newPriority = 0
+		}
+
+		// Set the new values (SQL already filtered to only changed records)
+		record.Set("intervalMs", newIntervalMs)
+		record.Set("priority", newPriority)
+
+		// Update nextDueAt only for the current race
+		if isCurrentRace {
+			record.Set("nextDueAt", now.UnixMilli())
+		}
+
+		if err := m.App.Save(record); err != nil {
+			slog.Warn("scheduler.ensureActiveRacePriority.save.error", "targetId", target.ID, "err", err)
+		} else {
+			rowsAffected++
+		}
+	}
+
+	// Publish current order for clients if rows changed
+	if rowsAffected > 0 {
+		m.publishCurrentOrderKV(eventPBID, string(currentRaceSourceId), currentOrder)
 	}
 }
 
