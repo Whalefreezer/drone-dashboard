@@ -226,12 +226,12 @@ func (m *Manager) RegisterHooks() {
 		m.App.OnRecordAfterUpdateSuccess(col).BindFunc(func(e *core.RecordEvent) error {
 			eventId := e.Record.GetString("event")
 			if eventId == "" {
-				return nil
+				return e.Next()
 			}
 			if eventId == m.findCurrentEventPBID() {
 				m.ensureActiveRacePriority()
 			}
-			return nil
+			return e.Next()
 		})
 	}
 	for _, col := range []string{"races", "rounds"} {
@@ -241,6 +241,6 @@ func (m *Manager) RegisterHooks() {
 	m.App.OnRecordAfterUpdateSuccess("events").BindFunc(func(e *core.RecordEvent) error {
 		// Any change might affect current event selection; recompute
 		m.ensureActiveRacePriority()
-		return nil
+		return e.Next()
 	})
 }

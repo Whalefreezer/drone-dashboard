@@ -157,7 +157,7 @@ export const currentRaceIndexAtom = eagerAtom((get): number => {
  */
 export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
     const races = get(allRacesAtom);
-    
+
     if (!races || races.length === 0) {
         return null;
     }
@@ -171,7 +171,7 @@ export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
             }
 
             if (
-                race.start && !race.start.startsWith('0') && 
+                race.start && !race.start.startsWith('0') &&
                 race.end && !race.end.startsWith('0')
             ) {
                 return true; // Both started and ended = completed
@@ -180,4 +180,27 @@ export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
         })?.index ?? -1;
 
     return lastCompletedIndex !== -1 ? races[lastCompletedIndex] : null;
+});
+
+/**
+ * Next races atom - returns the next 8 races based on current order from KV store
+ * Uses the order field from currentOrderKVAtom to find races with higher raceOrder values
+ */
+export const nextRacesAtom = eagerAtom((get): RaceData[] => {
+    const races = get(allRacesAtom);
+    const currentOrderKV = get(currentOrderKVAtom);
+
+    if (!races || races.length === 0 || !currentOrderKV?.order) {
+        return [];
+    }
+
+    const currentOrder = currentOrderKV.order;
+
+    // Find all races with raceOrder greater than current order
+    const nextRacesByOrder = races
+        .filter((race) => race.raceOrder && race.raceOrder > currentOrder)
+        .sort((a, b) => (a.raceOrder ?? 0) - (b.raceOrder ?? 0))
+        .slice(0, 8); // Take first 8
+
+    return nextRacesByOrder;
 });

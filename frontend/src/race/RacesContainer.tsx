@@ -2,15 +2,13 @@ import { useAtomValue } from 'jotai';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
-import { allRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastCompletedRaceAtom } from './race-atoms.ts';
+import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, nextRacesAtom } from './race-atoms.ts';
 
 export function RacesContainer() {
     const races = useAtomValue(allRacesAtom);
     const currentRace = useAtomValue(currentRaceAtom);
-    const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
     const lastCompletedRace = useAtomValue(lastCompletedRaceAtom);
-    
-    const raceSubset = races.slice(currentRaceIndex + 1, currentRaceIndex + 1 + 8);
+    const nextRaces = useAtomValue(nextRacesAtom);
 
     return (
         <div className='races-container'>
@@ -44,7 +42,7 @@ export function RacesContainer() {
                 <div className='race-header'>
                     <h3>Next Races</h3>
                 </div>
-                {raceSubset.map((race) => (
+                {nextRaces.map((race) => (
                     <LapsView
                         key={race.id}
                         raceId={race.id}

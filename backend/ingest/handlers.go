@@ -93,6 +93,7 @@ func RegisterRoutes(app core.App, service *Service) {
 			}
 			return c.JSON(http.StatusOK, summary)
 		})
+
 		return se.Next()
 	})
 }

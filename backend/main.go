@@ -43,10 +43,11 @@ func main() {
 
 	// Create services
 	ingestService := mustNewIngestService(app, flags.FPVTrackside)
-	ingest.RegisterRoutes(app, ingestService)
 
 	// Scheduler manager
 	manager := scheduler.NewManager(app, ingestService, scheduler.Config{})
+
+	ingest.RegisterRoutes(app, ingestService)
 
 	// Register record hooks for active race priority updates
 	manager.RegisterHooks()
@@ -166,6 +167,7 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		// Start loops
 		ctx := context.Background()
 		manager.StartLoops(ctx)
+
 		// Routing
 		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
 			req := c.Request
