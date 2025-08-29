@@ -1,20 +1,17 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
-import { bracketsDataAtom, pilotsAtom, racesAtom, useQueryAtom } from '../state/index.ts';
+import { bracketsDataAtom, pilotsAtom, useQueryAtom } from '../state/index.ts';
+import { currentRaceAtom } from '../race/race-atoms.ts';
 import { BracketPilot } from './bracket-types.ts';
-import { findIndexOfCurrentRace } from '../common/index.ts';
 
 export function BracketsView() {
     const brackets = useQueryAtom(bracketsDataAtom);
-    const races = useAtomValue(racesAtom);
     const pilots = useAtomValue(pilotsAtom);
-    const currentRaceIndex = findIndexOfCurrentRace(races);
+    const currentRace = useAtomValue(currentRaceAtom);
 
-    if (currentRaceIndex === -1) {
+    if (!currentRace) {
         return null;
     }
-
-    const currentRace = races[currentRaceIndex];
 
     // Normalize names by removing whitespace and converting to lowercase
     const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');

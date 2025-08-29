@@ -25,6 +25,5 @@ export type {
 export {
     computeProcessedLaps,
     computeRaceStatus,
-    computePilotChannelAssociations,
-    findCurrentRaceIndex
+    computePilotChannelAssociations
 } from './race-types.ts';

@@ -14,7 +14,6 @@ import {
     computePilotChannelAssociations,
     computeProcessedLaps,
     computeRaceStatus,
-    findCurrentRaceIndex,
     RaceData,
     RaceStatus,
 } from './race-types.ts';
@@ -111,11 +110,11 @@ export const allRacesAtom = eagerAtom((get): RaceData[] => {
 
 /**
  * Current race detection - PB native
- * 
- * Uses identical logic to common/utils.ts findIndexOfCurrentRace():
- * 1. Find active race (valid, started, not ended)
- * 2. If none, find last completed race and return next one  
- * 3. Fallback to first race
+ *
+ * Uses backend-published current order (client_kv) with sourceId/raceOrder matching:
+ * 1. Match by sourceId (external system race ID)
+ * 2. Fallback to raceOrder matching
+ * 3. Default to first race if no matches
  */
 export const currentRaceAtom = eagerAtom((get): RaceData | null => {
     const races = get(allRacesAtom);
@@ -140,15 +139,21 @@ export const currentRaceAtom = eagerAtom((get): RaceData | null => {
 });
 
 /**
- * Helper to find current race index - uses same logic as findIndexOfCurrentRace
+ * Helper to find current race index - uses currentRaceAtom to find position in allRacesAtom
  */
 export const currentRaceIndexAtom = eagerAtom((get): number => {
     const races = get(allRacesAtom);
-    return findCurrentRaceIndex(races);
+    const currentRace = get(currentRaceAtom);
+
+    if (!races || races.length === 0 || !currentRace) {
+        return -1;
+    }
+
+    return races.findIndex((race) => race.id === currentRace.id);
 });
 
 /**
- * Last completed race - computed at atom level to avoid hook violations
+ * Last completed race - finds the most recently completed race in the sorted races array
  */
 export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
     const races = get(allRacesAtom);
@@ -157,7 +162,7 @@ export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
         return null;
     }
 
-    // Find last completed race using same logic as findIndexOfCurrentRace
+    // Find last completed race by searching backwards through the sorted races array
     const lastCompletedIndex = races.map((race, index) => ({ race, index }))
         .reverse()
         .find(({ race }) => {

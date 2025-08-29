@@ -113,19 +113,7 @@ export function calculateRacesUntilNext(
     return -1; // No upcoming races found
 }
 
-export function findIndexOfLastRace(sortedRaces: RaceData[]) {
-    const currentRaceIndex = findIndexOfCurrentRace(sortedRaces);
-    if (currentRaceIndex === -1) {
-        return -1;
-    }
 
-    for (let i = currentRaceIndex - 1; i >= 0; i--) {
-        if (sortedRaces[i].valid) {
-            return i;
-        }
-    }
-    return -1;
-}
 
 export function findLastIndex<T>(
     array: T[],
@@ -214,45 +202,4 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
 
 // --- Original Sorting Logic (to be potentially removed later) ---
 
-export function findIndexOfCurrentRace(sortedRaces: RaceData[]) {
-    if (!sortedRaces || sortedRaces.length === 0) {
-        return -1;
-    }
 
-    const activeRace = sortedRaces.findIndex((race) => {
-        if (!race.valid) {
-            return false;
-        }
-        if (!race.start || race.start.startsWith('0')) {
-            return false;
-        }
-        if (!race.end || race.end.startsWith('0')) {
-            return true;
-        }
-        return false;
-    });
-
-    if (activeRace !== -1) {
-        return activeRace;
-    }
-
-    const lastRace = findLastIndex(sortedRaces, (race) => {
-        if (!race.valid) {
-            return false;
-        }
-
-        if (
-            race.start && !race.start.startsWith('0') && race.end &&
-            !race.end.startsWith('0')
-        ) {
-            return true;
-        }
-        return false;
-    });
-
-    if (lastRace !== -1) {
-        return Math.min(lastRace + 1, sortedRaces.length - 1);
-    }
-
-    return sortedRaces.length > 0 ? 0 : -1;
-}

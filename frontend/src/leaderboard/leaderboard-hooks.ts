@@ -10,8 +10,8 @@ import {
     racesAtom,
     roundsDataAtom,
 } from '../state/index.ts';
+import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 import type { RaceData } from '../race/race-types.ts';
-import { findIndexOfCurrentRace } from '../common/index.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
@@ -51,8 +51,7 @@ export const useLeaderboardCalculations = (
 ): LeaderboardCalculations => {
     const { races, pilots, channels, brackets } = state;
     const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
-
-    const currentRaceIndex = findIndexOfCurrentRace(races);
+    const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
     const eliminatedPilots = findEliminatedPilots(brackets);
 
     const [currentLeaderboard, previousLeaderboard] = useMemo(() => {

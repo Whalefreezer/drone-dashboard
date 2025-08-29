@@ -3,7 +3,6 @@ import { loadable } from 'jotai/utils';
 import type { PBRoundRecord } from '../api/pbTypes.ts';
 import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
 import { useEffect, useState } from 'react';
-import { findIndexOfCurrentRace } from '../common/index.ts';
 
 // Common types and interfaces
 export interface ProcessedLap {
