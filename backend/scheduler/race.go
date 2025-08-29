@@ -11,19 +11,26 @@ import (
 
 // -------------------- Active Race --------------------
 
-// findCurrentRaceWithOrder returns the current race id and its computed order (1-based)
+// Race identifiers - using type aliases to prevent ID mixups
+type (
+	RaceSourceID string // External system race ID (e.g., "race-123")
+	RaceDBID     string // PocketBase record ID (e.g., "abc123...")
+)
+
+// findCurrentRaceWithOrder returns the current race SOURCE ID and its computed order (1-based)
 // using the same logic as findCurrentRace/currentRaceAtom. The order is computed from
 // rounds.order ASC, race.raceNumber ASC.
-func (m *Manager) findCurrentRaceWithOrder(eventId string) (string, int) {
+// NOTE: Returns RaceSourceID (for use with ingest_targets.sourceId), NOT RaceDBID!
+func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 	// Uses precomputed races.raceOrder to avoid window functions here.
 	query := `
 		WITH rs AS (
-			SELECT id, raceOrder, start, end, valid
+			SELECT id, sourceId, raceOrder, start, end, valid
 			FROM races
 			WHERE event = {:eventId}
 		),
 		active AS (
-			SELECT id, raceOrder FROM rs
+			SELECT sourceId, raceOrder FROM rs
 			WHERE valid = 1
 			  AND start IS NOT NULL AND start != '' AND start NOT LIKE '0%'
 			  AND (end IS NULL OR end = '' OR end LIKE '0%')
@@ -37,32 +44,35 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (string, int) {
 			ORDER BY raceOrder DESC LIMIT 1
 		),
 		next_after_completed AS (
-			SELECT r.id, r.raceOrder FROM rs r, last_completed lc
+			SELECT r.sourceId, r.raceOrder FROM rs r, last_completed lc
 			WHERE r.raceOrder = lc.raceOrder + 1
 		),
 		first_race AS (
-			SELECT id, raceOrder FROM rs ORDER BY raceOrder ASC LIMIT 1
+			SELECT sourceId, raceOrder FROM rs
+			WHERE raceOrder > 0
+			ORDER BY raceOrder ASC LIMIT 1
 		)
 		SELECT
-		  COALESCE((SELECT id FROM active), (SELECT id FROM next_after_completed), (SELECT id FROM first_race)) AS current_race_id,
+		  COALESCE((SELECT sourceId FROM active), (SELECT sourceId FROM next_after_completed), (SELECT sourceId FROM first_race)) AS current_race_source_id,
 		  COALESCE((SELECT raceOrder FROM active), (SELECT raceOrder FROM next_after_completed), (SELECT raceOrder FROM first_race)) AS current_race_order
 	`
 
 	var result struct {
-		CurrentRaceId    string `db:"current_race_id"`
-		CurrentRaceOrder int    `db:"current_race_order"`
+		CurrentRaceSourceId string `db:"current_race_source_id"`
+		CurrentRaceOrder    int    `db:"current_race_order"`
 	}
 	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result); err != nil {
 		slog.Warn("scheduler.findCurrentRaceWithOrder.query.error", "eventId", eventId, "err", err)
 		return "", 0
 	}
-	if result.CurrentRaceId == "" {
+	if result.CurrentRaceSourceId == "" {
 		return "", 0
 	}
-	return result.CurrentRaceId, result.CurrentRaceOrder
+	return RaceSourceID(result.CurrentRaceSourceId), result.CurrentRaceOrder
 }
 
-// recalculateRaceOrder updates races.raceOrder for all races in the event using a single SQL statement.
+// recalculateRaceOrder updates races.raceOrder for all races in the event.
+// Valid races get sequential raceOrder numbers, invalid races get raceOrder set to 0.
 func (m *Manager) recalculateRaceOrder(eventId string) {
 	query := `
 		WITH ordered AS (
@@ -71,12 +81,13 @@ func (m *Manager) recalculateRaceOrder(eventId string) {
 			) AS pos
 			FROM races r
 			LEFT JOIN rounds round ON r.round = round.id
-			WHERE r.event = {:eventId}
+			WHERE r.event = {:eventId} AND r.valid = 1
 		)
 		UPDATE races
-		SET raceOrder = (
-			SELECT pos FROM ordered WHERE ordered.id = races.id
-		)
+		SET raceOrder = CASE
+			WHEN valid = 1 THEN (SELECT pos FROM ordered WHERE ordered.id = races.id)
+			ELSE 0
+		END
 		WHERE event = {:eventId}
 	`
 	if _, err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).Execute(); err != nil {
@@ -137,9 +148,10 @@ func (m *Manager) ensureActiveRacePriority() {
 	// Keep raceOrder up to date before publishing/using it
 	m.recalculateRaceOrder(eventPBID)
 
-	// Step 1: Find the current race and order
-	currentRaceId, currentOrder := m.findCurrentRaceWithOrder(eventPBID)
-	if currentRaceId == "" {
+	// Step 1: Find the current race SOURCE ID and order
+	// NOTE: This returns RaceSourceID (for ingest_targets.sourceId), not RaceDBID!
+	currentRaceSourceId, currentOrder := m.findCurrentRaceWithOrder(eventPBID)
+	if currentRaceSourceId == "" {
 		return // nothing to promote; discovery will keep idle intervals
 	}
 
@@ -150,45 +162,45 @@ func (m *Manager) ensureActiveRacePriority() {
 		UPDATE ingest_targets
 		SET
 			intervalMs = CASE
-				WHEN sourceId = {:currentRaceId}
+				WHEN sourceId = {:currentRaceSourceId}
 				THEN {:activeMs}
 				ELSE {:idleMs}
 			END,
 			priority = CASE
-				WHEN sourceId = {:currentRaceId}
+				WHEN sourceId = {:currentRaceSourceId}
 				THEN 100
 				ELSE 0
 			END,
 			nextDueAt = CASE
-				WHEN sourceId = {:currentRaceId} AND (intervalMs != {:activeMs} OR priority != 100)
+				WHEN sourceId = {:currentRaceSourceId} AND (intervalMs != {:activeMs} OR priority != 100)
 				THEN {:nowMs}
 				ELSE nextDueAt
 			END
 		WHERE type = 'race' AND event = {:eventId}
 		  AND (
-			  (sourceId = {:currentRaceId} AND (intervalMs != {:activeMs} OR priority != 100))
+			  (sourceId = {:currentRaceSourceId} AND (intervalMs != {:activeMs} OR priority != 100))
 			  OR
-			  (sourceId != {:currentRaceId} AND (intervalMs != {:idleMs} OR priority != 0))
+			  (sourceId != {:currentRaceSourceId} AND (intervalMs != {:idleMs} OR priority != 0))
 		  )
 	`
 
 	now := time.Now()
 	res, err := m.App.DB().NewQuery(query).Bind(dbx.Params{
-		"eventId":       eventPBID,
-		"currentRaceId": currentRaceId,
-		"activeMs":      int(m.Cfg.RaceActive.Milliseconds()),
-		"idleMs":        int(m.Cfg.RaceIdle.Milliseconds()),
-		"nowMs":         now.UnixMilli(),
+		"eventId":             eventPBID,
+		"currentRaceSourceId": string(currentRaceSourceId), // Convert RaceSourceID to string for SQL
+		"activeMs":            int(m.Cfg.RaceActive.Milliseconds()),
+		"idleMs":              int(m.Cfg.RaceIdle.Milliseconds()),
+		"nowMs":               now.UnixMilli(),
 	}).Execute()
 
 	if err != nil {
-		slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceId", currentRaceId, "err", err)
+		slog.Warn("scheduler.ensureActiveRacePriority.update.error", "eventId", eventPBID, "currentRaceSourceId", currentRaceSourceId, "err", err)
 		return
 	}
 	// Publish current order for clients if rows changed
 	if res != nil {
 		if n, _ := res.RowsAffected(); n > 0 {
-			m.publishCurrentOrderKV(eventPBID, currentRaceId, currentOrder)
+			m.publishCurrentOrderKV(eventPBID, string(currentRaceSourceId), currentOrder)
 		}
 	}
 }
