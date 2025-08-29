@@ -11,7 +11,6 @@ import (
 type Config struct {
 	FullInterval    time.Duration
 	WorkerInterval  time.Duration
-	ActiveCheck     time.Duration
 	RaceActive      time.Duration
 	RaceIdle        time.Duration
 	ResultsInterval time.Duration
@@ -25,10 +24,9 @@ func (m *Manager) ensureDefaultSettings() {
 		"scheduler.enabled":          "true",
 		"scheduler.fullIntervalMs":   "10000",
 		"scheduler.workerIntervalMs": "200",
-		"scheduler.activeCheckMs":    "1000",
 		"scheduler.raceActiveMs":     "200",
-		"scheduler.raceIdleMs":       "5000",
-		"scheduler.resultsMs":        "2000",
+		"scheduler.raceIdleMs":       "10000",
+		"scheduler.resultsMs":        "10000",
 		"scheduler.jitterMs":         "150",
 		"scheduler.burst":            "2",
 		"scheduler.concurrency":      "1",
@@ -63,7 +61,6 @@ func (m *Manager) loadConfigFromDB() {
 	}
 	m.Cfg.FullInterval = time.Duration(readInt("scheduler.fullIntervalMs", 10000)) * time.Millisecond
 	m.Cfg.WorkerInterval = time.Duration(readInt("scheduler.workerIntervalMs", 200)) * time.Millisecond
-	m.Cfg.ActiveCheck = time.Duration(readInt("scheduler.activeCheckMs", 1000)) * time.Millisecond
 	m.Cfg.RaceActive = time.Duration(readInt("scheduler.raceActiveMs", 200)) * time.Millisecond
 	m.Cfg.RaceIdle = time.Duration(readInt("scheduler.raceIdleMs", 5000)) * time.Millisecond
 	m.Cfg.ResultsInterval = time.Duration(readInt("scheduler.resultsMs", 2000)) * time.Millisecond
