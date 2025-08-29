@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react-swc';
 import { resolve } from 'node:path';
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }: { mode: string }) => {
     // Load env file based on mode
     const env = loadEnv(mode, process.cwd(), '');
 

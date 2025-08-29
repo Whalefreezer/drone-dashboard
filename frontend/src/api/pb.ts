@@ -1,6 +1,7 @@
-import PocketBase from 'npm:pocketbase';
+import PocketBase, { RecordSubscription } from 'npm:pocketbase';
 import { Atom, atom } from 'jotai';
 import { PBBaseRecord } from './pbTypes.ts';
+import { batchDebounce } from '../common/utils.ts';
 
 export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
 export const usePBRace: boolean =
@@ -70,20 +71,29 @@ export function pbSubscribeCollection<T extends PBBaseRecord>(
     );
 
     anAtom.onMount = (set) => {
-        const unsubscribePromise = pb.collection<T>(collection).subscribe('*', (event) => {
+        const debouncedSet = batchDebounce((eventCalls: [RecordSubscription<T>][]) => {
             set((prev: T[] | null) => {
-                const items = prev ? [...prev] : [];
-                if (event.action === 'create' || event.action === 'update') {
-                    const i = items.findIndex((item) => item.id === event.record.id);
-                    if (i !== -1) items[i] = event.record as T;
-                    else items.push(event.record as T);
-                    return items;
+                let items = prev ? [...prev] : [];
+
+                // Process all collected events in order
+                for (const [event] of eventCalls) {
+                    if (event.action === 'create' || event.action === 'update') {
+                        const i = items.findIndex((item) => item.id === event.record.id);
+                        if (i !== -1) items[i] = event.record as T;
+                        else items.push(event.record as T);
+                    } else if (event.action === 'delete') {
+                        items = items.filter((item) => item.id !== event.record.id);
+                    }
                 }
-                if (event.action === 'delete') return items.filter((item) => item.id !== event.record.id);
+
                 return items;
             });
-        });
+        }, 10);
+
+        const unsubscribePromise = pb.collection<T>(collection).subscribe('*', debouncedSet);
+
         return () => {
+            debouncedSet.cancel();
             unsubscribePromise.then((unsub) => unsub());
         };
     };

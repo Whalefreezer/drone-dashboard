@@ -200,6 +200,79 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
     }
 }
 
-// --- Original Sorting Logic (to be potentially removed later) ---
+/**
+ * Simple debounce utility that delays function execution until after delay milliseconds
+ * have passed since the last time it was invoked.
+ *
+ * @param func - The function to debounce
+ * @param delay - The number of milliseconds to delay
+ * @returns A debounced function
+ */
+export function simpleDebounce<T extends (...args: any[]) => any>(
+    func: T,
+    delay: number
+): T & { cancel: () => void } {
+    let timeoutId: number | null = null;
 
+    function debounced(this: any, ...args: Parameters<T>): void {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+        }
+
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+            timeoutId = null;
+        }, delay);
+    }
+
+    debounced.cancel = () => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+        }
+    };
+
+    return debounced as T & { cancel: () => void };
+}
+
+/**
+ * Debounce utility that collects all calls made during the delay period and
+ * passes them as an array to the final function call.
+ *
+ * @param func - The function to debounce, receives an array of all collected arguments
+ * @param delay - The number of milliseconds to delay
+ * @returns A debounced function
+ */
+export function batchDebounce<TArgs extends any[], TReturn = void>(
+    func: (calls: TArgs[]) => TReturn,
+    delay: number
+): ((...args: TArgs) => void) & { cancel: () => void } {
+    let timeoutId: number | null = null;
+    let collectedCalls: TArgs[] = [];
+
+    function debounced(...args: TArgs): void {
+        collectedCalls.push(args);
+
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+        }
+
+        timeoutId = setTimeout(() => {
+            const callsToProcess = [...collectedCalls];
+            collectedCalls = [];
+            func(callsToProcess);
+            timeoutId = null;
+        }, delay);
+    }
+
+    debounced.cancel = () => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+        }
+        collectedCalls = [];
+    };
+
+    return debounced;
+}
 
