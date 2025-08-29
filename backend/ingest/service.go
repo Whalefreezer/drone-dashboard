@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -300,6 +301,78 @@ func (s *Service) IngestRounds(eventSourceId string) error {
 	return nil
 }
 
+// IngestPilotChannels fetches and upserts pilotChannels for a race, cleaning up any stale entries
+// eventSourceId: The external system's event identifier (not PocketBase ID)
+// raceId: The external system's race identifier (not PocketBase ID)
+// racePBID: PocketBase ID of the race
+// eventPBID: PocketBase ID of the event
+// pilotChannels: Array of pilot channels from the race data
+func (s *Service) IngestPilotChannels(eventSourceId, raceId, racePBID, eventPBID string, pilotChannels []struct {
+	ID      Guid
+	Pilot   Guid
+	Channel Guid
+}) error {
+	slog.Debug("ingest.pilotChannels.start", "eventSourceId", eventSourceId, "raceId", raceId, "count", len(pilotChannels))
+
+	// First, get all existing pilotChannels for this race to identify stale ones
+	collection, err := s.Upserter.App.FindCollectionByNameOrId("pilotChannels")
+	if err != nil {
+		return fmt.Errorf("find pilotChannels collection: %w", err)
+	}
+
+	existingPilotChannels, err := s.Upserter.App.FindRecordsByFilter(collection.Name, "race = {:raceId}", "", 0, 0, dbx.Params{
+		"raceId": racePBID,
+	})
+	if err != nil {
+		return fmt.Errorf("find existing pilotChannels for race: %w", err)
+	}
+
+	// Create a map of valid pilotChannel IDs from incoming data
+	validPilotChannelIDs := make(map[string]bool)
+	for _, pc := range pilotChannels {
+		validPilotChannelIDs[string(pc.ID)] = true
+	}
+
+	// Delete pilotChannels that are no longer present
+	deletedCount := 0
+	for _, existingPC := range existingPilotChannels {
+		sourceId := existingPC.GetString("sourceId")
+		if sourceId != "" && !validPilotChannelIDs[sourceId] {
+			if err := s.Upserter.App.Delete(existingPC); err != nil {
+				return fmt.Errorf("delete stale pilotChannel %s: %w", existingPC.Id, err)
+			}
+			deletedCount++
+		}
+	}
+	if deletedCount > 0 {
+		slog.Info("ingest.pilotChannels.cleaned", "raceId", raceId, "deleted", deletedCount)
+	}
+
+	// Upsert valid pilotChannels
+	for _, pc := range pilotChannels {
+		// Get existing pilot and channel PB ids (should already exist from snapshot)
+		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(pc.Pilot))
+		if err != nil {
+			return err
+		}
+		channelPBID, err := s.Upserter.GetExistingId("channels", string(pc.Channel))
+		if err != nil {
+			return err
+		}
+		if _, err := s.Upserter.Upsert("pilotChannels", string(pc.ID), map[string]any{
+			"pilot":   pilotPBID,
+			"channel": channelPBID,
+			"race":    racePBID,
+			"event":   eventPBID,
+		}); err != nil {
+			return err
+		}
+	}
+
+	slog.Info("ingest.pilotChannels.done", "eventSourceId", eventSourceId, "raceId", raceId, "count", len(pilotChannels))
+	return nil
+}
+
 // IngestRace fetches and upserts a race and its nested entities
 // eventSourceId: The external system's event identifier (not PocketBase ID)
 // raceId: The external system's race identifier (not PocketBase ID)
@@ -344,25 +417,9 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 		return err
 	}
 
-	// PilotChannels for this race (scoped by event)
-	for _, pc := range r.PilotChannels {
-		// Get existing pilot and channel PB ids (should already exist from snapshot)
-		pilotPBID, err := s.Upserter.GetExistingId("pilots", string(pc.Pilot))
-		if err != nil {
-			return err
-		}
-		channelPBID, err := s.Upserter.GetExistingId("channels", string(pc.Channel))
-		if err != nil {
-			return err
-		}
-		if _, err := s.Upserter.Upsert("pilotChannels", string(pc.ID), map[string]any{
-			"pilot":   pilotPBID,
-			"channel": channelPBID,
-			"race":    racePBID,
-			"event":   eventPBID,
-		}); err != nil {
-			return err
-		}
+	// Ingest pilotChannels for this race
+	if err := s.IngestPilotChannels(eventSourceId, raceId, racePBID, eventPBID, r.PilotChannels); err != nil {
+		return err
 	}
 
 	// Detections
