@@ -24,31 +24,51 @@
     font-size: 0.95rem;
 }
 
-.next-race-line {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+.next-race-grid {
+    display: grid;
+    gap: 4px; /* slightly tighter vertical spacing */
 }
 
-.pilot-chip {
-    display: inline-flex;
+.next-race-grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+    .next-race-grid--two {
+        grid-template-columns: 1fr;
+    }
+}
+
+.next-race-slot {
+    padding: 2px 0; /* remove box; tighten vertical space */
+    border: none;
+    background: transparent;
+}
+
+.slot-line {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 6px;
-    border: 1px solid #2a2a2a;
-    border-radius: 9999px;
-    background: #0f0f0f;
-    color: #ddd;
-    font-size: 0.9rem;
+    gap: 10px; /* more separation to name */
+    min-width: 0;
+}
+
+.slot-channel-group { display: inline-flex; align-items: center; gap: 2px; }
+.slot-channel { letter-spacing: 0.3px; color: #bbb; font-size: 0.86rem; }
+.slot-name {
+    color: #eee;
+    font-weight: 400;
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.chip-channel { color: #bbb; letter-spacing: 0.3px; }
-.chip-name { color: #eee; font-weight: 500; }
-
 /* Make the color square smaller inside chips */
-.pilot-chip .channel-square {
+.next-race-slot .channel-square {
     width: 12px;
     height: 12px;
     border-color: #555;
 }
+
+/* Pull the color square closer to the channel label in this view */
+.slot-channel-group .channel-square { margin-left: 0; }

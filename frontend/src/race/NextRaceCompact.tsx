@@ -23,7 +23,7 @@ export function NextRaceCompact({ race }: NextRaceCompactProps) {
             <div className='next-race-header'>
                 <div className='next-race-title'>{title}</div>
             </div>
-            <div className='next-race-line'>
+            <div className='next-race-grid next-race-grid--two'>
                 {race.pilotChannels.map((pc) => {
                     const pilot = pilots.find((p) => p.id === pc.pilotId);
                     const channel = channels.find((c) => c.id === pc.channelId);
@@ -31,11 +31,17 @@ export function NextRaceCompact({ race }: NextRaceCompactProps) {
                         ? `${channel.shortBand ?? ''}${channel.number ?? ''}`
                         : '-';
                     return (
-                        <span className='pilot-chip' key={pc.id}>
-                            <span className='chip-channel'>{channelLabel}</span>
-                            <ChannelSquare channelID={pc.channelId} />
-                            <span className='chip-name'>{pilot?.name ?? '—'}</span>
-                        </span>
+                        <div className='next-race-slot' key={pc.id}>
+                            <div className='slot-line'>
+                                <span className='slot-channel-group'>
+                                    <span className='slot-channel'>{channelLabel}</span>
+                                    <ChannelSquare channelID={pc.channelId} />
+                                </span>
+                                <span className='slot-name' title={pilot?.name ?? ''}>
+                                    {pilot?.name ?? '—'}
+                                </span>
+                            </div>
+                        </div>
                     );
                 })}
             </div>
