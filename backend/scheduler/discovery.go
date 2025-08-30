@@ -116,10 +116,11 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 	for _, r := range validRaceIds {
 		valid[string(r)] = struct{}{}
 	}
-	all, err := m.App.FindAllRecords("ingest_targets")
-	if err != nil {
-		return
-	}
+    all, err := m.App.FindAllRecords("ingest_targets")
+    if err != nil {
+        slog.Warn("scheduler.pruneOrphans.list.error", "eventPBID", eventPBID, "err", err)
+        return
+    }
 	for _, r := range all {
 		if eventPBID == "" {
 			continue
@@ -131,11 +132,13 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 		sid := r.GetString("sourceId")
 		if t == "race" {
 			if _, ok := valid[sid]; !ok {
-				// delete orphan race target
-				_ = m.App.Delete(r)
-			}
-		}
-	}
+                // delete orphan race target
+                if err := m.App.Delete(r); err != nil {
+                    slog.Warn("scheduler.pruneOrphans.delete.error", "id", r.Id, "err", err)
+                }
+            }
+        }
+    }
 }
 
 func hash32(s string) uint32 {

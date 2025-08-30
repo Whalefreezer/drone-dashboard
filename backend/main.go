@@ -1,15 +1,16 @@
 package main
 
 import (
-	"context"
-	"embed"
-	"flag"
-	"fmt"
-	"io/fs"
-	"log"
-	"net/http"
-	"os"
-	"strings"
+    "context"
+    "embed"
+    "flag"
+    "fmt"
+    "io/fs"
+    "log"
+    "log/slog"
+    "net/http"
+    "os"
+    "strings"
 
 	"drone-dashboard/ingest"
 	"drone-dashboard/logger"
@@ -174,16 +175,17 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			resp := c.Response
 			path := req.URL.Path
 
-			if strings.HasPrefix(path, "/direct/") {
-				newPath := strings.TrimPrefix(path, "/direct/")
-				bytes, err := ingestService.Client.GetBytes(newPath)
-				if err != nil {
-					return c.InternalServerError("fetch event", err)
-				}
-				resp.WriteHeader(http.StatusOK)
-				resp.Write([]byte(string(bytes)))
-				return nil
-			}
+            if strings.HasPrefix(path, "/direct/") {
+                newPath := strings.TrimPrefix(path, "/direct/")
+                bytes, err := ingestService.Client.GetBytes(newPath)
+                if err != nil {
+                    slog.Warn("http.direct.fetch.error", "path", newPath, "err", err)
+                    return c.InternalServerError("fetch event", err)
+                }
+                resp.WriteHeader(http.StatusOK)
+                resp.Write([]byte(string(bytes)))
+                return nil
+            }
 			staticHandler := apis.Static(static, false)
 			return staticHandler(c)
 		})
@@ -197,17 +199,20 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 }
 
 func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
-	col, err := app.FindCollectionByNameOrId("server_settings")
-	if err != nil {
-		return
-	}
-	rec, _ := app.FindFirstRecordByFilter("server_settings", "key = 'scheduler.enabled'", nil)
-	if rec == nil {
-		rec = core.NewRecord(col)
-		rec.Set("key", "scheduler.enabled")
-	}
-	rec.Set("value", strconv.FormatBool(enabled))
-	_ = app.Save(rec)
+    col, err := app.FindCollectionByNameOrId("server_settings")
+    if err != nil {
+        slog.Warn("server_settings.collection.find.error", "err", err)
+        return
+    }
+    rec, _ := app.FindFirstRecordByFilter("server_settings", "key = 'scheduler.enabled'", nil)
+    if rec == nil {
+        rec = core.NewRecord(col)
+        rec.Set("key", "scheduler.enabled")
+    }
+    rec.Set("value", strconv.FormatBool(enabled))
+    if err := app.Save(rec); err != nil {
+        slog.Warn("server_settings.save.error", "key", "scheduler.enabled", "err", err)
+    }
 }
 
 // setupInitialRaceIngestTarget sets up the initial race ingest target on startup

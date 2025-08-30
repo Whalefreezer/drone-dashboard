@@ -1,8 +1,9 @@
 package scheduler
 
 import (
-	"fmt"
-	"time"
+    "fmt"
+    "log/slog"
+    "time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -33,19 +34,22 @@ func (m *Manager) ensureDefaultSettings() {
 		"scheduler.burst":              "2",
 		"scheduler.concurrency":        "1",
 	}
-	col, err := m.App.FindCollectionByNameOrId("server_settings")
-	if err != nil {
-		return
-	}
-	for k, v := range defaults {
-		rec, _ := m.App.FindFirstRecordByFilter("server_settings", "key = {:k}", dbx.Params{"k": k})
-		if rec == nil {
-			rec = core.NewRecord(col)
-			rec.Set("key", k)
-			rec.Set("value", v)
-			_ = m.App.Save(rec)
-		}
-	}
+    col, err := m.App.FindCollectionByNameOrId("server_settings")
+    if err != nil {
+        slog.Warn("scheduler.config.seed.collection.error", "err", err)
+        return
+    }
+    for k, v := range defaults {
+        rec, _ := m.App.FindFirstRecordByFilter("server_settings", "key = {:k}", dbx.Params{"k": k})
+        if rec == nil {
+            rec = core.NewRecord(col)
+            rec.Set("key", k)
+            rec.Set("value", v)
+            if err := m.App.Save(rec); err != nil {
+                slog.Warn("scheduler.config.seed.save.error", "key", k, "err", err)
+            }
+        }
+    }
 }
 
 func (m *Manager) loadConfigFromDB() {

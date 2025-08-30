@@ -93,50 +93,65 @@ func (m *Manager) publishCurrentOrderKV(eventId, raceId string, order int) {
 		"sourceId":   raceId,
 		"computedAt": time.Now().UnixMilli(),
 	}
-	b, _ := json.Marshal(payload)
-	newValue := string(b)
+    b, err := json.Marshal(payload)
+    if err != nil {
+        slog.Warn("scheduler.publishCurrentOrderKV.marshal.error", "eventId", eventId, "raceId", raceId, "err", err)
+        return
+    }
+    newValue := string(b)
 
-	// find existing kv
-	rec, _ := m.App.FindFirstRecordByFilter(
-		"client_kv",
-		"namespace = {:ns} && key = {:k} && event = {:e}",
-		dbx.Params{"ns": "race", "k": "currentOrder", "e": eventId},
-	)
+    // find existing kv
+    rec, err := m.App.FindFirstRecordByFilter(
+        "client_kv",
+        "namespace = {:ns} && key = {:k} && event = {:e}",
+        dbx.Params{"ns": "race", "k": "currentOrder", "e": eventId},
+    )
+    if err != nil {
+        slog.Warn("scheduler.publishCurrentOrderKV.find.error", "eventId", eventId, "err", err)
+        return
+    }
 
 	// Check if we need to create a new record or if the value has changed
 	if rec == nil {
-		col, err := m.App.FindCollectionByNameOrId("client_kv")
-		if err != nil {
-			return
-		}
-		rec = core.NewRecord(col)
-		rec.Set("namespace", "race")
-		rec.Set("key", "currentOrder")
-		rec.Set("event", eventId)
-		rec.Set("value", newValue)
-		_ = m.App.Save(rec)
-	} else {
+        col, err := m.App.FindCollectionByNameOrId("client_kv")
+        if err != nil {
+            slog.Warn("scheduler.publishCurrentOrderKV.collection.error", "eventId", eventId, "err", err)
+            return
+        }
+        rec = core.NewRecord(col)
+        rec.Set("namespace", "race")
+        rec.Set("key", "currentOrder")
+        rec.Set("event", eventId)
+        rec.Set("value", newValue)
+        if err := m.App.Save(rec); err != nil {
+            slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
+        }
+    } else {
 		// Only save if the meaningful values (order and raceId) have actually changed
 		existingValue := rec.GetString("value")
 
 		// Parse existing JSON to compare meaningful fields
 		var existingPayload map[string]any
-		if err := json.Unmarshal([]byte(existingValue), &existingPayload); err == nil {
-			// Compare only the meaningful fields, ignore computedAt
-			existingOrder, existingOrderOk := existingPayload["order"].(float64)
-			existingSourceId, existingSourceIdOk := existingPayload["sourceId"].(string)
+            if err := json.Unmarshal([]byte(existingValue), &existingPayload); err == nil {
+                // Compare only the meaningful fields, ignore computedAt
+                existingOrder, existingOrderOk := existingPayload["order"].(float64)
+                existingSourceId, existingSourceIdOk := existingPayload["sourceId"].(string)
 
-			if existingOrderOk && existingSourceIdOk &&
-				int(existingOrder) == order && existingSourceId == raceId {
-				// Values haven't changed, no need to save
-				return
-			}
-		}
+                if existingOrderOk && existingSourceIdOk &&
+                    int(existingOrder) == order && existingSourceId == raceId {
+                    // Values haven't changed, no need to save
+                    return
+                }
+            } else {
+                slog.Debug("scheduler.publishCurrentOrderKV.parseExisting.error", "eventId", eventId, "err", err)
+            }
 
-		// Values have changed or we couldn't parse existing JSON, save new value
-		rec.Set("value", newValue)
-		_ = m.App.Save(rec)
-	}
+        // Values have changed or we couldn't parse existing JSON, save new value
+        rec.Set("value", newValue)
+        if err := m.App.Save(rec); err != nil {
+            slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
+        }
+    }
 }
 
 func (m *Manager) ensureActiveRacePriority() {

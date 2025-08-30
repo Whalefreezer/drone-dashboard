@@ -28,9 +28,10 @@ func (m *Manager) drainOnce() {
 	      WHERE enabled = 1 AND nextDueAt <= {:now}
 	      ORDER BY nextDueAt ASC, priority DESC
 	      LIMIT {:lim}`
-	if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
-		return
-	}
+    if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
+        slog.Warn("scheduler.worker.query.error", "err", err)
+        return
+    }
 	if len(rows) == 0 {
 		return
 	}
