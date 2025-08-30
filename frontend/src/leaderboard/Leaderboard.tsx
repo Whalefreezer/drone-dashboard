@@ -2,12 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Column } from '../common/tableColumns.tsx';
 import { GenericTable } from '../common/tableColumns.tsx';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { LeaderboardEntry } from './leaderboard-types.ts';
-import {
-    useLeaderboardAnimation,
-    useLeaderboardCalculations,
-    useLeaderboardState,
-} from './leaderboard-hooks.ts';
+import type { LeaderboardEntry } from './leaderboard-types.ts';
+import { useLeaderboardAnimation } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
@@ -53,14 +49,14 @@ function OverflowFadeCell({ children, className = '', title }: OverflowFadeCellP
 }
 
 export function Leaderboard() {
-    const state = useLeaderboardState();
+    const races = useAtomValue(racesAtom);
     const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
-    const { eliminatedPilots, currentLeaderboard, positionChanges } = useLeaderboardCalculations(
-        state,
+    const { currentLeaderboard, positionChanges } = useAtomValue(
+        leaderboardCalculationsAtom,
     );
     const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
 
-    if (state.races.length === 0) {
+    if (races.length === 0) {
         return (
             <div className='leaderboard-container'>
                 <h3>Fastest Laps Overall</h3>
@@ -73,7 +69,6 @@ export function Leaderboard() {
         <div className='leaderboard-container'>
             <LeaderboardTable
                 currentLeaderboard={currentLeaderboard}
-                eliminatedPilots={eliminatedPilots}
                 animatingRows={animatingRows}
                 consecutiveLaps={consecutiveLaps}
             />
@@ -83,7 +78,6 @@ export function Leaderboard() {
 
 interface LeaderboardTableProps {
     currentLeaderboard: LeaderboardEntry[];
-    eliminatedPilots: { name: string }[];
     animatingRows: Set<string>;
     consecutiveLaps: number;
 }
@@ -91,7 +85,6 @@ interface LeaderboardTableProps {
 function LeaderboardTable(
     {
         currentLeaderboard,
-        eliminatedPilots,
         animatingRows,
         consecutiveLaps,
     }: LeaderboardTableProps,

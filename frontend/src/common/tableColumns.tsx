@@ -3,14 +3,14 @@ import React from 'react';
 export type Column<TableCtx, RowCtx> = {
     key: string;
     header: string | ((ctx: TableCtx) => React.ReactNode);
-    cell: React.FC<RowCtx>;
+    cell: React.ComponentType<RowCtx>;
     headerClassName?: string;
     headerAlign?: 'left' | 'center' | 'right';
     width?: number | string; // e.g., 120 or '12rem' or '20%'
     minWidth?: number | string; // e.g., 160 or '10rem'
 };
 
-export interface GenericTableProps<TableCtx, RowCtx> {
+export interface GenericTableProps<TableCtx, RowCtx extends object> {
     columns: Array<Column<TableCtx, RowCtx>>;
     data: RowCtx[];
     context: TableCtx;
@@ -19,7 +19,7 @@ export interface GenericTableProps<TableCtx, RowCtx> {
     className?: string;
 }
 
-export function GenericTable<TableCtx, RowCtx>(
+export function GenericTable<TableCtx, RowCtx extends object>(
     { columns, data, context, getRowKey, getRowClassName, className }: GenericTableProps<
         TableCtx,
         RowCtx
@@ -56,10 +56,10 @@ export function GenericTable<TableCtx, RowCtx>(
                 {data.map((row, index) => (
                     <tr key={getRowKey(row, index)} className={getRowClassName?.(row, index)}>
                         {columns.map((col) => {
-                            const Cell = col.cell;
+                            const Cell = col.cell as React.ComponentType<RowCtx>;
                             return (
                                 <React.Fragment key={col.key}>
-                                    <Cell {...row} />
+                                    {React.createElement(Cell, row)}
                                 </React.Fragment>
                             );
                         })}
