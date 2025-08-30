@@ -19,7 +19,7 @@ func (s *Service) IngestPilotChannels(u *Upserter, eventSourceId, raceId, racePB
 	Pilot   Guid
 	Channel Guid
 }) error {
-	slog.Debug("ingest.pilotChannels.start", "eventSourceId", eventSourceId, "raceId", raceId, "count", len(pilotChannels))
+	slog.Debug("ingest.pilotChannels.start", "raceId", raceId, "count", len(pilotChannels))
 
 	// First, get all existing pilotChannels for this race to identify stale ones
 	collection, err := u.App.FindCollectionByNameOrId("pilotChannels")
@@ -76,7 +76,7 @@ func (s *Service) IngestPilotChannels(u *Upserter, eventSourceId, raceId, racePB
 		}
 	}
 
-	slog.Info("ingest.pilotChannels.done", "eventSourceId", eventSourceId, "raceId", raceId, "count", len(pilotChannels))
+	slog.Info("ingest.pilotChannels.done", "raceId", raceId, "count", len(pilotChannels))
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (s *Service) IngestPilotChannels(u *Upserter, eventSourceId, raceId, racePB
 // eventSourceId: The external system's event identifier (not PocketBase ID)
 // raceId: The external system's race identifier (not PocketBase ID)
 func (s *Service) IngestRace(eventSourceId, raceId string) error {
-	slog.Debug("ingest.race.start", "eventSourceId", eventSourceId, "raceId", raceId)
+	slog.Debug("ingest.race.start", "raceId", raceId)
 
 	// Fetch race payload outside the transaction to avoid holding locks during network I/O
 	rf, err := s.Client.FetchRace(eventSourceId, raceId)
@@ -246,6 +246,6 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 		return err
 	}
 
-	slog.Info("ingest.race.done", "eventSourceId", eventSourceId, "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
+	slog.Info("ingest.race.done", "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
 	return nil
 }
