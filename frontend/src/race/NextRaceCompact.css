@@ -1,0 +1,65 @@
+.next-race-card {
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #161616;
+    margin-bottom: 10px;
+}
+
+.next-race-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.next-race-title {
+    font-weight: 600;
+    color: #ddd;
+}
+
+.next-race-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+/* Ensure it looks good when fewer than 3 */
+@media (max-width: 900px) {
+    .next-race-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .next-race-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.next-race-slot {
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    padding: 8px;
+    background: #0f0f0f;
+}
+
+.slot-top {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #eee;
+    margin-bottom: 6px;
+}
+
+.slot-bottom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #bbb;
+    font-size: 0.9rem;
+}
+
+.slot-channel {
+    letter-spacing: 0.3px;
+}
+

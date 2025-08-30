@@ -3,6 +3,7 @@ import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
 import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, nextRacesAtom } from './race-atoms.ts';
+import { NextRaceCompact } from './NextRaceCompact.tsx';
 
 export function RacesContainer() {
     const races = useAtomValue(allRacesAtom);
@@ -43,10 +44,7 @@ export function RacesContainer() {
                     <h3>Next Races</h3>
                 </div>
                 {nextRaces.map((race) => (
-                    <LapsView
-                        key={race.id}
-                        raceId={race.id}
-                    />
+                    <NextRaceCompact key={race.id} race={race} />
                 ))}
             </div>
         </div>
