@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Column } from './tableColumns.tsx';
+import { GenericTable } from './tableColumns.tsx';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
@@ -8,9 +10,10 @@ import {
 } from './leaderboard-hooks.ts';
 import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
-import type { RaceData } from '../race/race-types.ts';
-import type { PBChannelRecord, PBRoundRecord } from '../api/pbTypes.ts';
+import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { useAtomValue } from 'jotai';
+import { leaderboardCalculationsAtom } from './leaderboard-state.ts';
+import { racesAtom, roundsDataAtom } from '../state/index.ts';
 
 interface OverflowFadeCellProps {
     children: React.ReactNode;
@@ -52,13 +55,9 @@ function OverflowFadeCell({ children, className = '', title }: OverflowFadeCellP
 export function Leaderboard() {
     const state = useLeaderboardState();
     const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
-    const {
-        currentRaceIndex,
-        eliminatedPilots,
-        currentLeaderboard,
-        previousLeaderboard,
-        positionChanges,
-    } = useLeaderboardCalculations(state);
+    const { eliminatedPilots, currentLeaderboard, positionChanges } = useLeaderboardCalculations(
+        state,
+    );
     const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
 
     if (state.races.length === 0) {
@@ -74,13 +73,8 @@ export function Leaderboard() {
         <div className='leaderboard-container'>
             <LeaderboardTable
                 currentLeaderboard={currentLeaderboard}
-                previousLeaderboard={previousLeaderboard}
                 eliminatedPilots={eliminatedPilots}
                 animatingRows={animatingRows}
-                positionChanges={positionChanges}
-                roundDataValue={state.roundDataValue}
-                currentRaceIndex={currentRaceIndex}
-                races={state.races}
                 consecutiveLaps={consecutiveLaps}
             />
         </div>
@@ -89,200 +83,178 @@ export function Leaderboard() {
 
 interface LeaderboardTableProps {
     currentLeaderboard: LeaderboardEntry[];
-    previousLeaderboard: LeaderboardEntry[];
     eliminatedPilots: { name: string }[];
     animatingRows: Set<string>;
-    positionChanges: Map<string, number>;
-    roundDataValue: PBRoundRecord[];
-    currentRaceIndex: number;
-    races: RaceData[];
     consecutiveLaps: number;
 }
 
 function LeaderboardTable(
     {
         currentLeaderboard,
-        previousLeaderboard,
         eliminatedPilots,
         animatingRows,
-        positionChanges,
-        roundDataValue,
-        currentRaceIndex,
-        races,
         consecutiveLaps,
     }: LeaderboardTableProps,
 ) {
     // Build a single source-of-truth column definition used by header and rows
-    const columns = useMemo(() => getColumns({ consecutiveLaps }), [consecutiveLaps]);
+    const ctx = useMemo(() => ({ consecutiveLaps }), [consecutiveLaps]);
+    const columns = useMemo(
+        (): Array<Column<TableContext, LeaderboardRowProps>> => getColumns(ctx),
+        [ctx],
+    );
+
+    const rows: LeaderboardRowProps[] = useMemo(() => (
+        currentLeaderboard.map((entry) => ({ pilot: entry.pilot }))
+    ), [currentLeaderboard]);
 
     return (
-        <table className='leaderboard-table'>
-            <thead>
-                <tr>
-                    {columns.map((col) => (
-                        <th key={col.key}>
-                            {typeof col.header === 'function'
-                                ? col.header({ consecutiveLaps })
-                                : col.header}
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {currentLeaderboard.map((entry, index) => {
-                    const previousEntry = previousLeaderboard.find((prev) =>
-                        prev.pilot.id === entry.pilot.id
-                    );
-                    const isEliminated = eliminatedPilots.some(
-                        (pilot) =>
-                            pilot.name.toLowerCase().replace(/\s+/g, '') ===
-                                entry.pilot.name.toLowerCase().replace(/\s+/g, ''),
-                    );
-                    const position = index + 1;
-
-                    const rowContext: LeaderboardRowProps = {
-                        entry,
-                        previousEntry,
-                        isEliminated,
-                        isAnimating: animatingRows.has(entry.pilot.id),
-                        position,
-                        positionChanges,
-                        roundDataValue,
-                        currentRaceIndex,
-                        races,
-                        consecutiveLaps,
-                    };
-
-                    return (
-                        <tr
-                            key={entry.pilot.id}
-                            className={rowContext.isAnimating ? 'position-improved' : ''}
-                        >
-                            {columns.map((col) => (
-                                <React.Fragment key={`${entry.pilot.id}-${col.key}`}>
-                                    {col.cell(rowContext)}
-                                </React.Fragment>
-                            ))}
-                        </tr>
-                    );
-                })}
-            </tbody>
-        </table>
+        <GenericTable<TableContext, LeaderboardRowProps>
+            className='leaderboard-table'
+            columns={columns}
+            data={rows}
+            context={ctx}
+            getRowKey={(row) => row.pilot.id}
+            getRowClassName={(row) => (animatingRows.has(row.pilot.id) ? 'position-improved' : '')}
+        />
     );
 }
 
 interface LeaderboardRowProps {
-    entry: LeaderboardEntry;
-    previousEntry: LeaderboardEntry | undefined;
-    isEliminated: boolean;
-    isAnimating: boolean;
-    position: number;
-    positionChanges: Map<string, number>;
-    roundDataValue: PBRoundRecord[];
-    currentRaceIndex: number;
-    races: RaceData[];
-    consecutiveLaps: number;
+    pilot: PBPilotRecord;
 }
 
-// Central column definition
+// Central column definition (config only; generic type comes from tableColumns.tsx)
 type TableContext = { consecutiveLaps: number };
-type Column = {
-    key: string;
-    header: string | ((ctx: TableContext) => React.ReactNode);
-    cell: (ctx: LeaderboardRowProps) => React.ReactNode;
-};
 
-function getColumns(ctx: TableContext): Column[] {
-    const cols: Column[] = [
+function getColumns(
+    ctx: TableContext,
+): Array<Column<TableContext, LeaderboardRowProps>> {
+    const cols: Array<Column<TableContext, LeaderboardRowProps>> = [
         {
             key: 'position',
             header: 'Pos',
-            cell: ({ entry, position, positionChanges }) => (
-                <PositionCell
-                    pilotId={entry.pilot.id}
-                    currentPosition={position}
-                    positionChanges={positionChanges}
-                />
-            ),
+            cell: function PositionCellInline({ pilot }) {
+                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
+                const idx = currentLeaderboard.findIndex((e) => e.pilot.id === pilot.id);
+                const pos = idx >= 0 ? idx + 1 : 0;
+                return <PositionCell pilotId={pilot.id} currentPosition={pos} />;
+            },
         },
         {
             key: 'pilot',
             header: 'Pilot',
-            cell: ({ entry }) => (
-                <OverflowFadeCell title={entry.pilot.name}>{entry.pilot.name}</OverflowFadeCell>
-            ),
+            cell: function PilotCellInline({ pilot }) {
+                return <OverflowFadeCell title={pilot.name}>{pilot.name}</OverflowFadeCell>;
+            },
         },
         {
             key: 'channel',
             header: 'Chan',
-            cell: ({ entry }) => <ChannelDisplayCell channel={entry.channel || null} />,
+            cell: function ChannelCellInline({ pilot }) {
+                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
+                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
+                return <ChannelDisplayCell channel={entry?.channel || null} />;
+            },
         },
         {
             key: 'laps',
             header: 'Laps',
-            cell: ({ entry }) => <td>{entry.totalLaps}</td>,
+            cell: function LapsCellInline({ pilot }) {
+                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
+                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
+                return <td>{entry?.totalLaps ?? 0}</td>;
+            },
         },
         {
             key: 'holeshot',
             header: 'Holeshot',
-            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
-                <TimeDisplayCell
-                    currentTime={entry.bestHoleshot || null}
-                    previousTime={previousEntry?.bestHoleshot || null}
-                    roundDataValue={roundDataValue}
-                    currentRaceIndex={currentRaceIndex}
-                    races={races}
-                />
-            ),
+            cell: function HoleshotCellInline({ pilot }) {
+                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
+                    leaderboardCalculationsAtom,
+                );
+                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
+                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
+                return (
+                    <RenderTimeCell
+                        currentTime={current?.bestHoleshot || null}
+                        previousTime={previous?.bestHoleshot || null}
+                    />
+                );
+            },
         },
         {
             key: 'top-lap',
             header: 'Top Lap',
-            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
-                <TimeDisplayCell
-                    currentTime={entry.bestLap || null}
-                    previousTime={previousEntry?.bestLap || null}
-                    roundDataValue={roundDataValue}
-                    currentRaceIndex={currentRaceIndex}
-                    races={races}
-                />
-            ),
+            cell: function TopLapCellInline({ pilot }) {
+                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
+                    leaderboardCalculationsAtom,
+                );
+                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
+                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
+                return (
+                    <RenderTimeCell
+                        currentTime={current?.bestLap || null}
+                        previousTime={previous?.bestLap || null}
+                    />
+                );
+            },
         },
         // consecutive laps column is conditional
         ...(ctx.consecutiveLaps > 1
             ? [{
                 key: 'consec',
                 header: () => `Top ${ctx.consecutiveLaps} Consec`,
-                cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
-                    <TimeDisplayCell
-                        currentTime={entry.consecutiveLaps || null}
-                        previousTime={previousEntry?.consecutiveLaps || null}
-                        roundDataValue={roundDataValue}
-                        currentRaceIndex={currentRaceIndex}
-                        races={races}
-                    />
-                ),
-            } as Column]
+                cell: function ConsecutiveCellInline({ pilot }) {
+                    const { currentLeaderboard, previousLeaderboard } = useAtomValue(
+                        leaderboardCalculationsAtom,
+                    );
+                    const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
+                    const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
+                    return (
+                        <RenderTimeCell
+                            currentTime={current?.consecutiveLaps || null}
+                            previousTime={previous?.consecutiveLaps || null}
+                        />
+                    );
+                },
+            } as Column<TableContext, LeaderboardRowProps>]
             : []),
         {
             key: 'fastest-race',
             header: 'Fastest Race',
-            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
-                <TimeDisplayCell
-                    currentTime={entry.fastestTotalRaceTime || null}
-                    previousTime={previousEntry?.fastestTotalRaceTime || null}
-                    roundDataValue={roundDataValue}
-                    currentRaceIndex={currentRaceIndex}
-                    races={races}
-                />
-            ),
+            cell: function FastestRaceCellInline({ pilot }) {
+                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
+                    leaderboardCalculationsAtom,
+                );
+                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
+                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
+                return (
+                    <RenderTimeCell
+                        currentTime={current?.fastestTotalRaceTime || null}
+                        previousTime={previous?.fastestTotalRaceTime || null}
+                    />
+                );
+            },
         },
         {
             key: 'next',
             header: 'Next Race In',
-            cell: ({ entry, isEliminated }) => (
-                <NextRaceCell racesUntilNext={entry.racesUntilNext} isEliminated={isEliminated} />
-            ),
+            cell: function NextRaceStatusCellInline({ pilot }) {
+                const { currentLeaderboard, eliminatedPilots } = useAtomValue(
+                    leaderboardCalculationsAtom,
+                );
+                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
+                const isEliminated = eliminatedPilots.some((p) =>
+                    p.name.toLowerCase().replace(/\s+/g, '') ===
+                        pilot.name.toLowerCase().replace(/\s+/g, '')
+                );
+                return (
+                    <NextRaceCell
+                        racesUntilNext={entry?.racesUntilNext ?? -1}
+                        isEliminated={isEliminated}
+                    />
+                );
+            },
         },
     ];
 
@@ -292,12 +264,12 @@ function getColumns(ctx: TableContext): Column[] {
 interface PositionCellProps {
     pilotId: string;
     currentPosition: number;
-    positionChanges: Map<string, number>;
 }
 
 function PositionCell(
-    { pilotId, currentPosition, positionChanges }: PositionCellProps,
+    { pilotId, currentPosition }: PositionCellProps,
 ) {
+    const { positionChanges } = useAtomValue(leaderboardCalculationsAtom);
     const prevPos = positionChanges.get(pilotId);
     const showChange = prevPos && prevPos !== currentPosition;
     const change = showChange ? prevPos - currentPosition : 0;
@@ -336,27 +308,21 @@ function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
     );
 }
 
-interface TimeDisplayCellProps {
-    currentTime: { time: number; roundId: string; raceNumber: number } | null;
-    previousTime: { time: number; roundId: string; raceNumber: number } | null;
-    roundDataValue: PBRoundRecord[];
-    currentRaceIndex: number;
-    races: RaceData[]; // Need races to check if time is recent
-}
+type StatTime = { time: number; roundId: string; raceNumber: number } | null;
 
-function TimeDisplayCell(
-    { currentTime, previousTime, roundDataValue, currentRaceIndex, races }: TimeDisplayCellProps,
+function RenderTimeCell(
+    { currentTime, previousTime }: { currentTime: StatTime; previousTime: StatTime },
 ) {
-    if (!currentTime) {
-        return <td>-</td>;
-    }
+    const { currentRaceIndex } = useAtomValue(leaderboardCalculationsAtom);
+    const roundDataValue = useAtomValue(roundsDataAtom);
+    const races = useAtomValue(racesAtom);
 
-    // Logic from isRecentTime callback
+    if (!currentTime) return <td>-</td>;
+
     const raceIndex = races.findIndex((race) =>
         race.roundId === currentTime.roundId && race.raceNumber === currentTime.raceNumber
     );
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
-
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
     const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId);
     const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
@@ -369,9 +335,7 @@ function TimeDisplayCell(
             >
                 <div>
                     {currentTime.time.toFixed(3)}
-                    <span className='source-info'>
-                        ({roundDisplay}-{currentTime.raceNumber})
-                    </span>
+                    <span className='source-info'>({roundDisplay}-{currentTime.raceNumber})</span>
                 </div>
                 {showDiff && previousTime && (
                     <div

@@ -66,7 +66,9 @@ export function calculateLeaderboardData(
         .map((pilot) => {
             // Find if this pilot is eliminated
             const eliminatedInfo = eliminatedPilots.find(
-                (ep) => ep.name.toLowerCase().replace(/\s+/g, '') === pilot.name.toLowerCase().replace(/\s+/g, ''),
+                (ep) =>
+                    ep.name.toLowerCase().replace(/\s+/g, '') ===
+                        pilot.name.toLowerCase().replace(/\s+/g, ''),
             );
 
             // Get the pilot's channel using the extracted function
@@ -99,7 +101,10 @@ export function calculateLeaderboardData(
     return sortLeaderboard(pilotEntries, defaultLeaderboardSortConfig);
 }
 
-function findChannelById(channels: PBChannelRecord[], channelId: string | undefined): PBChannelRecord | null {
+function findChannelById(
+    channels: PBChannelRecord[],
+    channelId: string | undefined,
+): PBChannelRecord | null {
     if (!channelId) return null;
     // Prefer PB id; fallback to sourceId during transition
     return channels.find((c) => c.id === channelId) || null;

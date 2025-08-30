@@ -15,7 +15,7 @@ import type { RaceData } from '../race/race-types.ts';
 import { calculateLeaderboardData, getPositionChanges } from './leaderboard-logic.ts';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
-import type { PBPilotRecord, PBChannelRecord } from '../api/pbTypes.ts';
+import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import type { PBRoundRecord } from '../api/pbTypes.ts';
 
 // --- Hook 1: Fetching Raw State ---
