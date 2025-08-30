@@ -57,3 +57,38 @@ func RecalculateRaceOrder(app core.App, eventPBID string) error {
 	}
 	return nil
 }
+
+// ComputeRaceOrderForNew returns the raceOrder for a new valid race that would be inserted
+// with (eventPBID, roundPBID, raceNumber). It counts existing valid races that would come
+// before the new race by (round.order ASC, raceNumber ASC) and returns count + 1.
+func ComputeRaceOrderForNew(app core.App, eventPBID, roundPBID string, raceNumber int) (int, error) {
+    // Resolve the round order for the provided roundPBID
+    var roundRow struct{ Order int `db:"order"` }
+    if err := app.DB().NewQuery("SELECT \"order\" as order FROM rounds WHERE id = {:rid}").
+        Bind(dbx.Params{"rid": roundPBID}).One(&roundRow); err != nil {
+        return 0, err
+    }
+
+    // Count existing valid races that come before the new race position
+    // Ordering: rounds.order ASC, races.raceNumber ASC
+    var row struct{ C int `db:"c"` }
+    countSQL := `
+        SELECT COUNT(1) as c
+        FROM races r
+        LEFT JOIN rounds rd ON r.round = rd.id
+        WHERE r.event = {:eventId}
+          AND r.valid = 1
+          AND (
+                rd."order" < {:roundOrder}
+             OR (rd."order" = {:roundOrder} AND r.raceNumber < {:raceNumber})
+          )
+    `
+    if err := app.DB().NewQuery(countSQL).Bind(dbx.Params{
+        "eventId":    eventPBID,
+        "roundOrder": roundRow.Order,
+        "raceNumber": raceNumber,
+    }).One(&row); err != nil {
+        return 0, err
+    }
+    return row.C + 1, nil
+}

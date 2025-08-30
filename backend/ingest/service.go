@@ -406,8 +406,14 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
             return err
         }
 
-        // Upsert race
-        racePBID, err := u.Upsert("races", string(r.ID), map[string]any{
+        // Determine if this is a new race (by sourceId) to decide if we should precompute raceOrder
+        existingRaceId, err := u.findExistingId("races", string(r.ID))
+        if err != nil {
+            return err
+        }
+
+        // Build race fields
+        raceFields := map[string]any{
             "raceNumber":                  r.RaceNumber,
             "start":                       r.Start,
             "end":                         r.End,
@@ -418,7 +424,24 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
             "targetLaps":                  r.TargetLaps,
             "event":                       eventPBID,
             "round":                       roundPBID,
-        })
+        }
+
+        // Precompute raceOrder only for new valid races to avoid emitting a second realtime event
+        if existingRaceId == "" {
+            if r.Valid {
+                if newOrder, err := ComputeRaceOrderForNew(txApp, eventPBID, roundPBID, r.RaceNumber); err == nil {
+                    raceFields["raceOrder"] = newOrder
+                } else {
+                    return err
+                }
+            } else {
+                // invalid races should be explicitly set to 0
+                raceFields["raceOrder"] = 0
+            }
+        }
+
+        // Upsert race
+        racePBID, err := u.Upsert("races", string(r.ID), raceFields)
         if err != nil {
             return err
         }
