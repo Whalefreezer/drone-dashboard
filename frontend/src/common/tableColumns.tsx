@@ -1,13 +1,15 @@
 import React from 'react';
 
-// Generic Column type for table configuration
 export type Column<TableCtx, RowCtx> = {
     key: string;
     header: string | ((ctx: TableCtx) => React.ReactNode);
     cell: React.FC<RowCtx>;
+    headerClassName?: string;
+    headerAlign?: 'left' | 'center' | 'right';
+    width?: number | string; // e.g., 120 or '12rem' or '20%'
+    minWidth?: number | string; // e.g., 160 or '10rem'
 };
 
-// Minimal, reusable generic table driven by columns + data
 export interface GenericTableProps<TableCtx, RowCtx> {
     columns: Array<Column<TableCtx, RowCtx>>;
     data: RowCtx[];
@@ -27,11 +29,27 @@ export function GenericTable<TableCtx, RowCtx>(
         <table className={className}>
             <thead>
                 <tr>
-                    {columns.map((col) => (
-                        <th key={col.key}>
-                            {typeof col.header === 'function' ? col.header(context) : col.header}
-                        </th>
-                    ))}
+                    {columns.map((col) => {
+                        const thStyle: React.CSSProperties = {};
+                        if (col.headerAlign) thStyle.textAlign = col.headerAlign;
+                        if (col.width !== undefined) {
+                            thStyle.width = typeof col.width === 'number'
+                                ? `${col.width}px`
+                                : col.width;
+                        }
+                        if (col.minWidth !== undefined) {
+                            thStyle.minWidth = typeof col.minWidth === 'number'
+                                ? `${col.minWidth}px`
+                                : col.minWidth;
+                        }
+                        return (
+                            <th key={col.key} className={col.headerClassName} style={thStyle}>
+                                {typeof col.header === 'function'
+                                    ? col.header(context)
+                                    : col.header}
+                            </th>
+                        );
+                    })}
                 </tr>
             </thead>
             <tbody>

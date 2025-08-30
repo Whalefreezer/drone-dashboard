@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Column } from './tableColumns.tsx';
-import { GenericTable } from './tableColumns.tsx';
+import type { Column } from '../common/tableColumns.tsx';
+import { GenericTable } from '../common/tableColumns.tsx';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
@@ -132,7 +132,8 @@ function getColumns(
     const cols: Array<Column<TableContext, LeaderboardRowProps>> = [
         {
             key: 'position',
-            header: 'Pos',
+            header: '',
+            width: 12,
             cell: function PositionCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const idx = currentLeaderboard.findIndex((e) => e.pilot.id === pilot.id);
@@ -143,6 +144,7 @@ function getColumns(
         {
             key: 'pilot',
             header: 'Pilot',
+            minWidth: 160,
             cell: function PilotCellInline({ pilot }) {
                 return <OverflowFadeCell title={pilot.name}>{pilot.name}</OverflowFadeCell>;
             },
@@ -150,6 +152,7 @@ function getColumns(
         {
             key: 'channel',
             header: 'Chan',
+            width: 48,
             cell: function ChannelCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
@@ -159,6 +162,7 @@ function getColumns(
         {
             key: 'laps',
             header: 'Laps',
+            width: 32,
             cell: function LapsCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
@@ -168,6 +172,7 @@ function getColumns(
         {
             key: 'holeshot',
             header: 'Holeshot',
+            width: 64,
             cell: function HoleshotCellInline({ pilot }) {
                 const { currentLeaderboard, previousLeaderboard } = useAtomValue(
                     leaderboardCalculationsAtom,
@@ -185,6 +190,7 @@ function getColumns(
         {
             key: 'top-lap',
             header: 'Top Lap',
+            width: 64,
             cell: function TopLapCellInline({ pilot }) {
                 const { currentLeaderboard, previousLeaderboard } = useAtomValue(
                     leaderboardCalculationsAtom,
@@ -204,6 +210,8 @@ function getColumns(
             ? [{
                 key: 'consec',
                 header: () => `Top ${ctx.consecutiveLaps} Consec`,
+                headerAlign: 'right',
+                width: 64,
                 cell: function ConsecutiveCellInline({ pilot }) {
                     const { currentLeaderboard, previousLeaderboard } = useAtomValue(
                         leaderboardCalculationsAtom,
@@ -222,6 +230,7 @@ function getColumns(
         {
             key: 'fastest-race',
             header: 'Fastest Race',
+            width: 64,
             cell: function FastestRaceCellInline({ pilot }) {
                 const { currentLeaderboard, previousLeaderboard } = useAtomValue(
                     leaderboardCalculationsAtom,
@@ -239,6 +248,7 @@ function getColumns(
         {
             key: 'next',
             header: 'Next Race In',
+            width: 64,
             cell: function NextRaceStatusCellInline({ pilot }) {
                 const { currentLeaderboard, eliminatedPilots } = useAtomValue(
                     leaderboardCalculationsAtom,
