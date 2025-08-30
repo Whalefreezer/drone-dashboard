@@ -6,6 +6,11 @@
     margin-bottom: 10px;
 }
 
+.next-race-card--dense {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+}
+
 .next-race-header {
     display: flex;
     align-items: center;
@@ -16,50 +21,34 @@
 .next-race-title {
     font-weight: 600;
     color: #ddd;
-}
-
-.next-race-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-}
-
-/* Ensure it looks good when fewer than 3 */
-@media (max-width: 900px) {
-    .next-race-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 520px) {
-    .next-race-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.next-race-slot {
-    border: 1px solid #2a2a2a;
-    border-radius: 6px;
-    padding: 8px;
-    background: #0f0f0f;
-}
-
-.slot-top {
     font-size: 0.95rem;
-    font-weight: 500;
-    color: #eee;
-    margin-bottom: 6px;
 }
 
-.slot-bottom {
+.next-race-line {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    color: #bbb;
+}
+
+.pilot-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid #2a2a2a;
+    border-radius: 9999px;
+    background: #0f0f0f;
+    color: #ddd;
     font-size: 0.9rem;
+    white-space: nowrap;
 }
 
-.slot-channel {
-    letter-spacing: 0.3px;
-}
+.chip-channel { color: #bbb; letter-spacing: 0.3px; }
+.chip-name { color: #eee; font-weight: 500; }
 
+/* Make the color square smaller inside chips */
+.pilot-chip .channel-square {
+    width: 12px;
+    height: 12px;
+    border-color: #555;
+}
