@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
@@ -11,6 +11,43 @@ import { consecutiveLapsAtom } from '../state/atoms.ts';
 import type { RaceData } from '../race/race-types.ts';
 import type { PBChannelRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import { useAtomValue } from 'jotai';
+
+interface OverflowFadeCellProps {
+    children: React.ReactNode;
+    className?: string;
+    title?: string;
+}
+
+function OverflowFadeCell({ children, className = '', title }: OverflowFadeCellProps) {
+    const [hasOverflow, setHasOverflow] = useState(false);
+    const cellRef = useRef<HTMLTableCellElement>(null);
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (cellRef.current) {
+                const { scrollWidth, clientWidth } = cellRef.current;
+                setHasOverflow(scrollWidth > clientWidth);
+            }
+        };
+
+        // Check overflow after component mounts and when content changes
+        checkOverflow();
+
+        // Also check on window resize
+        globalThis.addEventListener('resize', checkOverflow);
+        return () => globalThis.removeEventListener('resize', checkOverflow);
+    }, [children]);
+
+    return (
+        <td
+            ref={cellRef}
+            className={`${className} ${hasOverflow ? 'fade-overflow' : ''}`.trim()}
+            title={title}
+        >
+            {children}
+        </td>
+    );
+}
 
 export function Leaderboard() {
     const state = useLeaderboardState();
@@ -155,7 +192,9 @@ function LeaderboardRow(
                 currentPosition={position}
                 positionChanges={positionChanges}
             />
-            <td>{entry.pilot.name}</td>
+            <OverflowFadeCell title={entry.pilot.name}>
+                {entry.pilot.name}
+            </OverflowFadeCell>
             <ChannelDisplayCell channel={entry.channel || null} />
             <td>{entry.totalLaps}</td>
             <TimeDisplayCell
@@ -207,7 +246,7 @@ function PositionCell(
     const change = showChange ? prevPos - currentPosition : 0;
 
     return (
-        <td>
+        <OverflowFadeCell>
             <div className='position-container'>
                 <div>{currentPosition}</div>
                 {showChange && change > 0 && (
@@ -216,7 +255,7 @@ function PositionCell(
                     </span>
                 )}
             </div>
-        </td>
+        </OverflowFadeCell>
     );
 }
 
@@ -229,14 +268,14 @@ function ChannelDisplayCell({ channel }: ChannelDisplayCellProps) {
         return <td>-</td>;
     }
     return (
-        <td>
+        <OverflowFadeCell>
             <div className='channel-display'>
                 {channel.shortBand}
                 {channel.number}
                 {/* Prefer PB id; ChannelSquare will fallback to sourceId if needed */}
                 <ChannelSquare channelID={channel.id} />
             </div>
-        </td>
+        </OverflowFadeCell>
     );
 }
 
@@ -266,7 +305,7 @@ function TimeDisplayCell(
     const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
 
     return (
-        <td>
+        <OverflowFadeCell>
             <div
                 className={isRecent ? 'recent-time' : ''}
                 style={{ display: 'flex', flexDirection: 'column' }}
@@ -288,7 +327,7 @@ function TimeDisplayCell(
                     </div>
                 )}
             </div>
-        </td>
+        </OverflowFadeCell>
     );
 }
 

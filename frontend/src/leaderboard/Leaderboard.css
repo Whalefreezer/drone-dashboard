@@ -35,6 +35,48 @@
 
 .leaderboard-table td {
     font-family: monospace;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Define CSS custom properties for consistent background colors */
+.leaderboard-table {
+    --table-bg-odd: #1a1a1a;
+    --table-bg-even: #222;
+    --table-bg-hover: #2a2a2a;
+}
+
+/* Fade-out effect for overflowing content */
+.leaderboard-table td.fade-overflow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, transparent, var(--table-bg-odd));
+    pointer-events: none;
+}
+
+/* Handle single-line text overflow without ellipsis */
+.leaderboard-table td.text-truncate {
+    white-space: nowrap;
+}
+
+/* Handle multi-line content fade-out */
+.leaderboard-table td.multi-line-fade {
+    position: relative;
+}
+
+.leaderboard-table td.multi-line-fade::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to top, var(--table-bg-odd), transparent);
+    pointer-events: none;
 }
 
 .leaderboard-table td:nth-child(2) {
@@ -44,15 +86,15 @@
 }
 
 .leaderboard-table tbody tr:nth-child(even) {
-    background-color: #222;
+    background-color: var(--table-bg-even);
 }
 
 .leaderboard-table tbody tr:nth-child(odd) {
-    background-color: #1a1a1a;
+    background-color: var(--table-bg-odd);
 }
 
 .leaderboard-table tbody tr:hover {
-    background-color: #2a2a2a;
+    background-color: var(--table-bg-hover);
 }
 
 .leaderboard-table tbody tr {
@@ -92,7 +134,7 @@
 @keyframes moveUpAndForward {
     0% {
         transform: translateZ(0) translateY(0);
-        background-color: #2a2a2a; /* Start color matches hover */
+        background-color: var(--table-bg-hover); /* Start color matches hover */
     }
     25% {
         transform: translateZ(50px) translateY(0);
@@ -104,7 +146,7 @@
     }
     100% {
         transform: translateZ(0) translateY(0);
-        background-color: #2a2a2a; /* End color matches hover */
+        background-color: var(--table-bg-hover); /* End color matches hover */
     }
 }
 
