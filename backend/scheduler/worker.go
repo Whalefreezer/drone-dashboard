@@ -56,6 +56,9 @@ func (m *Manager) drainOnce() {
 		default:
 			slog.Warn("scheduler.worker.unknownType", "type", t)
 		}
+		if runErr != nil {
+			slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
+		}
 		m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)
 	}
 }
