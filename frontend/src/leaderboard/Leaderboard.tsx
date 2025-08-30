@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { LeaderboardEntry } from './leaderboard-types.ts';
 import {
@@ -112,24 +112,27 @@ function LeaderboardTable(
         consecutiveLaps,
     }: LeaderboardTableProps,
 ) {
+    // Build a single source-of-truth column definition used by header and rows
+    const columns = useMemo(() => getColumns({ consecutiveLaps }), [consecutiveLaps]);
+
     return (
         <table className='leaderboard-table'>
             <thead>
                 <tr>
-                    <th>Pos</th>
-                    <th>Pilot</th>
-                    <th>Chan</th>
-                    <th>Laps</th>
-                    <th>Holeshot</th>
-                    <th>Top Lap</th>
-                    {consecutiveLaps > 1 && <th>Top {consecutiveLaps} Consec</th>}
-                    <th>Fastest Race</th>
-                    <th>Next Race In</th>
+                    {columns.map((col) => (
+                        <th key={col.key}>
+                            {typeof col.header === 'function'
+                                ? col.header({ consecutiveLaps })
+                                : col.header}
+                        </th>
+                    ))}
                 </tr>
             </thead>
             <tbody>
                 {currentLeaderboard.map((entry, index) => {
-                    const previousEntry = previousLeaderboard.find((prev) => prev.pilot.id === entry.pilot.id);
+                    const previousEntry = previousLeaderboard.find((prev) =>
+                        prev.pilot.id === entry.pilot.id
+                    );
                     const isEliminated = eliminatedPilots.some(
                         (pilot) =>
                             pilot.name.toLowerCase().replace(/\s+/g, '') ===
@@ -137,20 +140,30 @@ function LeaderboardTable(
                     );
                     const position = index + 1;
 
+                    const rowContext: LeaderboardRowProps = {
+                        entry,
+                        previousEntry,
+                        isEliminated,
+                        isAnimating: animatingRows.has(entry.pilot.id),
+                        position,
+                        positionChanges,
+                        roundDataValue,
+                        currentRaceIndex,
+                        races,
+                        consecutiveLaps,
+                    };
+
                     return (
-                        <LeaderboardRow
+                        <tr
                             key={entry.pilot.id}
-                            entry={entry}
-                            previousEntry={previousEntry}
-                            isEliminated={isEliminated}
-                            isAnimating={animatingRows.has(entry.pilot.id)}
-                            position={position}
-                            positionChanges={positionChanges}
-                            roundDataValue={roundDataValue}
-                            currentRaceIndex={currentRaceIndex}
-                            races={races}
-                            consecutiveLaps={consecutiveLaps}
-                        />
+                            className={rowContext.isAnimating ? 'position-improved' : ''}
+                        >
+                            {columns.map((col) => (
+                                <React.Fragment key={`${entry.pilot.id}-${col.key}`}>
+                                    {col.cell(rowContext)}
+                                </React.Fragment>
+                            ))}
+                        </tr>
                     );
                 })}
             </tbody>
@@ -171,65 +184,109 @@ interface LeaderboardRowProps {
     consecutiveLaps: number;
 }
 
-function LeaderboardRow(
-    {
-        entry,
-        previousEntry,
-        isEliminated,
-        isAnimating,
-        position,
-        positionChanges,
-        roundDataValue,
-        currentRaceIndex,
-        races,
-        consecutiveLaps,
-    }: LeaderboardRowProps,
-) {
-    return (
-        <tr className={isAnimating ? 'position-improved' : ''}>
-            <PositionCell
-                pilotId={entry.pilot.id}
-                currentPosition={position}
-                positionChanges={positionChanges}
-            />
-            <OverflowFadeCell title={entry.pilot.name}>
-                {entry.pilot.name}
-            </OverflowFadeCell>
-            <ChannelDisplayCell channel={entry.channel || null} />
-            <td>{entry.totalLaps}</td>
-            <TimeDisplayCell
-                currentTime={entry.bestHoleshot || null}
-                previousTime={previousEntry?.bestHoleshot || null}
-                roundDataValue={roundDataValue}
-                currentRaceIndex={currentRaceIndex}
-                races={races}
-            />
-            <TimeDisplayCell
-                currentTime={entry.bestLap || null}
-                previousTime={previousEntry?.bestLap || null}
-                roundDataValue={roundDataValue}
-                currentRaceIndex={currentRaceIndex}
-                races={races}
-            />
-            {consecutiveLaps > 1 && (
+// Central column definition
+type TableContext = { consecutiveLaps: number };
+type Column = {
+    key: string;
+    header: string | ((ctx: TableContext) => React.ReactNode);
+    cell: (ctx: LeaderboardRowProps) => React.ReactNode;
+};
+
+function getColumns(ctx: TableContext): Column[] {
+    const cols: Column[] = [
+        {
+            key: 'position',
+            header: 'Pos',
+            cell: ({ entry, position, positionChanges }) => (
+                <PositionCell
+                    pilotId={entry.pilot.id}
+                    currentPosition={position}
+                    positionChanges={positionChanges}
+                />
+            ),
+        },
+        {
+            key: 'pilot',
+            header: 'Pilot',
+            cell: ({ entry }) => (
+                <OverflowFadeCell title={entry.pilot.name}>{entry.pilot.name}</OverflowFadeCell>
+            ),
+        },
+        {
+            key: 'channel',
+            header: 'Chan',
+            cell: ({ entry }) => <ChannelDisplayCell channel={entry.channel || null} />,
+        },
+        {
+            key: 'laps',
+            header: 'Laps',
+            cell: ({ entry }) => <td>{entry.totalLaps}</td>,
+        },
+        {
+            key: 'holeshot',
+            header: 'Holeshot',
+            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
                 <TimeDisplayCell
-                    currentTime={entry.consecutiveLaps || null}
-                    previousTime={previousEntry?.consecutiveLaps || null}
+                    currentTime={entry.bestHoleshot || null}
+                    previousTime={previousEntry?.bestHoleshot || null}
                     roundDataValue={roundDataValue}
                     currentRaceIndex={currentRaceIndex}
                     races={races}
                 />
-            )}
-            <TimeDisplayCell
-                currentTime={entry.fastestTotalRaceTime || null}
-                previousTime={previousEntry?.fastestTotalRaceTime || null}
-                roundDataValue={roundDataValue}
-                currentRaceIndex={currentRaceIndex}
-                races={races}
-            />
-            <NextRaceCell racesUntilNext={entry.racesUntilNext} isEliminated={isEliminated} />
-        </tr>
-    );
+            ),
+        },
+        {
+            key: 'top-lap',
+            header: 'Top Lap',
+            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
+                <TimeDisplayCell
+                    currentTime={entry.bestLap || null}
+                    previousTime={previousEntry?.bestLap || null}
+                    roundDataValue={roundDataValue}
+                    currentRaceIndex={currentRaceIndex}
+                    races={races}
+                />
+            ),
+        },
+        // consecutive laps column is conditional
+        ...(ctx.consecutiveLaps > 1
+            ? [{
+                key: 'consec',
+                header: () => `Top ${ctx.consecutiveLaps} Consec`,
+                cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
+                    <TimeDisplayCell
+                        currentTime={entry.consecutiveLaps || null}
+                        previousTime={previousEntry?.consecutiveLaps || null}
+                        roundDataValue={roundDataValue}
+                        currentRaceIndex={currentRaceIndex}
+                        races={races}
+                    />
+                ),
+            } as Column]
+            : []),
+        {
+            key: 'fastest-race',
+            header: 'Fastest Race',
+            cell: ({ entry, previousEntry, roundDataValue, currentRaceIndex, races }) => (
+                <TimeDisplayCell
+                    currentTime={entry.fastestTotalRaceTime || null}
+                    previousTime={previousEntry?.fastestTotalRaceTime || null}
+                    roundDataValue={roundDataValue}
+                    currentRaceIndex={currentRaceIndex}
+                    races={races}
+                />
+            ),
+        },
+        {
+            key: 'next',
+            header: 'Next Race In',
+            cell: ({ entry, isEliminated }) => (
+                <NextRaceCell racesUntilNext={entry.racesUntilNext} isEliminated={isEliminated} />
+            ),
+        },
+    ];
+
+    return cols;
 }
 
 interface PositionCellProps {
