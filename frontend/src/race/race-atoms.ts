@@ -12,6 +12,7 @@ import {
     racePilotChannelsAtom as baseRacePilotChannelsAtom,
 } from '../state/pbAtoms.ts';
 import { computeRaceStatus, RaceData, RaceStatus } from './race-types.ts';
+import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
 
@@ -75,7 +76,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
         const race = get(raceDataAtom(raceId));
         if (!race) return [];
         const rounds = get(roundsDataAtom);
-        const isRaceRound = (rounds.find((r) => r.id === race.roundId)?.eventType === EventType.Race);
+        const isRaceRound = (rounds.find((r) => r.id === (race.round ?? ''))?.eventType === EventType.Race);
         const calcs = get(racePilotCalcsAtom(raceId));
 
         let sorted: PilotCalc[];
@@ -117,7 +118,7 @@ export {
  * PB-native race atom family - much cleaner than the legacy ComputedRace approach
  */
 export const raceDataAtom = atomFamily((raceId: string) =>
-    eagerAtom((get): RaceData | null => {
+    eagerAtom((get): PBRaceRecord | null => {
         const currentEvent = get(currentEventAtom);
         if (!currentEvent) return null;
 
@@ -127,26 +128,7 @@ export const raceDataAtom = atomFamily((raceId: string) =>
             (r) => r.id === raceId && r.event === currentEvent.id,
         );
         if (!raceRecord) return null;
-
-        // Read processed laps and pilot channels from dedicated atoms
-        const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
-        const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
-
-        return {
-            id: raceRecord.id,
-            sourceId: raceRecord.sourceId,
-            raceNumber: raceRecord.raceNumber ?? 0,
-            roundId: raceRecord.round ?? '',
-            eventId: raceRecord.event ?? '',
-            valid: raceRecord.valid ?? false,
-            start: raceRecord.start,
-            end: raceRecord.end,
-            bracket: raceRecord.bracket,
-            targetLaps: raceRecord.targetLaps,
-            raceOrder: raceRecord.raceOrder,
-            processedLaps,
-            pilotChannels,
-        };
+        return raceRecord;
     })
 );
 
@@ -180,10 +162,28 @@ export const allRacesAtom = eagerAtom((get): RaceData[] => {
         (r) => r.event === currentEvent.id && r.valid !== false,
     );
 
-    const races = validRaceRecords.map((record) => get(raceDataAtom(record.id)));
-    const validRaces = races.filter((race): race is RaceData => race !== null);
-    
-    return validRaces.sort((a: RaceData, b: RaceData) => {
+    // Compose RaceData objects from raw records + per-race atoms
+    const composedRaces: RaceData[] = validRaceRecords.map((record) => {
+        const processedLaps = get(baseRaceProcessedLapsAtom(record.id));
+        const pilotChannels = get(baseRacePilotChannelsAtom(record.id));
+        return {
+            id: record.id,
+            sourceId: record.sourceId,
+            raceNumber: record.raceNumber ?? 0,
+            roundId: record.round ?? '',
+            eventId: record.event ?? '',
+            valid: record.valid ?? false,
+            start: record.start,
+            end: record.end,
+            bracket: record.bracket,
+            targetLaps: record.targetLaps,
+            raceOrder: record.raceOrder,
+            processedLaps,
+            pilotChannels,
+        } as RaceData;
+    });
+
+    return composedRaces.sort((a: RaceData, b: RaceData) => {
         const ao = a.raceOrder ?? 0;
         const bo = b.raceOrder ?? 0;
         return ao - bo;

@@ -6,8 +6,9 @@ import {
     pilotsAtom,
     roundsDataAtom,
 } from '../state/index.ts';
-import { raceDataAtom, raceMaxLapNumberAtom, raceSortedRowsAtom } from './race-atoms.ts';
-import type { RaceData } from './race-types.ts';
+import { raceDataAtom, raceMaxLapNumberAtom, raceSortedRowsAtom, raceProcessedLapsAtom, racePilotChannelsAtom } from './race-atoms.ts';
+import type { PBRaceRecord } from '../api/pbTypes.ts';
+// RaceData no longer used here; using PBRaceRecord + atoms
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
@@ -32,18 +33,19 @@ export function LapsView({ raceId }: LapsViewProps) {
     const roundData = useAtomValue(roundsDataAtom);
     const race = useAtomValue(raceDataAtom(raceId));
     const pilots = useAtomValue(pilotsAtom);
+    const pilotChannels = useAtomValue(racePilotChannelsAtom(raceId));
 
     if (!race) return null;
 
-    const round = roundData.find((r) => r.id === race.roundId);
+    const round = roundData.find((r) => r.id === (race.round ?? ''));
 
     const getBracketData = (): Bracket | null => {
         const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
         const racePilotNames = new Set(
-            race.pilotChannels
-                .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
-                .filter((name) => name !== '')
+            pilotChannels
+                .map((pc: { pilotId: string }) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
+                .filter((name: string) => name !== '')
                 .map(normalizeString),
         );
 
@@ -70,7 +72,7 @@ export function LapsView({ raceId }: LapsViewProps) {
 }
 
 type LapsTableContext = {
-    race: RaceData;
+    raceId: string;
     matchingBracket: Bracket | null;
     maxLaps: number;
 };
@@ -81,15 +83,17 @@ type LapsRow = {
 };
 
 function useLapsTableColumns(
-    race: RaceData,
+    raceId: string,
     matchingBracket: Bracket | null,
     maxLaps: number,
 ): { columns: Array<Column<LapsTableContext, LapsRow>>; ctx: LapsTableContext } {
     const rounds = useAtomValue(roundsDataAtom);
-    const roundRec = rounds.find((r) => r.id === race.roundId) ?? null;
+    const raceRec = useAtomValue(raceDataAtom(raceId));
+    const roundRec = rounds.find((r) => r.id === (raceRec?.round ?? '')) ?? null;
     const isRaceRound = roundRec?.eventType === EventType.Race;
+    const processedLapsForRace = useAtomValue(raceProcessedLapsAtom(raceId));
 
-    const ctx = useMemo(() => ({ race, matchingBracket, maxLaps }), [race, matchingBracket, maxLaps]);
+    const ctx = useMemo(() => ({ raceId, matchingBracket, maxLaps }), [raceId, matchingBracket, maxLaps]);
 
     const columns: Array<Column<LapsTableContext, LapsRow>> = [];
 
@@ -211,7 +215,7 @@ function useLapsTableColumns(
     }
 
     // Lap cells: HS + L1..Lmax (show HS only if any holeshot exists)
-    const hasHoleshot = race.processedLaps.some((lap) => lap.isHoleshot);
+    const hasHoleshot = processedLapsForRace.some((lap) => lap.isHoleshot);
     for (let i = hasHoleshot ? 0 : 1; i <= maxLaps; i++) {
         const isHS = i === 0;
         columns.push({
@@ -219,16 +223,17 @@ function useLapsTableColumns(
             header: isHS ? 'HS' : `L${i}`,
             width: 52,
             cell: function LapCell({ pilotChannel }: LapsRow) {
-                const { race } = ctx;
+                const { raceId } = ctx;
                 const overallBestTimes = useAtomValue(overallBestTimesAtom);
-                const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
+                const processedLaps = useAtomValue(raceProcessedLapsAtom(raceId));
+                const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
                 const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
                 const fastestLap = racingLaps.length > 0
                     ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
                     : Infinity;
-                const overallFastestLap = race.processedLaps.filter((lap) => !lap.isHoleshot).length > 0
+                const overallFastestLap = processedLaps.filter((lap) => !lap.isHoleshot).length > 0
                     ? Math.min(
-                        ...race.processedLaps
+                        ...processedLaps
                             .filter((lap) => !lap.isHoleshot)
                             .map((lap) => lap.lengthSeconds),
                     )
@@ -256,12 +261,12 @@ function useLapsTableColumns(
 }
 
 function LapsTable(
-    { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
+    { race, matchingBracket }: { race: PBRaceRecord; matchingBracket: Bracket | null },
 ) {
     const rows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
     const maxLaps = useAtomValue(raceMaxLapNumberAtom(race.id));
 
-    const { columns, ctx } = useLapsTableColumns(race, matchingBracket, maxLaps);
+    const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
 
     return (
         <GenericTable<LapsTableContext, LapsRow>
