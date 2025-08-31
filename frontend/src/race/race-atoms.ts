@@ -11,7 +11,7 @@ import {
     raceProcessedLapsAtom as baseRaceProcessedLapsAtom,
     racePilotChannelsAtom as baseRacePilotChannelsAtom,
 } from '../state/pbAtoms.ts';
-import { computeRaceStatus, RaceData, RaceStatus } from './race-types.ts';
+import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
@@ -153,7 +153,7 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
 /**
  * All races for the current event - PB native
  */
-export const allRacesAtom = eagerAtom((get): RaceData[] => {
+export const allRacesAtom = eagerAtom((get): PBRaceRecord[] => {
     const currentEvent = get(currentEventAtom);
     if (!currentEvent) return [];
 
@@ -162,31 +162,8 @@ export const allRacesAtom = eagerAtom((get): RaceData[] => {
         (r) => r.event === currentEvent.id && r.valid !== false,
     );
 
-    // Compose RaceData objects from raw records + per-race atoms
-    const composedRaces: RaceData[] = validRaceRecords.map((record) => {
-        const processedLaps = get(baseRaceProcessedLapsAtom(record.id));
-        const pilotChannels = get(baseRacePilotChannelsAtom(record.id));
-        return {
-            id: record.id,
-            sourceId: record.sourceId,
-            raceNumber: record.raceNumber ?? 0,
-            roundId: record.round ?? '',
-            eventId: record.event ?? '',
-            valid: record.valid ?? false,
-            start: record.start,
-            end: record.end,
-            bracket: record.bracket,
-            targetLaps: record.targetLaps,
-            raceOrder: record.raceOrder,
-            processedLaps,
-            pilotChannels,
-        } as RaceData;
-    });
-
-    return composedRaces.sort((a: RaceData, b: RaceData) => {
-        const ao = a.raceOrder ?? 0;
-        const bo = b.raceOrder ?? 0;
-        return ao - bo;
+    return validRaceRecords.sort((a, b) => {
+        return a.raceOrder - b.raceOrder;
     });
 });
 
@@ -200,7 +177,7 @@ export const allRacesAtom = eagerAtom((get): RaceData[] => {
  * 2. Fallback to raceOrder matching
  * 3. Default to first race if no matches
  */
-export const currentRaceAtom = eagerAtom((get): RaceData | null => {
+export const currentRaceAtom = eagerAtom((get): PBRaceRecord | null => {
     const races = get(allRacesAtom);
     if (!races || races.length === 0) return null;
 
@@ -239,7 +216,7 @@ export const currentRaceIndexAtom = eagerAtom((get): number => {
 /**
  * Last completed race - finds the most recently completed race in the sorted races array
  */
-export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
+export const lastCompletedRaceAtom = eagerAtom((get): PBRaceRecord | null => {
     const races = get(allRacesAtom);
 
     if (!races || races.length === 0) {
@@ -270,7 +247,7 @@ export const lastCompletedRaceAtom = eagerAtom((get): RaceData | null => {
  * Next races atom - returns the next 8 races based on current order from KV store
  * Uses the order field from currentOrderKVAtom to find races with higher raceOrder values
  */
-export const nextRacesAtom = eagerAtom((get): RaceData[] => {
+export const nextRacesAtom = eagerAtom((get): PBRaceRecord[] => {
     const races = get(allRacesAtom);
     const currentOrderKV = get(currentOrderKVAtom);
 

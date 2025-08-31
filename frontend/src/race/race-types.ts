@@ -19,29 +19,6 @@ export interface ProcessedLap {
 }
 
 /**
- * PB-native race data that components actually consume
- * No unnecessary intermediate transformations
- */
-export interface RaceData {
-    // Basic race metadata from PBRaceRecord
-    id: string;
-    sourceId?: string;
-    raceNumber: number;
-    roundId: string;
-    eventId: string;
-    valid: boolean;
-    start?: string;
-    end?: string;
-    bracket?: string;
-    targetLaps?: number;
-    raceOrder?: number;
-
-    // Computed race data
-    processedLaps: ProcessedLap[];
-    pilotChannels: PilotChannelAssociation[];
-}
-
-/**
  * Simple pilot-channel association for a race
  */
 export interface PilotChannelAssociation {

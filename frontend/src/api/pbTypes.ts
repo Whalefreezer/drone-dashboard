@@ -81,19 +81,19 @@ export interface PBTrackRecord extends PBBaseRecord {
 
 // races
 export interface PBRaceRecord extends PBBaseRecord {
-    sourceId?: string;
-    source?: string;
-    raceNumber?: number;
+    sourceId: string;
+    source: string;
+    raceNumber: number;
     start?: string;
     end?: string;
     totalPausedTime?: string;
     primaryTimingSystemLocation?: string;
-    valid?: boolean;
-    bracket?: string;
-    targetLaps?: number;
-    raceOrder?: number;
-    event?: string; // relation → events.id
-    round?: string; // relation → rounds.id
+    valid: boolean;
+    bracket: string;
+    targetLaps: number;
+    raceOrder: number;
+    event: string; // relation → events.id
+    round: string; // relation → rounds.id
 }
 
 // client_kv (generic client-facing state)

@@ -44,7 +44,7 @@ export function RacesContainer() {
                     <h3>Next Races</h3>
                 </div>
                 {nextRaces.map((race) => (
-                    <NextRaceCompact key={race.id} race={race} />
+                    <NextRaceCompact key={race.id} raceId={race.id} />
                 ))}
             </div>
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
-import { bracketsDataAtom, pilotsAtom, useQueryAtom } from '../state/index.ts';
+import { bracketsDataAtom, pilotsAtom, useQueryAtom, racePilotChannelsAtom } from '../state/index.ts';
 import { currentRaceAtom } from '../race/race-atoms.ts';
 import { BracketPilot } from './bracket-types.ts';
 
@@ -17,8 +17,9 @@ export function BracketsView() {
     const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
     // Get the set of normalized pilot names from the current race
+    const pilotChannels = useAtomValue(racePilotChannelsAtom(currentRace.id));
     const currentRacePilotNames = new Set(
-        currentRace.pilotChannels
+        pilotChannels
             .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
             .filter((name: string) => name !== '')
             .map(normalizeString),

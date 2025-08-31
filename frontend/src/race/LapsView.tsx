@@ -8,7 +8,7 @@ import {
 } from '../state/index.ts';
 import { raceDataAtom, raceMaxLapNumberAtom, raceSortedRowsAtom, raceProcessedLapsAtom, racePilotChannelsAtom } from './race-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
-// RaceData no longer used here; using PBRaceRecord + atoms
+// Using PB-native race record + per-race atoms
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';

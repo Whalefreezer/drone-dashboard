@@ -8,6 +8,8 @@ import {
     findEliminatedPilots,
     pilotsAtom,
     racesAtom,
+    raceProcessedLapsAtom,
+    racePilotChannelsAtom,
 } from '../state/index.ts';
 import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 
@@ -30,8 +32,17 @@ export const leaderboardCalculationsAtom = eagerAtom((get): LeaderboardCalculati
 
     const eliminatedPilots = findEliminatedPilots(brackets);
 
+    // Build minimal race input for leaderboard from current races
+    const lbInputRaces = races.map((r) => ({
+        roundId: r.round ?? '',
+        raceNumber: r.raceNumber ?? 0,
+        targetLaps: r.targetLaps,
+        processedLaps: get(raceProcessedLapsAtom(r.id)),
+        pilotChannels: get(racePilotChannelsAtom(r.id)),
+    }));
+
     const currentLeaderboard = calculateLeaderboardData(
-        races,
+        lbInputRaces,
         pilots,
         channels,
         currentRaceIndex,
@@ -41,7 +52,7 @@ export const leaderboardCalculationsAtom = eagerAtom((get): LeaderboardCalculati
 
     const previousRaceIndex = Math.max(0, currentRaceIndex - 1);
     const previousLeaderboard = calculateLeaderboardData(
-        races.slice(0, previousRaceIndex),
+        lbInputRaces.slice(0, previousRaceIndex),
         pilots,
         channels,
         previousRaceIndex - 1,

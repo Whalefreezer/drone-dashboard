@@ -16,7 +16,6 @@ export {
 } from './race-atoms.ts';
 
 export type { 
-    RaceData, 
     ProcessedLap, 
     RaceStatus, 
     PilotChannelAssociation 

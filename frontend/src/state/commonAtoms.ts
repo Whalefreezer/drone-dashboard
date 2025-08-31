@@ -72,7 +72,6 @@ export function useUpdater(key: string, updater: () => void) {
 
 /**
  * Determines if a race is currently active (started but not ended)
- * Updated to work with RaceData from race-types.ts
  */
 export function isRaceActive(race: { start?: string; end?: string } | undefined): boolean {
     if (!race) return false;
@@ -86,7 +85,6 @@ export function isRaceActive(race: { start?: string; end?: string } | undefined)
 
 /**
  * Orders races by round order and race number
- * Updated to work with RaceData from race-types.ts
  */
 export function orderRaces(races: { roundId: string; raceNumber: number }[], rounds: PBRoundRecord[]) {
     return races.sort((a, b) => {

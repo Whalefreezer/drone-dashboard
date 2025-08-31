@@ -2,7 +2,6 @@ import type { PBChannelRecord, PBPilotRecord, PBRoundRecord } from '../api/pbTyp
 import { ProcessedLap } from '../state/atoms.ts';
 import { LeaderboardEntry } from '../leaderboard/leaderboard-types.ts';
 import { BestTime, ConsecutiveTime } from '../race/race-utils.ts';
-import type { RaceData } from '../race/race-types.ts';
 
 export function getPositionWithSuffix(position: number): string {
     // Handle special cases for 11th, 12th, 13th
@@ -55,7 +54,7 @@ export function secondsFromString(time: string): number {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-export function orderRaces(races: RaceData[], rounds: PBRoundRecord[]): RaceData[] {
+export function orderRaces<T extends { roundId: string; raceNumber: number }>(races: T[], rounds: PBRoundRecord[]): T[] {
     return races.sort((a, b) => {
         const aRound = rounds.find((r) => r.id === a.roundId);
         const bRound = rounds.find((r) => r.id === b.roundId);
@@ -88,7 +87,7 @@ export function getLapClassName(
 }
 
 export function calculateRacesUntilNext(
-    races: RaceData[],
+    races: Array<{ pilotChannels: { pilotId: string }[] }>,
     currentRaceIndex: number,
     pilotId: string,
 ): number {
@@ -275,4 +274,3 @@ export function batchDebounce<TArgs extends any[], TReturn = void>(
 
     return debounced;
 }
-

@@ -1,6 +1,14 @@
 import { LeaderboardEntry, SortGroup } from '../leaderboard/leaderboard-types.ts';
 import { ProcessedLap } from '../state/atoms.ts';
-import type { RaceData } from './race-types.ts';
+
+// Minimal race shape required for leaderboard calculations
+export type LBInputRace = {
+    roundId: string;
+    raceNumber: number;
+    targetLaps?: number;
+    processedLaps: ProcessedLap[];
+    pilotChannels: { id: string; pilotId: string; channelId: string }[];
+};
 
 export interface BestTime {
     time: number;
@@ -52,7 +60,7 @@ function getGroupHierarchy(
     return hierarchy;
 }
 
-export function calculateBestTimes(races: RaceData[], consecutiveLaps: number) {
+export function calculateBestTimes(races: LBInputRace[], consecutiveLaps: number) {
     const overallFastestLaps = new Map<string, BestTime>();
     const fastestConsecutiveLaps = new Map<string, ConsecutiveTime>();
     const fastestHoleshots = new Map<string, BestTime>();
@@ -114,7 +122,7 @@ export function calculateBestTimes(races: RaceData[], consecutiveLaps: number) {
 function updateFastestLaps(
     racingLaps: ProcessedLap[],
     pilotId: string,
-    race: RaceData,
+    race: LBInputRace,
     overallFastestLaps: Map<string, BestTime>,
 ) {
     if (racingLaps.length > 0) {
@@ -137,7 +145,7 @@ function updateFastestLaps(
 function updateConsecutiveLaps(
     racingLaps: ProcessedLap[],
     pilotId: string,
-    race: RaceData,
+    race: LBInputRace,
     fastestConsecutiveLaps: Map<string, ConsecutiveTime>,
     consecutiveLaps: number,
 ) {
@@ -171,7 +179,7 @@ function updateConsecutiveLaps(
 
 function updateTotalRaceTime(
     pilotId: string,
-    race: RaceData,
+    race: LBInputRace,
     holeshotLaps: ProcessedLap[],
     racingLaps: ProcessedLap[],
     fastestTotalRaceTimes: Map<string, TotalRaceTime>,

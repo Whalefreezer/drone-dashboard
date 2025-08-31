@@ -1,19 +1,23 @@
 import { useAtomValue } from 'jotai';
 import { channelsDataAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
-import type { RaceData } from './race-types.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import './NextRaceCompact.css';
+import { raceDataAtom, racePilotChannelsAtom } from './race-atoms.ts';
 
 interface NextRaceCompactProps {
-    race: RaceData;
+    raceId: string;
 }
 
-export function NextRaceCompact({ race }: NextRaceCompactProps) {
+export function NextRaceCompact({ raceId }: NextRaceCompactProps) {
+    const race = useAtomValue(raceDataAtom(raceId));
     const pilots = useAtomValue(pilotsAtom);
     const channels = useAtomValue(channelsDataAtom);
     const rounds = useAtomValue(roundsDataAtom);
+    const pilotChannels = useAtomValue(racePilotChannelsAtom(raceId));
 
-    const round = rounds.find((r) => r.id === race.roundId);
+    if (!race) return null;
+
+    const round = rounds.find((r) => r.id === race.round);
     const title = round?.name
         ? `${round.name} — Race ${race.raceNumber}`
         : `Round ${round?.roundNumber ?? '?'} — Race ${race.raceNumber}`;
@@ -24,7 +28,7 @@ export function NextRaceCompact({ race }: NextRaceCompactProps) {
                 <div className='next-race-title'>{title}</div>
             </div>
             <div className='next-race-grid next-race-grid--two'>
-                {race.pilotChannels.map((pc) => {
+                {pilotChannels.map((pc) => {
                     const pilot = pilots.find((p) => p.id === pc.pilotId);
                     const channel = channels.find((c) => c.id === pc.channelId);
                     const channelLabel = channel

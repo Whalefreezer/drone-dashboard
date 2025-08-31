@@ -1,4 +1,4 @@
-import { calculateBestTimes } from '../race/race-utils.ts';
+import { calculateBestTimes, type LBInputRace } from '../race/race-utils.ts';
 import {
     calculateRacesUntilNext,
     getEliminationOrderIndex,
@@ -10,12 +10,11 @@ import {
 } from '../common/utils.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { findEliminatedPilots } from '../state/atoms.ts';
-import type { RaceData } from '../race/race-types.ts';
 import { Bracket } from '../bracket/bracket-types.ts';
 import { LeaderboardEntry, NullHandling, SortDirection, SortGroup } from './leaderboard-types.ts';
 
 export function calculateLeaderboardData(
-    races: RaceData[],
+    races: LBInputRace[],
     pilots: PBPilotRecord[],
     channels: PBChannelRecord[],
     currentRaceIndex: number,
@@ -111,7 +110,7 @@ function findChannelById(
 }
 
 function getPilotChannelIdInRace(
-    race: RaceData | undefined,
+    race: LBInputRace | undefined,
     pilotId: string,
 ): string | undefined {
     return race?.pilotChannels.find((pc) => pc.pilotId === pilotId)?.channelId;
@@ -119,7 +118,7 @@ function getPilotChannelIdInRace(
 
 export function getPilotChannelWithPriority(
     pilotId: string,
-    races: RaceData[],
+    races: LBInputRace[],
     channels: PBChannelRecord[],
     currentRaceIndex: number,
 ): PBChannelRecord | null {

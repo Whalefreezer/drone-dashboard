@@ -161,9 +161,9 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 export { findEliminatedPilots, updateAtom, useUpdater };
 
 export const overallBestTimesAtom = eagerAtom((get) => {
-    const races = get(racesAtom);
-    // Flatten all processed laps from all races
-    const allProcessedLaps = races.flatMap((race) => race.processedLaps);
+    const raceIds = get(eventRaceIdsAtom);
+    // Flatten all processed laps from all races using per-race atom
+    const allProcessedLaps = raceIds.flatMap((raceId) => get(raceProcessedLapsAtom(raceId)));
     return calculateOverallBestTimes(allProcessedLaps);
 });
 

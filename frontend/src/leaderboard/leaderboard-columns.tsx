@@ -91,7 +91,7 @@ function RenderTimeCell(
 
     if (!currentTime) return <td>-</td>;
     const raceIndex = races.findIndex((race) =>
-        race.roundId === currentTime.roundId && race.raceNumber === currentTime.raceNumber
+        race.round === currentTime.roundId && race.raceNumber === currentTime.raceNumber
     );
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
