@@ -108,11 +108,10 @@ func (s *Service) FullAuto() (FullSummary, error) {
     }
 
     // After successful full ingestion, set this event as current and all others as not current
-    if err := s.setEventAsCurrent(eventSourceId); err != nil {
+    if err := s.SetEventAsCurrent(eventSourceId); err != nil {
         slog.Warn("ingest.fullAuto.setEventAsCurrent.failed", "eventSourceId", eventSourceId, "err", err)
         // Don't fail the entire operation if setting current status fails
     }
 
     return summary, nil
 }
-

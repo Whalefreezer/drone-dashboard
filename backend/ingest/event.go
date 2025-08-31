@@ -3,6 +3,8 @@ package ingest
 import (
     "fmt"
     "log/slog"
+
+    "github.com/pocketbase/dbx"
 )
 
 // IngestEventMeta fetches and upserts the core Event record for an eventSourceId
@@ -48,32 +50,45 @@ func (s *Service) IngestEventMetaFromData(e RaceEvent) error {
     return nil
 }
 
-// setEventAsCurrent sets the specified event as current and makes all other events not current
+// SetEventAsCurrent sets the specified event as current and flips others only if needed.
+// Uses a single SQL query to determine which records require updates and saves only those.
 // eventSourceId: The external system's event identifier (not PocketBase ID)
-func (s *Service) setEventAsCurrent(eventSourceId string) error {
+func (s *Service) SetEventAsCurrent(eventSourceId string) error {
     slog.Debug("ingest.setEventAsCurrent.start", "eventSourceId", eventSourceId)
 
-    collection, err := s.Upserter.App.FindCollectionByNameOrId("events")
-    if err != nil {
-        return fmt.Errorf("find events collection: %w", err)
+    // Select only events that need their isCurrent flag changed, along with the new value
+    query := `
+        SELECT id,
+               CASE WHEN sourceId = {:sid} THEN 1 ELSE 0 END AS new_is_current
+        FROM events
+        WHERE (isCurrent = 1 AND sourceId != {:sid})
+           OR (isCurrent = 0 AND sourceId = {:sid})
+    `
+
+    type row struct {
+        ID           string `db:"id"`
+        NewIsCurrent int    `db:"new_is_current"`
     }
 
-    // Get all events and set the correct isCurrent value in one loop
-    allEvents, err := s.Upserter.App.FindAllRecords(collection.Name)
-    if err != nil {
-        return fmt.Errorf("find all events: %w", err)
+    var rows []row
+    if err := s.Upserter.App.DB().NewQuery(query).Bind(dbx.Params{"sid": eventSourceId}).All(&rows); err != nil {
+        return fmt.Errorf("query events to flip isCurrent: %w", err)
     }
 
-    for _, event := range allEvents {
-        // Check if this is the target event by comparing sourceId
-        isCurrent := event.GetString("sourceId") == eventSourceId
-        event.Set("isCurrent", isCurrent)
-        if err := s.Upserter.App.Save(event); err != nil {
-            return fmt.Errorf("save event %s with isCurrent=%t: %w", event.Id, isCurrent, err)
+    changed := 0
+    for _, r := range rows {
+        rec, err := s.Upserter.App.FindRecordById("events", r.ID)
+        if err != nil || rec == nil {
+            slog.Warn("ingest.setEventAsCurrent.find.error", "id", r.ID, "err", err)
+            continue
         }
+        rec.Set("isCurrent", r.NewIsCurrent == 1)
+        if err := s.Upserter.App.Save(rec); err != nil {
+            return fmt.Errorf("save event %s: %w", r.ID, err)
+        }
+        changed++
     }
 
-    slog.Info("ingest.setEventAsCurrent.done", "eventSourceId", eventSourceId, "totalEvents", len(allEvents))
+    slog.Info("ingest.setEventAsCurrent.done", "eventSourceId", eventSourceId, "changed", changed)
     return nil
 }
-
