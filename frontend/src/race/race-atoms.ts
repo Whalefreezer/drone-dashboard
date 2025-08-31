@@ -4,21 +4,14 @@
 import { atomFamily } from 'jotai/utils';
 import {
     currentEventAtom,
-    detectionRecordsAtom,
-    lapRecordsAtom,
-    pilotChannelRecordsAtom,
     raceRecordsAtom,
     currentOrderKVAtom,
     roundsDataAtom,
     consecutiveLapsAtom,
+    raceProcessedLapsAtom as baseRaceProcessedLapsAtom,
+    racePilotChannelsAtom as baseRacePilotChannelsAtom,
 } from '../state/pbAtoms.ts';
-import {
-    computePilotChannelAssociations,
-    computeProcessedLaps,
-    computeRaceStatus,
-    RaceData,
-    RaceStatus,
-} from './race-types.ts';
+import { computeRaceStatus, RaceData, RaceStatus } from './race-types.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
 
@@ -40,8 +33,11 @@ export const racePilotCalcsAtom = atomFamily((raceId: string) =>
         const rounds = get(roundsDataAtom);
         const nConsec = get(consecutiveLapsAtom);
 
-        return race.pilotChannels.map((pilotChannel) => {
-            const lapsForPilot = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
+        const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
+        const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
+
+        return pilotChannels.map((pilotChannel) => {
+            const lapsForPilot = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
             const holeshot = lapsForPilot.find((l) => l.isHoleshot) ?? null;
             const racingLaps = lapsForPilot.filter((l) => !l.isHoleshot);
             const completedLaps = racingLaps.length;
@@ -106,11 +102,16 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
  */
 export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
     eagerAtom((get): number => {
-        const race = get(raceDataAtom(raceId));
-        if (!race) return 0;
-        return Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
+        const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
+        return Math.max(0, ...processedLaps.map((lap) => lap.lapNumber));
     })
 );
+
+// Re-export the dedicated atoms for convenience in race domain
+export {
+    baseRaceProcessedLapsAtom as raceProcessedLapsAtom,
+    baseRacePilotChannelsAtom as racePilotChannelsAtom,
+};
 
 /**
  * PB-native race atom family - much cleaner than the legacy ComputedRace approach
@@ -127,19 +128,9 @@ export const raceDataAtom = atomFamily((raceId: string) =>
         );
         if (!raceRecord) return null;
 
-        // Get related PB records for this race
-        const lapRecords = get(lapRecordsAtom);
-        const laps = lapRecords.filter((l) => l.race === raceId);
-        const detectionRecords = get(detectionRecordsAtom);
-        const detections = detectionRecords.filter((d) => d.race === raceId);
-        const pilotChannelRecords = get(pilotChannelRecordsAtom);
-        const racePilotChannels = pilotChannelRecords.filter(
-            (pc) => pc.race === raceId,
-        );
-
-        // Compute processed data directly from PB records
-        const processedLaps = computeProcessedLaps(laps, detections);
-        const pilotChannels = computePilotChannelAssociations(racePilotChannels);
+        // Read processed laps and pilot channels from dedicated atoms
+        const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
+        const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
 
         return {
             id: raceRecord.id,

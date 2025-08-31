@@ -182,9 +182,7 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
 
         return laps
             .map((lap) => {
-                const detection = detections.find((d) =>
-                    d.lapNumber === lap.lapNumber && d.race === lap.race
-                );
+                const detection = (detections.find((d) => d.id === lap.detection));
                 if (!detection || !detection.valid) return null;
 
                 return {

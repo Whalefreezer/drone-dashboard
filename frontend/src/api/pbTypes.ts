@@ -137,7 +137,7 @@ export interface PBLapRecord extends PBBaseRecord {
     lengthSeconds?: number;
     startTime?: string;
     endTime?: string;
-    detection?: string; // relation → detections.id
+    detection: string; // relation → detections.id
     race?: string; // relation → races.id
     event?: string; // relation → events.id
 }
