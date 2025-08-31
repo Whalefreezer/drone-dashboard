@@ -1,7 +1,7 @@
-import { NullHandling, SortDirection, type Getter, type SortGroup } from './sorting-types.ts';
+import { NullHandling, SortDirection, type EagerGetter, type SortGroup } from './sorting-types.ts';
 
 // Pure sorter operating on pilot IDs using a Jotai getter and a declarative config
-export function sortPilotIds(ids: string[], get: Getter, config: SortGroup[]): string[] {
+export function sortPilotIds(ids: string[], get: EagerGetter, config: SortGroup[]): string[] {
     function groupPath(id: string, groups: SortGroup[]): SortGroup[] {
         const path: SortGroup[] = [];
         function dfs(gs: SortGroup[], parent: SortGroup[] | null): boolean {

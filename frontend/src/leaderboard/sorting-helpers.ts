@@ -1,4 +1,4 @@
-import { NullHandling, SortDirection, type Condition, type Getter, type SortGroup, type ValueGetter } from './sorting-types.ts';
+import { NullHandling, SortDirection, type Condition, type EagerGetter, type SortGroup, type ValueGetter } from './sorting-types.ts';
 import { pilotConsecAtom, pilotBestLapAtom, pilotTotalLapsAtom } from './metric-factory.ts';
 import { pilotPreferredChannelAtom, pilotRacesUntilNextAtom, pilotEliminatedInfoAtom } from './leaderboard-context-atoms.ts';
 

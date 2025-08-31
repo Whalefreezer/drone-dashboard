@@ -12,10 +12,10 @@ export enum NullHandling {
     Last = 'last',
 }
 
-export type Getter = <Value>(anAtom: Atom<Value>) => Awaited<Value>;
+export type EagerGetter = <Value>(anAtom: Atom<Value>) => Awaited<Value>;
 
-export type ValueGetter = (get: Getter, pilotId: string) => number | null;
-export type Condition = (get: Getter, pilotId: string) => boolean;
+export type ValueGetter = (get: EagerGetter, pilotId: string) => number | null;
+export type Condition = (get: EagerGetter, pilotId: string) => boolean;
 
 export interface SortCriterion {
     getValue: ValueGetter;
