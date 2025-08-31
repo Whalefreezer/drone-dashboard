@@ -258,3 +258,9 @@
     padding: 0 16px;
     margin-top: 40px; /* Added from App.tsx inline style */
 }
+
+.app-legend {
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px 16px;
+}

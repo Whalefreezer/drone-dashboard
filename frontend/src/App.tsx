@@ -33,7 +33,9 @@ function App() {
                 <GenericSuspense id='eliminated-pilots-view'>
                     <EliminatedPilotsView />
                 </GenericSuspense>
+            </div>
 
+            <div className='app-legend'>
                 <Legend />
             </div>
         </>

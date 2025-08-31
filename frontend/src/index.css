@@ -25,10 +25,8 @@ a:hover {
 
 body {
     margin: 0;
-    display: flex;
-    place-items: center;
+    /* Remove centering to align content to top */
     min-width: 320px;
-    min-height: 100vh;
 }
 
 h1 {
