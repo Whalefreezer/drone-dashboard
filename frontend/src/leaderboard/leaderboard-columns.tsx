@@ -5,6 +5,7 @@ import { leaderboardCalculationsAtom } from './leaderboard-state.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
+import type { LeaderboardEntry } from './leaderboard-types.ts';
 
 export type TableContext = { consecutiveLaps: number };
 export interface LeaderboardRowProps {
@@ -139,6 +140,54 @@ function NextRaceCell(
     return <td>{content}</td>;
 }
 
+// Helper functions to reduce repetition
+function findLeaderboardEntry(leaderboard: LeaderboardEntry[], pilotId: string) {
+    return leaderboard.find((entry) => entry.pilot.id === pilotId);
+}
+
+function findCurrentAndPreviousEntries(pilotId: string) {
+    const { currentLeaderboard, previousLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
+    const current = findLeaderboardEntry(currentLeaderboard, pilotId);
+    const previous = findLeaderboardEntry(previousLeaderboard, pilotId);
+    return { current, previous };
+}
+
+function isPilotEliminated(pilot: PBPilotRecord, eliminatedPilots: { name: string }[]) {
+    return eliminatedPilots.some((p) =>
+        p.name.toLowerCase().replace(/\s+/g, '') ===
+        pilot.name.toLowerCase().replace(/\s+/g, '')
+    );
+}
+
+// Type for leaderboard entry properties that are StatTime
+type StatTimeProperty = 'bestLap' | 'consecutiveLaps' | 'bestHoleshot';
+
+// Generic function to create time comparison cells for StatTime properties
+function createTimeComparisonCell(timeProperty: StatTimeProperty) {
+    return function TimeComparisonCell({ pilot }: LeaderboardRowProps) {
+        const { current, previous } = findCurrentAndPreviousEntries(pilot.id);
+        return (
+            <RenderTimeCell
+                currentTime={current?.[timeProperty] || null}
+                previousTime={previous?.[timeProperty] || null}
+            />
+        );
+    };
+}
+
+// Special function for fastestTotalRaceTime which has a different structure
+function createFastestRaceTimeCell() {
+    return function FastestRaceTimeCell({ pilot }: LeaderboardRowProps) {
+        const { current, previous } = findCurrentAndPreviousEntries(pilot.id);
+        return (
+            <RenderTimeCell
+                currentTime={current?.fastestTotalRaceTime || null}
+                previousTime={previous?.fastestTotalRaceTime || null}
+            />
+        );
+    };
+}
+
 export function getLeaderboardColumns(
     ctx: TableContext,
 ): Array<Column<TableContext, LeaderboardRowProps>> {
@@ -172,7 +221,7 @@ export function getLeaderboardColumns(
             width: 48,
             cell: function ChannelCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
+                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
                 return <ChannelDisplayCell channel={entry?.channel || null} />;
             },
         },
@@ -182,7 +231,7 @@ export function getLeaderboardColumns(
             width: 32,
             cell: function LapsCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
+                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
                 return <td>{entry?.totalLaps ?? 0}</td>;
             },
         },
@@ -190,75 +239,27 @@ export function getLeaderboardColumns(
             key: 'holeshot',
             header: 'Holeshot',
             width: 64,
-            cell: function HoleshotCellInline({ pilot }) {
-                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
-                    leaderboardCalculationsAtom,
-                );
-                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
-                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
-                return (
-                    <RenderTimeCell
-                        currentTime={current?.bestHoleshot || null}
-                        previousTime={previous?.bestHoleshot || null}
-                    />
-                );
-            },
+            cell: createTimeComparisonCell('bestHoleshot'),
         },
         {
             key: 'top-lap',
             header: 'Top Lap',
             width: 64,
-            cell: function TopLapCellInline({ pilot }) {
-                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
-                    leaderboardCalculationsAtom,
-                );
-                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
-                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
-                return (
-                    <RenderTimeCell
-                        currentTime={current?.bestLap || null}
-                        previousTime={previous?.bestLap || null}
-                    />
-                );
-            },
+            cell: createTimeComparisonCell('bestLap'),
         },
         ...(ctx.consecutiveLaps > 1
             ? [{
                 key: 'consec',
                 header: () => `Top ${ctx.consecutiveLaps} Consec`,
                 width: 64,
-                cell: function ConsecutiveCellInline({ pilot }) {
-                    const { currentLeaderboard, previousLeaderboard } = useAtomValue(
-                        leaderboardCalculationsAtom,
-                    );
-                    const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
-                    const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
-                    return (
-                        <RenderTimeCell
-                            currentTime={current?.consecutiveLaps || null}
-                            previousTime={previous?.consecutiveLaps || null}
-                        />
-                    );
-                },
+                cell: createTimeComparisonCell('consecutiveLaps'),
             } as Column<TableContext, LeaderboardRowProps>]
             : []),
         {
             key: 'fastest-race',
             header: 'Fastest Race',
             width: 64,
-            cell: function FastestRaceCellInline({ pilot }) {
-                const { currentLeaderboard, previousLeaderboard } = useAtomValue(
-                    leaderboardCalculationsAtom,
-                );
-                const current = currentLeaderboard.find((p) => p.pilot.id === pilot.id);
-                const previous = previousLeaderboard.find((p) => p.pilot.id === pilot.id);
-                return (
-                    <RenderTimeCell
-                        currentTime={current?.fastestTotalRaceTime || null}
-                        previousTime={previous?.fastestTotalRaceTime || null}
-                    />
-                );
-            },
+            cell: createFastestRaceTimeCell(),
         },
         {
             key: 'next',
@@ -268,11 +269,8 @@ export function getLeaderboardColumns(
                 const { currentLeaderboard, eliminatedPilots } = useAtomValue(
                     leaderboardCalculationsAtom,
                 );
-                const entry = currentLeaderboard.find((e) => e.pilot.id === pilot.id);
-                const isEliminated = eliminatedPilots.some((p) =>
-                    p.name.toLowerCase().replace(/\s+/g, '') ===
-                        pilot.name.toLowerCase().replace(/\s+/g, '')
-                );
+                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
+                const isEliminated = isPilotEliminated(pilot, eliminatedPilots);
                 return (
                     <NextRaceCell
                         racesUntilNext={entry?.racesUntilNext ?? -1}
