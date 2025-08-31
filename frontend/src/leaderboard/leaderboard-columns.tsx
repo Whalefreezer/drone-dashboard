@@ -195,7 +195,7 @@ export function getLeaderboardColumns(
         {
             key: 'position',
             header: '',
-            width: 12,
+            width: 32,
             cell: function PositionCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const idx = currentLeaderboard.findIndex((e) => e.pilot.id === pilot.id);
@@ -206,7 +206,9 @@ export function getLeaderboardColumns(
         {
             key: 'pilot',
             header: 'Pilot',
-            width: 200,
+            // Let the Pilot column flex to consume remaining space.
+            // Keep a reasonable minimum so it doesn't collapse.
+            minWidth: 100,
             cell: function PilotCellInline({ pilot }) {
                 return (
                     <OverflowFadeCell className='pilot-col' title={pilot.name}>
@@ -218,7 +220,7 @@ export function getLeaderboardColumns(
         {
             key: 'channel',
             header: 'Chan',
-            width: 48,
+            width: 52,
             cell: function ChannelCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
@@ -228,7 +230,7 @@ export function getLeaderboardColumns(
         {
             key: 'laps',
             header: 'Laps',
-            width: 32,
+            width: 52,
             cell: function LapsCellInline({ pilot }) {
                 const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
                 const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
@@ -237,7 +239,7 @@ export function getLeaderboardColumns(
         },
         {
             key: 'holeshot',
-            header: 'Holeshot',
+            header: 'Hole shot',
             width: 64,
             cell: createTimeComparisonCell('bestHoleshot'),
         },
@@ -264,7 +266,7 @@ export function getLeaderboardColumns(
         {
             key: 'next',
             header: 'Next Race In',
-            width: 120,
+            width: 96,
             cell: function NextRaceStatusCellInline({ pilot }) {
                 const { currentLeaderboard, eliminatedPilots } = useAtomValue(
                     leaderboardCalculationsAtom,

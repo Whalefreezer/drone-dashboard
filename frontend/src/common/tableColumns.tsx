@@ -27,21 +27,29 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 ) {
     return (
         <table className={className}>
+            {/* Use colgroup so fixed widths are respected and only unspecified columns can flex */}
+            <colgroup>
+                {columns.map((col) => {
+                    const colStyle: React.CSSProperties = {};
+                    if (col.width !== undefined) {
+                        colStyle.width = typeof col.width === 'number'
+                            ? `${col.width}px`
+                            : col.width;
+                    }
+                    if (col.minWidth !== undefined) {
+                        colStyle.minWidth = typeof col.minWidth === 'number'
+                            ? `${col.minWidth}px`
+                            : col.minWidth;
+                    }
+                    return <col key={col.key} style={colStyle} />;
+                })}
+            </colgroup>
             <thead>
                 <tr>
                     {columns.map((col) => {
                         const thStyle: React.CSSProperties = {};
                         if (col.headerAlign) thStyle.textAlign = col.headerAlign;
-                        if (col.width !== undefined) {
-                            thStyle.width = typeof col.width === 'number'
-                                ? `${col.width}px`
-                                : col.width;
-                        }
-                        if (col.minWidth !== undefined) {
-                            thStyle.minWidth = typeof col.minWidth === 'number'
-                                ? `${col.minWidth}px`
-                                : col.minWidth;
-                        }
+
                         return (
                             <th key={col.key} className={col.headerClassName} style={thStyle}>
                                 {typeof col.header === 'function'
