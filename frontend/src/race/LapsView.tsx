@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import {
     channelsDataAtom,
@@ -14,6 +15,7 @@ import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 import { GenericTable, type Column } from '../common/tableColumns.tsx';
 import { OverflowFadeCell } from '../leaderboard/leaderboard-columns.tsx';
+import { EventType } from '../api/pbTypes.ts';
 
 const POSITION_POINTS: Record<number, number> = {
     1: 10,
@@ -78,24 +80,16 @@ type LapsRow = {
     position: number;
 };
 
-function LapsTable(
-    { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
-) {
-    const pilotsWithLaps = race.pilotChannels
-        .map((pilotChannel) => {
-            const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
-            return { pilotChannel, completedLaps };
-        })
-        .sort((a, b) => b.completedLaps - a.completedLaps);
+function useLapsTableColumns(
+    race: RaceData,
+    matchingBracket: Bracket | null,
+    maxLaps: number,
+): { columns: Array<Column<LapsTableContext, LapsRow>>; ctx: LapsTableContext } {
+    const rounds = useAtomValue(roundsDataAtom);
+    const roundRec = rounds.find((r) => r.id === race.roundId) ?? null;
+    const isRaceRound = roundRec?.eventType === EventType.Race;
 
-    const maxLaps = Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
-
-    const rows: LapsRow[] = pilotsWithLaps.map((p, idx) => ({
-        pilotChannel: p.pilotChannel,
-        position: idx + 1,
-    }));
-
-    const ctx: LapsTableContext = { race, matchingBracket, maxLaps };
+    const ctx = useMemo(() => ({ race, matchingBracket, maxLaps }), [race, matchingBracket, maxLaps]);
 
     const columns: Array<Column<LapsTableContext, LapsRow>> = [];
 
@@ -111,7 +105,7 @@ function LapsTable(
                         ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 {getPositionWithSuffix(position)}
-                                {POSITION_POINTS[position] && (
+                                {isRaceRound && POSITION_POINTS[position] && (
                                     <span style={{ fontSize: '0.8em', color: '#888' }}>
                                         +{POSITION_POINTS[position]}
                                     </span>
@@ -201,7 +195,7 @@ function LapsTable(
                                 ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         {roundVal}
-                                        {POSITION_POINTS[roundVal] && (
+                                        {isRaceRound && POSITION_POINTS[roundVal] && (
                                             <span style={{ fontSize: '0.8em', color: '#888' }}>
                                                 +{POSITION_POINTS[roundVal]}
                                             </span>
@@ -257,6 +251,31 @@ function LapsTable(
             },
         });
     }
+
+    return { columns, ctx };
+}
+
+function LapsTable(
+    { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
+) {
+    const rounds = useAtomValue(roundsDataAtom);
+    const roundRec = rounds.find((r) => r.id === race.roundId) ?? null;
+    const isRaceRound = roundRec?.eventType === EventType.Race;
+    const pilotsWithLaps = race.pilotChannels
+        .map((pilotChannel) => {
+            const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
+            return { pilotChannel, completedLaps };
+        })
+        .sort((a, b) => b.completedLaps - a.completedLaps);
+
+    const maxLaps = Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
+
+    const rows: LapsRow[] = pilotsWithLaps.map((p, idx) => ({
+        pilotChannel: p.pilotChannel,
+        position: idx + 1,
+    }));
+
+    const { columns, ctx } = useLapsTableColumns(race, matchingBracket, maxLaps);
 
     return (
         <GenericTable<LapsTableContext, LapsRow>

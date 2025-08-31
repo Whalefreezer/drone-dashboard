@@ -9,7 +9,7 @@ export interface PBBaseRecord {
 // events
 export interface PBEventRecord extends PBBaseRecord {
     name: string;
-    eventType?: string;
+    eventType?: EventType;
     start?: string;
     end?: string;
     laps?: number;
@@ -29,11 +29,23 @@ export interface PBEventRecord extends PBBaseRecord {
 export interface PBRoundRecord extends PBBaseRecord {
     name?: string;
     roundNumber?: number;
-    eventType?: string;
+    eventType?: EventType;
     roundType?: string;
     valid?: boolean;
     order?: number;
     event?: string; // relation → events.id
+}
+
+export enum EventType {
+    Unknown = 'Unknown',
+    Practice = 'Practice',
+    TimeTrial = 'TimeTrial',
+    Race = 'Race',
+    Freestyle = 'Freestyle',
+    Endurance = 'Endurance',
+    AggregateLaps = 'AggregateLaps',
+    CasualPractice = 'CasualPractice',
+    Game = 'Game',
 }
 
 // pilots
