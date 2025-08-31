@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Column } from '../common/tableColumns.tsx';
 import { useAtomValue } from 'jotai';
-import { leaderboardCalculationsAtom } from './leaderboard-state.ts';
+import { leaderboardPilotIdsAtom, positionChangesAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom, pilotEliminatedInfoAtom } from './leaderboard-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import type { LeaderboardEntry } from './leaderboard-types.ts';
+import { pilotBestLapAtom, pilotConsecAtom, pilotHoleshotAtom, pilotFastestTotalRaceAtom, pilotTotalLapsAtom } from './metric-factory.ts';
+import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 
 export type TableContext = { consecutiveLaps: number };
 export interface LeaderboardRowProps {
@@ -50,7 +51,7 @@ export function OverflowFadeCell(
 function PositionCell(
     { pilotId, currentPosition }: { pilotId: string; currentPosition: number },
 ) {
-    const { positionChanges } = useAtomValue(leaderboardCalculationsAtom);
+    const positionChanges = useAtomValue(positionChangesAtom);
     const prevPos = positionChanges.get(pilotId);
     const showChange = prevPos && prevPos !== currentPosition;
     const change = showChange ? prevPos - currentPosition : 0;
@@ -83,13 +84,25 @@ function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
 type StatTime = { time: number; roundId: string; raceNumber: number } | null;
 
 function RenderTimeCell(
-    { currentTime, previousTime }: { currentTime: StatTime; previousTime: StatTime },
+    { metricAtom }: { metricAtom: any },
 ) {
-    const { currentRaceIndex } = useAtomValue(leaderboardCalculationsAtom);
+    const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
     const roundDataValue = useAtomValue(roundsDataAtom);
     const races = useAtomValue(racesAtom);
 
+    const { current, previous } = useAtomValue(metricAtom) as { current: { time: number; raceId: string } | null; previous: { time: number; raceId: string } | null };
+
+    const toStat = (val: { time: number; raceId: string } | null): StatTime => {
+        if (!val) return null;
+        const r = races.find((x) => x.id === val.raceId);
+        if (!r) return null;
+        return { time: val.time, roundId: r.round ?? '', raceNumber: r.raceNumber ?? 0 };
+    };
+
+    const currentTime = toStat(current);
+    const previousTime = toStat(previous);
     if (!currentTime) return <td>-</td>;
+
     const raceIndex = races.findIndex((race) =>
         race.round === currentTime.roundId && race.raceNumber === currentTime.raceNumber
     );
@@ -140,53 +153,10 @@ function NextRaceCell(
     return <td>{content}</td>;
 }
 
-// Helper functions to reduce repetition
-function findLeaderboardEntry(leaderboard: LeaderboardEntry[], pilotId: string) {
-    return leaderboard.find((entry) => entry.pilot.id === pilotId);
-}
-
-function findCurrentAndPreviousEntries(pilotId: string) {
-    const { currentLeaderboard, previousLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-    const current = findLeaderboardEntry(currentLeaderboard, pilotId);
-    const previous = findLeaderboardEntry(previousLeaderboard, pilotId);
-    return { current, previous };
-}
-
-function isPilotEliminated(pilot: PBPilotRecord, eliminatedPilots: { name: string }[]) {
-    return eliminatedPilots.some((p) =>
-        p.name.toLowerCase().replace(/\s+/g, '') ===
-        pilot.name.toLowerCase().replace(/\s+/g, '')
-    );
-}
+// eliminated info is provided by pilotEliminatedInfoAtom
 
 // Type for leaderboard entry properties that are StatTime
-type StatTimeProperty = 'bestLap' | 'consecutiveLaps' | 'bestHoleshot';
-
-// Generic function to create time comparison cells for StatTime properties
-function createTimeComparisonCell(timeProperty: StatTimeProperty) {
-    return function TimeComparisonCell({ pilot }: LeaderboardRowProps) {
-        const { current, previous } = findCurrentAndPreviousEntries(pilot.id);
-        return (
-            <RenderTimeCell
-                currentTime={current?.[timeProperty] || null}
-                previousTime={previous?.[timeProperty] || null}
-            />
-        );
-    };
-}
-
-// Special function for fastestTotalRaceTime which has a different structure
-function createFastestRaceTimeCell() {
-    return function FastestRaceTimeCell({ pilot }: LeaderboardRowProps) {
-        const { current, previous } = findCurrentAndPreviousEntries(pilot.id);
-        return (
-            <RenderTimeCell
-                currentTime={current?.fastestTotalRaceTime || null}
-                previousTime={previous?.fastestTotalRaceTime || null}
-            />
-        );
-    };
-}
+// Removed createTimeComparisonCell; pass metric atoms directly to RenderTimeCell
 
 export function getLeaderboardColumns(
     ctx: TableContext,
@@ -197,8 +167,8 @@ export function getLeaderboardColumns(
             header: '',
             width: 32,
             cell: function PositionCellInline({ pilot }) {
-                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-                const idx = currentLeaderboard.findIndex((e) => e.pilot.id === pilot.id);
+                const ids = useAtomValue(leaderboardPilotIdsAtom);
+                const idx = ids.findIndex((id) => id === pilot.id);
                 const pos = idx >= 0 ? idx + 1 : 0;
                 return <PositionCell pilotId={pilot.id} currentPosition={pos} />;
             },
@@ -222,9 +192,8 @@ export function getLeaderboardColumns(
             header: 'Chan',
             width: 52,
             cell: function ChannelCellInline({ pilot }) {
-                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
-                return <ChannelDisplayCell channel={entry?.channel || null} />;
+                const channel = useAtomValue(pilotPreferredChannelAtom(pilot.id));
+                return <ChannelDisplayCell channel={channel} />;
             },
         },
         {
@@ -232,50 +201,55 @@ export function getLeaderboardColumns(
             header: 'Laps',
             width: 52,
             cell: function LapsCellInline({ pilot }) {
-                const { currentLeaderboard } = useAtomValue(leaderboardCalculationsAtom);
-                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
-                return <td>{entry?.totalLaps ?? 0}</td>;
+                const { current } = useAtomValue(pilotTotalLapsAtom(pilot.id));
+                return <td>{current ?? 0}</td>;
             },
         },
         {
             key: 'holeshot',
             header: 'Hole shot',
             width: 64,
-            cell: createTimeComparisonCell('bestHoleshot'),
+            cell: function HoleshotCell({ pilot }) {
+                return <RenderTimeCell metricAtom={pilotHoleshotAtom(pilot.id)} />;
+            },
         },
         {
             key: 'top-lap',
             header: 'Top Lap',
             width: 64,
-            cell: createTimeComparisonCell('bestLap'),
+            cell: function BestLapCell({ pilot }) {
+                return <RenderTimeCell metricAtom={pilotBestLapAtom(pilot.id)} />;
+            },
         },
         ...(ctx.consecutiveLaps > 1
             ? [{
                 key: 'consec',
                 header: () => `Top ${ctx.consecutiveLaps} Consec`,
                 width: 64,
-                cell: createTimeComparisonCell('consecutiveLaps'),
+                cell: function ConsecCell({ pilot }) {
+                    return <RenderTimeCell metricAtom={pilotConsecAtom(pilot.id)} />;
+                },
             } as Column<TableContext, LeaderboardRowProps>]
             : []),
         {
             key: 'fastest-race',
             header: 'Fastest Race',
             width: 64,
-            cell: createFastestRaceTimeCell(),
+            cell: function TotalRaceCell({ pilot }) {
+                return <RenderTimeCell metricAtom={pilotFastestTotalRaceAtom(pilot.id)} />;
+            },
         },
         {
             key: 'next',
             header: 'Next Race In',
             width: 96,
             cell: function NextRaceStatusCellInline({ pilot }) {
-                const { currentLeaderboard, eliminatedPilots } = useAtomValue(
-                    leaderboardCalculationsAtom,
-                );
-                const entry = findLeaderboardEntry(currentLeaderboard, pilot.id);
-                const isEliminated = isPilotEliminated(pilot, eliminatedPilots);
+                const racesUntilNext = useAtomValue(pilotRacesUntilNextAtom(pilot.id));
+                const elimInfo = useAtomValue(pilotEliminatedInfoAtom(pilot.id));
+                const isEliminated = !!elimInfo;
                 return (
                     <NextRaceCell
-                        racesUntilNext={entry?.racesUntilNext ?? -1}
+                        racesUntilNext={racesUntilNext}
                         isEliminated={isEliminated}
                     />
                 );

@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import type { Column } from '../common/tableColumns.tsx';
 import { GenericTable } from '../common/tableColumns.tsx';
-import type { LeaderboardEntry } from './leaderboard-types.ts';
-import { useLeaderboardAnimation } from './leaderboard-hooks.ts';
+// Animation derived directly from positionChangesAtom and current order
 import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
 import { useAtomValue } from 'jotai';
-import { leaderboardCalculationsAtom } from './leaderboard-state.ts';
 import { racesAtom } from '../state/index.ts';
+import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
+import { pilotsAtom } from '../state/pbAtoms.ts';
 import {
     getLeaderboardColumns,
     type LeaderboardRowProps,
@@ -19,10 +19,15 @@ import {
 export function Leaderboard() {
     const races = useAtomValue(racesAtom);
     const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
-    const { currentLeaderboard, positionChanges } = useAtomValue(
-        leaderboardCalculationsAtom,
-    );
-    const animatingRows = useLeaderboardAnimation(currentLeaderboard, positionChanges);
+    const pilotIds = useAtomValue(leaderboardPilotIdsAtom);
+    const positionChanges = useAtomValue(positionChangesAtom);
+
+    // Compute animating rows: previous position exists and was worse than current
+    const animatingRows = new Set<string>();
+    pilotIds.forEach((id, idx) => {
+        const prevPos = positionChanges.get(id);
+        if (prevPos && prevPos > idx + 1) animatingRows.add(id);
+    });
 
     if (races.length === 0) {
         return (
@@ -36,7 +41,7 @@ export function Leaderboard() {
     return (
         <div className='leaderboard-container'>
             <LeaderboardTable
-                currentLeaderboard={currentLeaderboard}
+                pilotIds={pilotIds}
                 animatingRows={animatingRows}
                 consecutiveLaps={consecutiveLaps}
             />
@@ -45,14 +50,14 @@ export function Leaderboard() {
 }
 
 interface LeaderboardTableProps {
-    currentLeaderboard: LeaderboardEntry[];
+    pilotIds: string[];
     animatingRows: Set<string>;
     consecutiveLaps: number;
 }
 
 function LeaderboardTable(
     {
-        currentLeaderboard,
+        pilotIds,
         animatingRows,
         consecutiveLaps,
     }: LeaderboardTableProps,
@@ -64,9 +69,13 @@ function LeaderboardTable(
         [ctx],
     );
 
+    const pilots = useAtomValue(pilotsAtom);
     const rows: LeaderboardRowProps[] = useMemo(() => (
-        currentLeaderboard.map((entry) => ({ pilot: entry.pilot }))
-    ), [currentLeaderboard]);
+        pilotIds
+            .map((id) => pilots.find((p) => p.id === id))
+            .filter((p): p is NonNullable<typeof p> => !!p)
+            .map((pilot) => ({ pilot }))
+    ), [pilotIds, pilots]);
 
     return (
         <GenericTable<TableContext, LeaderboardRowProps>
