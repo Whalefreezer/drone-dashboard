@@ -1,7 +1,7 @@
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { raceProcessedLapsAtom, consecutiveLapsAtom } from '../state/pbAtoms.ts';
-import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-atoms.ts';
+import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { raceDataAtom } from '../race/race-atoms.ts';
 import type { ProcessedLap } from '../state/atoms.ts';
 import { Atom } from 'jotai';

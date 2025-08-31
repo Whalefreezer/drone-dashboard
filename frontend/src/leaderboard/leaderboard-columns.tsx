@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Column } from '../common/tableColumns.tsx';
 import { useAtomValue } from 'jotai';
-import { leaderboardPilotIdsAtom, positionChangesAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom, pilotEliminatedInfoAtom } from './leaderboard-atoms.ts';
+import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
+import { pilotPreferredChannelAtom, pilotRacesUntilNextAtom, pilotEliminatedInfoAtom } from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
