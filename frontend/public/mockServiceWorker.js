@@ -1,3 +1,4 @@
+// deno-lint-ignore-file
 /* eslint-disable */
 /* tslint:disable */
 
@@ -305,3 +306,4 @@ async function respondWithMock(response) {
 
     return mockedResponse;
 }
+// deno-lint-ignore-file

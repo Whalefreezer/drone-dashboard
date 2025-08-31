@@ -4,7 +4,7 @@ import { BASE_URL, RACE_DATA_ENDPOINT_TEMPLATE } from '../snapshotConstants.ts';
 
 interface SnapshotResult {
     status: number;
-    data?: any;
+    data?: unknown;
     error?: string;
 }
 

@@ -27,12 +27,11 @@ type QRCodeProps =
 
 // Wrapper component for QRCodeSVG
 function QRCode({ value, ...rest }: QRCodeProps) {
-    const combinedProps: CoreQRCodeProps = { ...defaultProps, ...rest, value };
+    const combinedProps: React.ComponentProps<typeof QRCodeSVG> = { ...defaultProps, ...rest, value } as React.ComponentProps<typeof QRCodeSVG>;
 
     return (
         <div className='qr-code-container'>
-            {/* Type assertion needed as the library's own types might be complex */}
-            <QRCodeSVG {...combinedProps as any} />
+            <QRCodeSVG {...combinedProps} />
         </div>
     );
 }

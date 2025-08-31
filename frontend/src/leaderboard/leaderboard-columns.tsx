@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import type { Atom } from 'jotai';
 import type { Column } from '../common/tableColumns.tsx';
 import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
@@ -85,14 +86,17 @@ function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
 
 type StatTime = { time: number; roundId: string; raceNumber: number } | null;
 
+type TimeMetric = { time: number; raceId: string };
+type TimeMetricPair = { current: TimeMetric | null; previous: TimeMetric | null };
+
 function RenderTimeCell(
-    { metricAtom }: { metricAtom: any }, // Various metric atoms (holeshot, bestLap, etc.) all return {current, previous} with {time, raceId}
+    { metricAtom }: { metricAtom: Atom<TimeMetricPair | Promise<TimeMetricPair>> }, // eagerAtom may yield value or Promise
 ) {
     const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
     const roundDataValue = useAtomValue(roundsDataAtom);
     const races = useAtomValue(racesAtom);
 
-    const { current, previous } = useAtomValue(metricAtom) as { current: { time: number; raceId: string } | null; previous: { time: number; raceId: string } | null };
+    const { current, previous } = useAtomValue(metricAtom);
 
     const toStat = (val: { time: number; raceId: string } | null): StatTime => {
         if (!val) return null;

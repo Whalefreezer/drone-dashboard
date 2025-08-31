@@ -50,7 +50,7 @@ function ScenarioSelector() {
             console.log(`MSW handlers updated for scenario: "${newScenarioName}"`);
 
             // Force a reload to reflect changes
-            window.location.reload();
+            globalThis.location.reload();
         } catch (error) {
             console.error(`Error applying scenario "${newScenarioName}":`, error);
             // Optionally revert selection or show error state

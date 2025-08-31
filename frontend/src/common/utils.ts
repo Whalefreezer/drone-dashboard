@@ -207,13 +207,13 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
  * @param delay - The number of milliseconds to delay
  * @returns A debounced function
  */
-export function simpleDebounce<T extends (...args: any[]) => any>(
+export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     delay: number
 ): T & { cancel: () => void } {
     let timeoutId: number | null = null;
 
-    function debounced(this: any, ...args: Parameters<T>): void {
+    function debounced(this: unknown, ...args: Parameters<T>): void {
         if (timeoutId !== null) {
             clearTimeout(timeoutId);
         }
@@ -242,7 +242,7 @@ export function simpleDebounce<T extends (...args: any[]) => any>(
  * @param delay - The number of milliseconds to delay
  * @returns A debounced function
  */
-export function batchDebounce<TArgs extends any[], TReturn = void>(
+export function batchDebounce<TArgs extends unknown[], TReturn = void>(
     func: (calls: TArgs[]) => TReturn,
     delay: number
 ): ((...args: TArgs) => void) & { cancel: () => void } {

@@ -34,7 +34,7 @@ describe('TimeDisplay', () => {
     });
 
     it('shows seconds when showSeconds is true', () => {
-        const { container } = render(<TimeDisplay showSeconds={true} />);
+        const { container } = render(<TimeDisplay showSeconds />);
         assertEquals(container.textContent, '2:30:00 PM');
     });
 

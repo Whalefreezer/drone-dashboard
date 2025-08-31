@@ -3,6 +3,7 @@ import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { channelsDataAtom, bracketsDataAtom, pilotsAtom } from '../state/pbAtoms.ts';
+import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 
 // Race ID sets shared across leaderboard and metric selectors
@@ -69,7 +70,7 @@ export const pilotEliminatedInfoAtom = atomFamily((pilotId: string) =>
         if (!pilot) return null;
         const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
         for (const bracket of brackets) {
-            const match = bracket.pilots.find((bp: any) => norm(bp.name) === norm(pilot.name));
+            const match = bracket.pilots.find((bp: BracketPilot) => norm(bp.name) === norm(pilot.name));
             if (match) return { bracket: bracket.name, position: 0, points: match.points };
         }
         return null;
@@ -77,4 +78,3 @@ export const pilotEliminatedInfoAtom = atomFamily((pilotId: string) =>
 );
 
 export type EagerGetter = <Value>(atom: Atom<Value>) => Awaited<Value>;
-

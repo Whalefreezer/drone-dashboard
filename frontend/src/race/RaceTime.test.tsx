@@ -6,8 +6,8 @@ import RaceTime from './RaceTime.tsx';
 
 describe('RaceTime', () => {
     it('renders initial time correctly based on mocked API data', async () => {
-        // Wrap render in async act to handle async state updates triggered by useQueryAtom
-        await act(async () => {
+        // Wrap render in act to handle async state updates triggered by useQueryAtom
+        await act(() => {
             render(
                 <RaceTime />,
             );
@@ -18,5 +18,5 @@ describe('RaceTime', () => {
         assertEquals(timeElement !== null, true, 'Should display initial time 180.0');
     });
 
-    // TODO: Add tests for timer countdown behavior when race starts (requires Date/timer mocking).
+    // TODO(#tests): Add tests for timer countdown behavior when race starts (requires Date/timer mocking).
 });
