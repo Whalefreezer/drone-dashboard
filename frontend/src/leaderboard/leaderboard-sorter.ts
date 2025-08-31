@@ -1,4 +1,4 @@
-import { NullHandling, SortDirection, type EagerGetter, type SortGroup } from './sorting-types.ts';
+import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from './sorting-types.ts';
 
 // Pure sorter operating on pilot IDs using a Jotai getter and a declarative config
 export function sortPilotIds(ids: string[], get: EagerGetter, config: SortGroup[]): string[] {
@@ -52,4 +52,3 @@ export function sortPilotIds(ids: string[], get: EagerGetter, config: SortGroup[
 
     return [...ids].sort(compare);
 }
-

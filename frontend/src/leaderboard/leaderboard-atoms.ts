@@ -4,7 +4,6 @@ import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-a
 import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
 
-
 export const leaderboardPilotIdsAtom = eagerAtom((get): string[] => {
     const raceIds = get(currentRaceIdsAtom);
     const idSet = new Set<string>();

@@ -29,4 +29,3 @@ export interface SortGroup {
     condition?: Condition;
     groups?: SortGroup[];
 }
-
