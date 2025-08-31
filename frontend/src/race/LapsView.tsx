@@ -6,7 +6,7 @@ import {
     pilotsAtom,
     roundsDataAtom,
 } from '../state/index.ts';
-import { raceDataAtom } from './race-atoms.ts';
+import { raceDataAtom, raceMaxLapNumberAtom, raceSortedRowsAtom } from './race-atoms.ts';
 import type { RaceData } from './race-types.ts';
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
@@ -258,22 +258,8 @@ function useLapsTableColumns(
 function LapsTable(
     { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
 ) {
-    const rounds = useAtomValue(roundsDataAtom);
-    const roundRec = rounds.find((r) => r.id === race.roundId) ?? null;
-    const isRaceRound = roundRec?.eventType === EventType.Race;
-    const pilotsWithLaps = race.pilotChannels
-        .map((pilotChannel) => {
-            const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
-            return { pilotChannel, completedLaps };
-        })
-        .sort((a, b) => b.completedLaps - a.completedLaps);
-
-    const maxLaps = Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
-
-    const rows: LapsRow[] = pilotsWithLaps.map((p, idx) => ({
-        pilotChannel: p.pilotChannel,
-        position: idx + 1,
-    }));
+    const rows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
+    const maxLaps = useAtomValue(raceMaxLapNumberAtom(race.id));
 
     const { columns, ctx } = useLapsTableColumns(race, matchingBracket, maxLaps);
 
@@ -287,5 +273,3 @@ function LapsTable(
         />
     );
 }
-
-// LapsTableHeader + LapsTableRow are no longer needed with GenericTable

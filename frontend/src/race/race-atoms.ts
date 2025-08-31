@@ -9,6 +9,8 @@ import {
     pilotChannelRecordsAtom,
     raceRecordsAtom,
     currentOrderKVAtom,
+    roundsDataAtom,
+    consecutiveLapsAtom,
 } from '../state/pbAtoms.ts';
 import {
     computePilotChannelAssociations,
@@ -18,6 +20,97 @@ import {
     RaceStatus,
 } from './race-types.ts';
 import { eagerAtom } from 'jotai-eager';
+import { EventType } from '../api/pbTypes.ts';
+
+type PilotCalc = {
+    pilotChannel: { id: string; pilotId: string; channelId: string };
+    completedLaps: number;
+    completionTime: number; // holeshot + first N laps (N = targetLaps), Infinity if not completed
+    consecutiveTime: number; // best N-consecutive time (N = event pbLaps), Infinity if not enough
+};
+
+/**
+ * Per-race pilot calculations used for ranking in LapsView
+ */
+export const racePilotCalcsAtom = atomFamily((raceId: string) =>
+    eagerAtom((get): PilotCalc[] => {
+        const race = get(raceDataAtom(raceId));
+        if (!race) return [];
+
+        const rounds = get(roundsDataAtom);
+        const nConsec = get(consecutiveLapsAtom);
+
+        return race.pilotChannels.map((pilotChannel) => {
+            const lapsForPilot = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
+            const holeshot = lapsForPilot.find((l) => l.isHoleshot) ?? null;
+            const racingLaps = lapsForPilot.filter((l) => !l.isHoleshot);
+            const completedLaps = racingLaps.length;
+
+            // Completion time for targetLaps (Race rounds)
+            const target = race.targetLaps ?? 0;
+            let completionTime = Number.POSITIVE_INFINITY;
+            if (target > 0 && holeshot && racingLaps.length >= target) {
+                const hs = holeshot.lengthSeconds;
+                const firstN = racingLaps.slice(0, target).reduce((s, l) => s + l.lengthSeconds, 0);
+                completionTime = hs + firstN;
+            }
+
+            // Fastest N consecutive (Practice/TimeTrial/etc)
+            let consecutiveTime = Number.POSITIVE_INFINITY;
+            if (nConsec > 0 && racingLaps.length >= nConsec) {
+                for (let i = 0; i <= racingLaps.length - nConsec; i++) {
+                    const sum = racingLaps.slice(i, i + nConsec).reduce((s, l) => s + l.lengthSeconds, 0);
+                    if (sum < consecutiveTime) consecutiveTime = sum;
+                }
+            }
+
+            return { pilotChannel, completedLaps, completionTime, consecutiveTime };
+        });
+    })
+);
+
+/**
+ * Sorted pilot rows for LapsView based on event type:
+ * - Race: first to complete targetLaps, then by most laps
+ * - Others: fastest N consecutive (N = pbLaps), then by most laps
+ */
+export const raceSortedRowsAtom = atomFamily((raceId: string) =>
+    eagerAtom((get): { pilotChannel: { id: string; pilotId: string; channelId: string }; position: number }[] => {
+        const race = get(raceDataAtom(raceId));
+        if (!race) return [];
+        const rounds = get(roundsDataAtom);
+        const isRaceRound = (rounds.find((r) => r.id === race.roundId)?.eventType === EventType.Race);
+        const calcs = get(racePilotCalcsAtom(raceId));
+
+        let sorted: PilotCalc[];
+        if (isRaceRound) {
+            const completed = calcs.filter((p) => Number.isFinite(p.completionTime))
+                .sort((a, b) => a.completionTime - b.completionTime);
+            const notCompleted = calcs.filter((p) => !Number.isFinite(p.completionTime))
+                .sort((a, b) => b.completedLaps - a.completedLaps);
+            sorted = [...completed, ...notCompleted];
+        } else {
+            const haveConsec = calcs.filter((p) => Number.isFinite(p.consecutiveTime))
+                .sort((a, b) => a.consecutiveTime - b.consecutiveTime);
+            const noConsec = calcs.filter((p) => !Number.isFinite(p.consecutiveTime))
+                .sort((a, b) => b.completedLaps - a.completedLaps);
+            sorted = [...haveConsec, ...noConsec];
+        }
+
+        return sorted.map((p, idx) => ({ pilotChannel: p.pilotChannel, position: idx + 1 }));
+    })
+);
+
+/**
+ * Max lap number present in a race (for column count)
+ */
+export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
+    eagerAtom((get): number => {
+        const race = get(raceDataAtom(raceId));
+        if (!race) return 0;
+        return Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
+    })
+);
 
 /**
  * PB-native race atom family - much cleaner than the legacy ComputedRace approach
