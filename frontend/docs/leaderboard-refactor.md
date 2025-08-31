@@ -1,6 +1,8 @@
 # Leaderboard Refactor: From LBInputRace to Atoms
 
-This document proposes replacing the `LBInputRace` DTO and the monolithic `calculateLeaderboardData` function with a set of focused Jotai atoms and small pure helpers. The goal is to eliminate duplication, reduce recomputation, and align the leaderboard with the PB‑native atom architecture (laps/channels per race).
+This document proposes replacing the `LBInputRace` DTO and the monolithic `calculateLeaderboardData` function with a set of focused Jotai
+atoms and small pure helpers. The goal is to eliminate duplication, reduce recomputation, and align the leaderboard with the PB‑native atom
+architecture (laps/channels per race).
 
 ## Current State (Problems)
 
@@ -59,11 +61,14 @@ Terminology: `rid` = `raceId`.
 
 - scheduling and channel context
   - `pilotScheduledSetAtom: Set<pilotId>` — derived from union of `racePilotChannelsAtom(rid)` across all `rid`.
-  - `pilotNextRaceDistanceAtom(pilotId): number` — compute races‑until‑next using `allRacesAtom`, `currentRaceIndexAtom`, and `racePilotChannelsAtom(rid)` for membership.
-  - `pilotPreferredChannelAtom(pilotId): PBChannelRecord | null` — choose the first channel looking forward from current, then backward (using `racePilotChannelsAtom` + `channelsDataAtom`).
+  - `pilotNextRaceDistanceAtom(pilotId): number` — compute races‑until‑next using `allRacesAtom`, `currentRaceIndexAtom`, and
+    `racePilotChannelsAtom(rid)` for membership.
+  - `pilotPreferredChannelAtom(pilotId): PBChannelRecord | null` — choose the first channel looking forward from current, then backward
+    (using `racePilotChannelsAtom` + `channelsDataAtom`).
 
 - leaderboard ordering and per‑pilot data
-  - `leaderboardPilotIdsAtom: string[]` — pilot IDs in sorted order only, computed using `currentAggregatesAtom` (centralizes filtering + sorting via a pure helper and aggregate maps).
+  - `leaderboardPilotIdsAtom: string[]` — pilot IDs in sorted order only, computed using `currentAggregatesAtom` (centralizes filtering +
+    sorting via a pure helper and aggregate maps).
   - `pilotLeaderboardAtom(pilotId): { 
       current: { bestLap?, consecutiveLaps?, holeshot?, fastestTotalRaceTime? };
       previous: { bestLap?, consecutiveLaps?, holeshot?, fastestTotalRaceTime? };
@@ -71,7 +76,8 @@ Terminology: `rid` = `raceId`.
       racesUntilNext: number;
       channel: PBChannelRecord | null;
       eliminatedInfo: { bracket: string; position: number; points: number } | null;
-    }` — pairs the per‑pilot metrics from `currentAggregatesAtom` and `previousAggregatesAtom`.
+    }`
+    — pairs the per‑pilot metrics from `currentAggregatesAtom` and `previousAggregatesAtom`.
   - Columns read only what they need (e.g., show time and diff if `current` vs `previous` differ).
 
 - position deltas (previous vs current)
@@ -95,27 +101,33 @@ Terminology: `rid` = `raceId`.
 
 ## Migration Plan (Incremental)
 
-1) Introduce metrics helpers and `racePilotStatsAtom(rid)`
+1. Introduce metrics helpers and `racePilotStatsAtom(rid)`
+
 - Implement pure helpers for best lap, fastest consecutive, holeshot, and total N‑lap time.
 - Implement `racePilotStatsAtom(rid)` using existing per‑race atoms + helpers.
 - Unit test helpers; basic atom tests with fixture laps.
 
-2) Add `pilotAggregatesAtom` and `pilotScheduledSetAtom`
+2. Add `pilotAggregatesAtom` and `pilotScheduledSetAtom`
+
 - Fold across `eventRaceIdsAtom` and `racePilotStatsAtom(rid)`.
 - Derive the scheduled set from pilotChannels across races.
 
-3) Replace LBInputRace in leaderboard state
+3. Replace LBInputRace in leaderboard state
+
 - Introduce comparison race ID sets: `currentRaceIdsAtom` and `previousRaceIdsAtom`.
 - Add `currentAggregatesAtom` and `previousAggregatesAtom` using a shared aggregator.
-- Introduce `leaderboardPilotIdsAtom` (sorted IDs) and `pilotLeaderboardAtom(pilotId)` that pairs `current` and `previous` per‑pilot metrics.
+- Introduce `leaderboardPilotIdsAtom` (sorted IDs) and `pilotLeaderboardAtom(pilotId)` that pairs `current` and `previous` per‑pilot
+  metrics.
 - Swap leaderboard to use these atoms instead of building `entries` arrays.
 - Remove `LBInputRace` type and mapping.
 
-4) Recency and diff by raceId
+4. Recency and diff by raceId
+
 - Update cells that compute “recent” to use `raceId` from aggregates/stats instead of `(roundId, raceNumber)`.
 - Add `leaderboardSnapshotAtom` and `positionChangesAtom` to manage prev/current.
 
-5) Clean‑up and tests
+5. Clean‑up and tests
+
 - Remove `calculateLeaderboardData` or reduce to pure helpers that sorting atoms call.
 - Verify UI parity; add tests for sort/group logic, per‑pilot atom fields, and deltas.
 

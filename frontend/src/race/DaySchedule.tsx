@@ -89,17 +89,13 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
         const endMinutes = parseTimeToMinutes(event.endTime);
 
         // Handle case where end time is on the next day
-        const duration = endMinutes >= startMinutes
-            ? endMinutes - startMinutes
-            : (24 * 60) - startMinutes + endMinutes;
+        const duration = endMinutes >= startMinutes ? endMinutes - startMinutes : (24 * 60) - startMinutes + endMinutes;
 
         return Math.max(duration, DEFAULT_EVENT_DURATION);
     };
 
     // Sort events by start time
-    const sortedEvents = [...events].sort((a, b) =>
-        parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
-    );
+    const sortedEvents = [...events].sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
 
     // Find the earliest and latest times to calculate total timeline height
     const startMinutes = Math.min(...sortedEvents.map((e) => parseTimeToMinutes(e.startTime)));
@@ -120,23 +116,17 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
     // Filter events to only show those after the window start
     const visibleEvents = sortedEvents.filter((event) => {
         const eventStart = parseTimeToMinutes(event.startTime);
-        const eventEnd = event.endTime
-            ? parseTimeToMinutes(event.endTime)
-            : eventStart + DEFAULT_EVENT_DURATION;
+        const eventEnd = event.endTime ? parseTimeToMinutes(event.endTime) : eventStart + DEFAULT_EVENT_DURATION;
 
         // Handle events that cross midnight
-        const normalizedEventEnd = eventEnd < eventStart
-            ? eventEnd + (24 * MINUTES_PER_HOUR)
-            : eventEnd;
+        const normalizedEventEnd = eventEnd < eventStart ? eventEnd + (24 * MINUTES_PER_HOUR) : eventEnd;
 
         return normalizedEventEnd >= windowStart;
     });
 
     // Calculate timeline height based on the last event of the day
     const lastEventTime = Math.max(...visibleEvents.map((event) => {
-        const eventEnd = event.endTime
-            ? parseTimeToMinutes(event.endTime)
-            : parseTimeToMinutes(event.startTime) + DEFAULT_EVENT_DURATION;
+        const eventEnd = event.endTime ? parseTimeToMinutes(event.endTime) : parseTimeToMinutes(event.startTime) + DEFAULT_EVENT_DURATION;
         return eventEnd;
     }));
 
@@ -212,12 +202,8 @@ const DaySchedule: React.FC<DayScheduleProps> = ({
                                 <div className='event-description-wrapper'>
                                     <span className='event-description'>
                                         {event.title}
-                                        {event.group && (
-                                            <span className='event-group'>({event.group})</span>
-                                        )}
-                                        {event.details && (
-                                            <span className='event-details'>{event.details}</span>
-                                        )}
+                                        {event.group && <span className='event-group'>({event.group})</span>}
+                                        {event.details && <span className='event-details'>{event.details}</span>}
                                     </span>
                                 </div>
                             </div>

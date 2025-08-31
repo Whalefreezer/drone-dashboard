@@ -16,8 +16,6 @@ export interface ProcessedLap {
     isHoleshot: boolean;
 }
 
-
-
 export interface OverallBestTimes {
     overallFastestLap: number;
     pilotBestLaps: Map<string, number>;
@@ -81,8 +79,6 @@ export function isRaceActive(race: { start?: string; end?: string } | undefined)
     return raceStarted;
 }
 
-
-
 /**
  * Orders races by round order and race number
  */
@@ -104,9 +100,7 @@ export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
 
     brackets.forEach((bracket) => {
         // Check if bracket is complete by verifying all pilots have all rounds filled
-        const isComplete = bracket.pilots.every((pilot) =>
-            pilot.rounds.every((round) => round !== null)
-        );
+        const isComplete = bracket.pilots.every((pilot) => pilot.rounds.every((round) => round !== null));
 
         if (isComplete) {
             // Sort pilots by points to find bottom two

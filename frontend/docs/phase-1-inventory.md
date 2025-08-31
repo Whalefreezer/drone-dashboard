@@ -1,6 +1,7 @@
 # Phase 1 Inventory – Deprecate DbObject and minimize sourceId
 
-This document captures Phase 1 discovery and safe type-only realignment for the migration to PocketBase record types, per [deprecate-dbobject-and-sourceid.md](mdc:frontend/docs/deprecate-dbobject-and-sourceid.md).
+This document captures Phase 1 discovery and safe type-only realignment for the migration to PocketBase record types, per
+[deprecate-dbobject-and-sourceid.md](mdc:frontend/docs/deprecate-dbobject-and-sourceid.md).
 
 ## Legacy interfaces extending DbObject
 
@@ -21,7 +22,8 @@ This document captures Phase 1 discovery and safe type-only realignment for the 
 - Tests import legacy types for fixtures (kept for now):
   - [pilot/PilotChannelView.test.tsx](mdc:frontend/src/pilot/PilotChannelView.test.tsx)
 - Enums (kept temporarily):
-  - `PrimaryTimingSystemLocation`, `ValidityType` from [types/common.ts](mdc:frontend/src/types/common.ts) used in [state/pbAtoms.ts](mdc:frontend/src/state/pbAtoms.ts)
+  - `PrimaryTimingSystemLocation`, `ValidityType` from [types/common.ts](mdc:frontend/src/types/common.ts) used in
+    [state/pbAtoms.ts](mdc:frontend/src/state/pbAtoms.ts)
 
 ## sourceId usages in joins/lookups/props
 
@@ -43,7 +45,8 @@ This document captures Phase 1 discovery and safe type-only realignment for the 
 ## PB record types available
 
 - Ground truth PB types live in [api/pbTypes.ts](mdc:frontend/src/api/pbTypes.ts):
-  - `PBPilotRecord`, `PBChannelRecord`, `PBRoundRecord`, `PBRaceRecord`, `PBLapRecord`, `PBDetectionRecord`, `PBGamePointRecord`, `PBPilotChannelRecord`, `PBEventRecord`, `PBResultRecord`
+  - `PBPilotRecord`, `PBChannelRecord`, `PBRoundRecord`, `PBRaceRecord`, `PBLapRecord`, `PBDetectionRecord`, `PBGamePointRecord`,
+    `PBPilotChannelRecord`, `PBEventRecord`, `PBResultRecord`
 
 ## Phase 2 targets (functional switch to PB IDs)
 

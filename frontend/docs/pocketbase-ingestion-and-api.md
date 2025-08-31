@@ -1,8 +1,10 @@
 ## Ingestion, Sync, and API Plan
 
-This doc proposes how the backend will ingest FPVTrackside data, normalize it into PocketBase, and expose APIs for the frontend. It also outlines idempotency, scheduling, and backfill strategies.
+This doc proposes how the backend will ingest FPVTrackside data, normalize it into PocketBase, and expose APIs for the frontend. It also
+outlines idempotency, scheduling, and backfill strategies.
 
 References:
+
 - Frontend fetches: [state/atoms.ts](mdc:frontend/src/state/atoms.ts)
 - Types: [types/](mdc:frontend/src/types/index.ts)
 - Migrations/wiring: [pocketbase-migrations-and-wiring.md](mdc:frontend/docs/pocketbase-migrations-and-wiring.md)
@@ -24,7 +26,8 @@ References:
 
 - A Go service in `backend/ingest/` implementing:
   - `FetchClient` (HTTP GET with base URL from flags)
-  - `Parser` mapping JSON → internal structs aligned with `frontend/src/types/*` where feasible (duplicated minimal Go structs to decouple from TS)
+  - `Parser` mapping JSON → internal structs aligned with `frontend/src/types/*` where feasible (duplicated minimal Go structs to decouple
+    from TS)
   - `Upserter` resolving relations and writing into PocketBase via `app` core APIs.
   - `IdMap` layer: cache of `(sourceId → PB id)` per collection for relation resolution.
 
@@ -78,10 +81,10 @@ We can expose denormalized PocketBase views via collection rules or embed relati
 ### Backfill strategy
 
 - Provide a `POST /ingest/events/{eventId}/full` endpoint that:
-  1) pulls `Event.json`, `Pilots.json`, `Channels.json`, `Rounds.json`
-  2) enumerates `Event.Races` and fetches each `Race.json`
-  3) fetches `Results.json`
-  4) performs upserts in order with rate limiting and progress logging
+  1. pulls `Event.json`, `Pilots.json`, `Channels.json`, `Rounds.json`
+  2. enumerates `Event.Races` and fetches each `Race.json`
+  3. fetches `Results.json`
+  4. performs upserts in order with rate limiting and progress logging
 
 ### Security and access
 
@@ -90,7 +93,8 @@ We can expose denormalized PocketBase views via collection rules or embed relati
 
 ### Open questions
 
-- Do we scope `pilotChannels` per event or maintain a global mapping plus event overrides? Proposal: scope by event to reflect temporary assignments.
+- Do we scope `pilotChannels` per event or maintain a global mapping plus event overrides? Proposal: scope by event to reflect temporary
+  assignments.
 - Should we materialize processed laps server‑side? For now, keep client‑side processing; revisit after performance review.
 
 ### Milestones
@@ -99,5 +103,3 @@ We can expose denormalized PocketBase views via collection rules or embed relati
 2. Implement ingestion service skeleton and manual trigger endpoints.
 3. Ingest single event snapshot successfully; verify via Admin UI.
 4. Switch selected frontend atoms to PocketBase read APIs.
-
-

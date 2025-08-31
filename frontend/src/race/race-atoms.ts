@@ -3,13 +3,13 @@
 
 import { atomFamily } from 'jotai/utils';
 import {
-    currentEventAtom,
-    raceRecordsAtom,
-    currentOrderKVAtom,
-    roundsDataAtom,
     consecutiveLapsAtom,
-    raceProcessedLapsAtom as baseRaceProcessedLapsAtom,
+    currentEventAtom,
+    currentOrderKVAtom,
     racePilotChannelsAtom as baseRacePilotChannelsAtom,
+    raceProcessedLapsAtom as baseRaceProcessedLapsAtom,
+    raceRecordsAtom,
+    roundsDataAtom,
 } from '../state/pbAtoms.ts';
 import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
@@ -76,7 +76,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
         const race = get(raceDataAtom(raceId));
         if (!race) return [];
         const rounds = get(roundsDataAtom);
-        const isRaceRound = (rounds.find((r) => r.id === (race.round ?? ''))?.eventType === EventType.Race);
+        const isRaceRound = rounds.find((r) => r.id === (race.round ?? ''))?.eventType === EventType.Race;
         const calcs = get(racePilotCalcsAtom(raceId));
 
         let sorted: PilotCalc[];
@@ -109,10 +109,7 @@ export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
 );
 
 // Re-export the dedicated atoms for convenience in race domain
-export {
-    baseRaceProcessedLapsAtom as raceProcessedLapsAtom,
-    baseRacePilotChannelsAtom as racePilotChannelsAtom,
-};
+export { baseRacePilotChannelsAtom as racePilotChannelsAtom, baseRaceProcessedLapsAtom as raceProcessedLapsAtom };
 
 /**
  * PB-native race atom family - much cleaner than the legacy ComputedRace approach
@@ -167,8 +164,6 @@ export const allRacesAtom = eagerAtom((get): PBRaceRecord[] => {
     });
 });
 
-
-
 /**
  * Current race detection - PB native
  *
@@ -188,8 +183,7 @@ export const currentRaceAtom = eagerAtom((get): PBRaceRecord | null => {
         if (kv.sourceId) {
             const bySourceId = races.find((r) => r.sourceId === kv.sourceId);
             if (bySourceId) return bySourceId;
-        }
-        // Fallback to raceOrder if sourceId match fails
+        } // Fallback to raceOrder if sourceId match fails
         else if (kv.order && kv.order > 0) {
             const byRaceOrder = races.find((r) => r.raceOrder === kv.order);
             if (byRaceOrder) return byRaceOrder;

@@ -18,9 +18,7 @@ export function NextRaceCompact({ raceId }: NextRaceCompactProps) {
     if (!race) return null;
 
     const round = rounds.find((r) => r.id === race.round);
-    const title = round?.name
-        ? `${round.name} — Race ${race.raceNumber}`
-        : `Round ${round?.roundNumber ?? '?'} — Race ${race.raceNumber}`;
+    const title = round?.name ? `${round.name} — Race ${race.raceNumber}` : `Round ${round?.roundNumber ?? '?'} — Race ${race.raceNumber}`;
 
     return (
         <div className='next-race-card next-race-card--dense'>
@@ -31,9 +29,7 @@ export function NextRaceCompact({ raceId }: NextRaceCompactProps) {
                 {pilotChannels.map((pc) => {
                     const pilot = pilots.find((p) => p.id === pc.pilotId);
                     const channel = channels.find((c) => c.id === pc.channelId);
-                    const channelLabel = channel
-                        ? `${channel.shortBand ?? ''}${channel.number ?? ''}`
-                        : '-';
+                    const channelLabel = channel ? `${channel.shortBand ?? ''}${channel.number ?? ''}` : '-';
                     return (
                         <div className='next-race-slot' key={pc.id}>
                             <div className='slot-line'>

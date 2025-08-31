@@ -1,19 +1,24 @@
 ## PocketBase Data Model Mapping
 
-This document maps the current frontend types and fetch flows to a normalized PocketBase schema suitable for long‑term querying and analytics.
+This document maps the current frontend types and fetch flows to a normalized PocketBase schema suitable for long‑term querying and
+analytics.
 
 References:
+
 - Frontend types: [types/index.ts](mdc:frontend/src/types/index.ts) (see individual files it re‑exports)
 - Frontend fetching: [state/atoms.ts](mdc:frontend/src/state/atoms.ts)
 - PocketBase migrations guide: [Extend with Go – Migrations](https://pocketbase.io/docs/go-migrations/)
 
 ### Goals
+
 - **Normalize** the FPVTrackside JSON into well‑structured collections.
 - **Preserve source identity** for idempotent upserts and traceability.
 - **Enable efficient queries** via relations and indexes.
 
 ### Source JSON overview
+
 From the frontend fetches in [atoms.ts](mdc:frontend/src/state/atoms.ts):
+
 - `GET /events/{eventId}/Event.json` → `RaceEvent[]` (array with a single event)
 - `GET /events/{eventId}/Pilots.json` → `Pilot[]`
 - `GET /httpfiles/Channels.json` → `Channel[]`
@@ -22,6 +27,7 @@ From the frontend fetches in [atoms.ts](mdc:frontend/src/state/atoms.ts):
 - `GET /events/{eventId}/Results.json` and per‑race `Result.json` → `ResultJson[]`
 
 Type definitions live in:
+
 - [event.ts](mdc:frontend/src/types/event.ts)
 - [pilots.ts](mdc:frontend/src/types/pilots.ts)
 - [channels.ts](mdc:frontend/src/types/channels.ts)
@@ -31,6 +37,7 @@ Type definitions live in:
 - shared fields in [common.ts](mdc:frontend/src/types/common.ts)
 
 ### Identity and provenance strategy
+
 - Each PB record keeps the remote FPVTrackside GUID in `sourceId` (string, unique).
 - Add `source` (string; e.g., "fpvtrackside") and optional `sourceURL` for traceability.
 - PB retains its own `id`; we do NOT force PB ids to match remote GUIDs.
@@ -125,10 +132,13 @@ Type definitions live in:
   - Index: (event, race, position)
 
 Notes:
-- Where the JSON embeds arrays of GUIDs (e.g., `RaceEvent.Races`), we rely on the normalized collections plus relations rather than storing denormalized arrays.
+
+- Where the JSON embeds arrays of GUIDs (e.g., `RaceEvent.Races`), we rely on the normalized collections plus relations rather than storing
+  denormalized arrays.
 - The ingestion process will populate the relation fields by resolving foreign keys via the `sourceId` map.
 
 ### Field naming
+
 - PB fields use lowerCamelCase for readability (e.g., `raceNumber`).
 - We keep a single `sourceId` string for the remote GUID. Any remote numeric `ExternalID` is stored as `externalId` if present.
 
@@ -152,16 +162,20 @@ erDiagram
 ```
 
 ### Indexing summary
-- Unique on `(source, sourceId)` for all collections except pure join tables, where a composite unique may be preferred (e.g., `(event, pilot)` if no remote GUID exists).
+
+- Unique on `(source, sourceId)` for all collections except pure join tables, where a composite unique may be preferred (e.g.,
+  `(event, pilot)` if no remote GUID exists).
 - Time‑series queries: index `races.start`, `detections.time`.
 - Ordering: `(round.order)` with `(event)` for grouped listings.
 
 ### Derivable/processed data
-The frontend currently computes processed laps in memory (see `calculateProcessedLaps` in [atoms.ts](mdc:frontend/src/state/atoms.ts)). We can:
+
+The frontend currently computes processed laps in memory (see `calculateProcessedLaps` in [atoms.ts](mdc:frontend/src/state/atoms.ts)). We
+can:
+
 - keep this as a view‑level concern for now, or
 - optionally add a materialized collection `processedLaps` populated by ingestion for faster queries, if needed later.
 
 ### Migration naming
+
 See the migrations plan doc for concrete migration file names and examples.
-
-

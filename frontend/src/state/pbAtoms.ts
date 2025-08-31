@@ -18,6 +18,7 @@ import {
 } from './commonAtoms.ts';
 import {
     PBChannelRecord,
+    PBClientKVRecord,
     PBDetectionRecord,
     PBEventRecord,
     PBGamePointRecord,
@@ -26,7 +27,6 @@ import {
     PBPilotRecord,
     PBRaceRecord,
     PBRoundRecord,
-    PBClientKVRecord,
 } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
 import { eagerAtom } from 'jotai-eager';
@@ -49,7 +49,6 @@ export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 //         });
 //     }
 // });
-
 
 export const currentEventAtom = eagerAtom((get) => {
     const events = get(eventsAtom);
@@ -182,7 +181,7 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
 
         return laps
             .map((lap) => {
-                const detection = (detections.find((d) => d.id === lap.detection));
+                const detection = detections.find((d) => d.id === lap.detection);
                 if (!detection || !detection.valid) return null;
 
                 return {

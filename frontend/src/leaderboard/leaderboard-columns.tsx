@@ -3,12 +3,12 @@ import type { Atom } from 'jotai';
 import type { Column } from '../common/tableColumns.tsx';
 import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
-import { pilotPreferredChannelAtom, pilotRacesUntilNextAtom, pilotEliminatedInfoAtom } from './leaderboard-context-atoms.ts';
+import { pilotEliminatedInfoAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom } from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import { pilotsAtom } from '../state/pbAtoms.ts';
 import type { PBChannelRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import { pilotBestLapAtom, pilotConsecAtom, pilotHoleshotAtom, pilotFastestTotalRaceAtom, pilotTotalLapsAtom } from './metric-factory.ts';
+import { pilotBestLapAtom, pilotConsecAtom, pilotFastestTotalRaceAtom, pilotHoleshotAtom, pilotTotalLapsAtom } from './metric-factory.ts';
 import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 
 export type TableContext = { consecutiveLaps: number };
@@ -63,9 +63,7 @@ function PositionCell(
         <OverflowFadeCell>
             <div className='position-container'>
                 <div>{currentPosition}</div>
-                {showChange && change > 0 && (
-                    <span className='position-change'>↑{change} from {prevPos}</span>
-                )}
+                {showChange && change > 0 && <span className='position-change'>↑{change} from {prevPos}</span>}
             </div>
         </OverflowFadeCell>
     );
@@ -109,9 +107,7 @@ function RenderTimeCell(
     const previousTime = toStat(previous);
     if (!currentTime) return <td>-</td>;
 
-    const raceIndex = races.findIndex((race) =>
-        race.round === currentTime.roundId && race.raceNumber === currentTime.raceNumber
-    );
+    const raceIndex = races.findIndex((race) => race.round === currentTime.roundId && race.raceNumber === currentTime.raceNumber);
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
     const showDiff = previousTime && previousTime.time !== currentTime.time && isRecent;
     const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId);
@@ -187,7 +183,7 @@ export function getLeaderboardColumns(
             minWidth: 100,
             cell: function PilotCellInline({ pilotId }) {
                 const pilots = useAtomValue(pilotsAtom);
-                const pilot = pilots.find(p => p.id === pilotId);
+                const pilot = pilots.find((p) => p.id === pilotId);
                 if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
                 return (
                     <OverflowFadeCell className='pilot-col' title={pilot.name}>

@@ -1,6 +1,8 @@
 # PocketBase Records Migration Plan
 
-This document describes how to migrate the frontend state and components to use PocketBase record types that extend `PBBaseRecord` (from `frontend/src/api/pbTypes.ts`) and to rely exclusively on live subscriptions via `pbSubscribeCollection` and `pbSubscribeByID`. The end goal is a clean, forward-looking codebase that is PocketBase‑centric, with no polling and no legacy domain interfaces extending `DbObject`.
+This document describes how to migrate the frontend state and components to use PocketBase record types that extend `PBBaseRecord` (from
+`frontend/src/api/pbTypes.ts`) and to rely exclusively on live subscriptions via `pbSubscribeCollection` and `pbSubscribeByID`. The end goal
+is a clean, forward-looking codebase that is PocketBase‑centric, with no polling and no legacy domain interfaces extending `DbObject`.
 
 ## Goals
 
@@ -49,13 +51,15 @@ This document describes how to migrate the frontend state and components to use 
   - `Valid` → `valid`
   - `Order` → `order`
 
-Note: PB relations use PB IDs (`id`), not `sourceId`. Always join collections using PB IDs (`id`). Convert to `sourceId` only when needed for legacy boundaries (to be removed).
+Note: PB relations use PB IDs (`id`), not `sourceId`. Always join collections using PB IDs (`id`). Convert to `sourceId` only when needed
+for legacy boundaries (to be removed).
 
 ## Migration Phases
 
 ### Phase 1: Expose PB Records (Minimal Blast Radius)
 
 Atom changes (live, no polling):
+
 - `pilotsAtom`: expose `PBPilotRecord[]` (from `pbTypes.ts`).
 - `channelsDataAtom`: expose `PBChannelRecord[]`.
 - `roundsDataAtom`: expose `PBRoundRecord[]` scoped by current PB event.
@@ -63,13 +67,16 @@ Atom changes (live, no polling):
 - `eventIdAtom`: expose `string | null` = currentEvent.sourceId (fallback: env).
 
 Consumer changes:
+
 - Update usages of `ID`, `Name`, etc., to PB fields:
   - `pilot.ID` → `pilot.sourceId`, `pilot.Name` → `pilot.name`.
   - `channel.ID` → `channel.sourceId`, `channel.Number` → `channel.number`, etc.
   - `round.ID` → `round.sourceId`, `round.RoundNumber` → `round.roundNumber`, etc.
-- `eventDataAtom` consumers that only need basic event info can read `currentEventAtom` directly, or we keep a minimal derived `eventDataAtom` (PB‑backed) while we migrate race logic.
+- `eventDataAtom` consumers that only need basic event info can read `currentEventAtom` directly, or we keep a minimal derived
+  `eventDataAtom` (PB‑backed) while we migrate race logic.
 
 Outcomes:
+
 - Components use PB types everywhere for pilots, channels, rounds, and current event.
 - Race view remains temporarily adapted to domain shape via `raceFamilyAtom`.
 
@@ -114,7 +121,8 @@ Outcomes:
 ## Rollout Notes
 
 - Prefer small PRs per phase (and per area) to reduce merge pain.
-- When converting a component, do the minimal mapping at the edge if required, then remove it immediately after the parent atoms are migrated.
+- When converting a component, do the minimal mapping at the edge if required, then remove it immediately after the parent atoms are
+  migrated.
 
 ## Out of Scope (for now)
 
@@ -125,4 +133,3 @@ Outcomes:
 
 - After Phase 3, consider deleting the `types/` folder entirely if all consumers are using `pbTypes.ts` and utility enums.
 - Consider creating a small “computed race view” type colocated with race atoms for clarity and testability.
-

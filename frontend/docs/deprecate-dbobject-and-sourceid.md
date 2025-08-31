@@ -1,6 +1,8 @@
 # Deprecate DbObject Types and Minimize sourceId Usage
 
-This document formalizes the cleanup work after completing the PocketBase records migration. We will remove legacy interfaces that extend `DbObject` and significantly reduce reliance on `sourceId` across the frontend. It complements and follows the direction in [pb-records-migration-plan.md](mdc:frontend/docs/pb-records-migration-plan.md).
+This document formalizes the cleanup work after completing the PocketBase records migration. We will remove legacy interfaces that extend
+`DbObject` and significantly reduce reliance on `sourceId` across the frontend. It complements and follows the direction in
+[pb-records-migration-plan.md](mdc:frontend/docs/pb-records-migration-plan.md).
 
 ## Goals
 
@@ -12,7 +14,8 @@ This document formalizes the cleanup work after completing the PocketBase record
 ## Ground Truth Types
 
 - PB record types live in [`src/api/pbTypes.ts`](mdc:frontend/src/api/pbTypes.ts) and mirror backend migration fields.
-- They include: `PBEventRecord`, `PBRoundRecord`, `PBPilotRecord`, `PBChannelRecord`, `PBRaceRecord`, `PBLapRecord`, `PBDetectionRecord`, `PBGamePointRecord`, `PBPilotChannelRecord`, `PBTrackRecord`, `PBResultRecord`.
+- They include: `PBEventRecord`, `PBRoundRecord`, `PBPilotRecord`, `PBChannelRecord`, `PBRaceRecord`, `PBLapRecord`, `PBDetectionRecord`,
+  `PBGamePointRecord`, `PBPilotChannelRecord`, `PBTrackRecord`, `PBResultRecord`.
 - Joins use PB relations by `id` (e.g., `race.round` → `rounds.id`, `pilotChannel.channel` → `channels.id`).
 
 ## What to Remove (after migration)
@@ -24,7 +27,9 @@ This document formalizes the cleanup work after completing the PocketBase record
   - [`types/results.ts`](mdc:frontend/src/types/results.ts)
   - [`types/rounds.ts`](mdc:frontend/src/types/rounds.ts)
   - [`types/event.ts`](mdc:frontend/src/types/event.ts)
-- Keep or relocate shared enums as needed (e.g., `PrimaryTimingSystemLocation`, `ValidityType` in [`types/common.ts`](mdc:frontend/src/types/common.ts)) until consumers are updated. Prefer moving such enums into a PB-oriented location later if they are still useful.
+- Keep or relocate shared enums as needed (e.g., `PrimaryTimingSystemLocation`, `ValidityType` in
+  [`types/common.ts`](mdc:frontend/src/types/common.ts)) until consumers are updated. Prefer moving such enums into a PB-oriented location
+  later if they are still useful.
 
 ## Identifier Policy
 
@@ -76,7 +81,8 @@ This document formalizes the cleanup work after completing the PocketBase record
 
 - Normalize URLs and external interfaces to PB IDs where possible.
 - Relocate shared enums (e.g., `PrimaryTimingSystemLocation`, `ValidityType`) to a PB-oriented module if still needed.
-- Update this document and [pb-records-migration-plan.md](mdc:frontend/docs/pb-records-migration-plan.md) with completed scope and follow-ups.
+- Update this document and [pb-records-migration-plan.md](mdc:frontend/docs/pb-records-migration-plan.md) with completed scope and
+  follow-ups.
 - Acceptance criteria:
   - Documentation reflects the new contracts.
   - No new code introduces `sourceId`-based joins/props.
@@ -103,15 +109,22 @@ const channel = channels.find((c) => c.id === pilotChannel.channel)!;
 ```typescript
 // BEFORE (legacy prop contract)
 import type { PilotChannel } from '../types/index.ts';
-export interface PilotChannelViewProps { pilotChannel: PilotChannel; }
+export interface PilotChannelViewProps {
+    pilotChannel: PilotChannel;
+}
 ```
 
 ```typescript
 // AFTER (PB-friendly contract)
 import type { PBPilotChannelRecord } from '../api/pbTypes.ts';
-export interface PilotChannelViewProps { pilotChannel: PBPilotChannelRecord; }
+export interface PilotChannelViewProps {
+    pilotChannel: PBPilotChannelRecord;
+}
 // Alternative: keep props minimal and explicit
-export interface PilotChannelViewProps { pilotId: string; channelId: string; }
+export interface PilotChannelViewProps {
+    pilotId: string;
+    channelId: string;
+}
 ```
 
 ### Channel color example
@@ -120,8 +133,8 @@ export interface PilotChannelViewProps { pilotId: string; channelId: string; }
 // BEFORE (array from legacy event data)
 const colorIndex = eventData?.[0]?.Channels?.indexOf(channelID);
 const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
-  ? eventData[0].ChannelColors[colorIndex]
-  : '#888';
+    ? eventData[0].ChannelColors[colorIndex]
+    : '#888';
 ```
 
 ```typescript
@@ -148,7 +161,8 @@ const color = channel?.channelColor ?? '#888';
    - Stop re-exporting legacy types from [`types/index.ts`](mdc:frontend/src/types/index.ts).
 
 4. Optional cleanups
-   - If shared enums in `types/common.ts` remain useful, consider relocating to a PB-centric module (e.g., `src/common/enums.ts`) and adjust imports.
+   - If shared enums in `types/common.ts` remain useful, consider relocating to a PB-centric module (e.g., `src/common/enums.ts`) and adjust
+     imports.
 
 ## Search/Replace Checklist
 
@@ -188,16 +202,16 @@ rg "\.sourceId\b" frontend/src
 
 ```typescript
 // ✅ DO: Use PB IDs for joins and props
-function Example({ pilotId, channelId }: { pilotId: string; channelId: string }) { /* ... */ }
+function Example({ pilotId, channelId }: { pilotId: string; channelId: string }) {/* ... */}
 
 // ✅ DO: Use PB record types from pbTypes
-import type { PBPilotRecord, PBChannelRecord } from '../api/pbTypes.ts';
+import type { PBChannelRecord, PBPilotRecord } from '../api/pbTypes.ts';
 
 // ❌ DON'T: Depend on sourceId for joins or prop contracts
 const pilot = pilots.find((p) => p.sourceId === pilotIdFromProps);
 
 // ❌ DON'T: Add new code using interfaces that extend DbObject
-interface Pilot extends DbObject { /* ... */ }
+interface Pilot extends DbObject {/* ... */}
 ```
 
 ---

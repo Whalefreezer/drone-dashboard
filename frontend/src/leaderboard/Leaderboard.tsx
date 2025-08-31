@@ -5,11 +5,7 @@ import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
 import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom } from './leaderboard-atoms.ts';
-import {
-    getLeaderboardColumns,
-    type LeaderboardRowProps,
-    type TableContext,
-} from './leaderboard-columns.tsx';
+import { getLeaderboardColumns, type LeaderboardRowProps, type TableContext } from './leaderboard-columns.tsx';
 
 export function Leaderboard() {
     const consecutiveLaps = useAtomValue(consecutiveLapsAtom);

@@ -1,12 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
-import {
-    channelsDataAtom,
-    overallBestTimesAtom,
-    pilotsAtom,
-    roundsDataAtom,
-} from '../state/index.ts';
-import { raceDataAtom, raceMaxLapNumberAtom, raceSortedRowsAtom, raceProcessedLapsAtom, racePilotChannelsAtom } from './race-atoms.ts';
+import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
+import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 // Using PB-native race record + per-race atoms
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
@@ -14,7 +9,7 @@ import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
-import { GenericTable, type Column } from '../common/tableColumns.tsx';
+import { type Column, GenericTable } from '../common/tableColumns.tsx';
 import { OverflowFadeCell } from '../leaderboard/leaderboard-columns.tsx';
 import { EventType } from '../api/pbTypes.ts';
 
@@ -228,9 +223,7 @@ function useLapsTableColumns(
                 const processedLaps = useAtomValue(raceProcessedLapsAtom(raceId));
                 const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
                 const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
-                const fastestLap = racingLaps.length > 0
-                    ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
-                    : Infinity;
+                const fastestLap = racingLaps.length > 0 ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds)) : Infinity;
                 const overallFastestLap = processedLaps.filter((lap) => !lap.isHoleshot).length > 0
                     ? Math.min(
                         ...processedLaps
@@ -239,9 +232,7 @@ function useLapsTableColumns(
                     )
                     : Infinity;
 
-                const lapData = pilotLaps.find((lap) =>
-                    (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i)
-                );
+                const lapData = pilotLaps.find((lap) => (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i));
                 if (!lapData) return <td>-</td>;
 
                 const className = getLapClassName(

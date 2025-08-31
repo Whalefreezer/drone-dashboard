@@ -1,10 +1,12 @@
 ## PocketBase Migrations and Backend Wiring
 
-This document outlines how we will define and register PocketBase migrations in the Go backend and wire them into the existing `main.go` server lifecycle.
+This document outlines how we will define and register PocketBase migrations in the Go backend and wire them into the existing `main.go`
+server lifecycle.
 
 Reference: [PocketBase Go Migrations](https://pocketbase.io/docs/go-migrations/)
 
 ### Objectives
+
 - Define initial collections to support normalized data model (see `pocketbase-data-model.md`).
 - Register migrations and ensure they run automatically on server start.
 - Enable generation of snapshot migrations during development.
@@ -24,7 +26,8 @@ The `migrations` package is imported anonymously from `main.go` to register the 
 ### Wiring in main.go
 
 In `backend/main.go`:
-1) Register the migrate command before `app.Start()`:
+
+1. Register the migrate command before `app.Start()`:
 
 ```go
 import (
@@ -50,12 +53,14 @@ func main() {
 ```
 
 Notes:
+
 - We already import `strings`; add `os` if not present.
 - `_ "drone-dashboard/backend/migrations"` ensures compiled‑in migration registration.
 
 ### Initial migration: create collections
 
-The first migration creates base collections aligned with the data model: `events`, `rounds`, `pilots`, `channels`, `tracks`, `races`, `pilotChannels`, `laps`, `detections`, `gamePoints`, `results`.
+The first migration creates base collections aligned with the data model: `events`, `rounds`, `pilots`, `channels`, `tracks`, `races`,
+`pilotChannels`, `laps`, `detections`, `gamePoints`, `results`.
 
 Each collection defines fields with appropriate types, relations, and required flags. Example (illustrative snippet only):
 
@@ -103,7 +108,8 @@ We can also add unique constraints using PocketBase collection indexes when usin
 
 ### Development workflow
 
-- During development, with `go run`, `Automigrate` can generate collection snapshots when using the Dashboard; commit resulting files under `backend/migrations/`.
+- During development, with `go run`, `Automigrate` can generate collection snapshots when using the Dashboard; commit resulting files under
+  `backend/migrations/`.
 - To generate a blank migration: `go run . migrate create "short_description"` (run from `backend/`).
 - To snapshot current collections: `go run . migrate collections`.
 - To sync migration history after squashing files: `go run . migrate history-sync`.
@@ -123,5 +129,3 @@ We can also add unique constraints using PocketBase collection indexes when usin
 - Implement `1700000000_init_collections.go` matching the model in `pocketbase-data-model.md`.
 - Implement `1700001000_indexes.go` with unique and performance indexes.
 - Wire `main.go` imports and `migratecmd.MustRegister` as described.
-
-

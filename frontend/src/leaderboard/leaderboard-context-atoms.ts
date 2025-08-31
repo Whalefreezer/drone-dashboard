@@ -2,7 +2,7 @@ import { Atom } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
-import { channelsDataAtom, bracketsDataAtom, pilotsAtom } from '../state/pbAtoms.ts';
+import { bracketsDataAtom, channelsDataAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 

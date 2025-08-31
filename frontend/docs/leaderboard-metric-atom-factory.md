@@ -1,6 +1,8 @@
 # Leaderboard Metric Atom Factory
 
-This document outlines a pattern to build metric-specific, lazy leaderboard atoms via a small factory — without relying on an intermediate `racePilotStatsAtom`. The factory works directly from per‑race laps and gives selectors access to Jotai's `get` so they can read whatever context they need. The aim is to:
+This document outlines a pattern to build metric-specific, lazy leaderboard atoms via a small factory — without relying on an intermediate
+`racePilotStatsAtom`. The factory works directly from per‑race laps and gives selectors access to Jotai's `get` so they can read whatever
+context they need. The aim is to:
 
 - Split by feature (fastest consecutive, best lap, holeshot, fastest total race, total laps) rather than mixing types.
 - Avoid a monolithic aggregator and compute only what a column asks for.
@@ -12,7 +14,8 @@ Provide a factory that, given a metric aggregator, returns a per-pilot atomFamil
 
 - `currentRaceIdsAtom` — all race IDs for the current event (includes current and last completed)
 - `previousRaceIdsAtom` — the same list excluding the current and last completed race
-- `raceProcessedLapsAtom(raceId)` — raw processed laps per race; the factory’s selector computes a per‑race metric from these laps on demand.
+- `raceProcessedLapsAtom(raceId)` — raw processed laps per race; the factory’s selector computes a per‑race metric from these laps on
+  demand.
 
 Columns read only the atoms they need; unused metrics are never computed.
 
@@ -21,10 +24,10 @@ Columns read only the atoms they need; unused metrics are never computed.
 ```ts
 // Input laps for a given pilot and raceId → a metric value (or null if not present)
 export type PerRaceSelector<T> = (args: {
-  get: <V>(anAtom: any) => V;      // jotai get
-  laps: ProcessedLap[];            // already filtered for pilotId
-  raceId: string;
-  pilotId: string;
+    get: <V>(anAtom: any) => V; // jotai get
+    laps: ProcessedLap[]; // already filtered for pilotId
+    raceId: string;
+    pilotId: string;
 }) => T | null;
 
 // Reduce a stream of T to a single T (e.g., pick best by time, or accumulate a sum)
@@ -39,14 +42,16 @@ export const minFoldTime: Fold<{ time: number }> = (acc, v) => (acc == null || v
 export type Finalize<T, R = T> = (value: T | null) => R | null;
 
 export interface MakePilotMetricOptions<T, R = T> {
-  key: string; // metric id for debugging
-  selectPerRace: PerRaceSelector<T>;
-  fold: Fold<T>; // how to combine per-race values into one
-  finalize?: Finalize<T, R>; // optional post-processing
+    key: string; // metric id for debugging
+    selectPerRace: PerRaceSelector<T>;
+    fold: Fold<T>; // how to combine per-race values into one
+    finalize?: Finalize<T, R>; // optional post-processing
 }
 
 // Returns: atomFamily(pilotId) => { current: R | null; previous: R | null }
-export function makePilotMetricAtom<T, R = T>(opts: MakePilotMetricOptions<T, R>): AtomFamily<string, { current: R | null; previous: R | null }>;
+export function makePilotMetricAtom<T, R = T>(
+    opts: MakePilotMetricOptions<T, R>,
+): AtomFamily<string, { current: R | null; previous: R | null }>;
 ```
 
 ### Semantics
@@ -66,29 +71,30 @@ import { currentRaceIdsAtom, previousRaceIdsAtom } from '@/leaderboard/leaderboa
 // (No metric helpers needed here; selectors compute directly from laps and can read atoms via `get`.)
 
 export function makePilotMetricAtom<T, R = T>({ key, selectPerRace, fold, finalize }: MakePilotMetricOptions<T, R>) {
-  function foldForIds(get: any, pilotId: string, ids: string[]): R | null {
-    let acc: T | null = null;
-    for (const rid of ids) {
-      const allLaps = get(raceProcessedLapsAtom(rid));
-      const pilotLaps = allLaps.filter((l) => l.pilotId === pilotId);
-      const val = selectPerRace({ get, laps: pilotLaps, raceId: rid, pilotId });
-      if (val != null) acc = fold(acc, val);
+    function foldForIds(get: any, pilotId: string, ids: string[]): R | null {
+        let acc: T | null = null;
+        for (const rid of ids) {
+            const allLaps = get(raceProcessedLapsAtom(rid));
+            const pilotLaps = allLaps.filter((l) => l.pilotId === pilotId);
+            const val = selectPerRace({ get, laps: pilotLaps, raceId: rid, pilotId });
+            if (val != null) acc = fold(acc, val);
+        }
+        return (finalize ? finalize(acc) : (acc as unknown as R | null));
     }
-    return (finalize ? finalize(acc) : (acc as unknown as R | null));
-  }
 
-  return atomFamily((pilotId: string) =>
-    eagerAtom((get) => ({
-      current: foldForIds(get, pilotId, get(currentRaceIdsAtom)),
-      previous: foldForIds(get, pilotId, get(previousRaceIdsAtom)),
-    }))
-  );
+    return atomFamily((pilotId: string) =>
+        eagerAtom((get) => ({
+            current: foldForIds(get, pilotId, get(currentRaceIdsAtom)),
+            previous: foldForIds(get, pilotId, get(previousRaceIdsAtom)),
+        }))
+    );
 }
 ```
 
 ## Examples
 
 Assume we already have:
+
 - `currentRaceIdsAtom`, `previousRaceIdsAtom`
 - `raceProcessedLapsAtom(raceId)` returning `ProcessedLap[]`
 
@@ -98,19 +104,19 @@ Assume we already have:
 type Consec = { time: number; raceId: string; startLap: number };
 
 export const pilotConsecAtom = makePilotMetricAtom<Consec, Consec>({
-  key: 'fastestConsec',
-  selectPerRace: ({ get, laps, raceId }) => {
-    const n = get(consecutiveLapsAtom); // from pbAtoms
-    const racing = laps.filter((l) => !l.isHoleshot);
-    if (n <= 0 || racing.length < n) return null;
-    let best: { time: number; startLap: number } | null = null;
-    for (let i = 0; i <= racing.length - n; i++) {
-      const time = racing.slice(i, i + n).reduce((s, l) => s + l.lengthSeconds, 0);
-      if (!best || time < best.time) best = { time, startLap: racing[i].lapNumber };
-    }
-    return best ? { time: best.time, raceId, startLap: best.startLap } : null;
-  },
-  fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
+    key: 'fastestConsec',
+    selectPerRace: ({ get, laps, raceId }) => {
+        const n = get(consecutiveLapsAtom); // from pbAtoms
+        const racing = laps.filter((l) => !l.isHoleshot);
+        if (n <= 0 || racing.length < n) return null;
+        let best: { time: number; startLap: number } | null = null;
+        for (let i = 0; i <= racing.length - n; i++) {
+            const time = racing.slice(i, i + n).reduce((s, l) => s + l.lengthSeconds, 0);
+            if (!best || time < best.time) best = { time, startLap: racing[i].lapNumber };
+        }
+        return best ? { time: best.time, raceId, startLap: best.startLap } : null;
+    },
+    fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
 });
 ```
 
@@ -120,14 +126,14 @@ export const pilotConsecAtom = makePilotMetricAtom<Consec, Consec>({
 type BestLap = { time: number; raceId: string; lapNumber: number };
 
 export const pilotBestLapAtom = makePilotMetricAtom<BestLap, BestLap>({
-  key: 'bestLap',
-  selectPerRace: ({ laps, raceId }) => {
-    const racing = laps.filter((l) => !l.isHoleshot);
-    if (racing.length === 0) return null;
-    const fastest = racing.reduce((f, l) => (l.lengthSeconds < f.lengthSeconds ? l : f));
-    return { time: fastest.lengthSeconds, raceId, lapNumber: fastest.lapNumber };
-  },
-  fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
+    key: 'bestLap',
+    selectPerRace: ({ laps, raceId }) => {
+        const racing = laps.filter((l) => !l.isHoleshot);
+        if (racing.length === 0) return null;
+        const fastest = racing.reduce((f, l) => (l.lengthSeconds < f.lengthSeconds ? l : f));
+        return { time: fastest.lengthSeconds, raceId, lapNumber: fastest.lapNumber };
+    },
+    fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
 });
 ```
 
@@ -137,17 +143,17 @@ export const pilotBestLapAtom = makePilotMetricAtom<BestLap, BestLap>({
 type TotalRace = { time: number; raceId: string; lapCount: number };
 
 export const pilotFastestTotalRaceAtom = makePilotMetricAtom<TotalRace, TotalRace>({
-  key: 'fastestTotalRace',
-  selectPerRace: ({ get, laps, raceId }) => {
-    const race = get(raceDataAtom(raceId));
-    const n = race?.targetLaps ?? 0;
-    const hs = laps.find((l) => l.isHoleshot);
-    const r = laps.filter((l) => !l.isHoleshot);
-    if (!hs || n <= 0 || r.length < n) return null;
-    const time = hs.lengthSeconds + r.slice(0, n).reduce((s, l) => s + l.lengthSeconds, 0);
-    return { time, raceId, lapCount: n };
-  },
-  fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
+    key: 'fastestTotalRace',
+    selectPerRace: ({ get, laps, raceId }) => {
+        const race = get(raceDataAtom(raceId));
+        const n = race?.targetLaps ?? 0;
+        const hs = laps.find((l) => l.isHoleshot);
+        const r = laps.filter((l) => !l.isHoleshot);
+        if (!hs || n <= 0 || r.length < n) return null;
+        const time = hs.lengthSeconds + r.slice(0, n).reduce((s, l) => s + l.lengthSeconds, 0);
+        return { time, raceId, lapCount: n };
+    },
+    fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
 });
 ```
 
@@ -157,12 +163,12 @@ export const pilotFastestTotalRaceAtom = makePilotMetricAtom<TotalRace, TotalRac
 type Holeshot = { time: number; raceId: string };
 
 export const pilotHoleshotAtom = makePilotMetricAtom<Holeshot, Holeshot>({
-  key: 'holeshot',
-  selectPerRace: ({ laps, raceId }) => {
-    const hs = laps.find((l) => l.isHoleshot);
-    return hs ? { time: hs.lengthSeconds, raceId } : null;
-  },
-  fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
+    key: 'holeshot',
+    selectPerRace: ({ laps, raceId }) => {
+        const hs = laps.find((l) => l.isHoleshot);
+        return hs ? { time: hs.lengthSeconds, raceId } : null;
+    },
+    fold: (acc, v) => (acc == null || v.time < acc.time ? v : acc),
 });
 ```
 
@@ -170,17 +176,18 @@ export const pilotHoleshotAtom = makePilotMetricAtom<Holeshot, Holeshot>({
 
 ```ts
 export const pilotTotalLapsAtom = makePilotMetricAtom<number, number>({
-  key: 'totalLaps',
-  selectPerRace: ({ laps }) => laps.filter((l) => !l.isHoleshot).length,
-  fold: (acc, v) => (acc == null ? v : acc + v),
-  finalize: (v) => (v ?? 0),
+    key: 'totalLaps',
+    selectPerRace: ({ laps }) => laps.filter((l) => !l.isHoleshot).length,
+    fold: (acc, v) => (acc == null ? v : acc + v),
+    finalize: (v) => (v ?? 0),
 });
 // Consumers can ignore `.previous` for this metric and read only `.current`.
 ```
 
 ## Using in Columns
 
-- Position/ordering: `leaderboardPilotIdsAtom` can read only the metrics it needs (e.g., `pilotConsecAtom(pId).current`, `pilotBestLapAtom(pId).current`) during sorting.
+- Position/ordering: `leaderboardPilotIdsAtom` can read only the metrics it needs (e.g., `pilotConsecAtom(pId).current`,
+  `pilotBestLapAtom(pId).current`) during sorting.
 - Cells: For a row with `pilotId`, a column can do:
 
 ```tsx
@@ -204,7 +211,7 @@ const showDiff = current && previous && current.time !== previous.time;
 
 ## Migration Plan
 
-1) Land the factory and rewrite the existing metric atoms using it (consec, best lap, holeshot, fastest total race, total laps).
-2) Update sorting to consume only the metrics required (via the new atoms) and keep the current ordering semantics.
-3) Incrementally switch columns to the new atoms; verify diffs reflect “previous vs current race sets”.
-4) Remove any ad-hoc aggregators once all columns are migrated.
+1. Land the factory and rewrite the existing metric atoms using it (consec, best lap, holeshot, fastest total race, total laps).
+2. Update sorting to consume only the metrics required (via the new atoms) and keep the current ordering semantics.
+3. Incrementally switch columns to the new atoms; verify diffs reflect “previous vs current race sets”.
+4. Remove any ad-hoc aggregators once all columns are migrated.

@@ -1,30 +1,17 @@
-import {
-    type Condition,
-    NullHandling,
-    SortDirection,
-    type SortGroup,
-    type ValueGetter,
-} from './sorting-types.ts';
+import { type Condition, NullHandling, SortDirection, type SortGroup, type ValueGetter } from './sorting-types.ts';
 import { pilotBestLapAtom, pilotConsecAtom, pilotTotalLapsAtom } from './metric-factory.ts';
-import {
-    pilotEliminatedInfoAtom,
-    pilotPreferredChannelAtom,
-    pilotRacesUntilNextAtom,
-} from './leaderboard-context-atoms.ts';
+import { pilotEliminatedInfoAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom } from './leaderboard-context-atoms.ts';
 
 export type MetricScope = 'current' | 'previous';
 
 // Conditions
-export const hasConsecutive = (scope: MetricScope): Condition => (get, id) =>
-    !!get(pilotConsecAtom(id))[scope];
+export const hasConsecutive = (scope: MetricScope): Condition => (get, id) => !!get(pilotConsecAtom(id))[scope];
 export const hasLaps: Condition = (get, id) => (get(pilotTotalLapsAtom(id)).current ?? 0) > 0;
 export const isEliminated: Condition = (get, id) => !!get(pilotEliminatedInfoAtom(id));
 
 // Values parameterized by scope
-export const consecutiveTime = (scope: MetricScope): ValueGetter => (get, id) =>
-    get(pilotConsecAtom(id))[scope]?.time ?? null;
-export const bestLapTime = (scope: MetricScope): ValueGetter => (get, id) =>
-    get(pilotBestLapAtom(id))[scope]?.time ?? null;
+export const consecutiveTime = (scope: MetricScope): ValueGetter => (get, id) => get(pilotConsecAtom(id))[scope]?.time ?? null;
+export const bestLapTime = (scope: MetricScope): ValueGetter => (get, id) => get(pilotBestLapAtom(id))[scope]?.time ?? null;
 
 // Shared values
 export const nextRaceDistance: ValueGetter = (get, id) => {
@@ -34,8 +21,7 @@ export const nextRaceDistance: ValueGetter = (get, id) => {
     return v;
 };
 
-export const channelNumber: ValueGetter = (get, id) =>
-    get(pilotPreferredChannelAtom(id))?.number ?? Number.MAX_SAFE_INTEGER;
+export const channelNumber: ValueGetter = (get, id) => get(pilotPreferredChannelAtom(id))?.number ?? Number.MAX_SAFE_INTEGER;
 
 export const eliminationStage: ValueGetter = (get, id) => {
     const info = get(pilotEliminatedInfoAtom(id));

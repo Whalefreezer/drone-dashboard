@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { eventRaceIdsAtom, currentEventAtom } from '../state/atoms.ts';
+import { currentEventAtom, eventRaceIdsAtom } from '../state/atoms.ts';
 import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
 
 // Basic styling for the button container

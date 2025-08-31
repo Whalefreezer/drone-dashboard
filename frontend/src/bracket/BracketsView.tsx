@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
-import { bracketsDataAtom, pilotsAtom, useQueryAtom, racePilotChannelsAtom } from '../state/index.ts';
+import { bracketsDataAtom, pilotsAtom, racePilotChannelsAtom, useQueryAtom } from '../state/index.ts';
 import { currentRaceAtom } from '../race/race-atoms.ts';
 import { BracketPilot } from './bracket-types.ts';
 
@@ -59,9 +59,7 @@ export function BracketsView() {
                                 <td>{pilot.seed}</td>
                                 <td>{pilot.name}</td>
                                 <td>{pilot.points}</td>
-                                {pilot.rounds.map((round: number | null, roundIndex: number) => (
-                                    <td key={roundIndex}>{round ?? '-'}</td>
-                                ))}
+                                {pilot.rounds.map((round: number | null, roundIndex: number) => <td key={roundIndex}>{round ?? '-'}</td>)}
                             </tr>
                         ))}
                     </tbody>

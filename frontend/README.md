@@ -5,7 +5,8 @@ A real-time dashboard for FPVTrackside race management system, built with Deno, 
 ## Prerequisites
 
 - [Deno](https://deno.land/#installation) v2.1.0 or higher
-- [VS Code](https://code.visualstudio.com/) with [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) (recommended)
+- [VS Code](https://code.visualstudio.com/) with [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno)
+  (recommended)
 
 ## Setup
 

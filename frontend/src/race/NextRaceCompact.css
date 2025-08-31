@@ -52,8 +52,16 @@
     min-width: 0;
 }
 
-.slot-channel-group { display: inline-flex; align-items: center; gap: 2px; }
-.slot-channel { letter-spacing: 0.3px; color: #bbb; font-size: 0.86rem; }
+.slot-channel-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.slot-channel {
+    letter-spacing: 0.3px;
+    color: #bbb;
+    font-size: 0.86rem;
+}
 .slot-name {
     color: #eee;
     font-weight: 400;
@@ -71,4 +79,6 @@
 }
 
 /* Pull the color square closer to the channel label in this view */
-.slot-channel-group .channel-square { margin-left: 0; }
+.slot-channel-group .channel-square {
+    margin-left: 0;
+}

@@ -1,6 +1,6 @@
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
-import { raceProcessedLapsAtom, consecutiveLapsAtom } from '../state/pbAtoms.ts';
+import { consecutiveLapsAtom, raceProcessedLapsAtom } from '../state/pbAtoms.ts';
 import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { raceDataAtom } from '../race/race-atoms.ts';
 import type { ProcessedLap } from '../state/atoms.ts';
@@ -10,10 +10,10 @@ import { Atom } from 'jotai';
 export type Fold<T> = (acc: T | null, value: T) => T; // acc=null for first
 
 // Common fold helpers
-export const minBy = <T>(sel: (t: T) => number): Fold<T> =>(acc, v) => (acc == null || sel(v) < sel(acc) ? v : (acc as T));
-export const maxBy = <T>(sel: (t: T) => number): Fold<T> =>(acc, v) => (acc == null || sel(v) > sel(acc) ? v : (acc as T));
+export const minBy = <T>(sel: (t: T) => number): Fold<T> => (acc, v) => (acc == null || sel(v) < sel(acc) ? v : (acc as T));
+export const maxBy = <T>(sel: (t: T) => number): Fold<T> => (acc, v) => (acc == null || sel(v) > sel(acc) ? v : (acc as T));
 export const sum: Fold<number> = (acc, v) => (acc == null ? v : acc + v);
-export const minFoldTime: Fold<{ time: number }> = (acc, v) =>(acc == null || v.time < acc.time ? v : acc);
+export const minFoldTime: Fold<{ time: number }> = (acc, v) => (acc == null || v.time < acc.time ? v : acc);
 
 // Optional finalize to post-process the folded value
 export type Finalize<T, R = T> = (value: T | null) => R | null;
@@ -94,7 +94,7 @@ export const pilotFastestTotalRaceAtom = makePilotMetricAtom<TotalRaceMetric, To
     key: 'fastestTotalRace',
     selectPerRace: ({ get, laps, raceId }) => {
         const race = get(raceDataAtom(raceId));
-        const n = (race?.targetLaps ?? 0);
+        const n = race?.targetLaps ?? 0;
         const hs = laps.find((l) => l.isHoleshot);
         const r = laps.filter((l) => !l.isHoleshot);
         if (!hs || n <= 0 || r.length < n) return null;

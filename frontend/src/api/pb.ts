@@ -4,8 +4,7 @@ import { PBBaseRecord } from './pbTypes.ts';
 import { batchDebounce } from '../common/utils.ts';
 
 export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
-export const usePBRace: boolean =
-    String(import.meta.env.VITE_USE_PB_RACE || '').toLowerCase() === 'true';
+export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '').toLowerCase() === 'true';
 
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
@@ -19,14 +18,14 @@ export function pbSubscribeByID<T extends PBBaseRecord>(
 ): Atom<Promise<T> | T> {
     const overrideAtom = atom<T | null>(null);
     const anAtom = atom<Promise<T> | T, [T], void>(
-            (get, {setSelf}) => {
-                const override = get(overrideAtom);
-                if (override) return override;
-                return pb.collection<T>(collection).getOne(id).then((r) => {
-                    setSelf(r);
-                    return r;
-                });
-            },
+        (get, { setSelf }) => {
+            const override = get(overrideAtom);
+            if (override) return override;
+            return pb.collection<T>(collection).getOne(id).then((r) => {
+                setSelf(r);
+                return r;
+            });
+        },
         (get, set, update) => {
             set(overrideAtom, update);
         },
@@ -57,7 +56,7 @@ export function pbSubscribeCollection<T extends PBBaseRecord>(
 ): Atom<Promise<T[]> | T[]> {
     const overrideAtom = atom<T[] | null>(null);
     const anAtom = atom<Promise<T[]> | T[], [(prev: T[] | null) => T[]], void>(
-        (get, {setSelf}) => {
+        (get, { setSelf }) => {
             const override = get(overrideAtom);
             if (override) return override;
             return pb.collection<T>(collection).getList(1, 10_000).then((r) => {

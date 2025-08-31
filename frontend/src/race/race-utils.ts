@@ -73,13 +73,9 @@ export function calculateBestTimes(races: LBInputRace[], consecutiveLaps: number
                 pilotChannels.set(pilotChannel.pilotId, pilotChannel.channelId);
             }
 
-            const racingLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.pilotId && !lap.isHoleshot
-            );
+            const racingLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId && !lap.isHoleshot);
 
-            const holeshotLaps = race.processedLaps.filter((lap) =>
-                lap.pilotId === pilotChannel.pilotId && lap.isHoleshot
-            );
+            const holeshotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId && lap.isHoleshot);
 
             updateFastestLaps(
                 racingLaps,
@@ -126,9 +122,7 @@ function updateFastestLaps(
     overallFastestLaps: Map<string, BestTime>,
 ) {
     if (racingLaps.length > 0) {
-        const fastestLap = racingLaps.reduce((fastest, lap) =>
-            lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest
-        );
+        const fastestLap = racingLaps.reduce((fastest, lap) => lap.lengthSeconds < fastest.lengthSeconds ? lap : fastest);
 
         const currentFastest = overallFastestLaps.get(pilotId);
         if (!currentFastest || fastestLap.lengthSeconds < currentFastest.time) {
@@ -185,7 +179,7 @@ function updateTotalRaceTime(
     fastestTotalRaceTimes: Map<string, TotalRaceTime>,
 ) {
     const targetLaps = race.targetLaps ?? 3; // Use race targetLaps or default to 3
-    
+
     if (
         targetLaps <= 0 || holeshotLaps.length === 0 ||
         racingLaps.length < targetLaps

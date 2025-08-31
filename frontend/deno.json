@@ -51,12 +51,9 @@
         }
     },
     "fmt": {
-        "options": {
-            "useTabs": false,
-            "lineWidth": 100,
-            "indentWidth": 4,
-            "singleQuote": true,
-            "proseWrap": "preserve"
-        }
+        "useTabs": false,
+        "lineWidth": 140,
+        "indentWidth": 4,
+        "singleQuote": true
     }
 }

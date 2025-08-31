@@ -112,8 +112,6 @@ export function calculateRacesUntilNext(
     return -1; // No upcoming races found
 }
 
-
-
 export function findLastIndex<T>(
     array: T[],
     predicate: (value: T) => boolean,
@@ -151,9 +149,7 @@ export function getNormalizedPilotName(name: string): string {
 
 export function getEliminationOrderIndex(pilotName: string): number {
     const normalizedName = getNormalizedPilotName(pilotName);
-    const entry = officalEliminationOrder.find(([_, name]) =>
-        getNormalizedPilotName(String(name)) === normalizedName
-    );
+    const entry = officalEliminationOrder.find(([_, name]) => getNormalizedPilotName(String(name)) === normalizedName);
     return entry ? Number(entry[0]) : -1;
 }
 
@@ -209,7 +205,7 @@ export function getEliminationStage(entry: LeaderboardEntry): number | null {
  */
 export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
     func: T,
-    delay: number
+    delay: number,
 ): T & { cancel: () => void } {
     let timeoutId: number | null = null;
 
@@ -244,7 +240,7 @@ export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
  */
 export function batchDebounce<TArgs extends unknown[], TReturn = void>(
     func: (calls: TArgs[]) => TReturn,
-    delay: number
+    delay: number,
 ): ((...args: TArgs) => void) & { cancel: () => void } {
     let timeoutId: number | null = null;
     let collectedCalls: TArgs[] = [];

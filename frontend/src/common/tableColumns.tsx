@@ -32,14 +32,10 @@ export function GenericTable<TableCtx, RowCtx extends object>(
                 {columns.map((col) => {
                     const colStyle: React.CSSProperties = {};
                     if (col.width !== undefined) {
-                        colStyle.width = typeof col.width === 'number'
-                            ? `${col.width}px`
-                            : col.width;
+                        colStyle.width = typeof col.width === 'number' ? `${col.width}px` : col.width;
                     }
                     if (col.minWidth !== undefined) {
-                        colStyle.minWidth = typeof col.minWidth === 'number'
-                            ? `${col.minWidth}px`
-                            : col.minWidth;
+                        colStyle.minWidth = typeof col.minWidth === 'number' ? `${col.minWidth}px` : col.minWidth;
                     }
                     return <col key={col.key} style={colStyle} />;
                 })}
@@ -52,9 +48,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 
                         return (
                             <th key={col.key} className={col.headerClassName} style={thStyle}>
-                                {typeof col.header === 'function'
-                                    ? col.header(context)
-                                    : col.header}
+                                {typeof col.header === 'function' ? col.header(context) : col.header}
                             </th>
                         );
                     })}

@@ -1,11 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { worker } from './browser.ts';
-import {
-    DEFAULT_SCENARIO_NAME,
-    getHandlersByScenarioName,
-    scenarioNames,
-} from './scenarios/index.ts';
+import { DEFAULT_SCENARIO_NAME, getHandlersByScenarioName, scenarioNames } from './scenarios/index.ts';
 import ScenarioSelector from './ScenarioSelector.tsx';
 
 /**

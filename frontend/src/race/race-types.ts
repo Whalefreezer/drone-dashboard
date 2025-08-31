@@ -1,7 +1,7 @@
 // PB-native race data structures
 // This replaces the legacy ComputedRace and RaceWithProcessedLaps types
 
-import type { PBRaceRecord, PBLapRecord, PBDetectionRecord, PBPilotChannelRecord } from '../api/pbTypes.ts';
+import type { PBDetectionRecord, PBLapRecord, PBPilotChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 
 /**
  * Processed lap data computed from PB records
@@ -41,8 +41,8 @@ export interface RaceStatus {
  * Note: PB records may have different relationship patterns than legacy data
  */
 export function computeProcessedLaps(
-    laps: PBLapRecord[], 
-    detections: PBDetectionRecord[]
+    laps: PBLapRecord[],
+    detections: PBDetectionRecord[],
 ): ProcessedLap[] {
     return laps
         .map((lap) => {
@@ -50,7 +50,7 @@ export function computeProcessedLaps(
             // This may need adjustment based on actual PB relationship structure
             const detection = detections.find((d) => lap.detection === d.id);
             if (!detection || !detection.valid) return null;
-            
+
             return {
                 id: lap.id,
                 lapNumber: lap.lapNumber ?? 0,
@@ -72,7 +72,7 @@ export function computeProcessedLaps(
 export function computeRaceStatus(race: PBRaceRecord): RaceStatus {
     const hasStarted = !!(race.start && !race.start.startsWith('0'));
     const hasEnded = !!(race.end && !race.end.startsWith('0'));
-    
+
     return {
         hasStarted,
         isActive: hasStarted && !hasEnded,
@@ -84,7 +84,7 @@ export function computeRaceStatus(race: PBRaceRecord): RaceStatus {
  * Transform PB pilot channel records to simple associations
  */
 export function computePilotChannelAssociations(
-    pilotChannels: PBPilotChannelRecord[]
+    pilotChannels: PBPilotChannelRecord[],
 ): PilotChannelAssociation[] {
     return pilotChannels.map((pc) => ({
         id: pc.id,
@@ -92,5 +92,3 @@ export function computePilotChannelAssociations(
         channelId: pc.channel ?? '',
     }));
 }
-
-
