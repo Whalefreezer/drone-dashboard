@@ -1,6 +1,6 @@
 import './App.css';
 
-import { TimeDisplay } from './common/index.ts';
+import { TimeDisplay, Legend } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
@@ -34,7 +34,7 @@ function App() {
                     <EliminatedPilotsView />
                 </GenericSuspense>
 
-                {/* <Legend /> */}
+                <Legend />
             </div>
         </>
     );

@@ -1,4 +1,6 @@
 import React from 'react';
+import './Legend.css';
+import './patterns.css';
 
 interface LegendItemProps {
     color: string;
@@ -13,16 +15,16 @@ function LegendItem({ color, label }: LegendItemProps) {
             case 'var(--overall-personal-best-color)':
                 return 'legend-square-overall-personal-best';
             case 'var(--fastest-lap-color)':
-                return 'legend-square-fastest-overall';
+                return 'legend-square-fastest-overall pattern-hatched';
             case 'var(--personal-best-color)':
-                return 'legend-square-personal-best';
+                return 'legend-square-personal-best pattern-hatched';
             default:
                 return 'legend-square';
         }
     };
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+        <div className="legend-item">
             <div className={getClassName()} />
             <span>{label}</span>
         </div>

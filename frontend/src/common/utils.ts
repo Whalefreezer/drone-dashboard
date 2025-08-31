@@ -78,9 +78,9 @@ export function getLapClassName(
     } else if (lap.lengthSeconds === pilotBestLap) {
         return 'lap-overall-personal-best';
     } else if (lap.lengthSeconds === raceFastestLap) {
-        return 'lap-fastest-overall';
+        return 'lap-fastest-overall pattern-hatched';
     } else if (lap.lengthSeconds === pilotFastestLap) {
-        return 'lap-personal-best';
+        return 'lap-personal-best pattern-hatched';
     }
 
     return undefined;

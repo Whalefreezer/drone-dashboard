@@ -9,6 +9,7 @@ import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
+import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/tableColumns.tsx';
 import { OverflowFadeCell } from '../leaderboard/leaderboard-columns.tsx';
 import { EventType } from '../api/pbTypes.ts';
