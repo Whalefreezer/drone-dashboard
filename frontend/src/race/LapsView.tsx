@@ -12,6 +12,8 @@ import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
+import { GenericTable, type Column } from '../common/tableColumns.tsx';
+import { OverflowFadeCell } from '../leaderboard/leaderboard-columns.tsx';
 
 const POSITION_POINTS: Record<number, number> = {
     1: 10,
@@ -65,180 +67,206 @@ export function LapsView({ raceId }: LapsViewProps) {
     );
 }
 
+type LapsTableContext = {
+    race: RaceData;
+    matchingBracket: Bracket | null;
+    maxLaps: number;
+};
+
+type LapsRow = {
+    pilotChannel: { id: string; pilotId: string; channelId: string };
+    position: number;
+};
+
 function LapsTable(
     { race, matchingBracket }: { race: RaceData; matchingBracket: Bracket | null },
 ) {
-    const pilotsWithLaps = race.pilotChannels.map((pilotChannel) => {
-        const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
-        return { pilotChannel, completedLaps };
-    }).sort((a, b) => b.completedLaps - a.completedLaps);
+    const pilotsWithLaps = race.pilotChannels
+        .map((pilotChannel) => {
+            const completedLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId).length;
+            return { pilotChannel, completedLaps };
+        })
+        .sort((a, b) => b.completedLaps - a.completedLaps);
 
     const maxLaps = Math.max(0, ...race.processedLaps.map((lap) => lap.lapNumber));
 
-    return (
-        <table className='laps-table'>
-            <LapsTableHeader maxLaps={maxLaps} matchingBracket={matchingBracket} />
-            <tbody>
-                {pilotsWithLaps.map((pilotData, index) => (
-                    <LapsTableRow
-                        key={pilotData.pilotChannel.id}
-                        pilotChannel={pilotData.pilotChannel}
-                        position={index + 1}
-                        maxLaps={maxLaps}
-                        race={race}
-                        matchingBracket={matchingBracket}
-                    />
-                ))}
-            </tbody>
-        </table>
-    );
-}
+    const rows: LapsRow[] = pilotsWithLaps.map((p, idx) => ({
+        pilotChannel: p.pilotChannel,
+        position: idx + 1,
+    }));
 
-function LapsTableHeader(
-    { maxLaps, matchingBracket }: { maxLaps: number; matchingBracket: Bracket | null },
-) {
-    const headerCells = [
-        <th key='header-pos'>Pos</th>,
-        <th key='header-name'>Name</th>,
-        <th key='header-channel'>Chan</th>,
-    ];
+    const ctx: LapsTableContext = { race, matchingBracket, maxLaps };
 
-    if (matchingBracket) {
-        headerCells.push(
-            <th key='header-points'>Points</th>,
-        );
+    const columns: Array<Column<LapsTableContext, LapsRow>> = [];
 
-        matchingBracket.pilots?.[0]?.rounds.forEach((_, index: number) => {
-            headerCells.push(
-                <th key={`header-bracket-round-${index}`}>R{index + 1}</th>,
-            );
-        });
-    }
-
-    for (let i = 0; i <= maxLaps; i++) {
-        headerCells.push(
-            <th key={`header-lap-${i}`}>
-                {i === 0 ? 'HS' : `L${i}`}
-            </th>,
-        );
-    }
-
-    return (
-        <thead>
-            <tr>{headerCells}</tr>
-        </thead>
-    );
-}
-
-function LapsTableRow({ pilotChannel, position, maxLaps, race, matchingBracket }: {
-    pilotChannel: { id: string; pilotId: string; channelId: string };
-    position: number;
-    maxLaps: number;
-    race: RaceData;
-    matchingBracket: Bracket | null;
-}) {
-    const pilots = useAtomValue(pilotsAtom);
-    const channels = useAtomValue(channelsDataAtom);
-    const overallBestTimes = useAtomValue(overallBestTimesAtom);
-
-    const pilot = pilots.find((p) => p.id === pilotChannel.pilotId)!;
-    const channel = channels.find((c) => c.id === pilotChannel.channelId)!;
-
-    const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
-
-    const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
-
-    const fastestLap = racingLaps.length > 0
-        ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
-        : Infinity;
-
-    const overallFastestLap = race.processedLaps.filter((lap) => !lap.isHoleshot).length > 0
-        ? Math.min(
-            ...race.processedLaps
-                .filter((lap) => !lap.isHoleshot)
-                .map((lap) => lap.lengthSeconds),
-        )
-        : Infinity;
-
-    const bracketPilot = matchingBracket?.pilots.find(
-        (p: BracketPilot) =>
-            p.name.toLowerCase().replace(/\s+/g, '') ===
-                pilot.name.toLowerCase().replace(/\s+/g, ''),
-    );
-
-    const cells = [
-        <td key='pos'>
-            {maxLaps > 0
-                ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {getPositionWithSuffix(position)}
-                        {POSITION_POINTS[position] && (
-                            <span style={{ fontSize: '0.8em', color: '#888' }}>
-                                +{POSITION_POINTS[position]}
-                            </span>
-                        )}
-                    </div>
-                )
-                : '-'}
-        </td>,
-        <td key='name'>{pilot.name}</td>,
-        <td key='channel'>
-            <div className='flex-row'>
-                {channel.shortBand}
-                {channel.number}
-                <ChannelSquare channelID={pilotChannel.channelId} />
-            </div>
-        </td>,
-    ];
-
-    if (matchingBracket && bracketPilot) {
-        cells.push(
-            <td key='points' style={{ color: '#00ff00' }}>{bracketPilot.points}</td>,
-        );
-
-        bracketPilot.rounds.forEach((round: number | null, index: number) => {
-            cells.push(
-                <td key={`bracket-round-${index}`}>
-                    {round
+    // Position
+    columns.push({
+        key: 'pos',
+        header: 'Pos',
+        width: 56,
+        cell: function PosCell({ position }: LapsRow) {
+            return (
+                <td>
+                    {maxLaps > 0
                         ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {round}
-                                {POSITION_POINTS[round] && (
+                                {getPositionWithSuffix(position)}
+                                {POSITION_POINTS[position] && (
                                     <span style={{ fontSize: '0.8em', color: '#888' }}>
-                                        +{POSITION_POINTS[round]}
+                                        +{POSITION_POINTS[position]}
                                     </span>
                                 )}
                             </div>
                         )
                         : '-'}
-                </td>,
+                </td>
             );
+        },
+    });
+
+    // Pilot name (flex)
+    columns.push({
+        key: 'name',
+        header: 'Name',
+        minWidth: 64,
+        cell: function NameCell({ pilotChannel }: LapsRow) {
+            const pilots = useAtomValue(pilotsAtom);
+            const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+            return (
+                <OverflowFadeCell title={pilot?.name}>
+                    {pilot?.name ?? '-'}
+                </OverflowFadeCell>
+            );
+        },
+    });
+
+    // Channel
+    columns.push({
+        key: 'chan',
+        header: 'Chan',
+        width: 52,
+        cell: function ChanCell({ pilotChannel }: LapsRow) {
+            const channels = useAtomValue(channelsDataAtom);
+            const channel = channels.find((c) => c.id === pilotChannel.channelId);
+            return (
+                <td>
+                    <div className='flex-row'>
+                        {channel?.shortBand}
+                        {channel?.number}
+                        <ChannelSquare channelID={pilotChannel.channelId} />
+                    </div>
+                </td>
+            );
+        },
+    });
+
+    // Points + Bracket rounds (if any)
+    if (matchingBracket) {
+        // Points
+        columns.push({
+            key: 'points',
+            header: 'Points',
+            width: 64,
+            cell: function PointsCell({ pilotChannel }: LapsRow) {
+                const pilots = useAtomValue(pilotsAtom);
+                const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+                const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
+                    bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
+                );
+                return (
+                    <td style={{ color: '#00ff00' }}>
+                        {bracketPilot ? bracketPilot.points : '-'}
+                    </td>
+                );
+            },
+        });
+
+        const roundsCount = matchingBracket.pilots?.[0]?.rounds?.length ?? 0;
+        for (let r = 0; r < roundsCount; r++) {
+            const key = `br${r + 1}`;
+            columns.push({
+                key,
+                header: `R${r + 1}`,
+                width: 48,
+                cell: function BracketRoundCell({ pilotChannel }: LapsRow) {
+                    const pilots = useAtomValue(pilotsAtom);
+                    const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+                    const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
+                        bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
+                    );
+                    const roundVal = bracketPilot?.rounds?.[r] ?? null;
+                    return (
+                        <td>
+                            {roundVal
+                                ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {roundVal}
+                                        {POSITION_POINTS[roundVal] && (
+                                            <span style={{ fontSize: '0.8em', color: '#888' }}>
+                                                +{POSITION_POINTS[roundVal]}
+                                            </span>
+                                        )}
+                                    </div>
+                                )
+                                : '-'}
+                        </td>
+                    );
+                },
+            });
+        }
+    }
+
+    // Lap cells: HS + L1..Lmax (show HS only if any holeshot exists)
+    const hasHoleshot = race.processedLaps.some((lap) => lap.isHoleshot);
+    for (let i = hasHoleshot ? 0 : 1; i <= maxLaps; i++) {
+        const isHS = i === 0;
+        columns.push({
+            key: isHS ? 'hs' : `l${i}`,
+            header: isHS ? 'HS' : `L${i}`,
+            width: 52,
+            cell: function LapCell({ pilotChannel }: LapsRow) {
+                const { race } = ctx;
+                const overallBestTimes = useAtomValue(overallBestTimesAtom);
+                const pilotLaps = race.processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
+                const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
+                const fastestLap = racingLaps.length > 0
+                    ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds))
+                    : Infinity;
+                const overallFastestLap = race.processedLaps.filter((lap) => !lap.isHoleshot).length > 0
+                    ? Math.min(
+                        ...race.processedLaps
+                            .filter((lap) => !lap.isHoleshot)
+                            .map((lap) => lap.lengthSeconds),
+                    )
+                    : Infinity;
+
+                const lapData = pilotLaps.find((lap) =>
+                    (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i)
+                );
+                if (!lapData) return <td>-</td>;
+
+                const className = getLapClassName(
+                    lapData,
+                    overallBestTimes.overallFastestLap,
+                    overallBestTimes.pilotBestLaps.get(pilotChannel.pilotId),
+                    overallFastestLap,
+                    fastestLap,
+                );
+
+                return <td className={className}>{lapData.lengthSeconds.toFixed(3)}</td>;
+            },
         });
     }
 
-    const lapCells = Array.from({ length: maxLaps + 1 }, (_, i) => {
-        const lapData = pilotLaps.find((lap) =>
-            (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i)
-        );
-        if (lapData) {
-            const className = getLapClassName(
-                lapData,
-                overallBestTimes.overallFastestLap,
-                overallBestTimes.pilotBestLaps.get(pilotChannel.pilotId),
-                overallFastestLap,
-                fastestLap,
-            );
-            return (
-                <td key={`${lapData.isHoleshot ? 'hs' : 'lap'}-${i}`} className={className}>
-                    {lapData.lengthSeconds.toFixed(3)}
-                </td>
-            );
-        } else {
-            return <td key={`empty-lap-${i}`}>-</td>;
-        }
-    });
-
-    cells.push(...lapCells);
-
-    return <tr>{cells}</tr>;
+    return (
+        <GenericTable<LapsTableContext, LapsRow>
+            className='laps-table'
+            columns={columns}
+            data={rows}
+            context={ctx}
+            getRowKey={(row) => row.pilotChannel.id}
+        />
+    );
 }
+
+// LapsTableHeader + LapsTableRow are no longer needed with GenericTable

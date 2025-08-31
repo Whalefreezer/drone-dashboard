@@ -35,12 +35,50 @@
 .laps-table {
     border: 1px solid black;
     border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed; /* keep dynamic columns consistent */
+    /* Table color variables (match leaderboard) */
+    --table-bg-odd: #1a1a1a;
+    --table-bg-even: #222;
+    --table-bg-hover: #2a2a2a;
 }
 
 .laps-table td,
 .laps-table th {
     border: 1px solid black;
     padding: 4px;
+}
+
+/* Fade-out effect for overflowing content in name column */
+.laps-table td {
+    overflow: hidden;
+    position: relative;
+}
+
+.laps-table td.fade-overflow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
+    pointer-events: none;
+}
+
+/* Row striping and hover */
+.laps-table tbody tr:nth-child(even) {
+    --row-bg: var(--table-bg-even);
+    background-color: var(--table-bg-even);
+}
+
+.laps-table tbody tr:nth-child(odd) {
+    --row-bg: var(--table-bg-odd);
+    background-color: var(--table-bg-odd);
+}
+
+.laps-table tbody tr:hover {
+    background-color: var(--table-bg-hover);
 }
 
 /* Lap Highlighting - Moved from App.css */
