@@ -18,6 +18,7 @@
     "jsr:@std/path@~0.213.1": "0.213.1",
     "jsr:@std/testing@1.0.11": "1.0.11",
     "npm:@deno/vite-plugin@^1.0.4": "1.0.5_vite@6.3.5__picomatch@4.0.3_@types+node@22.15.15",
+    "npm:@react-spring/web@^10.0.1": "10.0.1_react@19.1.1_react-dom@19.1.1__react@19.1.1",
     "npm:@tanstack/query-core@^5.75.0": "5.75.0",
     "npm:@testing-library/react@^16.3.0": "16.3.0_@testing-library+dom@10.4.0_@types+react@19.1.9_@types+react-dom@19.1.7__@types+react@19.1.9_react@19.1.1_react-dom@19.1.1__react@19.1.1",
     "npm:@types/node@*": "22.15.15",
@@ -414,6 +415,48 @@
     },
     "@open-draft/until@2.1.0": {
       "integrity": "sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg=="
+    },
+    "@react-spring/animated@10.0.1_react@19.1.1": {
+      "integrity": "sha512-BGL3hA66Y8Qm3KmRZUlfG/mFbDPYajgil2/jOP0VXf2+o2WPVmcDps/eEgdDqgf5Pv9eBbyj7LschLMuSjlW3Q==",
+      "dependencies": [
+        "@react-spring/shared",
+        "@react-spring/types",
+        "react"
+      ]
+    },
+    "@react-spring/core@10.0.1_react@19.1.1": {
+      "integrity": "sha512-KaMMsN1qHuVTsFpg/5ajAVye7OEqhYbCq0g4aKM9bnSZlDBBYpO7Uf+9eixyXN8YEbF+YXaYj9eoWDs+npZ+sA==",
+      "dependencies": [
+        "@react-spring/animated",
+        "@react-spring/shared",
+        "@react-spring/types",
+        "react"
+      ]
+    },
+    "@react-spring/rafz@10.0.1": {
+      "integrity": "sha512-UrzG/d6Is+9i0aCAjsjWRqIlFFiC4lFqFHrH63zK935z2YDU95TOFio4VKGISJ5SG0xq4ULy7c1V3KU+XvL+Yg=="
+    },
+    "@react-spring/shared@10.0.1_react@19.1.1": {
+      "integrity": "sha512-KR2tmjDShPruI/GGPfAZOOLvDgkhFseabjvxzZFFggJMPkyICLjO0J6mCIoGtdJSuHywZyc4Mmlgi+C88lS00g==",
+      "dependencies": [
+        "@react-spring/rafz",
+        "@react-spring/types",
+        "react"
+      ]
+    },
+    "@react-spring/types@10.0.1": {
+      "integrity": "sha512-Fk1wYVAKL+ZTYK+4YFDpHf3Slsy59pfFFvnnTfRjQQFGlyIo4VejPtDs3CbDiuBjM135YztRyZjIH2VbycB+ZQ=="
+    },
+    "@react-spring/web@10.0.1_react@19.1.1_react-dom@19.1.1__react@19.1.1": {
+      "integrity": "sha512-FgQk02OqFrYyJBTTnBTWAU0WPzkHkKXauc6aeexcvATvLapUxwnfGuLlsLYF8BYjEVfkivPT04ziAue6zyRBtQ==",
+      "dependencies": [
+        "@react-spring/animated",
+        "@react-spring/core",
+        "@react-spring/shared",
+        "@react-spring/types",
+        "react",
+        "react-dom"
+      ]
     },
     "@rolldown/pluginutils@1.0.0-beta.27": {
       "integrity": "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="
@@ -1615,6 +1658,7 @@
       "jsr:@std/assert@1.0.13",
       "jsr:@std/testing@1.0.11",
       "npm:@deno/vite-plugin@^1.0.4",
+      "npm:@react-spring/web@^10.0.1",
       "npm:@tanstack/query-core@^5.75.0",
       "npm:@testing-library/react@^16.3.0",
       "npm:@types/react-dom@^19.1.3",

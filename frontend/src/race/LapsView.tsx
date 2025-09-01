@@ -11,7 +11,7 @@ import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/tableColumns.tsx';
-import { OverflowFadeCell } from '../leaderboard/leaderboard-columns.tsx';
+import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
 
 const POSITION_POINTS: Record<number, number> = {
@@ -100,7 +100,7 @@ function useLapsTableColumns(
         width: 56,
         cell: function PosCell({ position }: LapsRow) {
             return (
-                <td>
+                <div>
                     {maxLaps > 0
                         ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -113,7 +113,7 @@ function useLapsTableColumns(
                             </div>
                         )
                         : '-'}
-                </td>
+                </div>
             );
         },
     });
@@ -143,13 +143,13 @@ function useLapsTableColumns(
             const channels = useAtomValue(channelsDataAtom);
             const channel = channels.find((c) => c.id === pilotChannel.channelId);
             return (
-                <td>
+                <div>
                     <div className='flex-row'>
                         {channel?.shortBand}
                         {channel?.number}
                         <ChannelSquare channelID={pilotChannel.channelId} />
                     </div>
-                </td>
+                </div>
             );
         },
     });
@@ -168,9 +168,9 @@ function useLapsTableColumns(
                     bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
                 );
                 return (
-                    <td style={{ color: '#00ff00' }}>
+                    <div style={{ color: '#00ff00' }}>
                         {bracketPilot ? bracketPilot.points : '-'}
-                    </td>
+                    </div>
                 );
             },
         });
@@ -190,7 +190,7 @@ function useLapsTableColumns(
                     );
                     const roundVal = bracketPilot?.rounds?.[r] ?? null;
                     return (
-                        <td>
+                        <div>
                             {roundVal
                                 ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -203,7 +203,7 @@ function useLapsTableColumns(
                                     </div>
                                 )
                                 : '-'}
-                        </td>
+                        </div>
                     );
                 },
             });
@@ -234,7 +234,7 @@ function useLapsTableColumns(
                     : Infinity;
 
                 const lapData = pilotLaps.find((lap) => (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i));
-                if (!lapData) return <td>-</td>;
+                if (!lapData) return <div>-</div>;
 
                 const className = getLapClassName(
                     lapData,
@@ -244,7 +244,7 @@ function useLapsTableColumns(
                     fastestLap,
                 );
 
-                return <td className={className}>{lapData.lengthSeconds.toFixed(3)}</td>;
+                return <div className={className}>{lapData.lengthSeconds.toFixed(3)}</div>;
             },
         });
     }

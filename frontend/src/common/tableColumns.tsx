@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export type Column<TableCtx, RowCtx> = {
     key: string;
@@ -25,49 +25,73 @@ export function GenericTable<TableCtx, RowCtx extends object>(
         RowCtx
     >,
 ) {
-    return (
-        <table className={className}>
-            {/* Use colgroup so fixed widths are respected and only unspecified columns can flex */}
-            <colgroup>
-                {columns.map((col) => {
-                    const colStyle: React.CSSProperties = {};
-                    if (col.width !== undefined) {
-                        colStyle.width = typeof col.width === 'number' ? `${col.width}px` : col.width;
-                    }
-                    if (col.minWidth !== undefined) {
-                        colStyle.minWidth = typeof col.minWidth === 'number' ? `${col.minWidth}px` : col.minWidth;
-                    }
-                    return <col key={col.key} style={colStyle} />;
-                })}
-            </colgroup>
-            <thead>
-                <tr>
-                    {columns.map((col) => {
-                        const thStyle: React.CSSProperties = {};
-                        if (col.headerAlign) thStyle.textAlign = col.headerAlign;
+    const ROW_HEIGHT = 40; // px, fixed row height for absolute positioning
 
-                        return (
-                            <th key={col.key} className={col.headerClassName} style={thStyle}>
-                                {typeof col.header === 'function' ? col.header(context) : col.header}
-                            </th>
-                        );
-                    })}
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((row, index) => (
-                    <tr key={getRowKey(row, index)} className={getRowClassName?.(row, index)}>
-                        {columns.map((col) => {
-                            const Cell = col.cell as React.ComponentType<RowCtx>;
-                            return (
-                                <React.Fragment key={col.key}>
-                                    {React.createElement(Cell, row)}
-                                </React.Fragment>
-                            );
-                        })}
-                    </tr>
-                ))}
-            </tbody>
-        </table>
+    const gridTemplateColumns = useMemo(() => {
+        const flexIndex = columns.findIndex((c) => c.width === undefined);
+        const toSize = (val: number | string | undefined): string | undefined => {
+            if (val === undefined) return undefined;
+            return typeof val === 'number' ? `${val}px` : val;
+        };
+        return columns.map((col, idx) => {
+            if (idx === flexIndex) {
+                const minW = toSize(col.minWidth);
+                return minW ? `minmax(${minW}, 1fr)` : '1fr';
+            }
+            const w = toSize(col.width);
+            if (w) return w;
+            const minW = toSize(col.minWidth);
+            return minW ? `minmax(${minW}, ${minW})` : 'max-content';
+        }).join(' ');
+    }, [columns]);
+
+    const totalHeight = data.length * ROW_HEIGHT;
+
+    return (
+        <div className={[className, 'gt'].filter(Boolean).join(' ')} role="grid">
+            <div className="gt-header" role="row" style={{ display: 'grid', gridTemplateColumns }}>
+                {columns.map((col) => {
+                    const style: React.CSSProperties = {};
+                    if (col.headerAlign) style.textAlign = col.headerAlign;
+                    return (
+                        <div key={col.key} role="columnheader" className={col.headerClassName} style={style}>
+                            {typeof col.header === 'function' ? col.header(context) : col.header}
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="gt-body" style={{ position: 'relative', height: `${totalHeight}px` }}>
+                {data.map((row, index) => {
+                    const key = getRowKey(row, index);
+                    const y = index * ROW_HEIGHT;
+                    const rowClass = [
+                        'gt-row',
+                        index % 2 === 0 ? 'row-odd' : 'row-even',
+                        getRowClassName?.(row, index) ?? '',
+                    ].filter(Boolean).join(' ');
+                    const rowStyle: React.CSSProperties = {
+                        transform: `translateY(${y}px)`,
+                        height: `${ROW_HEIGHT}px`,
+                        display: 'grid',
+                        gridTemplateColumns,
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                    };
+                    return (
+                        <div key={key} className={rowClass} role="row" style={rowStyle}>
+                            {columns.map((col) => {
+                                const Cell = col.cell as React.ComponentType<RowCtx>;
+                                return (
+                                    <div key={col.key} role="gridcell" className="gt-cell">
+                                        {React.createElement(Cell, row)}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 }

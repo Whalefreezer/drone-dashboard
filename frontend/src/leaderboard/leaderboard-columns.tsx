@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import type { Atom } from 'jotai';
 import type { Column } from '../common/tableColumns.tsx';
 import { useAtomValue } from 'jotai';
@@ -10,6 +10,7 @@ import type { PBChannelRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { pilotBestLapAtom, pilotConsecAtom, pilotFastestTotalRaceAtom, pilotHoleshotAtom, pilotTotalLapsAtom } from './metric-factory.ts';
 import { currentRaceIndexAtom } from '../race/race-atoms.ts';
+import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 
 export type TableContext = { consecutiveLaps: number };
 export interface LeaderboardRowProps {
@@ -17,39 +18,6 @@ export interface LeaderboardRowProps {
 }
 
 // Small table cell that detects overflow and applies a fade class
-export function OverflowFadeCell(
-    { children, className = '', title }: {
-        children: React.ReactNode;
-        className?: string;
-        title?: string;
-    },
-) {
-    const [hasOverflow, setHasOverflow] = useState(false);
-    const cellRef = useRef<HTMLTableCellElement>(null);
-
-    useEffect(() => {
-        const checkOverflow = () => {
-            if (cellRef.current) {
-                const { scrollWidth, clientWidth } = cellRef.current;
-                setHasOverflow(scrollWidth > clientWidth);
-            }
-        };
-        checkOverflow();
-        globalThis.addEventListener('resize', checkOverflow);
-        return () => globalThis.removeEventListener('resize', checkOverflow);
-    }, [children]);
-
-    return (
-        <td
-            ref={cellRef}
-            className={`${className} ${hasOverflow ? 'fade-overflow' : ''}`.trim()}
-            title={title}
-        >
-            {children}
-        </td>
-    );
-}
-
 // Position cell uses calculated positionChanges from atom
 function PositionCell(
     { pilotId, currentPosition }: { pilotId: string; currentPosition: number },
@@ -70,7 +38,7 @@ function PositionCell(
 }
 
 function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
-    if (!channel) return <td>-</td>;
+    if (!channel) return <div>-</div>;
     return (
         <OverflowFadeCell>
             <div className='channel-display'>
@@ -105,7 +73,7 @@ function RenderTimeCell(
 
     const currentTime = toStat(current);
     const previousTime = toStat(previous);
-    if (!currentTime) return <td>-</td>;
+    if (!currentTime) return <div>-</div>;
 
     const raceIndex = races.findIndex((race) => race.round === currentTime.roundId && race.raceNumber === currentTime.raceNumber);
     const isRecent = raceIndex === currentRaceIndex || raceIndex === currentRaceIndex - 1;
@@ -115,9 +83,7 @@ function RenderTimeCell(
 
     return (
         <OverflowFadeCell>
-            <div
-                style={{ display: 'flex', flexDirection: 'column' }}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <div>
                     {currentTime.time.toFixed(3)}
                     <span className='source-info'>({roundDisplay}-{currentTime.raceNumber})</span>
@@ -151,7 +117,7 @@ function NextRaceCell(
     else if (racesUntilNext === 0) content = <span className='next-text'>To Staging</span>;
     else if (racesUntilNext === -2) content = <span className='racing-text'>Racing</span>;
     else content = `${racesUntilNext}`;
-    return <td>{content}</td>;
+    return <div>{content}</div>;
 }
 
 // eliminated info is provided by pilotEliminatedInfoAtom
@@ -206,7 +172,7 @@ export function getLeaderboardColumns(
             width: 52,
             cell: function LapsCellInline({ pilotId }) {
                 const { current } = useAtomValue(pilotTotalLapsAtom(pilotId));
-                return <td>{current ?? 0}</td>;
+                return <div>{current ?? 0}</div>;
             },
         },
         {

@@ -32,31 +32,42 @@
     box-sizing: border-box;
 }
 
-/* Duplicated from shared table styles in App.css for now */
-.laps-table {
-    border: 1px solid black;
-    border-collapse: collapse;
+/* GenericTable (div-based) */
+.gt {
     width: 100%;
-    table-layout: fixed; /* keep dynamic columns consistent */
-    /* Table color variables (match leaderboard) */
     --table-bg-odd: #1a1a1a;
     --table-bg-even: #222;
     --table-bg-hover: #2a2a2a;
 }
 
-.laps-table td,
-.laps-table th {
-    border: 1px solid black;
-    padding: 4px;
+.gt-header {
+    background-color: #333;
+    font-weight: bold;
+    display: grid;
 }
 
-/* Fade-out effect for overflowing content in name column */
-.laps-table td {
+.gt-header > * {
+    padding: 4px;
+    border: 1px solid black;
+}
+
+.gt-body { position: relative; }
+
+.gt-row {
+    background-color: var(--row-bg, var(--table-bg-odd));
+}
+.gt-row.row-odd { --row-bg: var(--table-bg-odd); }
+.gt-row.row-even { --row-bg: var(--table-bg-even); }
+.gt-row:hover { background-color: var(--table-bg-hover); }
+
+.gt-cell {
+    border: 1px solid black;
+    padding: 4px;
     overflow: hidden;
     position: relative;
 }
 
-.laps-table td.fade-overflow::after {
+.gt-cell.fade-overflow::after {
     content: '';
     position: absolute;
     top: 0;
@@ -65,21 +76,6 @@
     width: 20px;
     background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
     pointer-events: none;
-}
-
-/* Row striping and hover */
-.laps-table tbody tr:nth-child(even) {
-    --row-bg: var(--table-bg-even);
-    background-color: var(--table-bg-even);
-}
-
-.laps-table tbody tr:nth-child(odd) {
-    --row-bg: var(--table-bg-odd);
-    background-color: var(--table-bg-odd);
-}
-
-.laps-table tbody tr:hover {
-    background-color: var(--table-bg-hover);
 }
 
 /* Lap Highlighting - Moved from App.css */

@@ -13,93 +13,57 @@
 }
 
 /* --- Table Styles --- */
-.leaderboard-table {
-    border: 1px solid black;
-    border-collapse: collapse;
-    width: 100%; /* Ensure table takes available space */
-    table-layout: fixed; /* Helps with consistent column widths */
-    perspective: 1000px; /* Add perspective for 3D effect */
-}
-
-.leaderboard-table th,
-.leaderboard-table td {
-    border: 1px solid black;
-    padding: 4px 8px; /* Consistent padding */
-    text-align: left;
-    vertical-align: top;
-}
-
-.leaderboard-table th {
-    background-color: #333; /* Header background */
-    font-weight: bold;
-}
-
-.leaderboard-table td {
-    font-family: monospace;
-    overflow: hidden;
-    position: relative;
-}
-
-/* Define CSS custom properties for consistent background colors */
-.leaderboard-table {
+/* GenericTable (div-based) */
+.gt {
+    width: 100%;
     --table-bg-odd: #1a1a1a;
     --table-bg-even: #222;
     --table-bg-hover: #2a2a2a;
 }
 
+.gt-header {
+    background-color: #333;
+    font-weight: bold;
+    display: grid;
+    gap: 0;
+}
+
+.gt-header > * {
+    padding: 4px 8px;
+    border: 1px solid black;
+}
+
+.gt-body {
+    position: relative;
+}
+
+.gt-row {
+    transition: transform 0.3s ease-out;
+    background-color: var(--row-bg, var(--table-bg-odd));
+}
+
+.gt-row.row-odd { --row-bg: var(--table-bg-odd); }
+.gt-row.row-even { --row-bg: var(--table-bg-even); }
+.gt-row:hover { background-color: var(--table-bg-hover); }
+
+.gt-cell {
+    border: 1px solid black;
+    padding: 4px 8px;
+    overflow: hidden;
+    position: relative;
+    font-family: monospace;
+}
+
 /* Fade-out effect for overflowing content */
-.leaderboard-table td.fade-overflow::after {
+.gt-cell.fade-overflow::after {
     content: '';
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
     width: 20px;
-    background: linear-gradient(to right, transparent, var(--table-bg-odd));
+    background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
     pointer-events: none;
-}
-
-/* Handle single-line text overflow without ellipsis */
-.leaderboard-table td.text-truncate {
-    white-space: nowrap;
-}
-
-/* Handle multi-line content fade-out */
-.leaderboard-table td.multi-line-fade {
-    position: relative;
-}
-
-.leaderboard-table td.multi-line-fade::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(to top, var(--table-bg-odd), transparent);
-    pointer-events: none;
-}
-
-.leaderboard-table td:nth-child(2) {
-    /* Pilot name column */
-    font-family: inherit;
-    font-weight: bold;
-}
-
-.leaderboard-table tbody tr:nth-child(even) {
-    background-color: var(--table-bg-even);
-}
-
-.leaderboard-table tbody tr:nth-child(odd) {
-    background-color: var(--table-bg-odd);
-}
-
-.leaderboard-table tbody tr:hover {
-    background-color: var(--table-bg-hover);
-}
-
-.leaderboard-table tbody tr {
-    transition: transform 0.3s ease-out;
 }
 
 /* --- Position Display & Animation --- */
