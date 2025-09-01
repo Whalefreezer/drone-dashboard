@@ -267,6 +267,7 @@ function LapsTable(
             data={rows}
             context={ctx}
             getRowKey={(row) => row.pilotChannel.id}
+            rowHeight={32}
         />
     );
 }

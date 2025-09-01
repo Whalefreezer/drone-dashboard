@@ -186,7 +186,7 @@ export function getLeaderboardColumns(
         {
             key: 'top-lap',
             header: 'Top Lap',
-            width: 64,
+            width: 72,
             cell: function BestLapCell({ pilotId }) {
                 return <RenderTimeCell metricAtom={pilotBestLapAtom(pilotId)} />;
             },
@@ -195,7 +195,7 @@ export function getLeaderboardColumns(
             ? [{
                 key: 'consec',
                 header: () => `Top ${ctx.consecutiveLaps} Consec`,
-                width: 64,
+                width: 72,
                 cell: function ConsecCell({ pilotId }) {
                     return <RenderTimeCell metricAtom={pilotConsecAtom(pilotId)} />;
                 },
@@ -204,7 +204,7 @@ export function getLeaderboardColumns(
         {
             key: 'fastest-race',
             header: 'Fastest Race',
-            width: 64,
+            width: 72,
             cell: function TotalRaceCell({ pilotId }) {
                 return <RenderTimeCell metricAtom={pilotFastestTotalRaceAtom(pilotId)} />;
             },

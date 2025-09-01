@@ -42,7 +42,7 @@ This document outlines how to evolve `GenericTable` from a semantic `<table>` to
 - Replace `GenericTable` implementation with a div-based, absolutely-positioned row layout. No legacy/table-based component is kept.
 - All column cell components must return content (divs/spans/fragments), not `<td>` elements.
 - Update `OverflowFadeCell` and any table-specific cells to render as generic block elements and to use a generic `HTMLElement` ref.
-- Row height is hardcoded inside `GenericTable` (no prop). Expose a CSS variable `--gt-row-height` for styling overrides if needed.
+- Add `rowHeight?: number` prop to `GenericTable` (default 40px). Optionally expose a CSS variable for styling, but the source of truth is the prop.
 - Header remains sticky by default; no prop to toggle for now.
 
 ### Cell Renderers
@@ -83,10 +83,11 @@ ARIA: optional. No keyboard navigation is required. We may add `role="grid"`, `r
 
 ## Integration Points for @react-spring/web
 
-- Replace per-row style with springs:
-  - `const [springs] = useSprings(rows.length, i => ({ y: i*ROW_HEIGHT, key: rowKey(i) }))`.
-  - Render `<animated.div className="gt-row" style={{ transform: springs[i].y.to(t => `translateY(${t}px)`) }}>`.
-  - Keys come from `getRowKey(row, i)` to stabilize animations across reorderings.
+- Use keyed transitions so rows animate between positions across reorders:
+  - `const items = data.map((row, i) => ({ row, key: getRowKey(row, i) }))`.
+  - `const indexByKey = new Map(items.map((it, i) => [it.key, i]))`.
+  - `const transitions = useTransition(items, { keys: it => it.key, from: { y: 0 }, enter: it => ({ y: indexByKey.get(it.key)! * rowHeight }), update: it => ({ y: indexByKey.get(it.key)! * rowHeight }) })`.
+  - Render `<animated.div className="gt-row" style={{ transform: style.y.to(y => `translateY(${y}px)`) }}>`.
 
 ## Migration Plan (Breaking, Single Pass)
 
@@ -107,8 +108,8 @@ ARIA: optional. No keyboard navigation is required. We may add `role="grid"`, `r
 5. Validate and refine widths/overflow for both screens.
    - Confirm the single flex column (Pilot/Name) expands correctly.
    - Align fade gradients and spacing with current visuals.
-6. Add integration hooks for animation.
-   - Rows render with static `translateY(index * ROW_HEIGHT)`; swap to springs later.
+6. Integrate animation with `@react-spring/web`.
+   - Rows use keyed `useTransition` to animate `y` on reorders based on `rowHeight`.
 
 ## Files to Touch
 

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { animated, useTransition } from '@react-spring/web';
 
 export type Column<TableCtx, RowCtx> = {
     key: string;
@@ -17,16 +18,15 @@ export interface GenericTableProps<TableCtx, RowCtx extends object> {
     getRowKey: (row: RowCtx, index: number) => string;
     getRowClassName?: (row: RowCtx, index: number) => string | undefined;
     className?: string;
+    rowHeight?: number; // px; default 40
 }
 
 export function GenericTable<TableCtx, RowCtx extends object>(
-    { columns, data, context, getRowKey, getRowClassName, className }: GenericTableProps<
+    { columns, data, context, getRowKey, getRowClassName, className, rowHeight = 40 }: GenericTableProps<
         TableCtx,
         RowCtx
     >,
 ) {
-    const ROW_HEIGHT = 40; // px, fixed row height for absolute positioning
-
     const gridTemplateColumns = useMemo(() => {
         const flexIndex = columns.findIndex((c) => c.width === undefined);
         const toSize = (val: number | string | undefined): string | undefined => {
@@ -45,50 +45,70 @@ export function GenericTable<TableCtx, RowCtx extends object>(
         }).join(' ');
     }, [columns]);
 
-    const totalHeight = data.length * ROW_HEIGHT;
+    const totalHeight = data.length * rowHeight;
+
+    // Build keyed items for stable transitions
+    const items = useMemo(() => data.map((row, i) => ({ row, key: getRowKey(row, i) })), [data, getRowKey]);
+    const indexByKey = useMemo(() => {
+        const m = new Map<string, number>();
+        data.forEach((row, i) => m.set(getRowKey(row, i), i));
+        return m;
+    }, [data, getRowKey]);
+
+    const transitions = useTransition(items, {
+        keys: (item) => item.key,
+        from: (item) => ({ y: (indexByKey.get(item.key) ?? 0) * rowHeight }),
+        enter: (item) => ({ y: (indexByKey.get(item.key) ?? 0) * rowHeight }),
+        update: (item) => ({ y: (indexByKey.get(item.key) ?? 0) * rowHeight }),
+        config: { tension: 300, friction: 30 },
+    });
 
     return (
-        <div className={[className, 'gt'].filter(Boolean).join(' ')} role="grid">
-            <div className="gt-header" role="row" style={{ display: 'grid', gridTemplateColumns }}>
+        <div className={[className, 'gt'].filter(Boolean).join(' ')} role='grid'>
+            <div className='gt-header' role='row' style={{ display: 'grid', gridTemplateColumns }}>
                 {columns.map((col) => {
                     const style: React.CSSProperties = {};
                     if (col.headerAlign) style.textAlign = col.headerAlign;
                     return (
-                        <div key={col.key} role="columnheader" className={col.headerClassName} style={style}>
+                        <div key={col.key} role='columnheader' className={col.headerClassName} style={style}>
                             {typeof col.header === 'function' ? col.header(context) : col.header}
                         </div>
                     );
                 })}
             </div>
-            <div className="gt-body" style={{ position: 'relative', height: `${totalHeight}px` }}>
-                {data.map((row, index) => {
-                    const key = getRowKey(row, index);
-                    const y = index * ROW_HEIGHT;
+            <div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
+                {transitions((style, item) => {
+                    const row = item.row as RowCtx;
+                    const idx = indexByKey.get(item.key) ?? 0;
                     const rowClass = [
                         'gt-row',
-                        index % 2 === 0 ? 'row-odd' : 'row-even',
-                        getRowClassName?.(row, index) ?? '',
+                        idx % 2 === 0 ? 'row-odd' : 'row-even',
+                        getRowClassName?.(row, idx) ?? '',
                     ].filter(Boolean).join(' ');
-                    const rowStyle: React.CSSProperties = {
-                        transform: `translateY(${y}px)`,
-                        height: `${ROW_HEIGHT}px`,
-                        display: 'grid',
-                        gridTemplateColumns,
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                    };
                     return (
-                        <div key={key} className={rowClass} role="row" style={rowStyle}>
+                        <animated.div
+                            key={item.key}
+                            className={rowClass}
+                            role='row'
+                            style={{
+                                transform: style.y.to((y) => `translateY(${y}px)`),
+                                height: `${rowHeight}px`,
+                                display: 'grid',
+                                gridTemplateColumns,
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                            }}
+                        >
                             {columns.map((col) => {
                                 const Cell = col.cell as React.ComponentType<RowCtx>;
                                 return (
-                                    <div key={col.key} role="gridcell" className="gt-cell">
+                                    <div key={col.key} role='gridcell' className='gt-cell'>
                                         {React.createElement(Cell, row)}
                                     </div>
                                 );
                             })}
-                        </div>
+                        </animated.div>
                     );
                 })}
             </div>

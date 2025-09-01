@@ -67,7 +67,7 @@
     position: relative;
 }
 
-.gt-cell.fade-overflow::after {
+.gt-cell > .fade-overflow::after {
     content: '';
     position: absolute;
     top: 0;

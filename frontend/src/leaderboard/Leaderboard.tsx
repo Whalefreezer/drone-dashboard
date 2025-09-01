@@ -29,6 +29,7 @@ export function Leaderboard() {
                 data={rows}
                 context={ctx}
                 getRowKey={(row) => row.pilotId}
+                rowHeight={45}
             />
         </div>
     );
