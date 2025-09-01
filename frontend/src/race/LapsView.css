@@ -78,6 +78,20 @@
     pointer-events: none;
 }
 
+/* Make lap highlight backgrounds fill the whole cell area without losing padding for other cells */
+.laps-table .gt-cell > .lap-fastest-overall,
+.laps-table .gt-cell > .lap-personal-best,
+.laps-table .gt-cell > .lap-overall-fastest,
+.laps-table .gt-cell > .lap-overall-personal-best,
+.laps-table .gt-cell > .pattern-hatched {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
 /* Lap Highlighting - Moved from App.css */
 .lap-fastest-overall {
     background-color: var(--fastest-lap-color);

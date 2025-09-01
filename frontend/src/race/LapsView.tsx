@@ -217,7 +217,7 @@ function useLapsTableColumns(
         columns.push({
             key: isHS ? 'hs' : `l${i}`,
             header: isHS ? 'HS' : `L${i}`,
-            width: 52,
+            width: 58,
             cell: function LapCell({ pilotChannel }: LapsRow) {
                 const { raceId } = ctx;
                 const overallBestTimes = useAtomValue(overallBestTimesAtom);
@@ -267,7 +267,7 @@ function LapsTable(
             data={rows}
             context={ctx}
             getRowKey={(row) => row.pilotChannel.id}
-            rowHeight={32}
+            rowHeight={30}
         />
     );
 }
