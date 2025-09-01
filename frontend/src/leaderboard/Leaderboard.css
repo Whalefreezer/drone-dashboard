@@ -9,6 +9,7 @@
     border-radius: 8px;
     background-color: #1a1a1a;
     border: 1px solid #333;
+    overflow-x: hidden;
 }
 
 /* --- Table Styles --- */

@@ -63,7 +63,7 @@ function PositionCell(
         <OverflowFadeCell>
             <div className='position-container'>
                 <div>{currentPosition}</div>
-                {showChange && change > 0 && <span className='position-change'>↑{change} from {prevPos}</span>}
+                {showChange && change > 0 && <span className='position-change'>↑{change}</span>}
             </div>
         </OverflowFadeCell>
     );
@@ -116,7 +116,6 @@ function RenderTimeCell(
     return (
         <OverflowFadeCell>
             <div
-                className={isRecent ? 'recent-time' : ''}
                 style={{ display: 'flex', flexDirection: 'column' }}
             >
                 <div>
