@@ -9,15 +9,13 @@ export function BracketsView() {
     const pilots = useAtomValue(pilotsAtom);
     const currentRace = useAtomValue(currentRaceAtom);
 
-    if (!currentRace) {
-        return null;
-    }
+
 
     // Normalize names by removing whitespace and converting to lowercase
     const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
     // Get the set of normalized pilot names from the current race
-    const pilotChannels = useAtomValue(racePilotChannelsAtom(currentRace.id));
+    const pilotChannels = useAtomValue(racePilotChannelsAtom(currentRace?.id ?? ''));
     const currentRacePilotNames = new Set(
         pilotChannels
             .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
@@ -34,6 +32,10 @@ export function BracketsView() {
         return bracketPilotNames.size === currentRacePilotNames.size &&
             Array.from(currentRacePilotNames).every((name: string) => bracketPilotNames.has(name));
     });
+
+    if (!currentRace) {
+        return null;
+    }
 
     if (!matchingBracket) return null;
 

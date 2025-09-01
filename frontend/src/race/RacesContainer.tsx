@@ -11,6 +11,9 @@ export function RacesContainer() {
     const lastCompletedRace = useAtomValue(lastCompletedRaceAtom);
     const nextRaces = useAtomValue(nextRacesAtom);
 
+    // Hide current race when there's only one race and it matches the last completed race
+    const showCurrentRace = !!currentRace && !(lastCompletedRace && currentRace.id === lastCompletedRace.id);
+
     return (
         <div className='races-container'>
             {lastCompletedRace && (
@@ -24,7 +27,7 @@ export function RacesContainer() {
                     />
                 </div>
             )}
-            {currentRace && (
+            {showCurrentRace && (
                 <div className='race-box current-race'>
                     <div className='race-header'>
                         <h3>Current Race</h3>

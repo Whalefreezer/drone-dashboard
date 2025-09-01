@@ -1,13 +1,14 @@
 package scheduler
 
 import (
-    "encoding/json"
-    "log/slog"
-    "time"
+	"encoding/json"
+	"log/slog"
+	"time"
 
-    "drone-dashboard/ingest"
-    "github.com/pocketbase/dbx"
-    "github.com/pocketbase/pocketbase/core"
+	"drone-dashboard/ingest"
+
+	"github.com/pocketbase/dbx"
+	"github.com/pocketbase/pocketbase/core"
 )
 
 // -------------------- Active Race --------------------
@@ -38,7 +39,7 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 			ORDER BY raceOrder ASC LIMIT 1
 		),
 		last_completed AS (
-			SELECT raceOrder FROM rs
+			SELECT sourceId, raceOrder FROM rs
 			WHERE valid = 1
 			  AND start IS NOT NULL AND start != '' AND start NOT LIKE '0%'
 			  AND end IS NOT NULL AND end != '' AND end NOT LIKE '0%'
@@ -54,8 +55,8 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 			ORDER BY raceOrder ASC LIMIT 1
 		)
 		SELECT
-		  COALESCE((SELECT sourceId FROM active), (SELECT sourceId FROM next_after_completed), (SELECT sourceId FROM first_race)) AS current_race_source_id,
-		  COALESCE((SELECT raceOrder FROM active), (SELECT raceOrder FROM next_after_completed), (SELECT raceOrder FROM first_race)) AS current_race_order
+		  COALESCE((SELECT sourceId FROM active), (SELECT sourceId FROM next_after_completed), (SELECT sourceId FROM last_completed), (SELECT sourceId FROM first_race)) AS current_race_source_id,
+		  COALESCE((SELECT raceOrder FROM active), (SELECT raceOrder FROM next_after_completed), (SELECT raceOrder FROM last_completed), (SELECT raceOrder FROM first_race)) AS current_race_order
 	`
 
 	var result struct {
@@ -76,9 +77,9 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 // Valid races get sequential raceOrder numbers, invalid races get raceOrder set to 0.
 // Only processes races where the raceOrder would actually change.
 func (m *Manager) recalculateRaceOrder(eventId string) {
-    if err := ingest.RecalculateRaceOrder(m.App, eventId); err != nil {
-        slog.Warn("scheduler.recalculateRaceOrder.error", "eventId", eventId, "err", err)
-    }
+	if err := ingest.RecalculateRaceOrder(m.App, eventId); err != nil {
+		slog.Warn("scheduler.recalculateRaceOrder.error", "eventId", eventId, "err", err)
+	}
 }
 
 // publishCurrentOrderKV writes the current order and race id into client_kv for the event.
@@ -93,65 +94,75 @@ func (m *Manager) publishCurrentOrderKV(eventId, raceId string, order int) {
 		"sourceId":   raceId,
 		"computedAt": time.Now().UnixMilli(),
 	}
-    b, err := json.Marshal(payload)
-    if err != nil {
-        slog.Warn("scheduler.publishCurrentOrderKV.marshal.error", "eventId", eventId, "raceId", raceId, "err", err)
-        return
-    }
-    newValue := string(b)
+	b, err := json.Marshal(payload)
+	if err != nil {
+		slog.Warn("scheduler.publishCurrentOrderKV.marshal.error", "eventId", eventId, "raceId", raceId, "err", err)
+		return
+	}
+	newValue := string(b)
 
-    // find existing kv
-    rec, err := m.App.FindFirstRecordByFilter(
-        "client_kv",
-        "namespace = {:ns} && key = {:k} && event = {:e}",
-        dbx.Params{"ns": "race", "k": "currentOrder", "e": eventId},
-    )
-    if err != nil {
-        slog.Warn("scheduler.publishCurrentOrderKV.find.error", "eventId", eventId, "err", err)
-        return
-    }
+	// find existing kv
+	records, err := m.App.FindRecordsByFilter(
+		"client_kv",
+		"namespace = {:ns} && key = {:k} && event = {:e}",
+		"",
+		1,
+		0,
+		dbx.Params{"ns": "race", "k": "currentOrder", "e": eventId},
+	)
+	if err != nil {
+		slog.Warn("scheduler.publishCurrentOrderKV.find.error", "eventId", eventId, "err", err)
+		return
+	}
 
 	// Check if we need to create a new record or if the value has changed
+	var rec *core.Record
+	if len(records) == 0 {
+		rec = nil
+	} else {
+		rec = records[0]
+	}
+
 	if rec == nil {
-        col, err := m.App.FindCollectionByNameOrId("client_kv")
-        if err != nil {
-            slog.Warn("scheduler.publishCurrentOrderKV.collection.error", "eventId", eventId, "err", err)
-            return
-        }
-        rec = core.NewRecord(col)
-        rec.Set("namespace", "race")
-        rec.Set("key", "currentOrder")
-        rec.Set("event", eventId)
-        rec.Set("value", newValue)
-        if err := m.App.Save(rec); err != nil {
-            slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
-        }
-    } else {
+		col, err := m.App.FindCollectionByNameOrId("client_kv")
+		if err != nil {
+			slog.Warn("scheduler.publishCurrentOrderKV.collection.error", "eventId", eventId, "err", err)
+			return
+		}
+		rec = core.NewRecord(col)
+		rec.Set("namespace", "race")
+		rec.Set("key", "currentOrder")
+		rec.Set("event", eventId)
+		rec.Set("value", newValue)
+		if err := m.App.Save(rec); err != nil {
+			slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
+		}
+	} else {
 		// Only save if the meaningful values (order and raceId) have actually changed
 		existingValue := rec.GetString("value")
 
 		// Parse existing JSON to compare meaningful fields
 		var existingPayload map[string]any
-            if err := json.Unmarshal([]byte(existingValue), &existingPayload); err == nil {
-                // Compare only the meaningful fields, ignore computedAt
-                existingOrder, existingOrderOk := existingPayload["order"].(float64)
-                existingSourceId, existingSourceIdOk := existingPayload["sourceId"].(string)
+		if err := json.Unmarshal([]byte(existingValue), &existingPayload); err == nil {
+			// Compare only the meaningful fields, ignore computedAt
+			existingOrder, existingOrderOk := existingPayload["order"].(float64)
+			existingSourceId, existingSourceIdOk := existingPayload["sourceId"].(string)
 
-                if existingOrderOk && existingSourceIdOk &&
-                    int(existingOrder) == order && existingSourceId == raceId {
-                    // Values haven't changed, no need to save
-                    return
-                }
-            } else {
-                slog.Debug("scheduler.publishCurrentOrderKV.parseExisting.error", "eventId", eventId, "err", err)
-            }
+			if existingOrderOk && existingSourceIdOk &&
+				int(existingOrder) == order && existingSourceId == raceId {
+				// Values haven't changed, no need to save
+				return
+			}
+		} else {
+			slog.Debug("scheduler.publishCurrentOrderKV.parseExisting.error", "eventId", eventId, "err", err)
+		}
 
-        // Values have changed or we couldn't parse existing JSON, save new value
-        rec.Set("value", newValue)
-        if err := m.App.Save(rec); err != nil {
-            slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
-        }
-    }
+		// Values have changed or we couldn't parse existing JSON, save new value
+		rec.Set("value", newValue)
+		if err := m.App.Save(rec); err != nil {
+			slog.Warn("scheduler.publishCurrentOrderKV.save.error", "eventId", eventId, "err", err)
+		}
+	}
 }
 
 func (m *Manager) ensureActiveRacePriority() {
@@ -245,10 +256,7 @@ func (m *Manager) ensureActiveRacePriority() {
 		}
 	}
 
-	// Publish current order for clients if rows changed
-	if rowsAffected > 0 {
-		m.publishCurrentOrderKV(eventPBID, string(currentRaceSourceId), currentOrder)
-	}
+	m.publishCurrentOrderKV(eventPBID, string(currentRaceSourceId), currentOrder)
 }
 
 // RegisterHooks sets up record update hooks to trigger active race priority updates
