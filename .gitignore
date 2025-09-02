@@ -43,5 +43,7 @@ tasks.json
 tasks/ 
 
 pb_data/
+run-cloud/
+run-pits/
 pocketbase_docs/
 __debug_bin*
