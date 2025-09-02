@@ -10,7 +10,7 @@ import (
 func (s *Service) Snapshot(eventSourceId string) error {
     slog.Debug("ingest.snapshot.start", "eventSourceId", eventSourceId)
     // Fetch
-    events, err := s.Client.FetchEvent(eventSourceId)
+    events, err := s.Source.FetchEvent(eventSourceId)
     if err != nil {
         return err
     }
@@ -18,15 +18,15 @@ func (s *Service) Snapshot(eventSourceId string) error {
         return fmt.Errorf("event not found: %s", eventSourceId)
     }
 
-    pilots, err := s.Client.FetchPilots(eventSourceId)
+    pilots, err := s.Source.FetchPilots(eventSourceId)
     if err != nil {
         return err
     }
-    channels, err := s.Client.FetchChannels()
+    channels, err := s.Source.FetchChannels()
     if err != nil {
         return err
     }
-    rounds, err := s.Client.FetchRounds(eventSourceId)
+    rounds, err := s.Source.FetchRounds(eventSourceId)
     if err != nil {
         return err
     }
@@ -123,4 +123,3 @@ func (s *Service) Snapshot(eventSourceId string) error {
     slog.Info("ingest.snapshot.done", "eventSourceId", eventSourceId, "pilots", len(pilots), "channels", len(channels), "rounds", len(rounds))
     return nil
 }
-

@@ -15,7 +15,7 @@ func (s *Service) IngestResults(eventSourceId string) (int, error) {
     }
 
     // Fetch results
-    res, err := s.Client.FetchResults(eventSourceId)
+    res, err := s.Source.FetchResults(eventSourceId)
     if err != nil {
         return 0, err
     }
@@ -50,4 +50,3 @@ func (s *Service) IngestResults(eventSourceId string) (int, error) {
     slog.Info("ingest.results.done", "eventSourceId", eventSourceId, "results", len(res))
     return len(res), nil
 }
-

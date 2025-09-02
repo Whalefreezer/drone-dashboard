@@ -87,7 +87,7 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 	slog.Debug("ingest.race.start", "raceId", raceId)
 
 	// Fetch race payload outside the transaction to avoid holding locks during network I/O
-	rf, err := s.Client.FetchRace(eventSourceId, raceId)
+	rf, err := s.Source.FetchRace(eventSourceId, raceId)
 	if err != nil {
 		return err
 	}

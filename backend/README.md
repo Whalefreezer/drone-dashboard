@@ -62,7 +62,13 @@ Usage: drone-dashboard [OPTIONS]
 Options:
   -fpvtrackside string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
   -port int              Set the server port (default: 3000)
+  -log-level string      Log level: error|warn|info|debug|trace
+  -ingest-enabled bool   Enable background scheduler loops (default: true)
   -direct-proxy          Enable /direct/* proxy to FPVTrackside (default: false)
+  -mode string           Mode: standalone|pits|cloud (default: standalone)
+  -cloud-url string      Cloud WS URL (pits mode)
+  -auth-token string     Auth token for control link
+  -pits-id string        Identifier for this pits instance
   -help                  Show this help message
 ```
 
@@ -91,3 +97,12 @@ Enable the direct proxy to FPVTrackside (disabled by default):
 - **Small Binary Size**: Produces a single, efficient executable
 - **Cross-Platform**: Can be compiled for any platform that Go supports
 - **Self-Contained**: All frontend files are embedded in the binary 
+Cloud/Pits example:
+```bash
+# Pits (local, outbound WS to cloud)
+./drone-dashboard -mode=pits -fpvtrackside=http://127.0.0.1:8080 \
+  -cloud-url=wss://cloud.example.com/control -auth-token=SECRET -pits-id=main
+
+# Cloud (public, receives WS, replaces FPVClient with remote)
+./drone-dashboard -mode=cloud -port=3000 -auth-token=SECRET -pits-id=main
+```

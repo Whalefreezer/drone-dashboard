@@ -22,7 +22,7 @@ func (s *Service) Full(eventSourceId string) (FullSummary, error) {
     slog.Debug("ingest.full.start", "eventSourceId", eventSourceId)
 
     // Fetch event to enumerate races
-    events, err := s.Client.FetchEvent(eventSourceId)
+    events, err := s.Source.FetchEvent(eventSourceId)
     if err != nil {
         return FullSummary{EventId: eventSourceId}, fmt.Errorf("fetch event: %w", err)
     }
@@ -94,7 +94,7 @@ func (s *Service) FullAuto() (FullSummary, error) {
     slog.Debug("ingest.fullAuto.start")
 
     // Fetch event sourceId using the same method as frontend
-    eventSourceId, err := s.Client.FetchEventSourceId()
+    eventSourceId, err := s.Source.FetchEventSourceId()
     if err != nil {
         return FullSummary{}, fmt.Errorf("fetch event sourceId: %w", err)
     }

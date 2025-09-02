@@ -20,14 +20,14 @@ func (m *Manager) runDiscovery() {
 	// race conditions where targets were created before events existed in DB.
 
 	// 1. Get event source ID from external system
-	eventSourceId, err := m.Service.Client.FetchEventSourceId()
+    eventSourceId, err := m.Service.Source.FetchEventSourceId()
 	if err != nil {
 		slog.Warn("scheduler.discovery.fetchEventSourceId.error", "err", err)
 		return
 	}
 
 	// 2. Fetch event data to validate it exists and get race information
-	events, err := m.Service.Client.FetchEvent(eventSourceId)
+    events, err := m.Service.Source.FetchEvent(eventSourceId)
 	if err != nil || len(events) == 0 {
 		slog.Warn("scheduler.discovery.fetchEvent.error", "eventSourceId", eventSourceId, "err", err)
 		return

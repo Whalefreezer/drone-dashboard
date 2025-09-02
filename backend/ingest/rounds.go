@@ -12,7 +12,7 @@ func (s *Service) IngestRounds(eventSourceId string) error {
     if err != nil {
         return err
     }
-    rounds, err := s.Client.FetchRounds(eventSourceId)
+    rounds, err := s.Source.FetchRounds(eventSourceId)
     if err != nil {
         return err
     }
@@ -32,4 +32,3 @@ func (s *Service) IngestRounds(eventSourceId string) error {
     slog.Info("ingest.rounds.done", "eventSourceId", eventSourceId, "rounds", len(rounds))
     return nil
 }
-

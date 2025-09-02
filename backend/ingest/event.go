@@ -11,7 +11,7 @@ import (
 // eventSourceId: The external system's event identifier (not PocketBase ID)
 func (s *Service) IngestEventMeta(eventSourceId string) error {
     slog.Debug("ingest.event.start", "eventSourceId", eventSourceId)
-    events, err := s.Client.FetchEvent(eventSourceId)
+    events, err := s.Source.FetchEvent(eventSourceId)
     if err != nil {
         return err
     }

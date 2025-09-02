@@ -13,7 +13,7 @@ func (s *Service) IngestChannels(eventSourceId string) error {
 	if err != nil {
 		return err
 	}
-	events, err := s.Client.FetchEvent(eventSourceId)
+	events, err := s.Source.FetchEvent(eventSourceId)
 	if err != nil {
 		return err
 	}
@@ -21,7 +21,7 @@ func (s *Service) IngestChannels(eventSourceId string) error {
 		return fmt.Errorf("event not found: %s", eventSourceId)
 	}
 	e := events[0]
-	channels, err := s.Client.FetchChannels()
+	channels, err := s.Source.FetchChannels()
 	if err != nil {
 		return err
 	}

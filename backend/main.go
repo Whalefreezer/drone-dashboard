@@ -17,6 +17,7 @@ import (
 	"drone-dashboard/logger"
 	_ "drone-dashboard/migrations"
 	"drone-dashboard/scheduler"
+    "drone-dashboard/control"
 
 	"strconv"
 
@@ -48,7 +49,26 @@ func main() {
     app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
-	ingestService := mustNewIngestService(app, flags.FPVTrackside)
+    // Select ingest source based on mode
+    var ingestService *ingest.Service
+    hub := control.NewHub()
+
+    switch flags.Mode {
+    case "cloud":
+        // Cloud mode: register control server and set RemoteSource
+        control.RegisterServer(app, hub, flags.AuthToken)
+        ingestService = ingest.NewServiceWithSource(app, ingest.NewRemoteSource(hub, flags.PitsID))
+    case "pits":
+        // Pits mode: use direct source and start outbound control client
+        ingestService = mustNewIngestService(app, flags.FPVTrackside)
+        if flags.CloudURL != "" {
+            pc, err := control.NewPitsClient(flags.CloudURL, flags.AuthToken, flags.PitsID, flags.FPVTrackside)
+            if err != nil { log.Fatal("control client init:", err) }
+            go pc.Start(context.Background())
+        }
+    default: // standalone
+        ingestService = mustNewIngestService(app, flags.FPVTrackside)
+    }
 
 	// Scheduler manager
 	manager := scheduler.NewManager(app, ingestService, scheduler.Config{})
@@ -78,6 +98,10 @@ type CLIFlags struct {
     LogLevel      string
     IngestEnabled bool
     DirectProxy   bool
+    Mode          string // standalone|pits|cloud
+    CloudURL      string
+    AuthToken     string
+    PitsID        string
 }
 
 // getServerSetting retrieves a server setting value by key with optional default
@@ -117,6 +141,10 @@ func parseFlags() (CLIFlags, []string) {
     fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
     fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
     fs.BoolVar(&out.DirectProxy, "direct-proxy", false, "Enable /direct/* proxy to FPVTrackside")
+    fs.StringVar(&out.Mode, "mode", "standalone", "Mode: standalone|pits|cloud")
+    fs.StringVar(&out.CloudURL, "cloud-url", "", "Cloud WS URL (pits mode)")
+    fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
+    fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
 
     showHelp := fs.Bool("help", false, "Show help message")
     _ = fs.Parse(os.Args[1:])
@@ -184,6 +212,10 @@ Options:
   -log-level string       Log level: error|warn|info|debug|trace
   -ingest-enabled bool    Enable background scheduler loops (default: true)
   -direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
+  -mode string            Mode: standalone|pits|cloud (default: standalone)
+  -cloud-url string       Cloud WS URL (pits mode)
+  -auth-token string      Auth token for control link
+  -pits-id string         Identifier for this pits instance
   -help                   Show this help message
 
 Note: The FPVTrackside API will be available at /direct/* endpoints
@@ -212,15 +244,15 @@ func newPocketBaseApp() *pocketbase.PocketBase {
 }
 
 func mustNewIngestService(app core.App, baseURL string) *ingest.Service {
-	svc, err := ingest.NewService(app, baseURL)
-	if err != nil {
-		log.Fatal("Failed to create proxy service:", err)
-	}
-	return svc
+    svc, err := ingest.NewService(app, baseURL)
+    if err != nil {
+        log.Fatal("Failed to create proxy service:", err)
+    }
+    return svc
 }
 
 func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags CLIFlags) {
-	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
 
@@ -231,32 +263,41 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		ctx := context.Background()
 		manager.StartLoops(ctx)
 
-		// Routing
-		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
-			req := c.Request
-			resp := c.Response
-			path := req.URL.Path
-
-            if flags.DirectProxy && strings.HasPrefix(path, "/direct/") {
-                newPath := strings.TrimPrefix(path, "/direct/")
-                bytes, err := ingestService.Client.GetBytes(newPath)
-                if err != nil {
-                    slog.Warn("http.direct.fetch.error", "path", newPath, "err", err)
-                    return c.InternalServerError("fetch event", err)
-                }
-                resp.WriteHeader(http.StatusOK)
-                resp.Write([]byte(string(bytes)))
-                return nil
+        // Routing (register specific first)
+        // Optional direct proxy (only in direct source modes)
+        se.Router.Any("/direct/{path...}", func(c *core.RequestEvent) error {
+            if !flags.DirectProxy { return c.NotFoundError("not found", nil) }
+            // Only available when using direct source
+            ds, ok := ingestService.Source.(ingest.DirectSource)
+            if !ok { return c.NotFoundError("not found", nil) }
+            req := c.Request
+            resp := c.Response
+            srcPath := req.PathValue("path")
+            bytes, err := ds.C.GetBytes(srcPath)
+            if err != nil {
+                slog.Warn("http.direct.fetch.error", "path", srcPath, "err", err)
+                return c.InternalServerError("fetch event", err)
             }
-			staticHandler := apis.Static(static, false)
-			return staticHandler(c)
-		})
+            resp.WriteHeader(http.StatusOK)
+            resp.Write([]byte(string(bytes)))
+            return nil
+        })
 
-        fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
-        if flags.DirectProxy {
-            fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
+        // Catch-all static last
+        se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
+            staticHandler := apis.Static(static, false)
+            return staticHandler(c)
+        })
+
+        if flags.Mode == "cloud" {
+            fmt.Printf("Cloud mode: waiting for pits connection; WS control on /control\n")
         } else {
-            fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
+            fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
+            if flags.DirectProxy {
+                fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
+            } else {
+                fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
+            }
         }
         fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
         fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)

@@ -5,7 +5,7 @@ import (
 )
 
 type Service struct {
-    Client   *FPVClient
+    Source   Source
     Upserter *Upserter
 }
 
@@ -14,5 +14,9 @@ func NewService(app core.App, baseURL string) (*Service, error) {
     if err != nil {
         return nil, err
     }
-    return &Service{Client: client, Upserter: NewUpserter(app)}, nil
+    return &Service{Source: DirectSource{C: client}, Upserter: NewUpserter(app)}, nil
+}
+
+func NewServiceWithSource(app core.App, src Source) *Service {
+    return &Service{Source: src, Upserter: NewUpserter(app)}
 }

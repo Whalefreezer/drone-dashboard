@@ -12,7 +12,7 @@ func (s *Service) IngestPilots(eventSourceId string) error {
     if err != nil {
         return err
     }
-    pilots, err := s.Client.FetchPilots(eventSourceId)
+    pilots, err := s.Source.FetchPilots(eventSourceId)
     if err != nil {
         return err
     }
@@ -31,4 +31,3 @@ func (s *Service) IngestPilots(eventSourceId string) error {
     slog.Info("ingest.pilots.done", "eventSourceId", eventSourceId, "pilots", len(pilots))
     return nil
 }
-
