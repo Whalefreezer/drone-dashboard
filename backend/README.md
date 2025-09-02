@@ -60,9 +60,10 @@ The server is completely self-contained and doesn't need external files to run. 
 Usage: drone-dashboard [OPTIONS]
 
 Options:
-  -fpvtrackside-api string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
-  -port int                 Set the server port (default: 3000)
-  -help                     Show this help message
+  -fpvtrackside string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
+  -port int              Set the server port (default: 3000)
+  -direct-proxy          Enable /direct/* proxy to FPVTrackside (default: false)
+  -help                  Show this help message
 ```
 
 ### Examples
@@ -74,7 +75,12 @@ Run with default settings:
 
 Run with custom API endpoint and port:
 ```bash
-./drone-dashboard -fpvtrackside-api="http://localhost:8000" -port=4000
+./drone-dashboard -fpvtrackside="http://localhost:8000" -port=4000
+```
+
+Enable the direct proxy to FPVTrackside (disabled by default):
+```bash
+./drone-dashboard -direct-proxy
 ```
 
 ## Features

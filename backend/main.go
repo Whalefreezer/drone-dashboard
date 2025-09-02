@@ -5,6 +5,7 @@ import (
     "embed"
     "flag"
     "fmt"
+    "io"
     "io/fs"
     "log"
     "log/slog"
@@ -30,8 +31,8 @@ import (
 var staticFiles embed.FS
 
 func main() {
-	// Parse flags
-	flags := parseFlags()
+    // Parse flags (separate from PocketBase CLI)
+    flags, pbArgs := parseFlags()
 
 	// Static files
 	staticContent := mustStaticFS()
@@ -39,8 +40,12 @@ func main() {
 	// Configure logging
 	logger.Configure(flags.LogLevel)
 
-	// Initialize PocketBase and migrations
-	app := newPocketBaseApp()
+    // Initialize PocketBase and migrations
+    app := newPocketBaseApp()
+
+    // Ensure PocketBase sees only its own args and port mapping
+    pbArgs = preparePocketBaseArgs(pbArgs, flags)
+    app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
 	ingestService := mustNewIngestService(app, flags.FPVTrackside)
@@ -60,18 +65,19 @@ func main() {
 	// which automatically sets correct intervals for active races
 
 	// Start PocketBase
-	if err := app.Start(); err != nil {
-		log.Fatal("PocketBase startup error:", err)
-	}
+    if err := app.Start(); err != nil {
+        log.Fatal("PocketBase startup error:", err)
+    }
 }
 
 // ----- Structure & helpers -----
 
 type CLIFlags struct {
-	FPVTrackside  string
-	Port          int
-	LogLevel      string
-	IngestEnabled bool
+    FPVTrackside  string
+    Port          int
+    LogLevel      string
+    IngestEnabled bool
+    DirectProxy   bool
 }
 
 // getServerSetting retrieves a server setting value by key with optional default
@@ -99,22 +105,77 @@ func getServerSettingInt(app core.App, key string, defaultValue int) int {
 	return defaultValue
 }
 
-func parseFlags() CLIFlags {
-	fpv := flag.String("fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
-	port := flag.Int("port", 3000, "Server port (display only)")
-	logLevel := flag.String("log-level", "info", "Log level: error|warn|info|debug|trace")
-	ingestEnabled := flag.Bool("ingest-enabled", true, "Enable background scheduler loops")
-	help := flag.Bool("help", false, "Show help message")
-	flag.Parse()
-	if *help {
-		fmt.Printf(helpText(), os.Args[0])
-		os.Exit(0)
-	}
-	return CLIFlags{FPVTrackside: *fpv, Port: *port, LogLevel: *logLevel, IngestEnabled: *ingestEnabled}
+func parseFlags() (CLIFlags, []string) {
+    var out CLIFlags
+    fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+    // Silence default error printing; we'll handle help explicitly
+    fs.SetOutput(io.Discard)
+
+    // Primary flags
+    fs.StringVar(&out.FPVTrackside, "fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
+    fs.IntVar(&out.Port, "port", 3000, "Server port")
+    fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
+    fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
+    fs.BoolVar(&out.DirectProxy, "direct-proxy", false, "Enable /direct/* proxy to FPVTrackside")
+
+    showHelp := fs.Bool("help", false, "Show help message")
+    _ = fs.Parse(os.Args[1:])
+    if *showHelp {
+        fmt.Printf(helpText(), os.Args[0])
+        os.Exit(0)
+    }
+    // Remaining args are for PocketBase (eg. serve/migrate/superuser ...)
+    return out, fs.Args()
+}
+
+// preparePocketBaseArgs ensures PB receives proper command/flags and our port maps to --http
+func preparePocketBaseArgs(pbArgs []string, flags CLIFlags) []string {
+    // If no PB command provided, default to `serve` and inject --http with our port
+    if len(pbArgs) == 0 {
+        return []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
+    }
+
+    // Only inject --http for the `serve` command and when not already specified
+    hasServe := false
+    for _, a := range pbArgs {
+        if a == "serve" {
+            hasServe = true
+            break
+        }
+    }
+    if !hasServe {
+        return pbArgs
+    }
+
+    hasHTTP := false
+    for _, a := range pbArgs {
+        if a == "--http" || strings.HasPrefix(a, "--http=") {
+            hasHTTP = true
+            break
+        }
+    }
+    if hasHTTP {
+        return pbArgs
+    }
+
+    // Insert --http right after `serve`
+    out := make([]string, 0, len(pbArgs)+2)
+    inserted := false
+    for _, a := range pbArgs {
+        out = append(out, a)
+        if !inserted && a == "serve" {
+            out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
+            inserted = true
+        }
+    }
+    if !inserted {
+        out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
+    }
+    return out
 }
 
 func helpText() string {
-	return `
+    return `
 Usage: %s [OPTIONS]
 
 Options:
@@ -122,6 +183,7 @@ Options:
   -port int               Set the server port (default: 3000)
   -log-level string       Log level: error|warn|info|debug|trace
   -ingest-enabled bool    Enable background scheduler loops (default: true)
+  -direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
   -help                   Show this help message
 
 Note: The FPVTrackside API will be available at /direct/* endpoints
@@ -175,7 +237,7 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			resp := c.Response
 			path := req.URL.Path
 
-            if strings.HasPrefix(path, "/direct/") {
+            if flags.DirectProxy && strings.HasPrefix(path, "/direct/") {
                 newPath := strings.TrimPrefix(path, "/direct/")
                 bytes, err := ingestService.Client.GetBytes(newPath)
                 if err != nil {
@@ -190,12 +252,16 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			return staticHandler(c)
 		})
 
-		fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
-		fmt.Printf("API proxy available at: /direct/* -> %s\n", flags.FPVTrackside)
-		fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
-		fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)
-		return se.Next()
-	})
+        fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
+        if flags.DirectProxy {
+            fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
+        } else {
+            fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
+        }
+        fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
+        fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)
+        return se.Next()
+    })
 }
 
 func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
