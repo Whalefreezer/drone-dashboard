@@ -70,18 +70,23 @@ func (r *RemoteSource) fetchJSON(path string, out any) error {
 	if err != nil {
 		return err
 	}
-	status, hdrs, body := control.DecodeResponse(resp)
-	if status == http.StatusNotModified {
-		if c, ok := r.cache[path]; ok {
-			body = c.body
-		} else {
-			return fmt.Errorf("304 but no cache for %s", path)
-		}
-	}
-	if et, ok := hdrs["ETag"]; ok {
-		r.cache[path] = cached{etag: et, body: body}
-	}
-	return json.Unmarshal(body, out)
+    status, hdrs, body := control.DecodeResponse(resp)
+    if status == http.StatusNotModified {
+        if c, ok := r.cache[path]; ok {
+            body = c.body
+        } else {
+            return fmt.Errorf("304 but no cache for %s", path)
+        }
+    }
+    etag, _ := hdrs["ETag"]
+    if err := json.Unmarshal(body, out); err != nil {
+        // Do not cache invalid payloads
+        return err
+    }
+    if etag != "" {
+        r.cache[path] = cached{etag: etag, body: body}
+    }
+    return nil
 }
 
 func (r *RemoteSource) FetchEvent(eventSourceId string) (EventFile, error) {
