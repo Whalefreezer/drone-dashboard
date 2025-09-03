@@ -1,23 +1,24 @@
 package main
 
 import (
-    "context"
-    "embed"
-    "flag"
-    "fmt"
-    "io"
-    "io/fs"
-    "log"
-    "log/slog"
-    "net/http"
-    "os"
-    "strings"
+	"context"
+	"embed"
+	"flag"
+	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
+	"drone-dashboard/control"
 	"drone-dashboard/ingest"
 	"drone-dashboard/logger"
 	_ "drone-dashboard/migrations"
 	"drone-dashboard/scheduler"
-    "drone-dashboard/control"
 
 	"strconv"
 
@@ -32,8 +33,8 @@ import (
 var staticFiles embed.FS
 
 func main() {
-    // Parse flags (separate from PocketBase CLI)
-    flags, pbArgs := parseFlags()
+	// Parse flags (separate from PocketBase CLI)
+	flags, pbArgs := parseFlags()
 
 	// Static files
 	staticContent := mustStaticFS()
@@ -41,34 +42,36 @@ func main() {
 	// Configure logging
 	logger.Configure(flags.LogLevel)
 
-    // Initialize PocketBase and migrations
-    app := newPocketBaseApp()
+	// Initialize PocketBase and migrations
+	app := newPocketBaseApp(flags)
 
-    // Ensure PocketBase sees only its own args and port mapping
-    pbArgs = preparePocketBaseArgs(pbArgs, flags)
-    app.RootCmd.SetArgs(pbArgs)
+	// Ensure PocketBase sees only its own args and port mapping
+	pbArgs = preparePocketBaseArgs(pbArgs, flags)
+	app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
-    // Select ingest source based on mode
-    var ingestService *ingest.Service
-    hub := control.NewHub()
+	// Select ingest source based on mode
+	var ingestService *ingest.Service
+	hub := control.NewHub()
 
-    switch flags.Mode {
-    case "cloud":
-        // Cloud mode: register control server and set RemoteSource
-        control.RegisterServer(app, hub, flags.AuthToken)
-        ingestService = ingest.NewServiceWithSource(app, ingest.NewRemoteSource(hub, flags.PitsID))
-    case "pits":
-        // Pits mode: use direct source and start outbound control client
-        ingestService = mustNewIngestService(app, flags.FPVTrackside)
-        if flags.CloudURL != "" {
-            pc, err := control.NewPitsClient(flags.CloudURL, flags.AuthToken, flags.PitsID, flags.FPVTrackside)
-            if err != nil { log.Fatal("control client init:", err) }
-            go pc.Start(context.Background())
-        }
-    default: // standalone
-        ingestService = mustNewIngestService(app, flags.FPVTrackside)
-    }
+	switch flags.Mode {
+	case "cloud":
+		// Cloud mode: register control server and set RemoteSource
+		control.RegisterServer(app, hub, flags.AuthToken)
+		ingestService = ingest.NewServiceWithSource(app, ingest.NewRemoteSource(hub, flags.PitsID))
+	case "pits":
+		// Pits mode: use direct source and start outbound control client
+		ingestService = mustNewIngestService(app, flags.FPVTrackside)
+		if flags.CloudURL != "" {
+			pc, err := control.NewPitsClient(flags.CloudURL, flags.AuthToken, flags.PitsID, flags.FPVTrackside)
+			if err != nil {
+				log.Fatal("control client init:", err)
+			}
+			go pc.Start(context.Background())
+		}
+	default: // standalone
+		ingestService = mustNewIngestService(app, flags.FPVTrackside)
+	}
 
 	// Scheduler manager
 	manager := scheduler.NewManager(app, ingestService, scheduler.Config{})
@@ -85,23 +88,24 @@ func main() {
 	// which automatically sets correct intervals for active races
 
 	// Start PocketBase
-    if err := app.Start(); err != nil {
-        log.Fatal("PocketBase startup error:", err)
-    }
+	if err := app.Start(); err != nil {
+		log.Fatal("PocketBase startup error:", err)
+	}
 }
 
 // ----- Structure & helpers -----
 
 type CLIFlags struct {
-    FPVTrackside  string
-    Port          int
-    LogLevel      string
-    IngestEnabled bool
-    DirectProxy   bool
-    Mode          string // standalone|pits|cloud
-    CloudURL      string
-    AuthToken     string
-    PitsID        string
+	FPVTrackside  string
+	Port          int
+	LogLevel      string
+	IngestEnabled bool
+	DirectProxy   bool
+	Mode          string // standalone|pits|cloud
+	CloudURL      string
+	AuthToken     string
+	PitsID        string
+	DBInMemory    bool
 }
 
 // getServerSetting retrieves a server setting value by key with optional default
@@ -130,80 +134,81 @@ func getServerSettingInt(app core.App, key string, defaultValue int) int {
 }
 
 func parseFlags() (CLIFlags, []string) {
-    var out CLIFlags
-    fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-    // Silence default error printing; we'll handle help explicitly
-    fs.SetOutput(io.Discard)
+	var out CLIFlags
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	// Silence default error printing; we'll handle help explicitly
+	fs.SetOutput(io.Discard)
 
-    // Primary flags
-    fs.StringVar(&out.FPVTrackside, "fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
-    fs.IntVar(&out.Port, "port", 3000, "Server port")
-    fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
-    fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
-    fs.BoolVar(&out.DirectProxy, "direct-proxy", false, "Enable /direct/* proxy to FPVTrackside")
-    fs.StringVar(&out.Mode, "mode", "standalone", "Mode: standalone|pits|cloud")
-    fs.StringVar(&out.CloudURL, "cloud-url", "", "Cloud WS URL (pits mode)")
-    fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
-    fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
+	// Primary flags
+	fs.StringVar(&out.FPVTrackside, "fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
+	fs.IntVar(&out.Port, "port", 3000, "Server port")
+	fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
+	fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
+	fs.BoolVar(&out.DirectProxy, "direct-proxy", false, "Enable /direct/* proxy to FPVTrackside")
+	fs.StringVar(&out.Mode, "mode", "standalone", "Mode: standalone|pits|cloud")
+	fs.StringVar(&out.CloudURL, "cloud-url", "", "Cloud WS URL (pits mode)")
+	fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
+	fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
+	fs.BoolVar(&out.DBInMemory, "db-in-memory", false, "Use in-memory SQLite database (ephemeral)")
 
-    showHelp := fs.Bool("help", false, "Show help message")
-    _ = fs.Parse(os.Args[1:])
-    if *showHelp {
-        fmt.Printf(helpText(), os.Args[0])
-        os.Exit(0)
-    }
-    // Remaining args are for PocketBase (eg. serve/migrate/superuser ...)
-    return out, fs.Args()
+	showHelp := fs.Bool("help", false, "Show help message")
+	_ = fs.Parse(os.Args[1:])
+	if *showHelp {
+		fmt.Printf(helpText(), os.Args[0])
+		os.Exit(0)
+	}
+	// Remaining args are for PocketBase (eg. serve/migrate/superuser ...)
+	return out, fs.Args()
 }
 
 // preparePocketBaseArgs ensures PB receives proper command/flags and our port maps to --http
 func preparePocketBaseArgs(pbArgs []string, flags CLIFlags) []string {
-    // If no PB command provided, default to `serve` and inject --http with our port
-    if len(pbArgs) == 0 {
-        return []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
-    }
+	// If no PB command provided, default to `serve` and inject --http with our port
+	if len(pbArgs) == 0 {
+		return []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
+	}
 
-    // Only inject --http for the `serve` command and when not already specified
-    hasServe := false
-    for _, a := range pbArgs {
-        if a == "serve" {
-            hasServe = true
-            break
-        }
-    }
-    if !hasServe {
-        return pbArgs
-    }
+	// Only inject --http for the `serve` command and when not already specified
+	hasServe := false
+	for _, a := range pbArgs {
+		if a == "serve" {
+			hasServe = true
+			break
+		}
+	}
+	if !hasServe {
+		return pbArgs
+	}
 
-    hasHTTP := false
-    for _, a := range pbArgs {
-        if a == "--http" || strings.HasPrefix(a, "--http=") {
-            hasHTTP = true
-            break
-        }
-    }
-    if hasHTTP {
-        return pbArgs
-    }
+	hasHTTP := false
+	for _, a := range pbArgs {
+		if a == "--http" || strings.HasPrefix(a, "--http=") {
+			hasHTTP = true
+			break
+		}
+	}
+	if hasHTTP {
+		return pbArgs
+	}
 
-    // Insert --http right after `serve`
-    out := make([]string, 0, len(pbArgs)+2)
-    inserted := false
-    for _, a := range pbArgs {
-        out = append(out, a)
-        if !inserted && a == "serve" {
-            out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
-            inserted = true
-        }
-    }
-    if !inserted {
-        out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
-    }
-    return out
+	// Insert --http right after `serve`
+	out := make([]string, 0, len(pbArgs)+2)
+	inserted := false
+	for _, a := range pbArgs {
+		out = append(out, a)
+		if !inserted && a == "serve" {
+			out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
+			inserted = true
+		}
+	}
+	if !inserted {
+		out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
+	}
+	return out
 }
 
 func helpText() string {
-    return `
+	return `
 Usage: %s [OPTIONS]
 
 Options:
@@ -216,6 +221,7 @@ Options:
   -cloud-url string       Cloud WS URL (pits mode)
   -auth-token string      Auth token for control link
   -pits-id string         Identifier for this pits instance
+  -db-in-memory           Use in-memory SQLite database (ephemeral)
   -help                   Show this help message
 
 Note: The FPVTrackside API will be available at /direct/* endpoints
@@ -235,24 +241,47 @@ func mustStaticFS() fs.FS {
 	return staticContent
 }
 
-func newPocketBaseApp() *pocketbase.PocketBase {
-	app := pocketbase.New()
-	// Register migrations and enable automigrate when running via `go run`
-	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())
-	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: isGoRun})
+func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
+	// Optional: use in-memory DB with modernc.org/sqlite when requested
+	var app *pocketbase.PocketBase
+	if flags.DBInMemory || os.Getenv("PB_DB_IN_MEMORY") == "1" || strings.EqualFold(os.Getenv("PB_DB_IN_MEMORY"), "true") {
+		slog.Info("db.config", "mode", "memory")
+		app = pocketbase.NewWithConfig(pocketbase.Config{
+			DBConnect: func(dbPath string) (*dbx.DB, error) {
+				// Use distinct shared in-memory databases for data and aux
+				base := filepath.Base(dbPath)
+				dsn := "file:" + base + "?mode=memory&cache=shared"
+				db, err := dbx.Open("sqlite", dsn)
+				if err != nil {
+					return nil, err
+				}
+				// Enable foreign keys and a reasonable busy timeout.
+				if _, err := db.NewQuery("PRAGMA foreign_keys=ON;").Execute(); err != nil {
+					return nil, err
+				}
+				if _, err := db.NewQuery("PRAGMA busy_timeout=1000;").Execute(); err != nil {
+					return nil, err
+				}
+				return db, nil
+			},
+		})
+	} else {
+		app = pocketbase.New()
+	}
+	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: true})
 	return app
 }
 
 func mustNewIngestService(app core.App, baseURL string) *ingest.Service {
-    svc, err := ingest.NewService(app, baseURL)
-    if err != nil {
-        log.Fatal("Failed to create proxy service:", err)
-    }
-    return svc
+	svc, err := ingest.NewService(app, baseURL)
+	if err != nil {
+		log.Fatal("Failed to create proxy service:", err)
+	}
+	return svc
 }
 
 func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags CLIFlags) {
-    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
 
@@ -263,63 +292,67 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		ctx := context.Background()
 		manager.StartLoops(ctx)
 
-        // Routing (register specific first)
-        // Optional direct proxy (only in direct source modes)
-        se.Router.Any("/direct/{path...}", func(c *core.RequestEvent) error {
-            if !flags.DirectProxy { return c.NotFoundError("not found", nil) }
-            // Only available when using direct source
-            ds, ok := ingestService.Source.(ingest.DirectSource)
-            if !ok { return c.NotFoundError("not found", nil) }
-            req := c.Request
-            resp := c.Response
-            srcPath := req.PathValue("path")
-            bytes, err := ds.C.GetBytes(srcPath)
-            if err != nil {
-                slog.Warn("http.direct.fetch.error", "path", srcPath, "err", err)
-                return c.InternalServerError("fetch event", err)
-            }
-            resp.WriteHeader(http.StatusOK)
-            resp.Write([]byte(string(bytes)))
-            return nil
-        })
+		// Routing (register specific first)
+		// Optional direct proxy (only in direct source modes)
+		se.Router.Any("/direct/{path...}", func(c *core.RequestEvent) error {
+			if !flags.DirectProxy {
+				return c.NotFoundError("not found", nil)
+			}
+			// Only available when using direct source
+			ds, ok := ingestService.Source.(ingest.DirectSource)
+			if !ok {
+				return c.NotFoundError("not found", nil)
+			}
+			req := c.Request
+			resp := c.Response
+			srcPath := req.PathValue("path")
+			bytes, err := ds.C.GetBytes(srcPath)
+			if err != nil {
+				slog.Warn("http.direct.fetch.error", "path", srcPath, "err", err)
+				return c.InternalServerError("fetch event", err)
+			}
+			resp.WriteHeader(http.StatusOK)
+			resp.Write([]byte(string(bytes)))
+			return nil
+		})
 
-        // Catch-all static last
-        se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
-            staticHandler := apis.Static(static, false)
-            return staticHandler(c)
-        })
+		// Catch-all static last
+		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
+			staticHandler := apis.Static(static, false)
+			return staticHandler(c)
+		})
 
-        if flags.Mode == "cloud" {
-            fmt.Printf("Cloud mode: waiting for pits connection; WS control on /control\n")
-        } else {
-            fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
-            if flags.DirectProxy {
-                fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
-            } else {
-                fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
-            }
-        }
-        fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
-        fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)
-        return se.Next()
-    })
+		if flags.Mode == "cloud" {
+			fmt.Printf("Cloud mode: waiting for pits connection; WS control on /control\n")
+		} else {
+			fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
+			if flags.DirectProxy {
+				fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
+			} else {
+				fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
+			}
+		}
+		fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
+		fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)
+		return se.Next()
+	})
 }
 
 func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
-    col, err := app.FindCollectionByNameOrId("server_settings")
-    if err != nil {
-        slog.Warn("server_settings.collection.find.error", "err", err)
-        return
-    }
-    rec, _ := app.FindFirstRecordByFilter("server_settings", "key = 'scheduler.enabled'", nil)
-    if rec == nil {
-        rec = core.NewRecord(col)
-        rec.Set("key", "scheduler.enabled")
-    }
-    rec.Set("value", strconv.FormatBool(enabled))
-    if err := app.Save(rec); err != nil {
-        slog.Warn("server_settings.save.error", "key", "scheduler.enabled", "err", err)
-    }
+	col, err := app.FindCollectionByNameOrId("server_settings")
+	if err != nil {
+		slog.Warn("server_settings.collection.find.error", "err", err)
+		return
+	}
+	rec, _ := app.FindFirstRecordByFilter("server_settings", "key = 'scheduler.enabled'", nil)
+	if rec == nil {
+		rec = core.NewRecord(col)
+		rec.Set("key", "scheduler.enabled")
+	}
+	rec.Set("value", strconv.FormatBool(enabled))
+	if err := app.Save(rec); err != nil {
+		slog.Warn("server_settings.save.error", "key", "scheduler.enabled", "err", err)
+	}
 }
 
 // setupInitialRaceIngestTarget sets up the initial race ingest target on startup
