@@ -76,7 +76,7 @@ func (s *Service) IngestPilotChannels(u *Upserter, eventSourceId, raceId, racePB
 		}
 	}
 
-	slog.Info("ingest.pilotChannels.done", "raceId", raceId, "count", len(pilotChannels))
+	slog.Debug("ingest.pilotChannels.done", "raceId", raceId, "count", len(pilotChannels))
 	return nil
 }
 
@@ -246,6 +246,6 @@ func (s *Service) IngestRace(eventSourceId, raceId string) error {
 		return err
 	}
 
-	slog.Info("ingest.race.done", "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
+	slog.Debug("ingest.race.done", "raceId", raceId, "detections", len(r.Detections), "laps", len(r.Laps), "gamePoints", len(r.GamePoints))
 	return nil
 }

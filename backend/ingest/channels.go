@@ -61,6 +61,6 @@ func (s *Service) IngestChannels(eventSourceId string) error {
 		}
 		count++
 	}
-	slog.Info("ingest.channels.done", "channels", count)
+	slog.Debug("ingest.channels.done", "channels", count)
 	return nil
 }
