@@ -139,7 +139,7 @@ func parseFlags() CLIFlags {
 // preparePocketBaseArgs ensures PB receives proper command/flags and our port maps to --http
 func preparePocketBaseArgs(flags CLIFlags) []string {
 	// Always serve with our port mapping
-	args := []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
+	args := []string{"serve", "--http", fmt.Sprintf("0.0.0.0:%d", flags.Port)}
 
 	// Optionally add database directory if specified
 	if flags.DBDir != "" {
@@ -160,18 +160,42 @@ Options:
   -ingest-enabled bool    Enable background scheduler loops (default: true)
   -direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
 
-  -cloud-url string       Cloud WS URL (pits mode)
-  -auth-token string      Auth token for control link
+  -cloud-url string       Cloud WebSocket URL (required for pits mode)
+  -auth-token string      Authentication token (enables cloud or pits mode)
   -pits-id string         Identifier for this pits instance
   -db-dir string          Directory for SQLite database files (empty = in-memory)
   -help                   Show this help message
 
-Note: The FPVTrackside API will be available at /direct/* endpoints
+Behavior Modes:
+  Standalone (default): No auth-token provided
+    - Uses direct FPVTrackside connection
+    - No cloud connectivity
+
+  Cloud: auth-token provided, no cloud-url
+    - Acts as cloud server waiting for pits connections
+    - Provides WebSocket control interface at /control
+
+  Pits: auth-token AND cloud-url provided
+    - Connects to cloud server as a pits instance
+    - Forwards race data to cloud via WebSocket
+
+Note: The server binds to all network interfaces (0.0.0.0)
+      The FPVTrackside API will be available at /direct/* endpoints
       PocketBase API will be available at /api/* endpoints
       PocketBase Admin UI will be available at /_/
 
-Example:
+Examples:
+  # Standalone mode (default)
+  drone-dashboard
+
+  # Standalone with custom FPVTrackside endpoint
   drone-dashboard -fpvtrackside="http://localhost:8000" -port=4000
+
+  # Cloud mode - acts as server for pits
+  drone-dashboard -auth-token="your-token-here"
+
+  # Pits mode - connects to cloud server
+  drone-dashboard -auth-token="your-token-here" -cloud-url="ws://cloud.example.com/ws"
 `
 }
 
