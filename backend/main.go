@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"drone-dashboard/control"
 	"drone-dashboard/ingest"
@@ -36,7 +35,7 @@ var staticFiles embed.FS
 
 func main() {
 	// Parse flags (separate from PocketBase CLI)
-	flags, pbArgs := parseFlags()
+	flags := parseFlags()
 
 	// Static files
 	staticContent := mustStaticFS()
@@ -48,7 +47,8 @@ func main() {
 	app := newPocketBaseApp(flags)
 
 	// Ensure PocketBase sees only its own args and port mapping
-	pbArgs = preparePocketBaseArgs(pbArgs, flags)
+	pbArgs := preparePocketBaseArgs(flags)
+	slog.Info("PocketBase args", "args", pbArgs)
 	app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
@@ -107,35 +107,10 @@ type CLIFlags struct {
 	CloudURL      string
 	AuthToken     string
 	PitsID        string
-	DBInMemory    bool
+	DBDir         string
 }
 
-// getServerSetting retrieves a server setting value by key with optional default
-func getServerSetting(app core.App, key string, defaultValue string) string {
-	rec, err := app.FindFirstRecordByFilter("server_settings", "key = {:key}", dbx.Params{"key": key})
-	if err != nil || rec == nil {
-		return defaultValue
-	}
-	value := rec.GetString("value")
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
-
-// getServerSettingInt retrieves a server setting as an integer with optional default
-func getServerSettingInt(app core.App, key string, defaultValue int) int {
-	value := getServerSetting(app, key, "")
-	if value == "" {
-		return defaultValue
-	}
-	if n, err := strconv.Atoi(value); err == nil {
-		return n
-	}
-	return defaultValue
-}
-
-func parseFlags() (CLIFlags, []string) {
+func parseFlags() CLIFlags {
 	var out CLIFlags
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	// Silence default error printing; we'll handle help explicitly
@@ -151,7 +126,7 @@ func parseFlags() (CLIFlags, []string) {
 	fs.StringVar(&out.CloudURL, "cloud-url", "", "Cloud WS URL (pits mode)")
 	fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
 	fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
-	fs.BoolVar(&out.DBInMemory, "db-in-memory", false, "Use in-memory SQLite database (ephemeral)")
+	fs.StringVar(&out.DBDir, "db-dir", "", "Directory for SQLite database files (empty = in-memory)")
 
 	showHelp := fs.Bool("help", false, "Show help message")
 	_ = fs.Parse(os.Args[1:])
@@ -159,54 +134,20 @@ func parseFlags() (CLIFlags, []string) {
 		fmt.Printf(helpText(), os.Args[0])
 		os.Exit(0)
 	}
-	// Remaining args are for PocketBase (eg. serve/migrate/superuser ...)
-	return out, fs.Args()
+	return out
 }
 
 // preparePocketBaseArgs ensures PB receives proper command/flags and our port maps to --http
-func preparePocketBaseArgs(pbArgs []string, flags CLIFlags) []string {
-	// If no PB command provided, default to `serve` and inject --http with our port
-	if len(pbArgs) == 0 {
-		return []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
+func preparePocketBaseArgs(flags CLIFlags) []string {
+	// Always serve with our port mapping
+	args := []string{"serve", "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port)}
+
+	// Optionally add database directory if specified
+	if flags.DBDir != "" {
+		args = append(args, "--dir", flags.DBDir)
 	}
 
-	// Only inject --http for the `serve` command and when not already specified
-	hasServe := false
-	for _, a := range pbArgs {
-		if a == "serve" {
-			hasServe = true
-			break
-		}
-	}
-	if !hasServe {
-		return pbArgs
-	}
-
-	hasHTTP := false
-	for _, a := range pbArgs {
-		if a == "--http" || strings.HasPrefix(a, "--http=") {
-			hasHTTP = true
-			break
-		}
-	}
-	if hasHTTP {
-		return pbArgs
-	}
-
-	// Insert --http right after `serve`
-	out := make([]string, 0, len(pbArgs)+2)
-	inserted := false
-	for _, a := range pbArgs {
-		out = append(out, a)
-		if !inserted && a == "serve" {
-			out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
-			inserted = true
-		}
-	}
-	if !inserted {
-		out = append(out, "--http", fmt.Sprintf("127.0.0.1:%d", flags.Port))
-	}
-	return out
+	return args
 }
 
 func helpText() string {
@@ -223,7 +164,7 @@ Options:
   -cloud-url string       Cloud WS URL (pits mode)
   -auth-token string      Auth token for control link
   -pits-id string         Identifier for this pits instance
-  -db-in-memory           Use in-memory SQLite database (ephemeral)
+  -db-dir string          Directory for SQLite database files (empty = in-memory)
   -help                   Show this help message
 
 Note: The FPVTrackside API will be available at /direct/* endpoints
@@ -244,9 +185,9 @@ func mustStaticFS() fs.FS {
 }
 
 func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
-	// Optional: use in-memory DB with modernc.org/sqlite when requested
+	// Optional: use in-memory DB with modernc.org/sqlite when db-dir is empty
 	var app *pocketbase.PocketBase
-	if flags.DBInMemory || os.Getenv("PB_DB_IN_MEMORY") == "1" || strings.EqualFold(os.Getenv("PB_DB_IN_MEMORY"), "true") {
+	if flags.DBDir == "" {
 		slog.Info("db.config", "mode", "memory")
 		app = pocketbase.NewWithConfig(pocketbase.Config{
 			DBConnect: func(dbPath string) (*dbx.DB, error) {
