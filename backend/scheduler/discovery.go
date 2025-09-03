@@ -20,14 +20,14 @@ func (m *Manager) runDiscovery() {
 	// race conditions where targets were created before events existed in DB.
 
 	// 1. Get event source ID from external system
-    eventSourceId, err := m.Service.Source.FetchEventSourceId()
+	eventSourceId, err := m.Service.Source.FetchEventSourceId()
 	if err != nil {
 		slog.Warn("scheduler.discovery.fetchEventSourceId.error", "err", err)
 		return
 	}
 
 	// 2. Fetch event data to validate it exists and get race information
-    events, err := m.Service.Source.FetchEvent(eventSourceId)
+	events, err := m.Service.Source.FetchEvent(eventSourceId)
 	if err != nil || len(events) == 0 {
 		slog.Warn("scheduler.discovery.fetchEvent.error", "eventSourceId", eventSourceId, "err", err)
 		return
@@ -48,72 +48,74 @@ func (m *Manager) runDiscovery() {
 		return
 	}
 
-    // 5. Prune any ingest targets that belong to other events to avoid stale ingestion
-    m.pruneTargetsNotForEvent(eventPBID)
+	// 5. Prune any ingest targets that belong to other events to avoid stale ingestion
+	m.pruneTargetsNotForEvent(eventPBID)
 
-    // 6. Create targets with proper PocketBase ID for relations
-    now := time.Now()
+	// 6. Create targets with proper PocketBase ID for relations
+	now := time.Now()
 
-    // Seed event-related targets (per-endpoint granularity)
-    m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	// Seed event-related targets (per-endpoint granularity)
+	m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.ChannelsInterval, now)
 	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
-    // Seed results target
-    m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
+	// Seed results target
+	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
 
-    // Seed one race target per race ID from the fetched event data
-    for _, raceID := range eventData.Races {
-        m.upsertTarget("race", string(raceID), eventPBID, m.Cfg.RaceIdle, now)
-    }
+	// Seed one race target per race ID from the fetched event data
+	for _, raceID := range eventData.Races {
+		m.upsertTarget("race", string(raceID), eventPBID, m.Cfg.RaceIdle, now)
+	}
 
 	// Optionally: prune orphaned targets for this event
 	m.pruneOrphans(eventPBID, eventData.Races)
 
-    slog.Info("scheduler.discovery.completed", "eventSourceId", eventSourceId, "eventPBID", eventPBID, "races", len(eventData.Races))
+	slog.Debug("scheduler.discovery.completed", "eventSourceId", eventSourceId, "eventPBID", eventPBID, "races", len(eventData.Races))
 
-    // After reconciling targets/races, ensure active race priority and publish current order
-    m.ensureActiveRacePriority()
+	// After reconciling targets/races, ensure active race priority and publish current order
+	m.ensureActiveRacePriority()
 
-    // Lastly, ensure only this event is marked as current (flip others only if needed)
-    if err := m.Service.SetEventAsCurrent(eventSourceId); err != nil {
-        slog.Warn("scheduler.discovery.setEventAsCurrent.error", "eventSourceId", eventSourceId, "err", err)
-    }
+	// Lastly, ensure only this event is marked as current (flip others only if needed)
+	if err := m.Service.SetEventAsCurrent(eventSourceId); err != nil {
+		slog.Warn("scheduler.discovery.setEventAsCurrent.error", "eventSourceId", eventSourceId, "err", err)
+	}
 }
 
 // pruneTargetsNotForEvent deletes all ingest_targets that do not belong to the provided eventPBID.
 // This ensures the scheduler does not keep ingesting data for a previous event.
 func (m *Manager) pruneTargetsNotForEvent(currentEventPBID string) {
-    if currentEventPBID == "" {
-        return
-    }
-    // Select targets whose event is null/empty or different than the current event
-    query := `
+	if currentEventPBID == "" {
+		return
+	}
+	// Select targets whose event is null/empty or different than the current event
+	query := `
         SELECT id FROM ingest_targets
         WHERE event IS NULL OR event = '' OR event != {:e}
     `
-    type row struct{ ID string `db:"id"` }
-    var rows []row
-    if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"e": currentEventPBID}).All(&rows); err != nil {
-        slog.Warn("scheduler.pruneTargetsNotForEvent.query.error", "eventPBID", currentEventPBID, "err", err)
-        return
-    }
-    removed := 0
-    for _, r := range rows {
-        rec, err := m.App.FindRecordById("ingest_targets", r.ID)
-        if err != nil || rec == nil {
-            slog.Debug("scheduler.pruneTargetsNotForEvent.find.error", "id", r.ID, "err", err)
-            continue
-        }
-        if err := m.App.Delete(rec); err != nil {
-            slog.Warn("scheduler.pruneTargetsNotForEvent.delete.error", "id", r.ID, "err", err)
-            continue
-        }
-        removed++
-    }
-    if removed > 0 {
-        slog.Info("scheduler.pruneTargetsNotForEvent.done", "eventPBID", currentEventPBID, "removed", removed)
-    }
+	type row struct {
+		ID string `db:"id"`
+	}
+	var rows []row
+	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"e": currentEventPBID}).All(&rows); err != nil {
+		slog.Warn("scheduler.pruneTargetsNotForEvent.query.error", "eventPBID", currentEventPBID, "err", err)
+		return
+	}
+	removed := 0
+	for _, r := range rows {
+		rec, err := m.App.FindRecordById("ingest_targets", r.ID)
+		if err != nil || rec == nil {
+			slog.Debug("scheduler.pruneTargetsNotForEvent.find.error", "id", r.ID, "err", err)
+			continue
+		}
+		if err := m.App.Delete(rec); err != nil {
+			slog.Warn("scheduler.pruneTargetsNotForEvent.delete.error", "id", r.ID, "err", err)
+			continue
+		}
+		removed++
+	}
+	if removed > 0 {
+		slog.Info("scheduler.pruneTargetsNotForEvent.done", "eventPBID", currentEventPBID, "removed", removed)
+	}
 }
 
 func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time) {
@@ -159,11 +161,11 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 	for _, r := range validRaceIds {
 		valid[string(r)] = struct{}{}
 	}
-    all, err := m.App.FindAllRecords("ingest_targets")
-    if err != nil {
-        slog.Warn("scheduler.pruneOrphans.list.error", "eventPBID", eventPBID, "err", err)
-        return
-    }
+	all, err := m.App.FindAllRecords("ingest_targets")
+	if err != nil {
+		slog.Warn("scheduler.pruneOrphans.list.error", "eventPBID", eventPBID, "err", err)
+		return
+	}
 	for _, r := range all {
 		if eventPBID == "" {
 			continue
@@ -175,13 +177,13 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 		sid := r.GetString("sourceId")
 		if t == "race" {
 			if _, ok := valid[sid]; !ok {
-                // delete orphan race target
-                if err := m.App.Delete(r); err != nil {
-                    slog.Warn("scheduler.pruneOrphans.delete.error", "id", r.Id, "err", err)
-                }
-            }
-        }
-    }
+				// delete orphan race target
+				if err := m.App.Delete(r); err != nil {
+					slog.Warn("scheduler.pruneOrphans.delete.error", "id", r.Id, "err", err)
+				}
+			}
+		}
+	}
 }
 
 func hash32(s string) uint32 {

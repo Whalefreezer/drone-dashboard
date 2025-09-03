@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"drone-dashboard/control"
 	"drone-dashboard/ingest"
@@ -48,7 +49,7 @@ func main() {
 
 	// Ensure PocketBase sees only its own args and port mapping
 	pbArgs := preparePocketBaseArgs(flags)
-	slog.Info("PocketBase args", "args", pbArgs)
+	slog.Debug("PocketBase args", "args", pbArgs)
 	app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
@@ -154,17 +155,17 @@ func helpText() string {
 Usage: %s [OPTIONS]
 
 Options:
-  -fpvtrackside string    Set the FPVTrackside API endpoint (default: http://localhost:8080)
-  -port int               Set the server port (default: 3000)
-  -log-level string       Log level: error|warn|info|debug|trace
-  -ingest-enabled bool    Enable background scheduler loops (default: true)
-  -direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
+  --fpvtrackside string    Set the FPVTrackside API endpoint (default: http://localhost:8080)
+  --port int               Set the server port (default: 3000)
+  --log-level string       Log level: error|warn|info|debug|trace
+  --ingest-enabled bool    Enable background scheduler loops (default: true)
+  --direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
 
-  -cloud-url string       Cloud WebSocket URL (required for pits mode)
-  -auth-token string      Authentication token (enables cloud or pits mode)
-  -pits-id string         Identifier for this pits instance
-  -db-dir string          Directory for SQLite database files (empty = in-memory)
-  -help                   Show this help message
+  --cloud-url string       Cloud WebSocket URL (required for pits mode)
+  --auth-token string      Authentication token (enables cloud or pits mode)
+  --pits-id string         Identifier for this pits instance
+  --db-dir string          Directory for SQLite database files (empty = in-memory)
+  --help                   Show this help message
 
 Behavior Modes:
   Standalone (default): No auth-token provided
@@ -211,8 +212,8 @@ func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
 	// Optional: use in-memory DB with modernc.org/sqlite when db-dir is empty
 	var app *pocketbase.PocketBase
 	if flags.DBDir == "" {
-		slog.Info("db.config", "mode", "memory")
 		app = pocketbase.NewWithConfig(pocketbase.Config{
+			HideStartBanner: true,
 			DBConnect: func(dbPath string) (*dbx.DB, error) {
 				// Use distinct shared in-memory databases for data and aux
 				base := filepath.Base(dbPath)
@@ -232,7 +233,9 @@ func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
 			},
 		})
 	} else {
-		app = pocketbase.New()
+		app = pocketbase.NewWithConfig(pocketbase.Config{
+			HideStartBanner: true,
+		})
 	}
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: true})
 	return app
@@ -255,9 +258,6 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
-
-		// Set up initial race ingest target after everything is ready
-		setupInitialRaceIngestTarget(app)
 
 		// Start loops
 		ctx := context.Background()
@@ -294,17 +294,24 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		})
 
 		if flags.AuthToken != "" && flags.CloudURL == "" {
-			fmt.Printf("Cloud mode: waiting for pits connection; WS control on /control\n")
+			slog.Info("Cloud mode: waiting for pits connection; WS control on /control")
 		} else {
-			fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
+			slog.Info("Pointing to FPVTrackside API", "url", flags.FPVTrackside)
 			if flags.DirectProxy {
-				fmt.Printf("Direct proxy enabled: /direct/* -> %s\n", flags.FPVTrackside)
+				slog.Info("Direct proxy enabled", "route", "/direct/*", "target", flags.FPVTrackside)
 			} else {
-				fmt.Printf("Direct proxy disabled (enable with -direct-proxy)\n")
+				slog.Debug("Direct proxy disabled (enable with -direct-proxy)")
 			}
 		}
-		fmt.Printf("PocketBase + Drone Dashboard running on http://localhost:%d\n", flags.Port)
-		fmt.Printf("PocketBase Admin UI available at: http://localhost:%d/_/\n", flags.Port)
+		portLength := len(strconv.Itoa(flags.Port))
+		fmt.Printf("\n")
+		fmt.Printf("╔═══════════════════════════════════════════════════════════╗\n")
+		fmt.Printf("║                    🚀 DRONE DASHBOARD                     ║\n")
+		fmt.Printf("╠═══════════════════════════════════════════════════════════╣\n")
+		fmt.Printf("║  🌐 Main Dashboard:  http://0.0.0.0:%d  %s               ║\n", flags.Port, strings.Repeat(" ", 5-portLength))
+		fmt.Printf("║  🔧 Admin Panel:     http://0.0.0.0:%d/_/  %s            ║\n", flags.Port, strings.Repeat(" ", 5-portLength))
+		fmt.Printf("╚═══════════════════════════════════════════════════════════╝\n")
+		fmt.Printf("\n")
 		return se.Next()
 	})
 }
@@ -385,7 +392,7 @@ func ensureSuperuser(app core.App) error {
 // generatePassword returns a random password of the requested length
 // using a URL-safe alphanumeric+symbols charset.
 func generatePassword(length int) (string, error) {
-	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+"
+	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789_"
 	max := big.NewInt(int64(len(charset)))
 	out := make([]byte, length)
 	for i := 0; i < length; i++ {
@@ -396,11 +403,4 @@ func generatePassword(length int) (string, error) {
 		out[i] = charset[n.Int64()]
 	}
 	return string(out), nil
-}
-
-// setupInitialRaceIngestTarget sets up the initial race ingest target on startup
-func setupInitialRaceIngestTarget(app core.App) {
-	// The scheduler manager automatically handles race ingest targets
-	// and sets correct intervals for active races via ensureActiveRacePriority()
-	log.Printf("Race ingest targets will be managed by scheduler")
 }
