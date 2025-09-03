@@ -52,26 +52,26 @@ func main() {
 	app.RootCmd.SetArgs(pbArgs)
 
 	// Create services
-	// Select ingest source based on mode
+	// Select ingest source based on configuration
 	var ingestService *ingest.Service
 	hub := control.NewHub()
 
-	switch flags.Mode {
-	case "cloud":
-		// Cloud mode: register control server and set RemoteSource
-		control.RegisterServer(app, hub, flags.AuthToken)
-		ingestService = ingest.NewServiceWithSource(app, ingest.NewRemoteSource(hub, flags.PitsID))
-	case "pits":
-		// Pits mode: use direct source and start outbound control client
-		ingestService = mustNewIngestService(app, flags.FPVTrackside)
+	if flags.AuthToken != "" {
 		if flags.CloudURL != "" {
+			// Pits mode: auth-token and cloud-url set
+			ingestService = mustNewIngestService(app, flags.FPVTrackside)
 			pc, err := control.NewPitsClient(flags.CloudURL, flags.AuthToken, flags.PitsID, flags.FPVTrackside)
 			if err != nil {
 				log.Fatal("control client init:", err)
 			}
 			go pc.Start(context.Background())
+		} else {
+			// Cloud mode: auth-token set but no cloud-url
+			control.RegisterServer(app, hub, flags.AuthToken)
+			ingestService = ingest.NewServiceWithSource(app, ingest.NewRemoteSource(hub, flags.PitsID))
 		}
-	default: // standalone
+	} else {
+		// Standalone mode: no auth-token
 		ingestService = mustNewIngestService(app, flags.FPVTrackside)
 	}
 
@@ -103,7 +103,6 @@ type CLIFlags struct {
 	LogLevel      string
 	IngestEnabled bool
 	DirectProxy   bool
-	Mode          string // standalone|pits|cloud
 	CloudURL      string
 	AuthToken     string
 	PitsID        string
@@ -122,7 +121,7 @@ func parseFlags() CLIFlags {
 	fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
 	fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
 	fs.BoolVar(&out.DirectProxy, "direct-proxy", false, "Enable /direct/* proxy to FPVTrackside")
-	fs.StringVar(&out.Mode, "mode", "standalone", "Mode: standalone|pits|cloud")
+
 	fs.StringVar(&out.CloudURL, "cloud-url", "", "Cloud WS URL (pits mode)")
 	fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
 	fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
@@ -160,7 +159,7 @@ Options:
   -log-level string       Log level: error|warn|info|debug|trace
   -ingest-enabled bool    Enable background scheduler loops (default: true)
   -direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
-  -mode string            Mode: standalone|pits|cloud (default: standalone)
+
   -cloud-url string       Cloud WS URL (pits mode)
   -auth-token string      Auth token for control link
   -pits-id string         Identifier for this pits instance
@@ -270,7 +269,7 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			return staticHandler(c)
 		})
 
-		if flags.Mode == "cloud" {
+		if flags.AuthToken != "" && flags.CloudURL == "" {
 			fmt.Printf("Cloud mode: waiting for pits connection; WS control on /control\n")
 		} else {
 			fmt.Printf("Pointing to FPVTrackside API: %s\n", flags.FPVTrackside)
