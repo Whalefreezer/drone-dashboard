@@ -214,6 +214,7 @@ func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
 	if flags.DBDir == "" {
 		app = pocketbase.NewWithConfig(pocketbase.Config{
 			HideStartBanner: true,
+			DefaultDataDir:  ".",
 			DBConnect: func(dbPath string) (*dbx.DB, error) {
 				// Use distinct shared in-memory databases for data and aux
 				base := filepath.Base(dbPath)
@@ -296,24 +297,59 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		if flags.AuthToken != "" && flags.CloudURL == "" {
 			slog.Info("Cloud mode: waiting for pits connection; WS control on /control")
 		} else {
-			slog.Info("Pointing to FPVTrackside API", "url", flags.FPVTrackside)
+			slog.Debug("Pointing to FPVTrackside API", "url", flags.FPVTrackside)
 			if flags.DirectProxy {
 				slog.Info("Direct proxy enabled", "route", "/direct/*", "target", flags.FPVTrackside)
 			} else {
 				slog.Debug("Direct proxy disabled (enable with -direct-proxy)")
 			}
 		}
-		portLength := len(strconv.Itoa(flags.Port))
-		fmt.Printf("\n")
-		fmt.Printf("╔═══════════════════════════════════════════════════════════╗\n")
-		fmt.Printf("║                    🚀 DRONE DASHBOARD                     ║\n")
-		fmt.Printf("╠═══════════════════════════════════════════════════════════╣\n")
-		fmt.Printf("║  🌐 Main Dashboard:  http://0.0.0.0:%d  %s               ║\n", flags.Port, strings.Repeat(" ", 5-portLength))
-		fmt.Printf("║  🔧 Admin Panel:     http://0.0.0.0:%d/_/  %s            ║\n", flags.Port, strings.Repeat(" ", 5-portLength))
-		fmt.Printf("╚═══════════════════════════════════════════════════════════╝\n")
-		fmt.Printf("\n")
+		printDashboardBox(flags)
 		return se.Next()
 	})
+}
+
+// printDashboardBox prints a nicely formatted dashboard information box
+func printDashboardBox(flags CLIFlags) {
+	const contentWidth = 57 // Width of the content area
+
+	// Helper function to format a line with proper padding
+	formatLine := func(icon, label, value string) string {
+		content := fmt.Sprintf("  %s %s: %s", icon, label, value)
+		padding := ""
+		if len(content) < contentWidth {
+			padding = strings.Repeat(" ", contentWidth-len(content)+2)
+		}
+		return fmt.Sprintf("║%s%s║", content, padding)
+	}
+
+	fmt.Printf("\n")
+	fmt.Printf("╔%s╗\n", strings.Repeat("═", contentWidth))
+	fmt.Printf("║%s║\n", centerText("🚀 DRONE DASHBOARD", contentWidth))
+	fmt.Printf("╠%s╣\n", strings.Repeat("═", contentWidth))
+
+	fmt.Println(formatLine("🌐", "Main Dashboard", fmt.Sprintf("http://0.0.0.0:%d", flags.Port)))
+	fmt.Println(formatLine("🔧", "DB Admin Panel", fmt.Sprintf("http://0.0.0.0:%d/_/", flags.Port)))
+
+	if flags.AuthToken != "" && flags.CloudURL == "" {
+		fmt.Println(formatLine("🔧", "Control Link", fmt.Sprintf("ws://0.0.0.0:%d/control", flags.Port)))
+	} else {
+		fmt.Println(formatLine("📡", "FPVTrackside", flags.FPVTrackside))
+	}
+
+	fmt.Printf("╚%s╝\n", strings.Repeat("═", contentWidth))
+	fmt.Printf("\n")
+}
+
+// centerText centers text within a given width
+func centerText(text string, width int) string {
+	if len(text) >= width {
+		return text
+	}
+	padding := (width - len(text)) / 2
+	leftPad := strings.Repeat(" ", padding)
+	rightPad := strings.Repeat(" ", width-len(text)-padding+2)
+	return leftPad + text + rightPad
 }
 
 func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
