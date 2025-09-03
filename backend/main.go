@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -282,6 +284,11 @@ func mustNewIngestService(app core.App, baseURL string) *ingest.Service {
 
 func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags CLIFlags) {
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		// Ensure superuser exists
+		if err := ensureSuperuser(app); err != nil {
+			return fmt.Errorf("failed to ensure superuser: %w", err)
+		}
+
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
 
@@ -353,6 +360,78 @@ func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
 	if err := app.Save(rec); err != nil {
 		slog.Warn("server_settings.save.error", "key", "scheduler.enabled", "err", err)
 	}
+}
+
+// ensureSuperuser creates a superuser if one doesn't exist with the configured email/password
+func ensureSuperuser(app core.App) error {
+	// Env-configurable email/password with sensible defaults
+	email := os.Getenv("SUPERUSER_EMAIL")
+	if email == "" {
+		email = "admin@example.com"
+	}
+	password := os.Getenv("SUPERUSER_PASSWORD")
+	generated := false
+	if password == "" {
+		// Generate a strong random password if not provided
+		if p, err := generatePassword(24); err == nil {
+			password = p
+			generated = true
+		} else {
+			return fmt.Errorf("failed to generate password: %w", err)
+		}
+	}
+
+	// Get the superusers collection
+	superusers, err := app.FindCollectionByNameOrId(core.CollectionNameSuperusers)
+	if err != nil {
+		return fmt.Errorf("failed to find superusers collection: %w", err)
+	}
+
+	// Check if superuser already exists
+	existingRecord, _ := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, email)
+	if existingRecord != nil {
+		slog.Info("superuser.ensure.skipped",
+			"reason", "superuser already exists",
+			"email", email)
+		return nil
+	}
+
+	// Create new superuser record
+	record := core.NewRecord(superusers)
+	record.Set("email", email)
+	record.Set("password", password)
+
+	if err := app.Save(record); err != nil {
+		return fmt.Errorf("failed to save superuser: %w", err)
+	}
+
+	// Always log creation; print password only if it was generated
+	if generated {
+		slog.Info("superuser.ensure.created",
+			"email", email,
+			"password", password,
+			"note", "password generated because SUPERUSER_PASSWORD was not set")
+	} else {
+		slog.Info("superuser.ensure.created",
+			"email", email)
+	}
+	return nil
+}
+
+// generatePassword returns a random password of the requested length
+// using a URL-safe alphanumeric+symbols charset.
+func generatePassword(length int) (string, error) {
+	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+"
+	max := big.NewInt(int64(len(charset)))
+	out := make([]byte, length)
+	for i := 0; i < length; i++ {
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		out[i] = charset[n.Int64()]
+	}
+	return string(out), nil
 }
 
 // setupInitialRaceIngestTarget sets up the initial race ingest target on startup
