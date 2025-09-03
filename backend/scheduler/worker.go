@@ -19,19 +19,20 @@ func (m *Manager) drainOnce() {
 		Type       string `db:"type"`
 		SourceID   string `db:"sourceId"`
 		Event      string `db:"event"`
+		NextDueAt  int64  `db:"nextDueAt"`
 		IntervalMs int    `db:"intervalMs"`
 		Priority   int    `db:"priority"`
 	}
 	var rows []dueRow
-	q := `SELECT id, type, sourceId, event, intervalMs, priority
+	q := `SELECT id, type, sourceId, event, nextDueAt, intervalMs, priority
 	      FROM ingest_targets
 	      WHERE enabled = 1 AND nextDueAt <= {:now}
 	      ORDER BY nextDueAt ASC, priority DESC
 	      LIMIT {:lim}`
-    if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
-        slog.Warn("scheduler.worker.query.error", "err", err)
-        return
-    }
+	if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
+		slog.Warn("scheduler.worker.query.error", "err", err)
+		return
+	}
 	if len(rows) == 0 {
 		return
 	}

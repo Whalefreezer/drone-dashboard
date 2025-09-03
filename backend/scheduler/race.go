@@ -60,17 +60,17 @@ func (m *Manager) findCurrentRaceWithOrder(eventId string) (RaceSourceID, int) {
 	`
 
 	var result struct {
-		CurrentRaceSourceId string `db:"current_race_source_id"`
-		CurrentRaceOrder    int    `db:"current_race_order"`
+		CurrentRaceSourceId *string `db:"current_race_source_id"`
+		CurrentRaceOrder    *int    `db:"current_race_order"`
 	}
 	if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"eventId": eventId}).One(&result); err != nil {
 		slog.Warn("scheduler.findCurrentRaceWithOrder.query.error", "eventId", eventId, "err", err)
 		return "", 0
 	}
-	if result.CurrentRaceSourceId == "" {
+	if result.CurrentRaceSourceId == nil || *result.CurrentRaceSourceId == "" {
 		return "", 0
 	}
-	return RaceSourceID(result.CurrentRaceSourceId), result.CurrentRaceOrder
+	return RaceSourceID(*result.CurrentRaceSourceId), *result.CurrentRaceOrder
 }
 
 // recalculateRaceOrder updates races.raceOrder for all races in the event.

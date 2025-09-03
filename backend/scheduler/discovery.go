@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"hash/fnv"
 	"log/slog"
 	"time"
 
@@ -18,6 +17,8 @@ func (m *Manager) runDiscovery() {
 	// This ensures we work with the live event data and avoids stale references.
 	// The previous logic tried to prefer existing current events but created
 	// race conditions where targets were created before events existed in DB.
+
+	now := time.Now()
 
 	// 1. Get event source ID from external system
 	eventSourceId, err := m.Service.Source.FetchEventSourceId()
@@ -52,13 +53,12 @@ func (m *Manager) runDiscovery() {
 	m.pruneTargetsNotForEvent(eventPBID)
 
 	// 6. Create targets with proper PocketBase ID for relations
-	now := time.Now()
 
 	// Seed event-related targets (per-endpoint granularity)
 	m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.ChannelsInterval, now)
-	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
+	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now, 1)
 	// Seed results target
 	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
 
@@ -118,18 +118,9 @@ func (m *Manager) pruneTargetsNotForEvent(currentEventPBID string) {
 	}
 }
 
-func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time) {
+func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time, priority ...int) {
 	colName := "ingest_targets"
 	rec, _ := m.App.FindFirstRecordByFilter(colName, "type = {:t} && sourceId = {:sid}", dbx.Params{"t": t, "sid": sourceId})
-	// Compute staggered nextDueAt if missing
-	nextDueMs := int64(0)
-	if rec != nil {
-		nextDueMs = int64(rec.GetInt("nextDueAt"))
-	}
-	if nextDueMs == 0 {
-		phase := time.Duration(hash32(sourceId)) % interval
-		nextDueMs = now.Add(phase).UnixMilli()
-	}
 
 	isNewRecord := rec == nil
 	if isNewRecord {
@@ -143,13 +134,18 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		rec.Set("sourceId", sourceId)
 		rec.Set("intervalMs", int(interval.Milliseconds()))
 		rec.Set("enabled", true)
-		rec.Set("priority", 0) // default priority for new records
+		// Use passed priority or default to 0
+		priorityValue := 0
+		if len(priority) > 0 {
+			priorityValue = priority[0]
+		}
+		rec.Set("priority", priorityValue)
+		rec.Set("nextDueAt", now.UnixMilli())
 	}
 	if eventPBID != "" {
 		rec.Set("event", eventPBID)
 	}
-	// Only update nextDueAt for existing records to avoid overriding ensureActiveRacePriority settings
-	rec.Set("nextDueAt", nextDueMs)
+
 	if err := m.App.Save(rec); err != nil {
 		slog.Warn("scheduler.upsertTarget.save.error", "type", t, "sourceId", sourceId, "err", err)
 	}
@@ -184,10 +180,4 @@ func (m *Manager) pruneOrphans(eventPBID string, validRaceIds []ingest.Guid) {
 			}
 		}
 	}
-}
-
-func hash32(s string) uint32 {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(s))
-	return h.Sum32()
 }
