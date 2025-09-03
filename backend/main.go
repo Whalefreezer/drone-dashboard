@@ -315,7 +315,9 @@ func printDashboardBox(flags CLIFlags) {
 
 	// Helper function to format a line with proper padding
 	formatLine := func(icon, label, value string) string {
-		content := fmt.Sprintf("  %s %s: %s", icon, label, value)
+		const labelWidth = 15 // Fixed width for labels
+		paddedLabel := fmt.Sprintf("%-*s", labelWidth, label)
+		content := fmt.Sprintf("  %s %s: %s", icon, paddedLabel, value)
 		padding := ""
 		if len(content) < contentWidth {
 			padding = strings.Repeat(" ", contentWidth-len(content)+2)
