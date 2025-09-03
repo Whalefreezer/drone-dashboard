@@ -28,6 +28,7 @@ dist-ssr
 bin
 static
 build
+build.bk
 target
 
 # Added by Claude Task Master

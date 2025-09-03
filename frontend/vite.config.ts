@@ -58,13 +58,7 @@ export default defineConfig(({ mode }: { mode: string }) => {
                 },
             },
             // Optimize minification
-            minify: 'terser',
-            terserOptions: {
-                compress: {
-                    drop_console: !env.VITE_DEV_MODE,
-                    drop_debugger: !env.VITE_DEV_MODE,
-                },
-            },
+            minify: 'esbuild',
         },
 
         // Enable detailed build analysis in development
