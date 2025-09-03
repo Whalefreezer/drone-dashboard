@@ -52,7 +52,7 @@ func (s *Service) IngestPilotChannels(u *Upserter, eventSourceId, raceId, racePB
 		}
 	}
 	if deletedCount > 0 {
-		slog.Info("ingest.pilotChannels.cleaned", "raceId", raceId, "deleted", deletedCount)
+		slog.Debug("ingest.pilotChannels.cleaned", "raceId", raceId, "deleted", deletedCount)
 	}
 
 	// Upsert valid pilotChannels
