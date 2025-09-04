@@ -9,7 +9,7 @@ export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '')
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 
-const pb = new PocketBase();
+const pb = new PocketBase(import.meta.env.VITE_API_URL || '');
 pb.autoCancellation(false);
 
 export function pbSubscribeByID<T extends PBBaseRecord>(
