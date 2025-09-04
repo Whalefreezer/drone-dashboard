@@ -1,6 +1,8 @@
 # Drone Dashboard Backend (Go)
 
-A lightweight Go server that acts as a proxy for the FPVTrackside API and serves static frontend files. This implementation provides a single binary output with minimal dependencies, using only Go's standard library.
+A lightweight Go server that acts as a proxy for the FPVTrackside API and serves
+static frontend files. This implementation provides a single binary output with
+minimal dependencies, using only Go's standard library.
 
 ## Prerequisites
 
@@ -8,7 +10,8 @@ A lightweight Go server that acts as a proxy for the FPVTrackside API and serves
 
 ## Building
 
-Before building, ensure your frontend files are in the `static` directory. These files will be embedded into the binary during compilation.
+Before building, ensure your frontend files are in the `static` directory. These
+files will be embedded into the binary during compilation.
 
 To build the server into a single executable:
 
@@ -16,27 +19,35 @@ To build the server into a single executable:
 go build -o drone-dashboard.exe
 ```
 
-This will create a `drone-dashboard.exe` file in the current directory that includes both the server and the frontend files.
+This will create a `drone-dashboard.exe` file in the current directory that
+includes both the server and the frontend files.
 
 ### Multi-Platform Build Scripts
 
-For convenience, build scripts are provided to compile for all major platforms at once in parallel:
+For convenience, build scripts are provided to compile for all major platforms
+at once in parallel:
 
 - On Windows: Run `build.bat`
-- On Linux/macOS: Run `./build.sh` (make it executable first with `chmod +x build.sh`)
+- On Linux/macOS: Run `./build.sh` (make it executable first with
+  `chmod +x build.sh`)
 
 These scripts will create a `build` directory containing 64-bit binaries for:
+
 - Windows (AMD64)
 - Linux (AMD64 and ARM64)
 - macOS (Intel and Apple Silicon)
 
-All builds run in parallel for faster compilation. The build script will wait for all builds to complete before finishing.
+All builds run in parallel for faster compilation. The build script will wait
+for all builds to complete before finishing.
 
 ### Static Files
 
-The frontend files should be placed in the `static` directory before building. The build process will embed these files directly into the binary using Go's `embed` package, resulting in a single, self-contained executable.
+The frontend files should be placed in the `static` directory before building.
+The build process will embed these files directly into the binary using Go's
+`embed` package, resulting in a single, self-contained executable.
 
 Directory structure:
+
 ```
 gobackend/
 ├── main.go
@@ -51,7 +62,9 @@ gobackend/
 
 ## Running
 
-The server is completely self-contained and doesn't need external files to run. Just make sure you have:
+The server is completely self-contained and doesn't need external files to run.
+Just make sure you have:
+
 1. Access to a FPVTrackside API endpoint
 
 ### Command Line Options
@@ -60,28 +73,55 @@ The server is completely self-contained and doesn't need external files to run. 
 Usage: drone-dashboard [OPTIONS]
 
 Options:
-  -fpvtrackside-api string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
-  -port int                 Set the server port (default: 3000)
-  -help                     Show this help message
+  -fpvtrackside string   Set the FPVTrackside API endpoint (default: http://localhost:8080)
+  -port int              Set the server port (default: 3000)
+  -log-level string      Log level: error|warn|info|debug|trace
+  -ingest-enabled bool   Enable background scheduler loops (default: true)
+  -direct-proxy          Enable /direct/* proxy to FPVTrackside (default: false)
+  -mode string           Mode: standalone|pits|cloud (default: standalone)
+  -cloud-url string      Cloud WS URL (pits mode)
+  -auth-token string     Auth token for control link
+  -pits-id string        Identifier for this pits instance
+  -help                  Show this help message
 ```
 
 ### Examples
 
 Run with default settings:
+
 ```bash
 ./drone-dashboard
 ```
 
 Run with custom API endpoint and port:
+
 ```bash
-./drone-dashboard -fpvtrackside-api="http://localhost:8000" -port=4000
+./drone-dashboard -fpvtrackside="http://localhost:8000" -port=4000
+```
+
+Enable the direct proxy to FPVTrackside (disabled by default):
+
+```bash
+./drone-dashboard -direct-proxy
 ```
 
 ## Features
 
-- **API Proxy**: Forwards requests from `/api/*` to the configured FPVTrackside API endpoint
-- **Static File Server**: Serves embedded frontend files (no external files needed)
+- **API Proxy**: Forwards requests from `/api/*` to the configured FPVTrackside
+  API endpoint
+- **Static File Server**: Serves embedded frontend files (no external files
+  needed)
 - **Zero External Dependencies**: Uses only Go standard library
 - **Small Binary Size**: Produces a single, efficient executable
 - **Cross-Platform**: Can be compiled for any platform that Go supports
-- **Self-Contained**: All frontend files are embedded in the binary 
+- **Self-Contained**: All frontend files are embedded in the binary Cloud/Pits
+  example:
+
+```bash
+# Pits (local, outbound WS to cloud)
+./drone-dashboard -mode=pits -fpvtrackside=http://127.0.0.1:8080 \
+  -cloud-url=wss://cloud.example.com/control -auth-token=SECRET -pits-id=main
+
+# Cloud (public, receives WS, replaces FPVClient with remote)
+./drone-dashboard -mode=cloud -port=3000 -auth-token=SECRET -pits-id=main
+```

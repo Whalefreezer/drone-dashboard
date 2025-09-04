@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+ # Documentation Reference Guide
+
+This rule ensures that relevant documentation is consulted when implementing tasks and is kept up-to-date as new documentation is added.
+
+## Current Documentation
+
+### Testing
+- [deno-testing-guide.md](mdc:docs/deno-testing-guide.md)
+  - Guide for testing practices in the Deno environment
+  - Contains testing patterns, best practices, and examples
+
+### Architecture & Planning
+- [component-refactoring-plan.md](mdc:docs/component-refactoring-plan.md)
+  - Details the plan for refactoring components
+  - Includes architectural decisions and implementation strategies
+
+## Usage Guidelines
+
+- **Before Implementation:**
+  - Review relevant documentation based on task type
+  - Cross-reference architectural decisions
+  - Follow established patterns and guidelines
+
+- **During Implementation:**
+  - Adhere to documented standards
+  - Update documentation if implementation deviates from plans
+  - Add inline references to relevant docs where appropriate
+
+- **After Implementation:**
+  - Update documentation to reflect any changes
+  - Add new documentation for significant features
+  - Cross-reference new docs in related files
+
+## Documentation Updates
+
+When documentation is added or updated:
+1. Add an entry in the "Current Documentation" section
+2. Categorize appropriately
+3. Provide a brief summary of contents
+4. Update any related cross-references
+
+## Best Practices
+
+- Keep summaries concise and focused
+- Use relative links with `mdc:` prefix
+- Maintain categorization for easy reference
+- Update rule when docs are added/modified
+- Include key information for quick reference

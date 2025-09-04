@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "Building Drone Dashboard for all platforms..."
 
 # Create build directory if it doesn't exist
@@ -10,7 +10,7 @@ compress_if_available() {
     local platform=$2
     if [ "$platform" != "macos" ] && command -v upx >/dev/null 2>&1; then
         echo "Compressing $binary..."
-        upx --best "$binary" >/dev/null 2>&1
+        upx -9 "$binary" >/dev/null 2>&1
         echo "Compressed $binary"
     fi
 }

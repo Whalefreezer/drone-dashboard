@@ -1,0 +1,168 @@
+/* Styles for the Leaderboard component */
+
+.leaderboard-container {
+    flex: 1;
+    min-width: 300px;
+    margin-left: 0;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    overflow-x: hidden;
+}
+
+/* --- Table Styles --- */
+/* GenericTable (div-based) */
+.gt {
+    width: 100%;
+    --table-bg-odd: #1a1a1a;
+    --table-bg-even: #222;
+    --table-bg-hover: #2a2a2a;
+}
+
+.gt-header {
+    background-color: #333;
+    font-weight: bold;
+    display: grid;
+    gap: 0;
+}
+
+.gt-header > * {
+    padding: 4px 8px;
+    border: 1px solid black;
+}
+
+.gt-body {
+    position: relative;
+}
+
+.gt-row {
+    transition: transform 0.3s ease-out;
+    background-color: var(--row-bg, var(--table-bg-odd));
+}
+
+.gt-row.row-odd { --row-bg: var(--table-bg-odd); }
+.gt-row.row-even { --row-bg: var(--table-bg-even); }
+.gt-row:hover { background-color: var(--table-bg-hover); }
+
+.gt-cell {
+    border: 1px solid black;
+    padding: 4px 8px;
+    overflow: hidden;
+    position: relative;
+    font-family: monospace;
+}
+
+/* Fade-out effect for overflowing content */
+.gt-cell > .fade-overflow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
+    pointer-events: none;
+}
+
+/* --- Position Display & Animation --- */
+.position-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.position-change {
+    animation: fadeIn 0.5s ease-in;
+    font-size: 0.8em;
+    margin-top: 2px;
+    color: #00ff00; /* Explicitly set color */
+    /* Removed margin-left: 4px from App.tsx inline style */
+}
+
+.position-improved {
+    animation: moveUpAndForward 1s ease-out;
+    z-index: 10;
+    position: relative; /* Needed for z-index and transform */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes moveUpAndForward {
+    0% {
+        transform: translateZ(0) translateY(0);
+        background-color: var(--table-bg-hover); /* Start color matches hover */
+    }
+    25% {
+        transform: translateZ(50px) translateY(0);
+        background-color: #3a3a3a; /* Raised color */
+    }
+    75% {
+        transform: translateZ(50px) translateY(-100%); /* Move up */
+        background-color: #3a3a3a;
+    }
+    100% {
+        transform: translateZ(0) translateY(0);
+        background-color: var(--table-bg-hover); /* End color matches hover */
+    }
+}
+
+/* --- Time & Lap Info --- */
+.recent-time {
+    animation: highlight 2s;
+    background-color: #2a4a2a; /* Final color */
+    border-radius: 4px;
+    padding: 2px 4px;
+    display: inline-block; /* Ensure background covers text */
+}
+
+@keyframes highlight {
+    0% {
+        background-color: #4a2a2a; /* Start color */
+    }
+    50% {
+        background-color: #2a4a2a; /* Transition to final color */
+    }
+    100% {
+        background-color: #2a4a2a; /* Hold final color */
+    }
+}
+
+.source-info {
+    /* display: none; */ /* Keep visible for now */
+    font-size: 0.7em;
+    color: #aaa; /* Slightly dimmer color */
+    margin-left: 6px;
+}
+
+/* --- Status Text --- */
+.racing-text {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.next-text {
+    color: #ffa500;
+    font-weight: bold;
+}
+
+.done-text {
+    color: #888;
+    font-style: italic;
+}
+
+/* --- Channel Display (If specific to Leaderboard) --- */
+/* Assuming .channel-display might be shared, keep it minimal or move if confirmed exclusive */
+.channel-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

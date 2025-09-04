@@ -1,0 +1,9 @@
+/* ChannelSquare specific styles - Moved from App.css */
+.channel-square {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #666;
+    margin-left: 4px; /* Added some margin for spacing */
+    display: inline-block; /* Ensure it aligns nicely */
+    vertical-align: middle;
+}

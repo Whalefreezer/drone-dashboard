@@ -15,7 +15,7 @@ set "HAS_UPX=%ERRORLEVEL%"
 REM Function to compress binary (called within each build process)
 set "COMPRESS_CMD="
 if %HAS_UPX% EQU 0 (
-    set "COMPRESS_CMD=echo Compressing binary... && upx --best"
+    set "COMPRESS_CMD=echo Compressing binary... && upx -9"
 )
 
 REM Start all builds in parallel

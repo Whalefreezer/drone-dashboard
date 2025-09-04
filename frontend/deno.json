@@ -1,28 +1,60 @@
 {
-  "tasks": {
-    "dev": "deno run -A --node-modules-dir npm:vite",
-    "build": "deno run -A --node-modules-dir npm:vite build --emptyOutDir",
-    "preview": "deno run -A --node-modules-dir npm:vite preview",
-    "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/"
-  },
-  "compilerOptions": {
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "jsxImportSourceTypes": "@types/react"
-  },
-  "imports": {
-    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.0",
-    "@tanstack/query-core": "npm:@tanstack/query-core@^5.66.0",
-    "@types/react": "npm:@types/react@^18.3.12",
-    "@types/react-dom": "npm:@types/react-dom@^18.3.1",
-    "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.7.1",
-    "axios": "npm:axios@^1.7.9",
-    "jotai": "npm:jotai@^2.11.0",
-    "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
-    "qrcode.react": "npm:qrcode.react@^4.2.0",
-    "react": "npm:react@^18.3.1",
-    "react-dom": "npm:react-dom@^18.3.1",
-    "vite": "npm:vite@^6.0.1"
-  }
+    "tasks": {
+        "dev": "deno run -A --node-modules-dir npm:vite",
+        "build": "deno run -A --node-modules-dir npm:vite build --emptyOutDir",
+        "preview": "deno run -A --node-modules-dir npm:vite preview",
+        "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/",
+        "test": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --parallel",
+        "test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --watch --parallel"
+    },
+    "test": {
+        "include": [
+            "src/**/*.test.ts",
+            "src/**/*.test.tsx"
+        ]
+    },
+    "compilerOptions": {
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "jsxImportSourceTypes": "@types/react",
+        "types": ["@types/react"]
+    },
+    "imports": {
+        "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.49",
+        "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.4",
+        "@react-spring/web": "npm:@react-spring/web@^10.0.1",
+        "@tanstack/query-core": "npm:@tanstack/query-core@^5.75.0",
+        "@testing-library/react": "npm:@testing-library/react@^16.3.0",
+        "@types/react": "npm:@types/react@^19.1.2",
+        "@types/react-dom": "npm:@types/react-dom@^19.1.3",
+        "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.9.0",
+        "axios": "npm:axios@^1.9.0",
+        "global-jsdom": "npm:global-jsdom@^26.0.0",
+        "jotai": "npm:jotai@^2.12.3",
+        "jotai-eager": "npm:jotai-eager@^0.2.3",
+        "jotai-tanstack-query": "npm:jotai-tanstack-query@^0.9.0",
+        "jsdom": "npm:jsdom@^26.1.0",
+        "msw": "npm:msw@^2.7.5",
+        "pocketbase": "npm:pocketbase@^0.26.2",
+        "qrcode.react": "npm:qrcode.react@^4.2.0",
+        "react": "npm:react@^19.1.0",
+        "react-dom": "npm:react-dom@^19.1.0",
+        "vite": "npm:vite@^6.3.4",
+        "@std/assert": "jsr:@std/assert@1.0.13",
+        "@std/testing": "jsr:@std/testing@1.0.11"
+    },
+    "lint": {
+        "rules": {
+            "tags": ["recommended"],
+            "include": ["ban-untagged-todo"],
+            "exclude": ["no-unused-vars"]
+        }
+    },
+    "fmt": {
+        "useTabs": false,
+        "lineWidth": 140,
+        "indentWidth": 4,
+        "singleQuote": true
+    }
 }

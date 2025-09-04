@@ -1,0 +1,60 @@
+---
+description: 
+globs: *.ts,*.tsx
+alwaysApply: false
+---
+# TypeScript Import Guidelines
+
+- **Version Specifiers in deno.json Only**
+  - All package version specifiers should be in deno.json imports map
+  - Keep imports in source files clean without version numbers
+  ```typescript
+  // ✅ DO: Clean imports (versions in deno.json)
+  import { assertEquals } from "@std/assert";
+  import { JSDOM } from "jsdom";
+  
+  // ❌ DON'T: Include version numbers in imports
+  import { assertEquals } from "jsr:@std/assert@0.218.2";
+  import { JSDOM } from "npm:jsdom@24.0.0";
+  ```
+
+- **Always Include File Extensions**
+  - TypeScript/React files must include `.ts` or `.tsx` extensions in imports
+  ```typescript
+  // ✅ DO: Include file extensions
+  import { Component } from './Component.tsx';
+  import { utils } from './utils.ts';
+  
+  // ❌ DON'T: Omit file extensions
+  import { Component } from './Component';
+  import { utils } from './utils';
+  ```
+
+- **Barrel File Exports**
+  - When creating barrel files (index.ts), maintain extension consistency
+  ```typescript
+  // ✅ DO: Include extensions in barrel exports
+  export { default as Component } from './Component.tsx';
+  export * from './utils.ts';
+  
+  // ❌ DON'T: Omit extensions in barrel exports
+  export { default as Component } from './Component';
+  export * from './utils';
+  ```
+
+- **Path Aliases**
+  - When using path aliases, still include file extensions
+  ```typescript
+  // ✅ DO: Include extensions with path aliases
+  import { Component } from '@/components/Component.tsx';
+  
+  // ❌ DON'T: Omit extensions with path aliases
+  import { Component } from '@/components/Component';
+  ```
+
+- **Rationale:**
+  - Explicit file extensions help with:
+    - Module resolution in Deno environments
+    - Preventing ambiguity between .ts and .tsx files
+    - Clearer dependency tracking
+    - Better IDE support and faster imports 

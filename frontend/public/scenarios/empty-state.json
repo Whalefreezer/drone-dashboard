@@ -1,0 +1,59 @@
+{
+    "/api/events/:eventId/Event.json": {
+        "status": 200,
+        "data": [{
+            "ID": "mock-event-123",
+            "Name": "Empty Event",
+            "RaceLength": "03:00",
+            "EventType": "Race",
+            "Start": "2024-01-01T09:00:00Z",
+            "End": "2024-01-01T18:00:00Z",
+            "Laps": 0,
+            "PBLaps": 0,
+            "MinStartDelay": "00:01",
+            "MaxStartDelay": "00:05",
+            "PrimaryTimingSystemLocation": "",
+            "RaceStartIgnoreDetections": "00:01",
+            "MinLapTime": "00:05",
+            "LastOpened": "2024-01-01T08:00:00Z",
+            "PilotChannels": [],
+            "RemovedPilots": [],
+            "Rounds": [],
+            "Club": "Empty Club",
+            "Channels": [],
+            "ChannelColors": [],
+            "ChannelDisplayNames": [],
+            "Enabled": true,
+            "MultiGPRaceFormat": "",
+            "Races": [],
+            "SyncWithFPVTrackside": false,
+            "SyncWithMultiGP": false,
+            "GenerateHeatsMultiGP": false,
+            "VisibleOnline": false,
+            "Locked": false,
+            "Track": "Empty Track",
+            "Sectors": [],
+            "PilotsRegistered": 0,
+            "ExternalID": 299
+        }]
+    },
+    "/api/events/:eventId/Pilots.json": {
+        "status": 200,
+        "data": []
+    },
+    "/api/httpfiles/Channels.json": {
+        "status": 200,
+        "data": []
+    },
+    "/api/events/:eventId/Rounds.json": {
+        "status": 200,
+        "data": []
+    },
+    "/api/events/:eventId/:raceId/Race.json": {
+        "status": 404,
+        "error": "Not Found"
+    },
+    "__scenarioContext": {
+        "eventId": "mock-event-123"
+    }
+}

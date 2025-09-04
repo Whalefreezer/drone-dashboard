@@ -1,0 +1,25 @@
+{
+    "/api/events/:eventId/Event.json": {
+        "status": 500,
+        "error": "Internal Server Error"
+    },
+    "/api/events/:eventId/Pilots.json": {
+        "status": 500,
+        "error": "Internal Server Error"
+    },
+    "/api/httpfiles/Channels.json": {
+        "status": 500,
+        "error": "Internal Server Error"
+    },
+    "/api/events/:eventId/Rounds.json": {
+        "status": 500,
+        "error": "Internal Server Error"
+    },
+    "/api/events/:eventId/:raceId/Race.json": {
+        "status": 500,
+        "error": "Internal Server Error"
+    },
+    "__scenarioContext": {
+        "eventId": "mock-event-123"
+    }
+}
