@@ -47,6 +47,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          # Note: setup-go can cache modules automatically, but we'll add an explicit cache step
+          # to make it clear and to also cache the go build cache.
+
+      - name: Pre-fetch Go modules
+        working-directory: backend
+        run: go mod download
       
       - name: Build All Platforms
         working-directory: backend
