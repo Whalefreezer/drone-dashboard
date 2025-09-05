@@ -142,11 +142,6 @@ func preparePocketBaseArgs(flags CLIFlags) []string {
 	// Always serve with our port mapping
 	args := []string{"serve", "--http", fmt.Sprintf("0.0.0.0:%d", flags.Port)}
 
-	// Optionally add database directory if specified
-	if flags.DBDir != "" {
-		args = append(args, "--dir", flags.DBDir)
-	}
-
 	return args
 }
 
@@ -236,6 +231,7 @@ func newPocketBaseApp(flags CLIFlags) *pocketbase.PocketBase {
 	} else {
 		app = pocketbase.NewWithConfig(pocketbase.Config{
 			HideStartBanner: true,
+			DefaultDataDir:  flags.DBDir,
 		})
 	}
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: true})
