@@ -48,3 +48,4 @@ run-cloud/
 run-pits/
 pocketbase_docs/
 __debug_bin*
+.gocache

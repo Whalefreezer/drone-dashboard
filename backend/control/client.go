@@ -12,6 +12,7 @@ import (
     "time"
 
     "github.com/gorilla/websocket"
+    "sync"
 )
 
 // PitsClient maintains an outbound WS to cloud and handles fetch commands.
@@ -60,8 +61,10 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
     ws, _, err := dialer.DialContext(ctx, u.String(), hdr)
     if err != nil { return err }
     defer ws.Close()
+    // serialize all writes to this websocket
+    var writeMu sync.Mutex
     // Send hello
-    _ = ws.WriteJSON(NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}}))
+    _ = safeWriteJSON(&writeMu, ws, NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}}))
 
     for {
         var env Envelope
@@ -73,29 +76,37 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
         case TypeHello:
             // ignore
         case TypeFetch:
-            go p.handleFetch(ws, env)
+            go p.handleFetch(&writeMu, ws, env)
         case TypePing:
-            _ = ws.WriteJSON(NewEnvelope(TypePong, env.ID, nil))
+            _ = safeWriteJSON(&writeMu, ws, NewEnvelope(TypePong, env.ID, nil))
         default:
             // ignore
         }
     }
 }
 
-func (p *PitsClient) handleFetch(ws *websocket.Conn, env Envelope) {
+// safeWriteJSON serializes writes across goroutines and sets a write deadline.
+func safeWriteJSON(mu *sync.Mutex, ws *websocket.Conn, v any) error {
+    mu.Lock()
+    defer mu.Unlock()
+    ws.SetWriteDeadline(time.Now().Add(15 * time.Second))
+    return ws.WriteJSON(v)
+}
+
+func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelope) {
     b, _ := json.Marshal(env.Payload)
     var f Fetch
     if err := json.Unmarshal(b, &f); err != nil {
-        _ = ws.WriteJSON(NewEnvelope(TypeError, env.ID, Error{Code: "BAD_REQUEST", Message: "invalid fetch"}))
+        _ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "BAD_REQUEST", Message: "invalid fetch"}))
         return
     }
     if strings.ToUpper(f.Method) != "GET" && strings.ToUpper(f.Method) != "HEAD" {
-        _ = ws.WriteJSON(NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "method not allowed"}))
+        _ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "method not allowed"}))
         return
     }
     // basic allowlist: only /events, /httpfiles, root
     if !(f.Path == "/" || strings.HasPrefix(f.Path, "/events/") || strings.HasPrefix(f.Path, "/httpfiles/")) {
-        _ = ws.WriteJSON(NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "path not allowed"}))
+        _ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "path not allowed"}))
         return
     }
     // Build URL
@@ -107,7 +118,7 @@ func (p *PitsClient) handleFetch(ws *websocket.Conn, env Envelope) {
     if f.TimeoutMs > 0 { p.HTTP.Timeout = time.Duration(f.TimeoutMs) * time.Millisecond }
     resp, err := p.HTTP.Do(req)
     if err != nil {
-        _ = ws.WriteJSON(NewEnvelope(TypeError, env.ID, Error{Code: "INTERNAL", Message: err.Error()}))
+        _ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "INTERNAL", Message: err.Error()}))
         return
     }
     defer resp.Body.Close()
@@ -123,14 +134,14 @@ func (p *PitsClient) handleFetch(ws *websocket.Conn, env Envelope) {
     }
     etag = ComputeETag(body)
     if f.IfNoneMatch != "" && f.IfNoneMatch == etag {
-        _ = ws.WriteJSON(NewEnvelope(TypeResponse, env.ID, Response{Status: http.StatusNotModified, Headers: map[string]string{"ETag": etag}}))
+        _ = safeWriteJSON(mu, ws, NewEnvelope(TypeResponse, env.ID, Response{Status: http.StatusNotModified, Headers: map[string]string{"ETag": etag}}))
         return
     }
     // Headers
     hdrs := map[string]string{"ETag": etag}
     if ct != "" { hdrs["Content-Type"] = ct }
     payload := Response{Status: resp.StatusCode, Headers: hdrs, BodyB64: base64.StdEncoding.EncodeToString(body)}
-    _ = ws.WriteJSON(NewEnvelope(TypeResponse, env.ID, payload))
+    _ = safeWriteJSON(mu, ws, NewEnvelope(TypeResponse, env.ID, payload))
 }
 
 func ioReadAllCap(r io.Reader, max int64) ([]byte, error) {

@@ -10,6 +10,7 @@ import (
 
     "github.com/gorilla/websocket"
     "github.com/pocketbase/pocketbase/core"
+    "sync"
 )
 
 // Conn wraps a gorilla websocket connection with JSON helpers.
@@ -18,9 +19,13 @@ type Conn struct {
     // optional identity
     PitsID string
     hub    *Hub
+    // serialize writes to avoid concurrent write panics
+    writeMu sync.Mutex
 }
 
 func (c *Conn) SendJSON(v any) error {
+    c.writeMu.Lock()
+    defer c.writeMu.Unlock()
     c.ws.SetWriteDeadline(time.Now().Add(15 * time.Second))
     return c.ws.WriteJSON(v)
 }
