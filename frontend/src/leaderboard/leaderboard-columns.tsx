@@ -81,8 +81,11 @@ function RenderTimeCell(
     const roundInfo = roundDataValue.find((r) => r.id === currentTime.roundId);
     const roundDisplay = roundInfo ? roundInfo.roundNumber : '?';
 
+    // Build hover title indicating where the time was achieved
+    const title = `Round ${roundDisplay}, Race ${currentTime.raceNumber}`;
+
     return (
-        <OverflowFadeCell>
+        <OverflowFadeCell title={title}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <div>
                     {currentTime.time.toFixed(3)}
