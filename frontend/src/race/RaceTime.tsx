@@ -13,16 +13,17 @@ function RaceTime() {
 
     useEffect(() => {
         // Only start countdown if race has started
-        if (currentRace?.start) {
-            const currentRaceStart = new Date(currentRace.start).valueOf() / 1000;
+        if (currentRace?.start && !currentRace.start.startsWith('0')) {
+            const currentRaceStart = new Date(currentRace.start + "Z").valueOf() / 1000;
             const currentRaceEnd = currentRaceStart + raceLength;
+            console.log('currentRaceStart', currentRaceStart, Date.now()/1000, Date.now()/1000 - currentRaceStart);
 
             const interval = setInterval(() => {
-                setTimeRemaining(
-                    Math.max(0, currentRaceEnd - (new Date().valueOf() / 1000)),
-                );
+                setTimeRemaining(Math.max(0, currentRaceEnd - (Date.now() / 1000)));
             }, 100);
-            return () => clearInterval(interval);
+            return () => {
+                clearInterval(interval);
+            };
         } else {
             setTimeRemaining(raceLength);
         }
