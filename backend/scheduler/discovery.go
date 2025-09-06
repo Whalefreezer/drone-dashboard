@@ -59,7 +59,6 @@ func (m *Manager) runDiscovery() {
 	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
 	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.ChannelsInterval, now)
 	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now, 1)
-	// Seed results target
 	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
 
 	// Seed one race target per race ID from the fetched event data
@@ -121,6 +120,14 @@ func (m *Manager) pruneTargetsNotForEvent(currentEventPBID string) {
 func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, interval time.Duration, now time.Time, priority ...int) {
 	colName := "ingest_targets"
 	rec, _ := m.App.FindFirstRecordByFilter(colName, "type = {:t} && sourceId = {:sid}", dbx.Params{"t": t, "sid": sourceId})
+
+	// Treat non-positive interval as disabled: remove existing target if present and exit.
+	if interval <= 0 {
+		if rec != nil {
+			_ = m.App.Delete(rec)
+		}
+		return
+	}
 
 	isNewRecord := rec == nil
 	if isNewRecord {

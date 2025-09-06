@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-    "fmt"
-    "log/slog"
-    "time"
+	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -23,33 +23,34 @@ type Config struct {
 
 func (m *Manager) ensureDefaultSettings() {
 	defaults := map[string]string{
-		"scheduler.enabled":            "true",
-		"scheduler.fullIntervalMs":     "10000",
-		"scheduler.workerIntervalMs":   "200",
-		"scheduler.raceActiveMs":       "200",
-		"scheduler.raceIdleMs":         "10000",
-		"scheduler.resultsMs":          "10000",
+		"scheduler.enabled":          "true",
+		"scheduler.fullIntervalMs":   "10000",
+		"scheduler.workerIntervalMs": "200",
+		"scheduler.raceActiveMs":     "200",
+		"scheduler.raceIdleMs":       "10000",
+		// Treat resultsMs <= 0 as disabled
+		"scheduler.resultsMs":          "0",
 		"scheduler.channelsIntervalMs": "60000",
 		"scheduler.jitterMs":           "150",
 		"scheduler.burst":              "2",
 		"scheduler.concurrency":        "1",
 	}
-    col, err := m.App.FindCollectionByNameOrId("server_settings")
-    if err != nil {
-        slog.Warn("scheduler.config.seed.collection.error", "err", err)
-        return
-    }
-    for k, v := range defaults {
-        rec, _ := m.App.FindFirstRecordByFilter("server_settings", "key = {:k}", dbx.Params{"k": k})
-        if rec == nil {
-            rec = core.NewRecord(col)
-            rec.Set("key", k)
-            rec.Set("value", v)
-            if err := m.App.Save(rec); err != nil {
-                slog.Warn("scheduler.config.seed.save.error", "key", k, "err", err)
-            }
-        }
-    }
+	col, err := m.App.FindCollectionByNameOrId("server_settings")
+	if err != nil {
+		slog.Warn("scheduler.config.seed.collection.error", "err", err)
+		return
+	}
+	for k, v := range defaults {
+		rec, _ := m.App.FindFirstRecordByFilter("server_settings", "key = {:k}", dbx.Params{"k": k})
+		if rec == nil {
+			rec = core.NewRecord(col)
+			rec.Set("key", k)
+			rec.Set("value", v)
+			if err := m.App.Save(rec); err != nil {
+				slog.Warn("scheduler.config.seed.save.error", "key", k, "err", err)
+			}
+		}
+	}
 }
 
 func (m *Manager) loadConfigFromDB() {
