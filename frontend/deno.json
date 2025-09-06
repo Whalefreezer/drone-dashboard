@@ -5,7 +5,8 @@
 		"preview": "deno run -A --node-modules-dir npm:vite preview",
 		"serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server dist/",
 		"test": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --parallel",
-		"test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --watch --parallel"
+		"test:watch": "deno test --allow-env --allow-read --allow-net --allow-write --unstable-broadcast-channel --watch --parallel",
+		"verify": "deno fmt --check && deno lint && deno check"
 	},
 	"test": {
 		"include": [

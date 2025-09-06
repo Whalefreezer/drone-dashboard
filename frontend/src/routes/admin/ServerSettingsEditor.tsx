@@ -10,7 +10,7 @@ type SettingRowData = PBServerSettingRecord & {
 	setDraft: (id: string, v: string) => void;
 };
 
-const serverSettingsColumns: Array<Column<{}, SettingRowData & { rowCtx?: SettingRowData }>> = [
+const serverSettingsColumns: Array<Column<Record<PropertyKey, never>, SettingRowData & { rowCtx?: SettingRowData }>> = [
 	{ key: 'edit', header: 'Settings', minWidth: 680, cell: (p) => <SettingRowEditor row={(p.rowCtx ?? p) as SettingRowData} /> },
 ];
 
@@ -89,8 +89,8 @@ export function ServerSettingsEditor({ settings }: { settings: PBServerSettingRe
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 					{err && <span style={{ color: 'crimson' }}>{err}</span>}
 					<span className='muted'>{hasDirty ? `${dirtyRows.length} unsaved change(s)` : 'All changes saved'}</span>
-					<button onClick={resetAll} disabled={!hasDirty || saving}>Reset</button>
-					<button onClick={saveAll} disabled={!hasDirty || saving}>{saving ? 'Saving…' : 'Save'}</button>
+					<button type='button' onClick={resetAll} disabled={!hasDirty || saving}>Reset</button>
+					<button type='button' onClick={saveAll} disabled={!hasDirty || saving}>{saving ? 'Saving…' : 'Save'}</button>
 				</div>
 			</div>
 			<GenericTable
@@ -131,7 +131,7 @@ function AddSettingForm() {
 		<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 			<input placeholder='new key' value={k} onChange={(e) => setK(e.currentTarget.value)} style={{ width: 240 }} />
 			<input placeholder='value' value={v} onChange={(e) => setV(e.currentTarget.value)} style={{ width: 320 }} />
-			<button onClick={create} disabled={saving || !k.trim()}>{saving ? 'Adding…' : 'Add'}</button>
+			<button type='button' onClick={create} disabled={saving || !k.trim()}>{saving ? 'Adding…' : 'Add'}</button>
 			{err && <span style={{ color: 'crimson' }}>{err}</span>}
 		</div>
 	);
@@ -179,7 +179,7 @@ function SettingRowEditor({ row }: { row: SettingRowData }) {
 			</div>
 			<div>{row.dirty ? <span style={{ color: '#f59e0b' }}>• unsaved</span> : <span className='muted'>saved</span>}</div>
 			<div>
-				<button onClick={remove}>Delete</button>
+				<button type='button' onClick={remove}>Delete</button>
 			</div>
 		</div>
 	);

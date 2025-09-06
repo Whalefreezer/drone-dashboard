@@ -19,6 +19,7 @@ export default function AdminPage() {
 				<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
 					<span className='muted'>Signed in as: {authenticatedKind() ?? 'unknown'}</span>
 					<button
+						type='button'
 						onClick={() => {
 							logout();
 							// @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444

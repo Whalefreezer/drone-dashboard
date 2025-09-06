@@ -3,7 +3,7 @@ import type { PBIngestTargetRecord } from '../../api/pbTypes.ts';
 import { Center, Mono, Right } from './cells.tsx';
 import { formatEpochMs, formatSecondsFromNow } from './admin-utils.ts';
 
-type IngestCtx = {};
+type IngestCtx = Record<PropertyKey, never>;
 type IngestRow = PBIngestTargetRecord;
 
 const ingestColumns: Array<Column<IngestCtx, IngestRow>> = [

@@ -1,9 +1,7 @@
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/router-devtools';
 
-interface RouterContext {
-	// add shared singletons here later (e.g., queryClient)
-}
+type RouterContext = Record<PropertyKey, never>;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	component: () => (
