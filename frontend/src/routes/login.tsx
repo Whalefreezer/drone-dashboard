@@ -31,8 +31,9 @@ function LoginPage() {
             } else {
                 setError('Authentication failed.');
             }
-        } catch (err: any) {
-            setError(err?.message ?? 'Login failed');
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Login failed';
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -105,4 +106,3 @@ function LoginPage() {
         </div>
     );
 }
-

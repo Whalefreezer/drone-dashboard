@@ -164,6 +164,12 @@ export interface PBResultRecord extends PBBaseRecord {
     pilot?: string; // relation → pilots.id
 }
 
+// server_settings (generic key/value)
+export interface PBServerSettingRecord extends PBBaseRecord {
+    key: string;
+    value?: string;
+}
+
 // Convenience union for any PB record our API deals with
 export type AnyPBRecord =
     | PBEventRecord

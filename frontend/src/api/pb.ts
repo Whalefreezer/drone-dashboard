@@ -20,11 +20,13 @@ export function isAuthenticated(): boolean {
     return pb.authStore?.isValid ?? false;
 }
 
+type PBModelMeta = { collectionName?: string; id?: string } | null | undefined;
+
 export function authenticatedKind(): AuthKind | null {
     // Admin tokens have model = null but admins store in pb.authStore.model?.collectionName === '_superusers'
     // Newer PocketBase sets model for both, but admins are accessible via pb.admins collection.
     // We infer by presence of pb.authStore.model?.collectionName === '_superusers' or fallback to token type.
-    const model: any = pb.authStore?.model as any;
+    const model = pb.authStore?.model as PBModelMeta;
     if (!isAuthenticated()) return null;
     if (model && (model.collectionName === '_superusers' || model?.id?.startsWith('admin')))
         return 'admin';

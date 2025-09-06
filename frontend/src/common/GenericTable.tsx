@@ -101,10 +101,11 @@ export function GenericTable<TableCtx, RowCtx extends object>(
                             }}
                         >
                             {columns.map((col) => {
-                                const Cell = col.cell as React.ComponentType<RowCtx>;
+                                const Cell = col.cell as React.ComponentType<RowCtx & { rowCtx?: RowCtx }>;
+                                const cellProps = { ...(row as unknown as object), rowCtx: row } as RowCtx & { rowCtx: RowCtx };
                                 return (
                                     <div key={col.key} role='gridcell' className='gt-cell'>
-                                        {React.createElement(Cell, row)}
+                                        {React.createElement(Cell, cellProps)}
                                     </div>
                                 );
                             })}
