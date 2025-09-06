@@ -10,7 +10,7 @@ import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 import '../common/patterns.css';
-import { type Column, GenericTable } from '../common/tableColumns.tsx';
+import { type Column, GenericTable } from '../common/GenericTable.tsx';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
 

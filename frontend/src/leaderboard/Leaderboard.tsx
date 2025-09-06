@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import type { Column } from '../common/tableColumns.tsx';
-import { GenericTable } from '../common/tableColumns.tsx';
+import type { Column } from '../common/GenericTable.tsx';
+import { GenericTable } from '../common/GenericTable.tsx';
 import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
 import { useAtomValue } from 'jotai';

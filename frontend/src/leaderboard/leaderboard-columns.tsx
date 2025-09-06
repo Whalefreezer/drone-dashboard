@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Atom } from 'jotai';
-import type { Column } from '../common/tableColumns.tsx';
+import type { Column } from '../common/GenericTable.tsx';
 import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
 import { pilotEliminatedInfoAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom } from './leaderboard-context-atoms.ts';
