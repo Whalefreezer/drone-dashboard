@@ -16,6 +16,14 @@ export default defineConfig(({ mode }: { mode: string }) => {
 			react(),
 			tanstackRouter({
 				addExtensions: true,
+				routeTreeFileHeader: [
+					'/* eslint-disable */',
+					'// @ts-nocheck',
+					'// noinspection JSUnusedGlobalSymbols',
+					'// deno-lint-ignore-file',
+					'// deno-fmt-ignore-file',
+				],
+				enableRouteTreeFormatting: true,
 			}),
 		],
 
