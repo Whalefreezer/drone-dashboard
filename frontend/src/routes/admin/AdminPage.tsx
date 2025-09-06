@@ -5,6 +5,7 @@ import { clientKVRecordsAtom, ingestTargetRecordsAtom, serverSettingsRecordsAtom
 import { authenticatedKind, logout } from '../../api/pb.ts';
 import { ServerSettingsEditor } from './ServerSettingsEditor.tsx';
 import { IngestTargetsTable } from './IngestTargetsTable.tsx';
+import { ClientKVTable } from './ClientKVTable.tsx';
 
 export default function AdminPage() {
 	const navigate = useNavigate();
@@ -33,7 +34,13 @@ export default function AdminPage() {
 
 			<div className='section-card'>
 				<h2>Client KV Records</h2>
-				<pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(kv, null, 2)}</pre>
+				{Array.isArray(kv) && kv.length > 0
+					? (
+						<div style={{ overflowX: 'auto' }}>
+							<ClientKVTable data={kv} />
+						</div>
+					)
+					: <p className='muted'>No KV records found.</p>}
 			</div>
 
 			<div className='section-card'>

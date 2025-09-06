@@ -136,7 +136,7 @@ export function getLeaderboardColumns(
 			key: 'position',
 			header: '',
 			width: 32,
-			cell: function PositionCellInline({ pilotId }) {
+			cell: function PositionCellInline({ item: { pilotId } }) {
 				const ids = useAtomValue(leaderboardPilotIdsAtom);
 				const idx = ids.findIndex((id) => id === pilotId);
 				const pos = idx >= 0 ? idx + 1 : 0;
@@ -149,7 +149,7 @@ export function getLeaderboardColumns(
 			// Let the Pilot column flex to consume remaining space.
 			// Keep a reasonable minimum so it doesn't collapse.
 			minWidth: 100,
-			cell: function PilotCellInline({ pilotId }) {
+			cell: function PilotCellInline({ item: { pilotId } }) {
 				const pilots = useAtomValue(pilotsAtom);
 				const pilot = pilots.find((p) => p.id === pilotId);
 				if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
@@ -164,7 +164,7 @@ export function getLeaderboardColumns(
 			key: 'channel',
 			header: 'Chan',
 			width: 52,
-			cell: function ChannelCellInline({ pilotId }) {
+			cell: function ChannelCellInline({ item: { pilotId } }) {
 				const channel = useAtomValue(pilotPreferredChannelAtom(pilotId));
 				return <ChannelDisplayCell channel={channel} />;
 			},
@@ -173,7 +173,7 @@ export function getLeaderboardColumns(
 			key: 'laps',
 			header: 'Laps',
 			width: 52,
-			cell: function LapsCellInline({ pilotId }) {
+			cell: function LapsCellInline({ item: { pilotId } }) {
 				const { current } = useAtomValue(pilotTotalLapsAtom(pilotId));
 				return <div>{current ?? 0}</div>;
 			},
@@ -182,7 +182,7 @@ export function getLeaderboardColumns(
 			key: 'holeshot',
 			header: 'Hole shot',
 			width: 64,
-			cell: function HoleshotCell({ pilotId }) {
+			cell: function HoleshotCell({ item: { pilotId } }) {
 				return <RenderTimeCell metricAtom={pilotHoleshotAtom(pilotId)} />;
 			},
 		},
@@ -190,7 +190,7 @@ export function getLeaderboardColumns(
 			key: 'top-lap',
 			header: 'Top Lap',
 			width: 72,
-			cell: function BestLapCell({ pilotId }) {
+			cell: function BestLapCell({ item: { pilotId } }) {
 				return <RenderTimeCell metricAtom={pilotBestLapAtom(pilotId)} />;
 			},
 		},
@@ -199,7 +199,8 @@ export function getLeaderboardColumns(
 				key: 'consec',
 				header: () => `Top ${ctx.consecutiveLaps} Consec`,
 				width: 72,
-				cell: function ConsecCell({ pilotId }) {
+				cell: function ConsecCell({ item }) {
+					const { pilotId } = item;
 					return <RenderTimeCell metricAtom={pilotConsecAtom(pilotId)} />;
 				},
 			} as Column<TableContext, LeaderboardRowProps>]
@@ -208,7 +209,8 @@ export function getLeaderboardColumns(
 			key: 'fastest-race',
 			header: 'Fastest Race',
 			width: 72,
-			cell: function TotalRaceCell({ pilotId }) {
+			cell: function TotalRaceCell({ item }) {
+				const { pilotId } = item;
 				return <RenderTimeCell metricAtom={pilotFastestTotalRaceAtom(pilotId)} />;
 			},
 		},
@@ -216,7 +218,8 @@ export function getLeaderboardColumns(
 			key: 'next',
 			header: 'Next Race In',
 			width: 96,
-			cell: function NextRaceStatusCellInline({ pilotId }) {
+			cell: function NextRaceStatusCellInline({ item }) {
+				const { pilotId } = item;
 				const racesUntilNext = useAtomValue(pilotRacesUntilNextAtom(pilotId));
 				const elimInfo = useAtomValue(pilotEliminatedInfoAtom(pilotId));
 				const isEliminated = !!elimInfo;

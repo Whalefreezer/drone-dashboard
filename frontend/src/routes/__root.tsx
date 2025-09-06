@@ -1,5 +1,5 @@
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/router-devtools';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
 type RouterContext = Record<PropertyKey, never>;
 

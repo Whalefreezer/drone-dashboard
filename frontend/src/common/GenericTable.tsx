@@ -4,7 +4,7 @@ import { animated, SpringValue, useTransition } from '@react-spring/web';
 export type Column<TableCtx, RowCtx> = {
 	key: string;
 	header: string | ((ctx: TableCtx) => React.ReactNode);
-	cell: React.ComponentType<RowCtx>;
+	cell: React.ComponentType<{ item: RowCtx }>;
 	headerClassName?: string;
 	headerAlign?: 'left' | 'center' | 'right';
 	width?: number | string; // e.g., 120 or '12rem' or '20%'
@@ -101,11 +101,10 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 							}}
 						>
 							{columns.map((col) => {
-								const Cell = col.cell as React.ComponentType<RowCtx & { rowCtx?: RowCtx }>;
-								const cellProps = { ...(row as unknown as object), rowCtx: row } as RowCtx & { rowCtx: RowCtx };
+								const Cell = col.cell as React.ComponentType<{ item: RowCtx }>;
 								return (
 									<div key={col.key} role='gridcell' className='gt-cell'>
-										{React.createElement(Cell, cellProps)}
+										{React.createElement(Cell, { item: row })}
 									</div>
 								);
 							})}

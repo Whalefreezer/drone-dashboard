@@ -10,8 +10,8 @@ type SettingRowData = PBServerSettingRecord & {
 	setDraft: (id: string, v: string) => void;
 };
 
-const serverSettingsColumns: Array<Column<Record<PropertyKey, never>, SettingRowData & { rowCtx?: SettingRowData }>> = [
-	{ key: 'edit', header: 'Settings', minWidth: 680, cell: (p) => <SettingRowEditor row={(p.rowCtx ?? p) as SettingRowData} /> },
+const serverSettingsColumns: Array<Column<Record<PropertyKey, never>, SettingRowData>> = [
+	{ key: 'edit', header: 'Settings', minWidth: 680, cell: ({ item }) => <SettingRowEditor row={item} /> },
 ];
 
 export function ServerSettingsEditor({ settings }: { settings: PBServerSettingRecord[] }) {

@@ -98,7 +98,7 @@ function useLapsTableColumns(
 		key: 'pos',
 		header: 'Pos',
 		width: 56,
-		cell: function PosCell({ position }: LapsRow) {
+		cell: function PosCell({ item: { position } }) {
 			return (
 				<div>
 					{maxLaps > 0
@@ -123,7 +123,7 @@ function useLapsTableColumns(
 		key: 'name',
 		header: 'Name',
 		minWidth: 64,
-		cell: function NameCell({ pilotChannel }: LapsRow) {
+		cell: function NameCell({ item: { pilotChannel } }) {
 			const pilots = useAtomValue(pilotsAtom);
 			const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
 			return (
@@ -139,7 +139,7 @@ function useLapsTableColumns(
 		key: 'chan',
 		header: 'Chan',
 		width: 52,
-		cell: function ChanCell({ pilotChannel }: LapsRow) {
+		cell: function ChanCell({ item: { pilotChannel } }) {
 			const channels = useAtomValue(channelsDataAtom);
 			const channel = channels.find((c) => c.id === pilotChannel.channelId);
 			return (
@@ -161,7 +161,7 @@ function useLapsTableColumns(
 			key: 'points',
 			header: 'Points',
 			width: 64,
-			cell: function PointsCell({ pilotChannel }: LapsRow) {
+			cell: function PointsCell({ item: { pilotChannel } }) {
 				const pilots = useAtomValue(pilotsAtom);
 				const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
 				const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
@@ -182,7 +182,7 @@ function useLapsTableColumns(
 				key,
 				header: `R${r + 1}`,
 				width: 48,
-				cell: function BracketRoundCell({ pilotChannel }: LapsRow) {
+				cell: function BracketRoundCell({ item: { pilotChannel } }) {
 					const pilots = useAtomValue(pilotsAtom);
 					const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
 					const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
@@ -218,7 +218,7 @@ function useLapsTableColumns(
 			key: isHS ? 'hs' : `l${i}`,
 			header: isHS ? 'HS' : `L${i}`,
 			width: 58,
-			cell: function LapCell({ pilotChannel }: LapsRow) {
+			cell: function LapCell({ item: { pilotChannel } }) {
 				const { raceId } = ctx;
 				const overallBestTimes = useAtomValue(overallBestTimesAtom);
 				const processedLaps = useAtomValue(raceProcessedLapsAtom(raceId));
