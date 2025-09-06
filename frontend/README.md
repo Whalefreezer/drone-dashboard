@@ -118,6 +118,19 @@ The production build will be available in the `dist` directory.
 | VITE_API_RETRY_COUNT  | Number of API retry attempts     | 10                    |
 | VITE_API_RETRY_DELAY  | Delay between retries (ms)       | 100                   |
 
+### PocketBase Authentication
+
+To require login for `/admin`, configure PocketBase URL:
+
+- `VITE_API_URL` — PocketBase base URL (e.g., `http://127.0.0.1:8090`).
+
+Then visit `/login` to sign in either as:
+
+- Admin (`_superusers`) using email/password.
+- User (`users` collection) using identity/password.
+
+Logout simply clears the client token (`pb.authStore.clear()`); PocketBase is stateless and has no logout endpoint.
+
 ## Contributing
 
 1. Create a new branch for your feature

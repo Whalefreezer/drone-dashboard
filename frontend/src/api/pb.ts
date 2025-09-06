@@ -9,8 +9,44 @@ export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '')
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 
-const pb = new PocketBase(import.meta.env.VITE_API_URL || '');
+// Singleton PocketBase client used across the app
+export const pb = new PocketBase(import.meta.env.VITE_API_URL || '');
 pb.autoCancellation(false);
+
+// --- Auth helpers ---------------------------------------------------------
+export type AuthKind = 'user' | 'admin';
+
+export function isAuthenticated(): boolean {
+    return pb.authStore?.isValid ?? false;
+}
+
+export function authenticatedKind(): AuthKind | null {
+    // Admin tokens have model = null but admins store in pb.authStore.model?.collectionName === '_superusers'
+    // Newer PocketBase sets model for both, but admins are accessible via pb.admins collection.
+    // We infer by presence of pb.authStore.model?.collectionName === '_superusers' or fallback to token type.
+    const model: any = pb.authStore?.model as any;
+    if (!isAuthenticated()) return null;
+    if (model && (model.collectionName === '_superusers' || model?.id?.startsWith('admin')))
+        return 'admin';
+    // If model exists and is not _superusers, treat as regular user
+    if (model) return 'user';
+    // If model is absent but token is valid, assume admin (older SDK behavior)
+    return 'admin';
+}
+
+export function login(kind: AuthKind, identity: string, password: string) {
+    if (kind === 'admin') {
+        // Admin login via dedicated endpoint
+        return pb.collection("_superusers").authWithPassword(identity, password);
+    } else {
+        // Regular auth collection login (default collection `users`)
+        return pb.collection('users').authWithPassword(identity, password);
+    }
+}
+
+export function logout() {
+    pb.authStore.clear();
+}
 
 export function pbSubscribeByID<T extends PBBaseRecord>(
     collection: string,
