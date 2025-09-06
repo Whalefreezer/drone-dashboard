@@ -177,3 +177,17 @@ export type AnyPBRecord =
     | PBLapRecord
     | PBGamePointRecord
     | PBResultRecord;
+
+// ingest_targets (stream/ingest endpoints configured on backend)
+// Keep fields open-ended since backend may add properties; we render as-is.
+export interface PBIngestTargetRecord extends PBBaseRecord {
+    type: string;          // kind of ingest, e.g., 'fpvtrackside', 'webhook'
+    sourceId: string;      // unique source identifier
+    event?: string;        // relation → events.id
+    intervalMs?: number;   // poll cadence in milliseconds
+    nextDueAt?: number;    // epoch millis for next scheduled run
+    priority?: number;     // scheduler priority
+    enabled?: boolean;     // whether scheduler should run this target
+    lastFetchedAt?: number;// epoch millis of last successful fetch
+    lastStatus?: string;   // short status message from last run
+}
