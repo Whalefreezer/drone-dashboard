@@ -9,7 +9,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 	component: () => (
 		<>
 			<nav style={{ padding: 8, display: 'flex', gap: 12 }}>
+				{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 				<Link to='/'>Dashboard</Link>
+				{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 				<Link to='/admin'>Admin</Link>
 			</nav>
 			<main>

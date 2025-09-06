@@ -2,9 +2,11 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { FormEvent, useState } from 'react';
 import { authenticatedKind, isAuthenticated, login, pb } from '../api/pb.ts';
 
+// @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 export const Route = createFileRoute('/login')({
 	beforeLoad: () => {
 		if (isAuthenticated()) {
+			// @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 			throw redirect({ to: '/admin' });
 		}
 	},
@@ -27,6 +29,7 @@ function LoginPage() {
 			await login(kind, identity.trim(), password);
 			// Navigate to admin once authed
 			if (pb.authStore.isValid) {
+				// @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 				navigate({ to: '/admin' });
 			} else {
 				setError('Authentication failed.');

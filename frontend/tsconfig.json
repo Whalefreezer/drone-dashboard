@@ -74,6 +74,7 @@
 	"exclude": [
 		"node_modules",
 		"dist",
-		".vite"
+		".vite",
+		"docs"
 	]
 }

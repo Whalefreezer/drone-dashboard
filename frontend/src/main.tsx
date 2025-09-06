@@ -4,18 +4,8 @@ import { createRoot } from 'react-dom/client';
 import ErrorBoundary from './common/ErrorBoundary.tsx';
 import { enableMocking } from './devTools/initialize.tsx';
 import { GenericSuspense } from './common/GenericSuspense.tsx';
-import { createRouter, RouterProvider } from '@tanstack/react-router';
-import { routeTree } from './routeTree.gen.ts';
-
-// Create router from generated route tree
-const router = createRouter({ routeTree, context: {} });
-
-// Type augmentation for strong typing across the app
-declare module '@tanstack/react-router' {
-	interface Register {
-		router: typeof router;
-	}
-}
+import { RouterProvider } from '@tanstack/react-router';
+import { router } from './router.ts';
 
 // Global error handlers
 globalThis.addEventListener('error', (event) => {

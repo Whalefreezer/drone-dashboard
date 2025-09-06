@@ -21,6 +21,7 @@ export default function AdminPage() {
 					<button
 						onClick={() => {
 							logout();
+							// @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 							navigate({ to: '/login' });
 						}}
 					>
