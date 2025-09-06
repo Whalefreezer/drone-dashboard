@@ -90,7 +90,7 @@ function IngestTargetsTable({ data }: { data: IngestRow[] }) {
       data={data}
       context={{}}
       getRowKey={(row) => row.id}
-      rowHeight={48}
+      rowHeight={64}
       className='ingest-table'
     />
   );
