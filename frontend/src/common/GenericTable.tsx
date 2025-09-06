@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { animated, useTransition } from '@react-spring/web';
+import { animated, SpringValue, useTransition } from '@react-spring/web';
 
 export type Column<TableCtx, RowCtx> = {
 	key: string;
@@ -55,7 +55,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		return m;
 	}, [data, getRowKey]);
 
-	const transitions = useTransition(items, {
+	const transitions = useTransition<typeof items[number], { y: SpringValue<number> }>(items, {
 		keys: (item) => item.key,
 		from: (item) => ({ y: (indexByKey.get(item.key) ?? 0) * rowHeight }),
 		enter: (item) => ({ y: (indexByKey.get(item.key) ?? 0) * rowHeight }),
