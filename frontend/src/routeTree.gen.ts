@@ -8,10 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as rootRouteImport } from './routes/__root.tsx'
+import { Route as LoginRouteImport } from './routes/login.tsx'
+import { Route as AdminRouteImport } from './routes/admin.tsx'
+import { Route as IndexRouteImport } from './routes/index.tsx'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',

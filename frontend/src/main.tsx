@@ -5,7 +5,7 @@ import ErrorBoundary from './common/ErrorBoundary.tsx';
 import { enableMocking } from './devTools/initialize.tsx';
 import { GenericSuspense } from './common/GenericSuspense.tsx';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
-import { routeTree } from './routeTree.gen';
+import { routeTree } from './routeTree.gen.ts';
 
 // Create router from generated route tree
 const router = createRouter({ routeTree, context: {} });
