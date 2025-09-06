@@ -110,7 +110,7 @@ const channel = channels.find((c) => c.id === pilotChannel.channel)!;
 // BEFORE (legacy prop contract)
 import type { PilotChannel } from '../types/index.ts';
 export interface PilotChannelViewProps {
-    pilotChannel: PilotChannel;
+	pilotChannel: PilotChannel;
 }
 ```
 
@@ -118,12 +118,12 @@ export interface PilotChannelViewProps {
 // AFTER (PB-friendly contract)
 import type { PBPilotChannelRecord } from '../api/pbTypes.ts';
 export interface PilotChannelViewProps {
-    pilotChannel: PBPilotChannelRecord;
+	pilotChannel: PBPilotChannelRecord;
 }
 // Alternative: keep props minimal and explicit
 export interface PilotChannelViewProps {
-    pilotId: string;
-    channelId: string;
+	pilotId: string;
+	channelId: string;
 }
 ```
 
@@ -133,8 +133,8 @@ export interface PilotChannelViewProps {
 // BEFORE (array from legacy event data)
 const colorIndex = eventData?.[0]?.Channels?.indexOf(channelID);
 const color = (eventData?.[0]?.ChannelColors && colorIndex !== undefined && colorIndex > -1)
-    ? eventData[0].ChannelColors[colorIndex]
-    : '#888';
+	? eventData[0].ChannelColors[colorIndex]
+	: '#888';
 ```
 
 ```typescript

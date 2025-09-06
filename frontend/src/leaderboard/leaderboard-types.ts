@@ -4,53 +4,53 @@ import { TotalRaceTime } from '../race/race-utils.ts';
 // Types specific to the Leaderboard feature
 
 export interface LeaderboardEntry {
-    pilot: PBPilotRecord;
-    bestLap: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    consecutiveLaps: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    bestHoleshot: {
-        time: number;
-        roundId: string;
-        raceNumber: number;
-    } | null;
-    fastestTotalRaceTime: TotalRaceTime | null;
-    channel: PBChannelRecord | null;
-    racesUntilNext: number;
-    totalLaps: number;
-    eliminatedInfo: {
-        bracket: string;
-        position: number;
-        points: number;
-    } | null;
+	pilot: PBPilotRecord;
+	bestLap: {
+		time: number;
+		roundId: string;
+		raceNumber: number;
+	} | null;
+	consecutiveLaps: {
+		time: number;
+		roundId: string;
+		raceNumber: number;
+	} | null;
+	bestHoleshot: {
+		time: number;
+		roundId: string;
+		raceNumber: number;
+	} | null;
+	fastestTotalRaceTime: TotalRaceTime | null;
+	channel: PBChannelRecord | null;
+	racesUntilNext: number;
+	totalLaps: number;
+	eliminatedInfo: {
+		bracket: string;
+		position: number;
+		points: number;
+	} | null;
 }
 
 export enum SortDirection {
-    Ascending = 'asc',
-    Descending = 'desc',
+	Ascending = 'asc',
+	Descending = 'desc',
 }
 
 export enum NullHandling {
-    First = 'NULLS_FIRST',
-    Last = 'NULLS_LAST',
-    Exclude = 'EXCLUDE',
+	First = 'NULLS_FIRST',
+	Last = 'NULLS_LAST',
+	Exclude = 'EXCLUDE',
 }
 
 export interface SortCriteria {
-    getValue: (entry: LeaderboardEntry) => number | null;
-    direction: SortDirection;
-    nullHandling: NullHandling;
+	getValue: (entry: LeaderboardEntry) => number | null;
+	direction: SortDirection;
+	nullHandling: NullHandling;
 }
 
 export interface SortGroup {
-    name: string;
-    criteria: SortCriteria[];
-    condition?: (entry: LeaderboardEntry) => boolean;
-    groups?: SortGroup[]; // Nested groups
+	name: string;
+	criteria: SortCriteria[];
+	condition?: (entry: LeaderboardEntry) => boolean;
+	groups?: SortGroup[]; // Nested groups
 }

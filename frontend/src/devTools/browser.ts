@@ -7,18 +7,18 @@ export const worker = setupWorker();
 
 // Async function to load default handlers and start the worker
 export async function startWorker() {
-    const defaultHandlers = await loadDefaultHandlers();
+	const defaultHandlers = await loadDefaultHandlers();
 
-    // Apply the handlers before starting
-    if (defaultHandlers.length > 0) {
-        worker.use(...defaultHandlers);
-        console.log(`MSW Browser: Applied ${defaultHandlers.length} default handlers.`);
-    } else {
-        console.warn('MSW Browser: No default handlers were loaded.');
-    }
+	// Apply the handlers before starting
+	if (defaultHandlers.length > 0) {
+		worker.use(...defaultHandlers);
+		console.log(`MSW Browser: Applied ${defaultHandlers.length} default handlers.`);
+	} else {
+		console.warn('MSW Browser: No default handlers were loaded.');
+	}
 
-    // Start the worker
-    return worker.start({
-        onUnhandledRequest: 'bypass', // Or 'warn', 'error'
-    });
+	// Start the worker
+	return worker.start({
+		onUnhandledRequest: 'bypass', // Or 'warn', 'error'
+	});
 }

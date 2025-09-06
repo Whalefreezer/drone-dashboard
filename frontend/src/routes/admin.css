@@ -1,61 +1,130 @@
 .admin-page {
-  /* Dark theme tokens aligned with app */
-  --card-bg: #1a1a1a;
-  --card-border: #333;
-  --muted: #aaa;
-  --accent: #e5e7eb;
-  --row-odd: #1a1a1a;
-  --row-even: #222;
+	/* Dark theme tokens aligned with app */
+	--card-bg: #1a1a1a;
+	--card-border: #333;
+	--muted: #aaa;
+	--accent: #e5e7eb;
+	--row-odd: #1a1a1a;
+	--row-even: #222;
 }
 
 .admin-page .topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
 }
 
 .admin-page .section-card {
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: 8px;
-  padding: 12px 14px;
+	border: 1px solid var(--card-border);
+	background: var(--card-bg);
+	border-radius: 8px;
+	padding: 12px 14px;
 }
 
-.admin-page h1 { margin: 0 0 8px; }
-.admin-page h2 { margin: 0 0 8px; }
+.admin-page h1 {
+	margin: 0 0 8px;
+}
+.admin-page h2 {
+	margin: 0 0 8px;
+}
 
-.admin-page .muted { color: var(--muted); }
+.admin-page .muted {
+	color: var(--muted);
+}
 
 /* GenericTable baseline styling */
-.admin-page .gt { width: 100%; border: 1px solid var(--card-border); border-radius: 8px; overflow: hidden; }
-.admin-page .gt-header { background: #333; font-weight: 600; border-bottom: 1px solid var(--card-border); }
-.admin-page .gt-header > * { padding: 6px 8px; }
-.admin-page .gt-body { position: relative; }
-.admin-page .gt-row { border-bottom: 1px solid #2b2b2b; }
-.admin-page .gt-row.row-odd { background: var(--row-odd); }
-.admin-page .gt-row.row-even { background: var(--row-even); }
-.admin-page .gt-cell { padding: 6px 8px; display: flex; align-items: center; min-height: 32px; }
+.admin-page .gt {
+	width: 100%;
+	border: 1px solid var(--card-border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+.admin-page .gt-header {
+	background: #333;
+	font-weight: 600;
+	border-bottom: 1px solid var(--card-border);
+}
+.admin-page .gt-header > * {
+	padding: 6px 8px;
+}
+.admin-page .gt-body {
+	position: relative;
+}
+.admin-page .gt-row {
+	border-bottom: 1px solid #2b2b2b;
+}
+.admin-page .gt-row.row-odd {
+	background: var(--row-odd);
+}
+.admin-page .gt-row.row-even {
+	background: var(--row-even);
+}
+.admin-page .gt-cell {
+	padding: 6px 8px;
+	display: flex;
+	align-items: center;
+	min-height: 32px;
+}
 
 /* Inputs and buttons */
 .admin-page input, .admin-page select {
-  color: #e5e7eb;
-  background: #111;
-  border: 1px solid #333; border-radius: 6px; padding: 8px 10px;
+	color: #e5e7eb;
+	background: #111;
+	border: 1px solid #333;
+	border-radius: 6px;
+	padding: 8px 10px;
 }
-.admin-page input::placeholder { color: #777; }
-.admin-page input:focus, .admin-page select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.25); }
-.admin-page button { border: 1px solid #333; background: #1a1a1a; border-radius: 6px; padding: 8px 12px; cursor: pointer; color: #e5e7eb; }
-.admin-page button:hover { background: #2a2a2a; }
-.admin-page button:disabled { opacity: 0.6; cursor: default; }
+.admin-page input::placeholder {
+	color: #777;
+}
+.admin-page input:focus, .admin-page select:focus {
+	outline: none;
+	border-color: #4f46e5;
+	box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+}
+.admin-page button {
+	border: 1px solid #333;
+	background: #1a1a1a;
+	border-radius: 6px;
+	padding: 8px 12px;
+	cursor: pointer;
+	color: #e5e7eb;
+}
+.admin-page button:hover {
+	background: #2a2a2a;
+}
+.admin-page button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
 
 /* Tables */
-.server-settings-table .gt-cell { align-items: center; }
-.server-settings-table .gt-row { min-height: 40px; }
-.server-settings-table input, .server-settings-table select { padding: 4px 8px; font-size: 0.95rem; }
-.server-settings-table button { padding: 6px 8px; font-size: 0.9rem; }
+.server-settings-table .gt-cell {
+	align-items: center;
+}
+.server-settings-table .gt-row {
+	min-height: 40px;
+}
+.server-settings-table input, .server-settings-table select {
+	padding: 4px 8px;
+	font-size: 0.95rem;
+}
+.server-settings-table button {
+	padding: 6px 8px;
+	font-size: 0.9rem;
+}
 
-.ingest-table .gt-row { min-height: 36px; }
+.ingest-table .gt-row {
+	min-height: 36px;
+}
 
 /* Readonly key chip */
-.key-chip { padding: 8px 10px; border: 1px solid #333; border-radius: 4px; background: #111; font-family: monospace; color: #e5e7eb; }
+.key-chip {
+	padding: 8px 10px;
+	border: 1px solid #333;
+	border-radius: 4px;
+	background: #111;
+	font-family: monospace;
+	color: #e5e7eb;
+}

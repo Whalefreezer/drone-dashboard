@@ -1,84 +1,84 @@
 .next-race-card {
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 10px 12px;
-    background: #161616;
-    margin-bottom: 10px;
+	border: 1px solid #333;
+	border-radius: 6px;
+	padding: 10px 12px;
+	background: #161616;
+	margin-bottom: 10px;
 }
 
 .next-race-card--dense {
-    padding: 6px 8px;
-    margin-bottom: 6px;
+	padding: 6px 8px;
+	margin-bottom: 6px;
 }
 
 .next-race-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
 }
 
 .next-race-title {
-    font-weight: 600;
-    color: #ddd;
-    font-size: 0.95rem;
+	font-weight: 600;
+	color: #ddd;
+	font-size: 0.95rem;
 }
 
 .next-race-grid {
-    display: grid;
-    gap: 4px; /* slightly tighter vertical spacing */
+	display: grid;
+	gap: 4px; /* slightly tighter vertical spacing */
 }
 
 .next-race-grid--two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 520px) {
-    .next-race-grid--two {
-        grid-template-columns: 1fr;
-    }
+	.next-race-grid--two {
+		grid-template-columns: 1fr;
+	}
 }
 
 .next-race-slot {
-    padding: 2px 0; /* remove box; tighten vertical space */
-    border: none;
-    background: transparent;
+	padding: 2px 0; /* remove box; tighten vertical space */
+	border: none;
+	background: transparent;
 }
 
 .slot-line {
-    display: flex;
-    align-items: center;
-    gap: 10px; /* more separation to name */
-    min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 10px; /* more separation to name */
+	min-width: 0;
 }
 
 .slot-channel-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
 }
 .slot-channel {
-    letter-spacing: 0.3px;
-    color: #bbb;
-    font-size: 0.86rem;
+	letter-spacing: 0.3px;
+	color: #bbb;
+	font-size: 0.86rem;
 }
 .slot-name {
-    color: #eee;
-    font-weight: 400;
-    font-size: 0.92rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+	color: #eee;
+	font-weight: 400;
+	font-size: 0.92rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* Make the color square smaller inside chips */
 .next-race-slot .channel-square {
-    width: 12px;
-    height: 12px;
-    border-color: #555;
+	width: 12px;
+	height: 12px;
+	border-color: #555;
 }
 
 /* Pull the color square closer to the channel label in this view */
 .slot-channel-group .channel-square {
-    margin-left: 0;
+	margin-left: 0;
 }

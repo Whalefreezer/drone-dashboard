@@ -6,27 +6,27 @@ import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
 import { getEnvEventIdFallback, pbSubscribeCollection } from '../api/pb.ts';
 import { allRacesAtom, currentRaceAtom as newCurrentRaceAtom } from '../race/race-atoms.ts';
 import {
-    calculateOverallBestTimes,
-    findEliminatedPilots,
-    isRaceActive,
-    orderRaces,
-    OverallBestTimes,
-    ProcessedLap,
-    updateAtom,
-    useCachedAtom,
-    useUpdater,
+	calculateOverallBestTimes,
+	findEliminatedPilots,
+	isRaceActive,
+	orderRaces,
+	OverallBestTimes,
+	ProcessedLap,
+	updateAtom,
+	useCachedAtom,
+	useUpdater,
 } from './commonAtoms.ts';
 import {
-    PBChannelRecord,
-    PBClientKVRecord,
-    PBDetectionRecord,
-    PBEventRecord,
-    PBGamePointRecord,
-    PBLapRecord,
-    PBPilotChannelRecord,
-    PBPilotRecord,
-    PBRaceRecord,
-    PBRoundRecord,
+	PBChannelRecord,
+	PBClientKVRecord,
+	PBDetectionRecord,
+	PBEventRecord,
+	PBGamePointRecord,
+	PBLapRecord,
+	PBPilotChannelRecord,
+	PBPilotRecord,
+	PBRaceRecord,
+	PBRoundRecord,
 } from '../api/pbTypes.ts';
 import { PBIngestTargetRecord, PBServerSettingRecord } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
@@ -52,33 +52,33 @@ export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 // });
 
 export const currentEventAtom = eagerAtom((get) => {
-    const events = get(eventsAtom);
-    const currentEvent = events.find((event) => event.isCurrent);
-    return currentEvent || null;
+	const events = get(eventsAtom);
+	const currentEvent = events.find((event) => event.isCurrent);
+	return currentEvent || null;
 });
 
 // Derived: race ids for the current event (prefer PB id)
 export const eventRaceIdsAtom = eagerAtom((get) => {
-    const ev = get(currentEventAtom);
-    if (!ev) return [];
-    const races = get(raceRecordsAtom);
-    return races.filter((r) => r.event === ev.id).map((r) => r.id);
+	const ev = get(currentEventAtom);
+	if (!ev) return [];
+	const races = get(raceRecordsAtom);
+	return races.filter((r) => r.event === ev.id).map((r) => r.id);
 });
 
 export const consecutiveLapsAtom = eagerAtom((get) => {
-    const ev = get(currentEventAtom);
-    return Number(ev?.pbLaps ?? 3);
+	const ev = get(currentEventAtom);
+	return Number(ev?.pbLaps ?? 3);
 });
 
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
-    queryKey: ['bracketsData'],
-    queryFn: () => {
-        // const response = await axios.get(`/brackets/groups/0`);
-        // return response.data as Bracket[];
-        return [] as Bracket[];
-    },
-    // staleTime: 10_000,
-    // refetchInterval: 10_000,
+	queryKey: ['bracketsData'],
+	queryFn: () => {
+		// const response = await axios.get(`/brackets/groups/0`);
+		// return response.data as Bracket[];
+		return [] as Bracket[];
+	},
+	// staleTime: 10_000,
+	// refetchInterval: 10_000,
 }));
 
 // Pilots as PB records
@@ -96,10 +96,10 @@ export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecor
 
 export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
 export const roundsDataAtom = eagerAtom((get) => {
-    const ev = get(currentEventAtom);
-    if (!ev) return [];
-    const rounds = get(roundRecordsAtom);
-    return rounds.filter((r) => r.event === ev.id);
+	const ev = get(currentEventAtom);
+	if (!ev) return [];
+	const rounds = get(roundRecordsAtom);
+	return rounds.filter((r) => r.event === ev.id);
 });
 
 // Live records for race and nested collections
@@ -119,19 +119,19 @@ export const currentRaceAtom = newCurrentRaceAtom;
 
 // Current order from client_kv for the current event
 export const currentOrderKVAtom = eagerAtom((get) => {
-    const ev = get(currentEventAtom);
-    if (!ev) return null as null | { order?: number; sourceId?: string };
-    const kv = get(clientKVRecordsAtom);
-    const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder' && r.event === ev.id);
-    if (!record || !record.value) return null;
-    try {
-        const parsed = JSON.parse(record.value);
-        const order = typeof parsed.order === 'number' ? parsed.order : undefined;
-        const sourceId = typeof parsed.sourceId === 'string' ? parsed.sourceId : undefined;
-        return { order, sourceId };
-    } catch {
-        return null;
-    }
+	const ev = get(currentEventAtom);
+	if (!ev) return null as null | { order?: number; sourceId?: string };
+	const kv = get(clientKVRecordsAtom);
+	const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder' && r.event === ev.id);
+	if (!record || !record.value) return null;
+	try {
+		const parsed = JSON.parse(record.value);
+		const order = typeof parsed.order === 'number' ? parsed.order : undefined;
+		const sourceId = typeof parsed.sourceId === 'string' ? parsed.sourceId : undefined;
+		return { order, sourceId };
+	} catch {
+		return null;
+	}
 });
 
 // Re-export types and functions from common
@@ -139,36 +139,36 @@ export type { OverallBestTimes, ProcessedLap };
 export { isRaceActive, orderRaces };
 
 function toValidityType(v: unknown): ValidityType {
-    switch (String(v)) {
-        case ValidityType.Auto:
-            return ValidityType.Auto;
-        case ValidityType.ManualOverride:
-            return ValidityType.ManualOverride;
-        case ValidityType.Marshall:
-            return ValidityType.Marshall;
-        default:
-            return ValidityType.Auto;
-    }
+	switch (String(v)) {
+		case ValidityType.Auto:
+			return ValidityType.Auto;
+		case ValidityType.ManualOverride:
+			return ValidityType.ManualOverride;
+		case ValidityType.Marshall:
+			return ValidityType.Marshall;
+		default:
+			return ValidityType.Auto;
+	}
 }
 
 function toPTSL(v: unknown): PrimaryTimingSystemLocation {
-    switch (String(v)) {
-        case PrimaryTimingSystemLocation.Holeshot:
-            return PrimaryTimingSystemLocation.Holeshot;
-        case PrimaryTimingSystemLocation.EndOfLap:
-        default:
-            return PrimaryTimingSystemLocation.EndOfLap;
-    }
+	switch (String(v)) {
+		case PrimaryTimingSystemLocation.Holeshot:
+			return PrimaryTimingSystemLocation.Holeshot;
+		case PrimaryTimingSystemLocation.EndOfLap:
+		default:
+			return PrimaryTimingSystemLocation.EndOfLap;
+	}
 }
 
 // Re-export from common
 export { findEliminatedPilots, updateAtom, useUpdater };
 
 export const overallBestTimesAtom = eagerAtom((get) => {
-    const raceIds = get(eventRaceIdsAtom);
-    // Flatten all processed laps from all races using per-race atom
-    const allProcessedLaps = raceIds.flatMap((raceId) => get(raceProcessedLapsAtom(raceId)));
-    return calculateOverallBestTimes(allProcessedLaps);
+	const raceIds = get(eventRaceIdsAtom);
+	// Flatten all processed laps from all races using per-race atom
+	const allProcessedLaps = raceIds.flatMap((raceId) => get(raceProcessedLapsAtom(raceId)));
+	return calculateOverallBestTimes(allProcessedLaps);
 });
 
 // ===== NEW FOCUSED ATOMS =====
@@ -177,86 +177,86 @@ export const overallBestTimesAtom = eagerAtom((get) => {
  * Processed laps for a specific race - computed from PB records
  */
 export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
-    eagerAtom((get) => {
-        const lapRecords = get(lapRecordsAtom);
-        const detectionRecords = get(detectionRecordsAtom);
+	eagerAtom((get) => {
+		const lapRecords = get(lapRecordsAtom);
+		const detectionRecords = get(detectionRecordsAtom);
 
-        const laps = lapRecords.filter((l) => l.race === raceId);
-        const detections = detectionRecords.filter((d) => d.race === raceId);
+		const laps = lapRecords.filter((l) => l.race === raceId);
+		const detections = detectionRecords.filter((d) => d.race === raceId);
 
-        return laps
-            .map((lap) => {
-                const detection = detections.find((d) => d.id === lap.detection);
-                if (!detection || !detection.valid) return null;
+		return laps
+			.map((lap) => {
+				const detection = detections.find((d) => d.id === lap.detection);
+				if (!detection || !detection.valid) return null;
 
-                return {
-                    id: lap.id,
-                    lapNumber: lap.lapNumber ?? 0,
-                    lengthSeconds: lap.lengthSeconds ?? 0,
-                    pilotId: detection.pilot ?? '',
-                    valid: detection.valid ?? false,
-                    startTime: lap.startTime ?? '',
-                    endTime: lap.endTime ?? '',
-                    isHoleshot: detection.isHoleshot ?? false,
-                } as ProcessedLap;
-            })
-            .filter((lap): lap is ProcessedLap => lap !== null)
-            .sort((a, b) => a.lapNumber - b.lapNumber);
-    })
+				return {
+					id: lap.id,
+					lapNumber: lap.lapNumber ?? 0,
+					lengthSeconds: lap.lengthSeconds ?? 0,
+					pilotId: detection.pilot ?? '',
+					valid: detection.valid ?? false,
+					startTime: lap.startTime ?? '',
+					endTime: lap.endTime ?? '',
+					isHoleshot: detection.isHoleshot ?? false,
+				} as ProcessedLap;
+			})
+			.filter((lap): lap is ProcessedLap => lap !== null)
+			.sort((a, b) => a.lapNumber - b.lapNumber);
+	})
 );
 
 /**
  * Pilot-channel associations for a specific race
  */
 export const racePilotChannelsAtom = atomFamily((raceId: string) =>
-    eagerAtom((get) => {
-        const pilotChannelRecords = get(pilotChannelRecordsAtom);
-        return pilotChannelRecords
-            .filter((pc) => pc.race === raceId)
-            .map((pc) => ({
-                id: pc.id,
-                pilotId: pc.pilot ?? '',
-                channelId: pc.channel ?? '',
-            }));
-    })
+	eagerAtom((get) => {
+		const pilotChannelRecords = get(pilotChannelRecordsAtom);
+		return pilotChannelRecords
+			.filter((pc) => pc.race === raceId)
+			.map((pc) => ({
+				id: pc.id,
+				pilotId: pc.pilot ?? '',
+				channelId: pc.channel ?? '',
+			}));
+	})
 );
 
 /**
  * Race status (active/completed/started) for a specific race
  */
 export const raceStatusAtom = atomFamily((raceId: string) =>
-    eagerAtom((get) => {
-        const raceRecords = get(raceRecordsAtom);
-        const race = raceRecords.find((r) => r.id === raceId);
-        if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
+	eagerAtom((get) => {
+		const raceRecords = get(raceRecordsAtom);
+		const race = raceRecords.find((r) => r.id === raceId);
+		if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
 
-        const hasStarted = !!(race.start && !race.start.startsWith('0'));
-        const hasEnded = !!(race.end && !race.end.startsWith('0'));
+		const hasStarted = !!(race.start && !race.start.startsWith('0'));
+		const hasEnded = !!(race.end && !race.end.startsWith('0'));
 
-        return {
-            hasStarted,
-            isActive: hasStarted && !hasEnded,
-            isCompleted: hasStarted && hasEnded,
-        };
-    })
+		return {
+			hasStarted,
+			isActive: hasStarted && !hasEnded,
+			isCompleted: hasStarted && hasEnded,
+		};
+	})
 );
 
 /**
  * All detections for a specific race
  */
 export const raceDetectionsAtom = atomFamily((raceId: string) =>
-    eagerAtom((get) => {
-        const detectionRecords = get(detectionRecordsAtom);
-        return detectionRecords.filter((d) => d.race === raceId);
-    })
+	eagerAtom((get) => {
+		const detectionRecords = get(detectionRecordsAtom);
+		return detectionRecords.filter((d) => d.race === raceId);
+	})
 );
 
 /**
  * All game points for a specific race
  */
 export const raceGamePointsAtom = atomFamily((raceId: string) =>
-    eagerAtom((get) => {
-        const gamePointRecords = get(gamePointRecordsAtom);
-        return gamePointRecords.filter((g) => g.race === raceId);
-    })
+	eagerAtom((get) => {
+		const gamePointRecords = get(gamePointRecordsAtom);
+		return gamePointRecords.filter((g) => g.race === raceId);
+	})
 );

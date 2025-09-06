@@ -13,15 +13,15 @@ import { BASE_URL } from '../devTools/snapshotConstants.ts';
 // --- MSW Server Lifecycle ---
 // Establish API mocking before all tests.
 beforeAll(async () => {
-    // Set base URL for axios requests made during tests
-    axios.defaults.baseURL = BASE_URL;
+	// Set base URL for axios requests made during tests
+	axios.defaults.baseURL = BASE_URL;
 
-    // 1. Load the default handlers asynchronously
-    await initializeServerHandlers();
-    // 2. Apply the loaded handlers to the server instance
-    applyServerHandlers();
-    // 3. Start the server to listen for requests
-    server.listen({ onUnhandledRequest: 'error' });
+	// 1. Load the default handlers asynchronously
+	await initializeServerHandlers();
+	// 2. Apply the loaded handlers to the server instance
+	applyServerHandlers();
+	// 3. Start the server to listen for requests
+	server.listen({ onUnhandledRequest: 'error' });
 });
 
 // Reset any request handlers that were added during the tests,
@@ -34,7 +34,7 @@ afterAll(() => server.close());
 
 // --- Testing Library Cleanup (Keep this) ---
 afterEach(() => {
-    cleanup(); // Cleans up Testing Library rendered components
+	cleanup(); // Cleans up Testing Library rendered components
 });
 // --- End Testing Library Cleanup ---
 

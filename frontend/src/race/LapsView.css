@@ -1,81 +1,89 @@
 :root {
-    --fastest-lap-color: #1a472a; /* Dark green for race fastest */
-    --personal-best-color: #2a2a4a; /* Dark blue for race personal best */
-    --overall-fastest-color: #4a1a1a; /* Dark red for overall fastest */
-    --overall-personal-best-color: #1a1a4a; /* Dark purple for overall personal best */
+	--fastest-lap-color: #1a472a; /* Dark green for race fastest */
+	--personal-best-color: #2a2a4a; /* Dark blue for race personal best */
+	--overall-fastest-color: #4a1a1a; /* Dark red for overall fastest */
+	--overall-personal-best-color: #1a1a4a; /* Dark purple for overall personal best */
 }
 
 /* Laps View specific styles - Moved from App.css */
 .laps-view {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 }
 
 .race-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 100%;
-    overflow-x: hidden;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 100%;
+	overflow-x: hidden;
 }
 
 .race-number {
-    font-size: 18px;
-    font-weight: bold;
-    color: #888;
-    text-align: center;
-    padding: 4px;
-    background-color: #2a2a2a;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
+	font-size: 18px;
+	font-weight: bold;
+	color: #888;
+	text-align: center;
+	padding: 4px;
+	background-color: #2a2a2a;
+	border-radius: 4px;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 /* GenericTable (div-based) */
 .gt {
-    width: 100%;
-    --table-bg-odd: #1a1a1a;
-    --table-bg-even: #222;
-    --table-bg-hover: #2a2a2a;
+	width: 100%;
+	--table-bg-odd: #1a1a1a;
+	--table-bg-even: #222;
+	--table-bg-hover: #2a2a2a;
 }
 
 .gt-header {
-    background-color: #333;
-    font-weight: bold;
-    display: grid;
+	background-color: #333;
+	font-weight: bold;
+	display: grid;
 }
 
 .gt-header > * {
-    padding: 4px;
-    border: 1px solid black;
+	padding: 4px;
+	border: 1px solid black;
 }
 
-.gt-body { position: relative; }
+.gt-body {
+	position: relative;
+}
 
 .gt-row {
-    background-color: var(--row-bg, var(--table-bg-odd));
+	background-color: var(--row-bg, var(--table-bg-odd));
 }
-.gt-row.row-odd { --row-bg: var(--table-bg-odd); }
-.gt-row.row-even { --row-bg: var(--table-bg-even); }
-.gt-row:hover { background-color: var(--table-bg-hover); }
+.gt-row.row-odd {
+	--row-bg: var(--table-bg-odd);
+}
+.gt-row.row-even {
+	--row-bg: var(--table-bg-even);
+}
+.gt-row:hover {
+	background-color: var(--table-bg-hover);
+}
 
 .gt-cell {
-    border: 1px solid black;
-    padding: 4px;
-    overflow: hidden;
-    position: relative;
+	border: 1px solid black;
+	padding: 4px;
+	overflow: hidden;
+	position: relative;
 }
 
 .gt-cell > .fade-overflow::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 20px;
-    background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
-    pointer-events: none;
+	content: '';
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: 20px;
+	background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
+	pointer-events: none;
 }
 
 /* Make lap highlight backgrounds fill the whole cell area without losing padding for other cells */
@@ -84,35 +92,35 @@
 .laps-table .gt-cell > .lap-overall-fastest,
 .laps-table .gt-cell > .lap-overall-personal-best,
 .laps-table .gt-cell > .pattern-hatched {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    padding: 4px;
-    box-sizing: border-box;
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	padding: 4px;
+	box-sizing: border-box;
 }
 
 /* Lap Highlighting - Moved from App.css */
 .lap-fastest-overall {
-    background-color: var(--fastest-lap-color);
+	background-color: var(--fastest-lap-color);
 }
 
 .lap-personal-best {
-    background-color: var(--personal-best-color);
+	background-color: var(--personal-best-color);
 }
 
 .lap-overall-fastest {
-    background-color: var(--overall-fastest-color);
+	background-color: var(--overall-fastest-color);
 }
 
 .lap-overall-personal-best {
-    background-color: var(--overall-personal-best-color);
+	background-color: var(--overall-personal-best-color);
 }
 
 /* Moved from App.css */
 .flex-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 4px;
 }

@@ -5,68 +5,66 @@ import { currentRaceAtom } from '../race/race-atoms.ts';
 import { BracketPilot } from './bracket-types.ts';
 
 export function BracketsView() {
-    const brackets = useQueryAtom(bracketsDataAtom);
-    const pilots = useAtomValue(pilotsAtom);
-    const currentRace = useAtomValue(currentRaceAtom);
+	const brackets = useQueryAtom(bracketsDataAtom);
+	const pilots = useAtomValue(pilotsAtom);
+	const currentRace = useAtomValue(currentRaceAtom);
 
+	// Normalize names by removing whitespace and converting to lowercase
+	const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
+	// Get the set of normalized pilot names from the current race
+	const pilotChannels = useAtomValue(racePilotChannelsAtom(currentRace?.id ?? ''));
+	const currentRacePilotNames = new Set(
+		pilotChannels
+			.map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
+			.filter((name: string) => name !== '')
+			.map(normalizeString),
+	);
 
-    // Normalize names by removing whitespace and converting to lowercase
-    const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
+	// Find the bracket that matches the current race pilots
+	const matchingBracket = brackets.find((bracket) => {
+		const bracketPilotNames = new Set(
+			bracket.pilots.map((p: BracketPilot) => normalizeString(p.name)),
+		);
 
-    // Get the set of normalized pilot names from the current race
-    const pilotChannels = useAtomValue(racePilotChannelsAtom(currentRace?.id ?? ''));
-    const currentRacePilotNames = new Set(
-        pilotChannels
-            .map((pc) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
-            .filter((name: string) => name !== '')
-            .map(normalizeString),
-    );
+		return bracketPilotNames.size === currentRacePilotNames.size &&
+			Array.from(currentRacePilotNames).every((name: string) => bracketPilotNames.has(name));
+	});
 
-    // Find the bracket that matches the current race pilots
-    const matchingBracket = brackets.find((bracket) => {
-        const bracketPilotNames = new Set(
-            bracket.pilots.map((p: BracketPilot) => normalizeString(p.name)),
-        );
+	if (!currentRace) {
+		return null;
+	}
 
-        return bracketPilotNames.size === currentRacePilotNames.size &&
-            Array.from(currentRacePilotNames).every((name: string) => bracketPilotNames.has(name));
-    });
+	if (!matchingBracket) return null;
 
-    if (!currentRace) {
-        return null;
-    }
-
-    if (!matchingBracket) return null;
-
-    return (
-        <div className='brackets-container'>
-            <div className='bracket'>
-                <h3>Bracket: {matchingBracket.name}</h3>
-                <table className='bracket-table'>
-                    <thead>
-                        <tr>
-                            <th>Seed</th>
-                            <th>Pilot</th>
-                            <th>Points</th>
-                            {matchingBracket.pilots[0]?.rounds.map((
-                                _: number | null,
-                                roundIndex: number,
-                            ) => <th key={roundIndex}>R{roundIndex + 1}</th>)}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {matchingBracket.pilots.map((pilot: BracketPilot, pilotIndex: number) => (
-                            <tr key={pilotIndex}>
-                                <td>{pilot.seed}</td>
-                                <td>{pilot.name}</td>
-                                <td>{pilot.points}</td>
-                                {pilot.rounds.map((round: number | null, roundIndex: number) => <td key={roundIndex}>{round ?? '-'}</td>)}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+	return (
+		<div className='brackets-container'>
+			<div className='bracket'>
+				<h3>Bracket: {matchingBracket.name}</h3>
+				<table className='bracket-table'>
+					<thead>
+						<tr>
+							<th>Seed</th>
+							<th>Pilot</th>
+							<th>Points</th>
+							{matchingBracket.pilots[0]?.rounds.map((
+								_: number | null,
+								roundIndex: number,
+							) => <th key={roundIndex}>R{roundIndex + 1}</th>)}
+						</tr>
+					</thead>
+					<tbody>
+						{matchingBracket.pilots.map((pilot: BracketPilot, pilotIndex: number) => (
+							<tr key={pilotIndex}>
+								<td>{pilot.seed}</td>
+								<td>{pilot.name}</td>
+								<td>{pilot.points}</td>
+								{pilot.rounds.map((round: number | null, roundIndex: number) => <td key={roundIndex}>{round ?? '-'}</td>)}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
 }

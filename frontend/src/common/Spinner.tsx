@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 
 interface SpinnerProps {
-    size?: 'small' | 'medium' | 'large';
-    color?: string;
+	size?: 'small' | 'medium' | 'large';
+	color?: string;
 }
 
 // Define keyframes animation
@@ -14,45 +14,45 @@ const KEYFRAMES_STYLE = `
 `;
 
 export default function Spinner({ size = 'medium', color = '#ffffff' }: SpinnerProps) {
-    const dimensions = {
-        small: { width: '16px', height: '16px' },
-        medium: { width: '24px', height: '24px' },
-        large: { width: '32px', height: '32px' },
-    };
+	const dimensions = {
+		small: { width: '16px', height: '16px' },
+		medium: { width: '24px', height: '24px' },
+		large: { width: '32px', height: '32px' },
+	};
 
-    const { width, height } = dimensions[size];
+	const { width, height } = dimensions[size];
 
-    useEffect(() => {
-        // Check if the style already exists
-        const existingStyle = document.getElementById('spinner-keyframes');
-        if (!existingStyle) {
-            const styleSheet = document.createElement('style');
-            styleSheet.id = 'spinner-keyframes';
-            styleSheet.textContent = KEYFRAMES_STYLE;
-            document.head.appendChild(styleSheet);
-        }
+	useEffect(() => {
+		// Check if the style already exists
+		const existingStyle = document.getElementById('spinner-keyframes');
+		if (!existingStyle) {
+			const styleSheet = document.createElement('style');
+			styleSheet.id = 'spinner-keyframes';
+			styleSheet.textContent = KEYFRAMES_STYLE;
+			document.head.appendChild(styleSheet);
+		}
 
-        // Cleanup on unmount
-        return () => {
-            const style = document.getElementById('spinner-keyframes');
-            if (style && document.querySelectorAll('[data-spinner]').length === 1) {
-                style.remove();
-            }
-        };
-    }, []);
+		// Cleanup on unmount
+		return () => {
+			const style = document.getElementById('spinner-keyframes');
+			if (style && document.querySelectorAll('[data-spinner]').length === 1) {
+				style.remove();
+			}
+		};
+	}, []);
 
-    return (
-        <div
-            data-spinner
-            style={{
-                display: 'inline-block',
-                width,
-                height,
-                border: `2px solid ${color}33`,
-                borderTop: `2px solid ${color}`,
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-            }}
-        />
-    );
+	return (
+		<div
+			data-spinner
+			style={{
+				display: 'inline-block',
+				width,
+				height,
+				border: `2px solid ${color}33`,
+				borderTop: `2px solid ${color}`,
+				borderRadius: '50%',
+				animation: 'spin 1s linear infinite',
+			}}
+		/>
+	);
 }

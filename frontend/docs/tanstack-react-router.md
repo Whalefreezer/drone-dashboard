@@ -23,7 +23,9 @@ deno add -D npm:@tanstack/router-plugin@^1
 ```
 
 Notes
-- If `deno add` isn’t available in your Deno version, you can still import via `npm:` specifiers directly in code and lock with `deno cache`.
+
+- If `deno add` isn’t available in your Deno version, you can still import via `npm:` specifiers directly in code and lock with
+  `deno cache`.
 - After adding, run `deno cache -r src/main.tsx` (or `deno task dev`) once to update `deno.lock`.
 
 ---
@@ -33,19 +35,21 @@ Notes
 We use the Vite plugin to generate a route tree from files in `src/routes/`.
 
 ### 2.1 Configure Vite
+
 Edit `frontend/vite.config.ts` and add the plugin:
 
 ```ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 
 export default defineConfig({
-  plugins: [react(), TanStackRouterVite()],
-})
+	plugins: [react(), TanStackRouterVite()],
+});
 ```
 
 ### 2.2 Create Route Files (Only 2 Routes)
+
 Create `src/routes/` with these files:
 
 - `src/routes/__root.tsx` (root layout and shared UI)
@@ -54,61 +58,62 @@ Create `src/routes/` with these files:
 
 ```ts
 // src/routes/__root.tsx
-import { Outlet } from '@tanstack/react-router'
-import { createRootRouteWithContext, Link } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { Outlet } from '@tanstack/react-router';
+import { createRootRouteWithContext, Link } from '@tanstack/react-router';
+import { TanStackRouterDevtools } from '@tanstack/router-devtools';
 
 interface RouterContext {
-  // Add shared singletons here if needed (e.g., queryClient)
+	// Add shared singletons here if needed (e.g., queryClient)
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  component: () => (
-    <>
-      <nav style={{ padding: 8 }}>
-        <Link to="/">Dashboard</Link> | <Link to="/admin">Admin</Link>
-      </nav>
-      <main><Outlet /></main>
-      {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
-    </>
-  ),
-})
+	component: () => (
+		<>
+			<nav style={{ padding: 8 }}>
+				<Link to='/'>Dashboard</Link> | <Link to='/admin'>Admin</Link>
+			</nav>
+			<main>
+				<Outlet />
+			</main>
+			{import.meta.env.DEV && <TanStackRouterDevtools position='bottom-right' />}
+		</>
+	),
+});
 ```
 
 ```ts
 // src/routes/index.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import App from '../App.tsx'
+import { createFileRoute } from '@tanstack/react-router';
+import App from '../App.tsx';
 
 export const Route = createFileRoute('/')({
-  // Render the existing dashboard as-is at the root
-  component: App,
-})
+	// Render the existing dashboard as-is at the root
+	component: App,
+});
 ```
 
 ```ts
 // src/routes/admin.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
-import { clientKVRecordsAtom } from '../state/pbAtoms.ts'
+import { createFileRoute } from '@tanstack/react-router';
+import { useAtomValue } from 'jotai';
+import { clientKVRecordsAtom } from '../state/pbAtoms.ts';
 
 export const Route = createFileRoute('/admin')({
-  component: Admin,
-})
+	component: Admin,
+});
 
 function Admin() {
-  const kv = useAtomValue(clientKVRecordsAtom)
-  return (
-    <div style={{ padding: 16 }}>
-      <h1>Client KV Records</h1>
-      <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(kv, null, 2)}</pre>
-    </div>
-  )
+	const kv = useAtomValue(clientKVRecordsAtom);
+	return (
+		<div style={{ padding: 16 }}>
+			<h1>Client KV Records</h1>
+			<pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(kv, null, 2)}</pre>
+		</div>
+	);
 }
 ```
 
-```
-
+````
 ### 2.3 Wire Up the Router
 Update `src/main.tsx` to create and provide the router using the generated route tree `routeTree.gen`.
 
@@ -131,7 +136,7 @@ createRoot(document.getElementById('root')!).render(
     <RouterProvider router={router} />
   </StrictMode>,
 )
-```
+````
 
 Start the dev server with `deno task dev` and visit `/` and `/admin`.
 
@@ -142,6 +147,7 @@ Start the dev server with `deno task dev` and visit `/` and `/admin`.
 ---
 
 ### Links and Navigation
+
 ```tsx
 import { Link, useNavigate } from '@tanstack/react-router'
 
@@ -152,50 +158,57 @@ navigate({ to: '/admin' })
 ```
 
 ### Search Params (Validation)
-```tsx
-import { z } from 'zod'
-import { createFileRoute } from '@tanstack/react-router'
 
-const searchSchema = z.object({ q: z.string().default('') })
+```tsx
+import { z } from 'zod';
+import { createFileRoute } from '@tanstack/react-router';
+
+const searchSchema = z.object({ q: z.string().default('') });
 
 export const Route = createFileRoute('/admin')({
-  validateSearch: searchSchema,
-  component: () => {
-    const { q } = Route.useSearch()
-    return <div>Query: {q}</div>
-  },
-})
+	validateSearch: searchSchema,
+	component: () => {
+		const { q } = Route.useSearch();
+		return <div>Query: {q}</div>;
+	},
+});
 ```
 
 ### Error & Pending UI
+
 ```ts
 export const Route = createFileRoute('/admin')({
-  loader: async () => { /* optional */ },
-  pendingComponent: () => <div>Loading…</div>,
-  errorComponent: ({ error }) => <div>Error: {String(error)}</div>,
-})
+	loader: async () => {/* optional */},
+	pendingComponent: () => <div>Loading…</div>,
+	errorComponent: ({ error }) => <div>Error: {String(error)}</div>,
+});
 ```
 
 ### Auth Guards (beforeLoad)
+
 ```ts
 export const Route = createFileRoute('/admin')({
-  beforeLoad: ({ context, location }) => {
-    if (!context.user) {
-      throw redirect({ to: '/login', search: { redirect: location.href } })
-    }
-  },
-  component: Admin,
-})
+	beforeLoad: ({ context, location }) => {
+		if (!context.user) {
+			throw redirect({ to: '/login', search: { redirect: location.href } });
+		}
+	},
+	component: Admin,
+});
 ```
 
 ### Code‑Splitting
+
 - File‑based: `createLazyFileRoute('/path')({ component: LazyComp })`.
 - Manual tree: `component: React.lazy(() => import('./SomePage'))` and wrap with `<Suspense>` in layouts.
 
 ### Devtools
+
 ```tsx
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-{import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
+import { TanStackRouterDevtools } from '@tanstack/router-devtools';
+{
+	import.meta.env.DEV && <TanStackRouterDevtools position='bottom-right' />;
+}
 ```
 
 ---
@@ -207,17 +220,17 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 ```ts
 // src/routes/__tests__/admin.test.tsx
-import { render, screen } from '@testing-library/react'
-import { RouterProvider, createMemoryHistory } from '@tanstack/react-router'
-import { createRouter } from '@tanstack/react-router'
-import { routeTree } from '../../routeTree.gen'
+import { render, screen } from '@testing-library/react';
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
+import { createRouter } from '@tanstack/react-router';
+import { routeTree } from '../../routeTree.gen';
 
 Deno.test('renders admin page', () => {
-  const router = createRouter({ routeTree })
-  const history = createMemoryHistory({ initialEntries: ['/admin'] })
-  render(<RouterProvider router={router} history={history} />)
-  screen.getByText('Client KV Records')
-})
+	const router = createRouter({ routeTree });
+	const history = createMemoryHistory({ initialEntries: ['/admin'] });
+	render(<RouterProvider router={router} history={history} />);
+	screen.getByText('Client KV Records');
+});
 ```
 
 ---
@@ -259,4 +272,5 @@ cd frontend && deno test
 
 ## 8) Notes for Backend Proxy
 
-All examples assume API calls to `/api/*` are proxied by the Go backend (run backend with `-fpvtrackside-api=...`). Loaders fetch relative paths (e.g., `/api/races/:id`) so they keep working in dev and in the embedded, built app.
+All examples assume API calls to `/api/*` are proxied by the Go backend (run backend with `-fpvtrackside-api=...`). Loaders fetch relative
+paths (e.g., `/api/races/:id`) so they keep working in dev and in the embedded, built app.

@@ -1,18 +1,18 @@
 export interface BracketPilot {
-    seed: string;
-    name: string;
-    rounds: (number | null)[];
-    points: number;
+	seed: string;
+	name: string;
+	rounds: (number | null)[];
+	points: number;
 }
 
 export interface Bracket {
-    name: string;
-    pilots: BracketPilot[];
+	name: string;
+	pilots: BracketPilot[];
 }
 
 export interface EliminatedPilot {
-    name: string;
-    bracket: string;
-    position: number;
-    points: number;
+	name: string;
+	bracket: string;
+	position: number;
+	points: number;
 }

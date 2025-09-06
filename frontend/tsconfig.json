@@ -1,79 +1,79 @@
 {
-    "compilerOptions": {
-        // Type Checking
-        "strict": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "strictPropertyInitialization": true,
-        "noImplicitThis": true,
-        "useUnknownInCatchVariables": true,
-        "alwaysStrict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "exactOptionalPropertyTypes": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "noUncheckedIndexedAccess": true,
-        "noImplicitOverride": true,
-        "noPropertyAccessFromIndexSignature": true,
+	"compilerOptions": {
+		// Type Checking
+		"strict": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"strictBindCallApply": true,
+		"strictPropertyInitialization": true,
+		"noImplicitThis": true,
+		"useUnknownInCatchVariables": true,
+		"alwaysStrict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noPropertyAccessFromIndexSignature": true,
 
-        // Modules
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "baseUrl": ".",
-        "paths": {
-            "@/*": ["./src/*"],
-            "@components/*": ["./src/components/*"],
-            "@utils/*": ["./src/utils/*"],
-            "@hooks/*": ["./src/hooks/*"],
-            "@types/*": ["./src/types/*"],
-            "@assets/*": ["./src/assets/*"]
-        },
+		// Modules
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"],
+			"@components/*": ["./src/components/*"],
+			"@utils/*": ["./src/utils/*"],
+			"@hooks/*": ["./src/hooks/*"],
+			"@types/*": ["./src/types/*"],
+			"@assets/*": ["./src/assets/*"]
+		},
 
-        // Emit
-        "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true,
-        "outDir": "./dist",
-        "removeComments": false,
-        "importsNotUsedAsValues": "remove",
+		// Emit
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"outDir": "./dist",
+		"removeComments": false,
+		"importsNotUsedAsValues": "remove",
 
-        // JavaScript Support
-        "allowJs": true,
-        "checkJs": true,
+		// JavaScript Support
+		"allowJs": true,
+		"checkJs": true,
 
-        // Interop Constraints
-        "isolatedModules": true,
-        "allowSyntheticDefaultImports": true,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
+		// Interop Constraints
+		"isolatedModules": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
 
-        // Language and Environment
-        "target": "ESNext",
-        "lib": ["DOM", "DOM.Iterable", "ESNext"],
-        "jsx": "react-jsx",
-        "jsxImportSource": "react",
+		// Language and Environment
+		"target": "ESNext",
+		"lib": ["DOM", "DOM.Iterable", "ESNext"],
+		"jsx": "react-jsx",
+		"jsxImportSource": "react",
 
-        // Projects
-        "incremental": true,
-        "composite": true,
-        "tsBuildInfoFile": "./dist/.tsbuildinfo",
+		// Projects
+		"incremental": true,
+		"composite": true,
+		"tsBuildInfoFile": "./dist/.tsbuildinfo",
 
-        // Completeness
-        "skipLibCheck": true
-    },
-    "include": [
-        "src/**/*.ts",
-        "src/**/*.tsx",
-        "tests/**/*.ts",
-        "tests/**/*.tsx",
-        "vite.config.ts"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        ".vite"
-    ]
+		// Completeness
+		"skipLibCheck": true
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"tests/**/*.ts",
+		"tests/**/*.tsx",
+		"vite.config.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		".vite"
+	]
 }

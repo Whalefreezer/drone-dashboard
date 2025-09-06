@@ -6,10 +6,10 @@ import { it } from '@std/testing/bdd';
 import { assertExists } from '@std/assert';
 
 it('BracketsView renders without crashing', () => {
-    const { container } = render(
-        <Provider>
-            <BracketsView />
-        </Provider>,
-    );
-    assertExists(container, 'BracketsView container should exist even if potentially empty');
+	const { container } = render(
+		<Provider>
+			<BracketsView />
+		</Provider>,
+	);
+	assertExists(container, 'BracketsView container should exist even if potentially empty');
 });
