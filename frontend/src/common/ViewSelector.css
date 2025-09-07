@@ -1,0 +1,27 @@
+.view-selector {
+	display: flex;
+	justify-content: space-around;
+	background-color: #1a1a1a;
+	border-bottom: 1px solid #333;
+}
+
+.view-selector button {
+	flex: 1;
+	padding: 8px;
+	min-height: 44px;
+	background: none;
+	color: #fff;
+	border: none;
+	cursor: pointer;
+}
+
+.view-selector button.active {
+	border-bottom: 2px solid #fff;
+	font-weight: bold;
+}
+
+@media (max-width: 599px) {
+	.view-selector {
+		margin-top: 40px;
+	}
+}

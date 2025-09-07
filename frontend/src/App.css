@@ -259,6 +259,11 @@
 	margin-top: 40px; /* Added from App.tsx inline style */
 }
 
+.app-main-content.mobile {
+	flex-direction: column;
+	margin-top: 0;
+}
+
 .app-legend {
 	display: flex;
 	justify-content: center;
