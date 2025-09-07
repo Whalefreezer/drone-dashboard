@@ -16,6 +16,12 @@ import { Route as rootRouteImport } from './routes/__root.tsx'
 import { Route as LoginRouteImport } from './routes/login.tsx'
 import { Route as AdminRouteImport } from './routes/admin.tsx'
 import { Route as IndexRouteImport } from './routes/index.tsx'
+import { Route as AdminIndexRouteImport } from './routes/admin/index.tsx'
+import { Route as AdminToolsRouteImport } from './routes/admin/tools.tsx'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings.tsx'
+import { Route as AdminKvRouteImport } from './routes/admin/kv.tsx'
+import { Route as AdminIngestRouteImport } from './routes/admin/ingest.tsx'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard.tsx'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -32,34 +38,108 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminToolsRoute = AdminToolsRouteImport.update({
+  id: '/tools',
+  path: '/tools',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKvRoute = AdminKvRouteImport.update({
+  id: '/kv',
+  path: '/kv',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminIngestRoute = AdminIngestRouteImport.update({
+  id: '/ingest',
+  path: '/ingest',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/ingest': typeof AdminIngestRoute
+  '/admin/kv': typeof AdminKvRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tools': typeof AdminToolsRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/ingest': typeof AdminIngestRoute
+  '/admin/kv': typeof AdminKvRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tools': typeof AdminToolsRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/ingest': typeof AdminIngestRoute
+  '/admin/kv': typeof AdminKvRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tools': typeof AdminToolsRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/ingest'
+    | '/admin/kv'
+    | '/admin/settings'
+    | '/admin/tools'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login'
-  id: '__root__' | '/' | '/admin' | '/login'
+  to:
+    | '/'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/ingest'
+    | '/admin/kv'
+    | '/admin/settings'
+    | '/admin/tools'
+    | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/ingest'
+    | '/admin/kv'
+    | '/admin/settings'
+    | '/admin/tools'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
 }
 
@@ -86,12 +166,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tools': {
+      id: '/admin/tools'
+      path: '/tools'
+      fullPath: '/admin/tools'
+      preLoaderRoute: typeof AdminToolsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/kv': {
+      id: '/admin/kv'
+      path: '/kv'
+      fullPath: '/admin/kv'
+      preLoaderRoute: typeof AdminKvRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ingest': {
+      id: '/admin/ingest'
+      path: '/ingest'
+      fullPath: '/admin/ingest'
+      preLoaderRoute: typeof AdminIngestRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminIngestRoute: typeof AdminIngestRoute
+  AdminKvRoute: typeof AdminKvRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminToolsRoute: typeof AdminToolsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminIngestRoute: AdminIngestRoute,
+  AdminKvRoute: AdminKvRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminToolsRoute: AdminToolsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport

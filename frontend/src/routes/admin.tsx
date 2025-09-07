@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { isAuthenticated } from '../api/pb.ts';
-import AdminPage from './admin/AdminPage.tsx';
+import { AdminLayout } from './admin/AdminLayout.tsx';
 
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 export const Route = createFileRoute('/admin')({
@@ -10,5 +10,5 @@ export const Route = createFileRoute('/admin')({
 			throw redirect({ to: '/login' });
 		}
 	},
-	component: AdminPage,
+	component: AdminLayout,
 });

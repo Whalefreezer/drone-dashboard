@@ -33,6 +33,66 @@
 	color: var(--muted);
 }
 
+/* Admin layout (sidebar + content) */
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 48px);
+}
+.admin-sidebar {
+  border-right: 1px solid var(--card-border);
+  background: #141414;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-sidebar .brand {
+  font-weight: 700;
+  padding: 12px 14px;
+}
+.admin-sidebar .nav {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 4px;
+}
+.admin-sidebar .nav .nav-link {
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.admin-sidebar .nav .nav-link:hover {
+  background: #1f1f1f;
+}
+.admin-sidebar .nav .nav-link.active {
+  background: #242424;
+  border: 1px solid #333;
+}
+.admin-sidebar .sidebar-footer {
+  margin-top: auto;
+  padding: 12px 10px;
+  display: grid;
+  gap: 8px;
+}
+.admin-content {
+  padding: 12px;
+}
+
+/* Dashboard stat cards */
+.stat-card {
+  display: grid;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: var(--accent);
+}
+.stat-card:hover { background: #222; }
+.stat-title { font-size: .9rem; color: var(--muted); }
+.stat-value { font-size: 1.6rem; font-weight: 700; }
+
 /* GenericTable baseline styling */
 .admin-page .gt {
 	width: 100%;
