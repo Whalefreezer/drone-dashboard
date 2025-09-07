@@ -16,6 +16,7 @@ export function ViewSelector() {
 		<div className='view-selector' role='tablist'>
 			{panes.map((p) => (
 				<button
+					type='button'
 					key={p.key}
 					role='tab'
 					aria-selected={active === p.key}
