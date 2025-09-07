@@ -2,18 +2,18 @@
 set -euo pipefail
 
 # new-worktree.sh NAME
-# Creates a git worktree at /tree/NAME checked out to branch feat/NAME
+# Creates a git worktree at ./tree/NAME checked out to branch feat/NAME
 # and copies any existing .env files from the repo into the worktree.
 
 if [[ ${1-} == "" || ${1-} == "-h" || ${1-} == "--help" ]]; then
 	printf "Usage: %s <name>\n" "$(basename "$0")"
-	printf "Creates /tree/<name> worktree on branch feat/<name> and copies .env files.\n"
+	printf "Creates ./tree/<name> worktree on branch feat/<name> and copies .env files.\n"
 	exit 1
 fi
 
 NAME="$1"
 BRANCH="feat/${NAME}"
-DEST="/tree/${NAME}"
+DEST="./tree/${NAME}"
 
 # Ensure we're inside a git repo and operate from its root
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -23,17 +23,15 @@ if [[ -z "${REPO_ROOT}" ]]; then
 fi
 cd "${REPO_ROOT}"
 
-# Ensure /tree exists and is writable
-if [[ ! -d "/tree" ]]; then
-	if ! mkdir -p /tree 2>/dev/null; then
-		echo "Error: cannot create /tree. Create it once with:"
-		echo "  sudo mkdir -p /tree && sudo chown $(id -u):$(id -g) /tree"
+# Ensure ./tree exists and is writable
+if [[ ! -d "./tree" ]]; then
+	if ! mkdir -p ./tree 2>/dev/null; then
+		echo "Error: cannot create ./tree directory."
 		exit 3
 	fi
 fi
-if [[ ! -w "/tree" ]]; then
-	echo "Error: /tree is not writable. Try:"
-	echo "  sudo chown $(id -u):$(id -g) /tree"
+if [[ ! -w "./tree" ]]; then
+	echo "Error: ./tree is not writable."
 	exit 4
 fi
 

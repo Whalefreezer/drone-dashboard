@@ -1,0 +1,3 @@
+# This file ensures the static/ directory is tracked by Git
+# The Go embed directive requires this directory to exist
+# Remove this file when you add actual static content
