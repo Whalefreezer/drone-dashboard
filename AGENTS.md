@@ -4,8 +4,8 @@ Quick Agent Rules
 - Indent with tabs (deno fmt enforces this).
 - After changes, run `deno task verify` locally.
 - Do not leave legacy/back-compat shims; remove them in the same PR.
-
-Quick heads-up (for me): When listing GitHub issues, pass `state: OPEN` or `CLOSED` (uppercase) — using `open/closed` throws a `$states` error. For this repository, the owner is `Whalefreezer` and the repo is `drone-dashboard`.
+- When starting work on a GitHub issue, move it to "In progress" status to indicate active development.
+- When listing GitHub issues, pass `state: OPEN` or `CLOSED` (uppercase) — using `open/closed` throws a `$states` error. For this repository, the owner is `Whalefreezer` and the repo is `drone-dashboard`.
 
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.
@@ -41,4 +41,3 @@ Quick heads-up (for me): When listing GitHub issues, pass `state: OPEN` or `CLOS
 ## Worktree Helper
 - Purpose: quickly spin up a worktree at `/tree/<name>` on branch `feat/<name>` and copy existing `.env*` files.
 - Usage: `bash scripts/new-worktree.sh <name>` (or `chmod +x` once and run `scripts/new-worktree.sh <name>`).
-- Notes: if `/tree` does not exist or isn’t writable, run `sudo mkdir -p /tree && sudo chown $USER /tree` once; the script skips `.env.example` and won’t overwrite existing files in the worktree.
