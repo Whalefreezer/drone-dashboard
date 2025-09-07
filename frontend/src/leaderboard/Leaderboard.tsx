@@ -6,6 +6,7 @@ import { consecutiveLapsAtom } from '../state/atoms.ts';
 import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom } from './leaderboard-atoms.ts';
 import { getLeaderboardColumns, type LeaderboardRowProps, type TableContext } from './leaderboard-columns.tsx';
+import { leaderboardSplitAtom } from '../state/pbAtoms.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
@@ -21,6 +22,8 @@ export function Leaderboard() {
 		[pilotIds],
 	);
 
+	const splitIndex = useAtomValue(leaderboardSplitAtom); // 1-based position or null
+
 	return (
 		<div className='leaderboard-container'>
 			<GenericTable<TableContext, LeaderboardRowProps>
@@ -29,6 +32,7 @@ export function Leaderboard() {
 				data={rows}
 				context={ctx}
 				getRowKey={(row) => row.pilotId}
+				getRowClassName={(_, idx) => (splitIndex ? (idx === splitIndex ? 'split-after' : undefined) : undefined)}
 				rowHeight={45}
 			/>
 		</div>
