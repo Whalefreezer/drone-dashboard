@@ -4,6 +4,11 @@ import { animated, SpringValue, useTransition } from '@react-spring/web';
 export type Column<TableCtx, RowCtx> = {
 	key: string;
 	header: string | ((ctx: TableCtx) => React.ReactNode);
+	// Optional human-friendly name for selectors/menus
+	label?: string;
+	// Optional grouping key for selectors (e.g., all L1..Ln under 'laps')
+	group?: string;
+	groupLabel?: string;
 	cell: React.ComponentType<{ item: RowCtx }>;
 	headerClassName?: string;
 	headerAlign?: 'left' | 'center' | 'right';
@@ -19,21 +24,36 @@ export interface GenericTableProps<TableCtx, RowCtx extends object> {
 	getRowClassName?: (row: RowCtx, index: number) => string | undefined;
 	className?: string;
 	rowHeight?: number; // px; default 40
+	visibleColumns?: string[]; // optional list of column keys to render
+	scrollX?: boolean; // opt-in horizontal scroll container
 }
 
 export function GenericTable<TableCtx, RowCtx extends object>(
-	{ columns, data, context, getRowKey, getRowClassName, className, rowHeight = 40 }: GenericTableProps<
-		TableCtx,
-		RowCtx
-	>,
+	{
+		columns,
+		data,
+		context,
+		getRowKey,
+		getRowClassName,
+		className,
+		rowHeight = 40,
+		visibleColumns,
+		scrollX = false,
+	}: GenericTableProps<TableCtx, RowCtx>,
 ) {
+	const effectiveColumns = useMemo(() => {
+		if (!visibleColumns || visibleColumns.length === 0) return columns;
+		const vis = new Set(visibleColumns);
+		return columns.filter((c) => vis.has(c.key));
+	}, [columns, visibleColumns]);
+
 	const gridTemplateColumns = useMemo(() => {
-		const flexIndex = columns.findIndex((c) => c.width === undefined);
+		const flexIndex = effectiveColumns.findIndex((c) => c.width === undefined);
 		const toSize = (val: number | string | undefined): string | undefined => {
 			if (val === undefined) return undefined;
 			return typeof val === 'number' ? `${val}px` : val;
 		};
-		return columns.map((col, idx) => {
+		return effectiveColumns.map((col, idx) => {
 			if (idx === flexIndex) {
 				const minW = toSize(col.minWidth);
 				return minW ? `minmax(${minW}, 1fr)` : '1fr';
@@ -43,7 +63,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 			const minW = toSize(col.minWidth);
 			return minW ? `minmax(${minW}, ${minW})` : 'max-content';
 		}).join(' ');
-	}, [columns]);
+	}, [effectiveColumns]);
 
 	const totalHeight = data.length * rowHeight;
 
@@ -65,52 +85,54 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 
 	return (
 		<div className={[className, 'gt'].filter(Boolean).join(' ')} role='grid'>
-			<div className='gt-header' role='row' style={{ display: 'grid', gridTemplateColumns }}>
-				{columns.map((col) => {
-					const style: React.CSSProperties = {};
-					if (col.headerAlign) style.textAlign = col.headerAlign;
-					return (
-						<div key={col.key} role='columnheader' className={col.headerClassName} style={style}>
-							{typeof col.header === 'function' ? col.header(context) : col.header}
-						</div>
-					);
-				})}
-			</div>
-			<div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
-				{transitions((style, item) => {
-					const row = item.row as RowCtx;
-					const idx = indexByKey.get(item.key) ?? 0;
-					const rowClass = [
-						'gt-row',
-						idx % 2 === 0 ? 'row-odd' : 'row-even',
-						getRowClassName?.(row, idx) ?? '',
-					].filter(Boolean).join(' ');
-					return (
-						<animated.div
-							key={item.key}
-							className={rowClass}
-							role='row'
-							style={{
-								transform: style.y.to((y) => `translateY(${y}px)`),
-								height: `${rowHeight}px`,
-								display: 'grid',
-								gridTemplateColumns,
-								position: 'absolute',
-								left: 0,
-								right: 0,
-							}}
-						>
-							{columns.map((col) => {
-								const Cell = col.cell as React.ComponentType<{ item: RowCtx }>;
-								return (
-									<div key={col.key} role='gridcell' className='gt-cell'>
-										{React.createElement(Cell, { item: row })}
-									</div>
-								);
-							})}
-						</animated.div>
-					);
-				})}
+			<div className={scrollX ? 'gt-scroll' : undefined} style={scrollX ? { overflowX: 'auto' } : undefined}>
+				<div className='gt-header' role='row' style={{ display: 'grid', gridTemplateColumns }}>
+					{effectiveColumns.map((col) => {
+						const style: React.CSSProperties = {};
+						if (col.headerAlign) style.textAlign = col.headerAlign;
+						return (
+							<div key={col.key} role='columnheader' className={col.headerClassName} style={style} data-col={col.key}>
+								{typeof col.header === 'function' ? col.header(context) : col.header}
+							</div>
+						);
+					})}
+				</div>
+				<div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
+					{transitions((style, item) => {
+						const row = item.row as RowCtx;
+						const idx = indexByKey.get(item.key) ?? 0;
+						const rowClass = [
+							'gt-row',
+							idx % 2 === 0 ? 'row-odd' : 'row-even',
+							getRowClassName?.(row, idx) ?? '',
+						].filter(Boolean).join(' ');
+						return (
+							<animated.div
+								key={item.key}
+								className={rowClass}
+								role='row'
+								style={{
+									transform: style.y.to((y) => `translateY(${y}px)`),
+									height: `${rowHeight}px`,
+									display: 'grid',
+									gridTemplateColumns,
+									position: 'absolute',
+									left: 0,
+									right: 0,
+								}}
+							>
+								{effectiveColumns.map((col) => {
+									const Cell = col.cell as React.ComponentType<{ item: RowCtx }>;
+									return (
+										<div key={col.key} role='gridcell' className='gt-cell' data-col={col.key}>
+											{React.createElement(Cell, { item: row })}
+										</div>
+									);
+								})}
+							</animated.div>
+						);
+					})}
+				</div>
 			</div>
 		</div>
 	);

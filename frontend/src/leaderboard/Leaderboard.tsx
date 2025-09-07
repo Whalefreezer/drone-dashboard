@@ -7,6 +7,9 @@ import { useAtomValue } from 'jotai';
 import { leaderboardPilotIdsAtom } from './leaderboard-atoms.ts';
 import { getLeaderboardColumns, type LeaderboardRowProps, type TableContext } from './leaderboard-columns.tsx';
 import { leaderboardSplitAtom } from '../state/pbAtoms.ts';
+import { ColumnChooser } from '../common/ColumnChooser.tsx';
+import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
+import { useAtom } from 'jotai';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
@@ -26,15 +29,41 @@ export function Leaderboard() {
 
 	return (
 		<div className='leaderboard-container'>
-			<GenericTable<TableContext, LeaderboardRowProps>
-				className='leaderboard-table'
-				columns={columns}
-				data={rows}
-				context={ctx}
-				getRowKey={(row) => row.pilotId}
-				getRowClassName={(_, idx) => (splitIndex ? (idx === splitIndex ? 'split-after' : undefined) : undefined)}
-				rowHeight={45}
-			/>
+			<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6, overflow: 'visible' }}>
+				<ColumnChooser tableId='leaderboard' columns={columns} compact label='Columns' />
+			</div>
+			<VisibleTable columns={columns} rows={rows} ctx={ctx} splitIndex={splitIndex} />
 		</div>
+	);
+}
+
+function VisibleTable(
+	{
+		columns,
+		rows,
+		ctx,
+		splitIndex,
+	}: {
+		columns: Array<Column<TableContext, LeaderboardRowProps>>;
+		rows: LeaderboardRowProps[];
+		ctx: TableContext;
+		splitIndex: number | null;
+	},
+) {
+	const keysSig = useMemo(() => JSON.stringify(columns.map((c) => c.key)), [columns]);
+	const defaultKeys = useMemo(() => columns.map((c) => c.key), [keysSig]);
+	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom('leaderboard', defaultKeys), [keysSig]));
+	return (
+		<GenericTable<TableContext, LeaderboardRowProps>
+			className='leaderboard-table'
+			columns={columns}
+			data={rows}
+			context={ctx}
+			getRowKey={(row) => row.pilotId}
+			getRowClassName={(_, idx) => (splitIndex ? (idx === splitIndex ? 'split-after' : undefined) : undefined)}
+			rowHeight={45}
+			visibleColumns={visible}
+			scrollX
+		/>
 	);
 }

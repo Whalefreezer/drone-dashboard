@@ -13,6 +13,9 @@ import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/GenericTable.tsx';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
+import { ColumnChooser } from '../common/ColumnChooser.tsx';
+import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
+import { useAtom } from 'jotai';
 
 const POSITION_POINTS: Record<number, number> = {
 	1: 10,
@@ -61,6 +64,9 @@ export function LapsView({ raceId }: LapsViewProps) {
 						</span>
 					)}
 				</div>
+				<div style={{ display: 'flex', justifyContent: 'flex-end', overflow: 'visible' }}>
+					<LapsColumns raceId={race.id} matchingBracket={matchingBracket} />
+				</div>
 				<LapsTable race={race} matchingBracket={matchingBracket} />
 			</div>
 		</div>
@@ -91,163 +97,177 @@ function useLapsTableColumns(
 
 	const ctx = useMemo(() => ({ raceId, matchingBracket, maxLaps }), [raceId, matchingBracket, maxLaps]);
 
-	const columns: Array<Column<LapsTableContext, LapsRow>> = [];
+	// Values that determine the column structure
+	const hasHoleshot = processedLapsForRace.some((lap) => lap.isHoleshot);
+	const roundsCount = matchingBracket?.pilots?.[0]?.rounds?.length ?? 0;
 
-	// Position
-	columns.push({
-		key: 'pos',
-		header: 'Pos',
-		width: 56,
-		cell: function PosCell({ item: { position } }) {
-			return (
-				<div>
-					{maxLaps > 0
-						? (
-							<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-								{getPositionWithSuffix(position)}
-								{isRaceRound && POSITION_POINTS[position] && (
-									<span style={{ fontSize: '0.8em', color: '#888' }}>
-										+{POSITION_POINTS[position]}
-									</span>
-								)}
-							</div>
-						)
-						: '-'}
-				</div>
-			);
-		},
-	});
+	const columns = useMemo((): Array<Column<LapsTableContext, LapsRow>> => {
+		const cols: Array<Column<LapsTableContext, LapsRow>> = [];
 
-	// Pilot name (flex)
-	columns.push({
-		key: 'name',
-		header: 'Name',
-		minWidth: 64,
-		cell: function NameCell({ item: { pilotChannel } }) {
-			const pilots = useAtomValue(pilotsAtom);
-			const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
-			return (
-				<OverflowFadeCell title={pilot?.name}>
-					{pilot?.name ?? '-'}
-				</OverflowFadeCell>
-			);
-		},
-	});
-
-	// Channel
-	columns.push({
-		key: 'chan',
-		header: 'Chan',
-		width: 52,
-		cell: function ChanCell({ item: { pilotChannel } }) {
-			const channels = useAtomValue(channelsDataAtom);
-			const channel = channels.find((c) => c.id === pilotChannel.channelId);
-			return (
-				<div>
-					<div className='flex-row'>
-						{channel?.shortBand}
-						{channel?.number}
-						<ChannelSquare channelID={pilotChannel.channelId} />
-					</div>
-				</div>
-			);
-		},
-	});
-
-	// Points + Bracket rounds (if any)
-	if (matchingBracket) {
-		// Points
-		columns.push({
-			key: 'points',
-			header: 'Points',
-			width: 64,
-			cell: function PointsCell({ item: { pilotChannel } }) {
-				const pilots = useAtomValue(pilotsAtom);
-				const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
-				const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
-					bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
-				);
+		// Position
+		cols.push({
+			key: 'pos',
+			header: 'Pos',
+			label: 'Position',
+			width: 56,
+			cell: function PosCell({ item: { position } }) {
 				return (
-					<div style={{ color: '#00ff00' }}>
-						{bracketPilot ? bracketPilot.points : '-'}
+					<div>
+						{maxLaps > 0
+							? (
+								<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+									{getPositionWithSuffix(position)}
+									{isRaceRound && POSITION_POINTS[position] && (
+										<span style={{ fontSize: '0.8em', color: '#888' }}>
+											+{POSITION_POINTS[position]}
+										</span>
+									)}
+								</div>
+							)
+							: '-'}
 					</div>
 				);
 			},
 		});
 
-		const roundsCount = matchingBracket.pilots?.[0]?.rounds?.length ?? 0;
-		for (let r = 0; r < roundsCount; r++) {
-			const key = `br${r + 1}`;
-			columns.push({
-				key,
-				header: `R${r + 1}`,
-				width: 48,
-				cell: function BracketRoundCell({ item: { pilotChannel } }) {
+		// Pilot name (flex)
+		cols.push({
+			key: 'name',
+			header: 'Name',
+			label: 'Pilot',
+			minWidth: 64,
+			cell: function NameCell({ item: { pilotChannel } }) {
+				const pilots = useAtomValue(pilotsAtom);
+				const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+				return (
+					<OverflowFadeCell title={pilot?.name}>
+						{pilot?.name ?? '-'}
+					</OverflowFadeCell>
+				);
+			},
+		});
+
+		// Channel
+		cols.push({
+			key: 'chan',
+			header: 'Chan',
+			label: 'Channel',
+			width: 52,
+			cell: function ChanCell({ item: { pilotChannel } }) {
+				const channels = useAtomValue(channelsDataAtom);
+				const channel = channels.find((c) => c.id === pilotChannel.channelId);
+				return (
+					<div>
+						<div className='flex-row'>
+							{channel?.shortBand}
+							{channel?.number}
+							<ChannelSquare channelID={pilotChannel.channelId} />
+						</div>
+					</div>
+				);
+			},
+		});
+
+		// Points + Bracket rounds (if any)
+		if (matchingBracket) {
+			// Points
+			cols.push({
+				key: 'points',
+				header: 'Points',
+				label: 'Bracket Points',
+				width: 64,
+				cell: function PointsCell({ item: { pilotChannel } }) {
 					const pilots = useAtomValue(pilotsAtom);
 					const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
 					const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
 						bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
 					);
-					const roundVal = bracketPilot?.rounds?.[r] ?? null;
 					return (
-						<div>
-							{roundVal
-								? (
-									<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-										{roundVal}
-										{isRaceRound && POSITION_POINTS[roundVal] && (
-											<span style={{ fontSize: '0.8em', color: '#888' }}>
-												+{POSITION_POINTS[roundVal]}
-											</span>
-										)}
-									</div>
-								)
-								: '-'}
+						<div style={{ color: '#00ff00' }}>
+							{bracketPilot ? bracketPilot.points : '-'}
 						</div>
 					);
 				},
 			});
+
+			for (let r = 0; r < roundsCount; r++) {
+				const key = `br${r + 1}`;
+				cols.push({
+					key,
+					header: `R${r + 1}`,
+					label: `Bracket R${r + 1}`,
+					width: 48,
+					cell: function BracketRoundCell({ item: { pilotChannel } }) {
+						const pilots = useAtomValue(pilotsAtom);
+						const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+						const bracketPilot = matchingBracket?.pilots.find((bp: BracketPilot) =>
+							bp.name.toLowerCase().replace(/\s+/g, '') === (pilot?.name ?? '').toLowerCase().replace(/\s+/g, '')
+						);
+						const roundVal = bracketPilot?.rounds?.[r] ?? null;
+						return (
+							<div>
+								{roundVal
+									? (
+										<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+											{roundVal}
+											{isRaceRound && POSITION_POINTS[roundVal] && (
+												<span style={{ fontSize: '0.8em', color: '#888' }}>
+													+{POSITION_POINTS[roundVal]}
+												</span>
+											)}
+										</div>
+									)
+									: '-'}
+							</div>
+						);
+					},
+				});
+			}
 		}
-	}
 
-	// Lap cells: HS + L1..Lmax (show HS only if any holeshot exists)
-	const hasHoleshot = processedLapsForRace.some((lap) => lap.isHoleshot);
-	for (let i = hasHoleshot ? 0 : 1; i <= maxLaps; i++) {
-		const isHS = i === 0;
-		columns.push({
-			key: isHS ? 'hs' : `l${i}`,
-			header: isHS ? 'HS' : `L${i}`,
-			width: 58,
-			cell: function LapCell({ item: { pilotChannel } }) {
-				const { raceId } = ctx;
-				const overallBestTimes = useAtomValue(overallBestTimesAtom);
-				const processedLaps = useAtomValue(raceProcessedLapsAtom(raceId));
-				const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
-				const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
-				const fastestLap = racingLaps.length > 0 ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds)) : Infinity;
-				const overallFastestLap = processedLaps.filter((lap) => !lap.isHoleshot).length > 0
-					? Math.min(
-						...processedLaps
-							.filter((lap) => !lap.isHoleshot)
-							.map((lap) => lap.lengthSeconds),
-					)
-					: Infinity;
+		// Lap cells: HS + L1..Lmax (show HS only if any holeshot exists)
+		for (let i = hasHoleshot ? 0 : 1; i <= maxLaps; i++) {
+			const isHS = i === 0;
+			cols.push({
+				key: isHS ? 'hs' : `l${i}`,
+				header: isHS ? 'HS' : `L${i}`,
+				label: isHS ? 'Holeshot' : `Lap ${i}`,
+				group: isHS ? undefined : 'laps',
+				groupLabel: isHS ? undefined : 'Laps',
+				width: 58,
+				cell: function LapCell({ item: { pilotChannel } }) {
+					const { raceId } = ctx;
+					const overallBestTimes = useAtomValue(overallBestTimesAtom);
+					const processedLaps = useAtomValue(raceProcessedLapsAtom(raceId));
+					const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
+					const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
+					const fastestLap = racingLaps.length > 0 ? Math.min(...racingLaps.map((lap) => lap.lengthSeconds)) : Infinity;
+					const overallFastestLap = processedLaps.filter((lap) => !lap.isHoleshot).length > 0
+						? Math.min(
+							...processedLaps
+								.filter((lap) => !lap.isHoleshot)
+								.map((lap) => lap.lengthSeconds),
+						)
+						: Infinity;
 
-				const lapData = pilotLaps.find((lap) => (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i));
-				if (!lapData) return <div>-</div>;
+					const lapData = pilotLaps.find((lap) => (lap.isHoleshot && i === 0) || (!lap.isHoleshot && lap.lapNumber === i));
+					if (!lapData) return <div>-</div>;
 
-				const className = getLapClassName(
-					lapData,
-					overallBestTimes.overallFastestLap,
-					overallBestTimes.pilotBestLaps.get(pilotChannel.pilotId),
-					overallFastestLap,
-					fastestLap,
-				);
+					const className = getLapClassName(
+						lapData,
+						overallBestTimes.overallFastestLap,
+						overallBestTimes.pilotBestLaps.get(pilotChannel.pilotId),
+						overallFastestLap,
+						fastestLap,
+					);
 
-				return <div className={className}>{lapData.lengthSeconds.toFixed(3)}</div>;
-			},
-		});
-	}
+					return <div className={className}>{lapData.lengthSeconds.toFixed(3)}</div>;
+				},
+			});
+		}
+
+		return cols;
+	}, [isRaceRound, roundsCount, hasHoleshot, maxLaps, matchingBracket, ctx]);
 
 	return { columns, ctx };
 }
@@ -260,6 +280,10 @@ function LapsTable(
 
 	const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
 
+	const keysSig = useMemo(() => JSON.stringify(columns.map((c) => c.key)), [columns]);
+	const defaultKeys = useMemo(() => columns.map((c) => c.key), [keysSig]);
+	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom('laps', defaultKeys), [keysSig]));
+
 	return (
 		<GenericTable<LapsTableContext, LapsRow>
 			className='laps-table'
@@ -268,6 +292,16 @@ function LapsTable(
 			context={ctx}
 			getRowKey={(row) => row.pilotChannel.id}
 			rowHeight={30}
+			visibleColumns={visible}
+			scrollX
 		/>
 	);
+}
+
+function LapsColumns(
+	{ raceId, matchingBracket }: { raceId: string; matchingBracket: Bracket | null },
+) {
+	const maxLaps = useAtomValue(raceMaxLapNumberAtom(raceId));
+	const { columns } = useLapsTableColumns(raceId, matchingBracket, maxLaps);
+	return <ColumnChooser tableId='laps' columns={columns} compact label='Columns' />;
 }

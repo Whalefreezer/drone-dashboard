@@ -3,6 +3,8 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
 type RouterContext = Record<PropertyKey, never>;
 
+const enableRouterDevtools = import.meta.env.DEV && (import.meta.env.VITE_ROUTER_DEVTOOLS === 'true');
+
 export const Route = createRootRouteWithContext<RouterContext>()({
 	component: () => (
 		<>
@@ -15,7 +17,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 			<main>
 				<Outlet />
 			</main>
-			{import.meta.env.DEV && <TanStackRouterDevtools position='bottom-right' />}
+			{enableRouterDevtools && <TanStackRouterDevtools position='bottom-right' />}
 		</>
 	),
 });
