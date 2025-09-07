@@ -2,8 +2,7 @@ Responsive breakpoints (provider + hook)
 
 API
 
-- `ResponsiveProvider`: Wraps the app once (see `src/main.tsx`). Observes viewport size via `matchMedia` with a `ResizeObserver`/`resize`
-  fallback and debounced updates (~120ms).
+- `ResponsiveProvider`: Wraps the app once (see `src/main.tsx`). Observes viewport via `matchMedia` and updates atoms on changes.
 - `useBreakpoint()`: Returns `{ breakpoint, isMobile, isTablet, isDesktop, width, height }`.
 - Atoms: `viewportAtom` and `breakpointAtom` for direct reads/selectors (Jotai).
 
