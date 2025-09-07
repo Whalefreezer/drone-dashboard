@@ -33,6 +33,7 @@ function Dashboard() {
 
 function Stat({ title, value, to }: { title: string; value: number | string; to: string }) {
 	return (
+		/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
 		<Link to={to} className='stat-card'>
 			<div className='stat-title'>{title}</div>
 			<div className='stat-value'>{value}</div>
