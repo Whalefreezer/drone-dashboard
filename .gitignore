@@ -14,8 +14,6 @@ dist-ssr
 *.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -37,7 +35,6 @@ dev-debug.log
 node_modules/
 # Environment variables
 .env
-.vscode
 # OS specific
 # Task files
 tasks.json

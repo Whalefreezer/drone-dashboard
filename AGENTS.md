@@ -5,7 +5,7 @@ Quick Agent Rules
 - After changes, run `deno task verify` locally.
 - Do not leave legacy/back-compat shims; remove them in the same PR.
 
-	- Use the GitHub CLI (`gh`) for GitHub tasks (issues/PRs/releases) to keep workflows consistent, e.g., `gh issue list -R Whalefreezer/drone-dashboard`.
+Quick heads-up (for me): When listing GitHub issues, pass `state: OPEN` or `CLOSED` (uppercase) — using `open/closed` throws a `$states` error. For this repository, the owner is `Whalefreezer` and the repo is `drone-dashboard`.
 
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.
@@ -29,9 +29,6 @@ Quick Agent Rules
 - Go: Idiomatic `gofmt`/`go vet`; package/file names lower-case; tests as `*_test.go`.
 - See `CODING_STANDARDS.md` for patterns, examples, and architecture tips.
 
-## Testing Guidelines
-- Frontend: Deno test runner; JSDOM and Testing Library for components. Place tests next to code: `src/common/TimeDisplay.test.tsx`. Target high coverage (~80%).
-- Backend: Add table-driven tests; run `go test ./...`.
 
 ## Commit & Pull Request Guidelines
 - Commits: Conventional Commits style — `type(scope): description` (e.g., `feat(leaderboard): add position change tags`).
@@ -40,3 +37,8 @@ Quick Agent Rules
 
 ## Security & Configuration
 - Copy `.env.example` → `.env`. Frontend uses Vite `VITE_*` vars; backend accepts flags `-fpvtrackside-api` and `-port`. Do not commit secrets.
+
+## Worktree Helper
+- Purpose: quickly spin up a worktree at `/tree/<name>` on branch `feat/<name>` and copy existing `.env*` files.
+- Usage: `bash scripts/new-worktree.sh <name>` (or `chmod +x` once and run `scripts/new-worktree.sh <name>`).
+- Notes: if `/tree` does not exist or isn’t writable, run `sudo mkdir -p /tree && sudo chown $USER /tree` once; the script skips `.env.example` and won’t overwrite existing files in the worktree.
