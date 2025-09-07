@@ -1,5 +1,12 @@
 # Repository Guidelines
 
+Quick Agent Rules
+- Indent with tabs (deno fmt enforces this).
+- After changes, run `deno task verify` locally.
+- Do not leave legacy/back-compat shims; remove them in the same PR.
+
+	- Use the GitHub CLI (`gh`) for GitHub tasks (issues/PRs/releases) to keep workflows consistent, e.g., `gh issue list -R Whalefreezer/drone-dashboard`.
+
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.
 - `backend/`: Go HTTP server that embeds `backend/static/` and proxies API calls. Entry point: `main.go`. Cross‑platform build scripts: `build.sh` / `build.bat`.
@@ -18,7 +25,7 @@
   - `go test ./...`: Run Go tests (add `*_test.go` as needed).
 
 ## Coding Style & Naming Conventions
-- TypeScript/React: 4-space indent, single quotes, 100 char width (`deno fmt`). Components PascalCase (`RaceTimer.tsx`); hooks `useX`; tests `*.test.ts(x)`. Strong typing (avoid `any`), props via interfaces.
+- TypeScript/React: tabs for indentation, single quotes, ~100 char width (`deno fmt`). Components PascalCase (`RaceTimer.tsx`); hooks `useX`; tests `*.test.ts(x)`. Strong typing (avoid `any`), props via interfaces.
 - Go: Idiomatic `gofmt`/`go vet`; package/file names lower-case; tests as `*_test.go`.
 - See `CODING_STANDARDS.md` for patterns, examples, and architecture tips.
 

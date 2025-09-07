@@ -5,6 +5,7 @@ import ErrorBoundary from './common/ErrorBoundary.tsx';
 import { enableMocking } from './devTools/initialize.tsx';
 import { GenericSuspense } from './common/GenericSuspense.tsx';
 import { RouterProvider } from '@tanstack/react-router';
+import { ResponsiveProvider } from './responsive/index.ts';
 import { router } from './router.ts';
 
 // Global error handlers
@@ -27,9 +28,11 @@ enableMocking().then(() => {
 	createRoot(document.getElementById('root') as HTMLElement).render(
 		<StrictMode>
 			<ErrorBoundary>
-				<GenericSuspense id='router'>
-					<RouterProvider router={router} />
-				</GenericSuspense>
+				<ResponsiveProvider>
+					<GenericSuspense id='router'>
+						<RouterProvider router={router} />
+					</GenericSuspense>
+				</ResponsiveProvider>
 			</ErrorBoundary>
 		</StrictMode>,
 	);

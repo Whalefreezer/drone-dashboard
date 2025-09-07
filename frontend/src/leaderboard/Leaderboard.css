@@ -62,7 +62,7 @@
 
 /* Divider for split index (applies to the row below the split) */
 .leaderboard-table .gt-row.split-after .gt-cell {
-  border-top: 2px solid #6b7280; /* slate-500 */
+	border-top: 2px solid #6b7280; /* slate-500 */
 }
 
 /* Fade-out effect for overflowing content */
