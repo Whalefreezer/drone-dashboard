@@ -128,6 +128,11 @@ Backend (from `backend/`)
 - `./build.sh`: Cross-platform binaries into `backend/build/`
 - `go test ./...`: Run Go tests
 
+### PB Snapshot (offline seed)
+- Generate: in the running app, click the floating "Download PB Snapshot" dev tool to export current PocketBase-backed data to a JSON file. The name looks like `pb-snapshot-<eventId-or-none>-<timestamp>.json`.
+- Import: start the backend with `-import-snapshot=/absolute/or/relative/path/to/pb-snapshot.json`. The importer runs before background schedulers and merges by id (creates missing, updates existing) while preserving relationships.
+- Notes: the snapshot contains `version`, `snapshotTime`, `currentEventId`, and `collections` (events, pilots, channels, rounds, races, pilotChannels, laps, detections, gamePoints, client_kv, ingest_targets, server_settings). The importer sets `isCurrent` to true for `currentEventId` and clears it on others.
+
 ## Project Structure
 
 ```

@@ -18,6 +18,7 @@ import (
 
 	"drone-dashboard/control"
 	"drone-dashboard/ingest"
+	"drone-dashboard/importer"
 	"drone-dashboard/logger"
 	_ "drone-dashboard/migrations"
 	"drone-dashboard/scheduler"
@@ -108,6 +109,7 @@ type CLIFlags struct {
 	AuthToken     string
 	PitsID        string
 	DBDir         string
+	ImportSnapshot string
 }
 
 func parseFlags() CLIFlags {
@@ -127,6 +129,7 @@ func parseFlags() CLIFlags {
 	fs.StringVar(&out.AuthToken, "auth-token", "", "Auth token for control link")
 	fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
 	fs.StringVar(&out.DBDir, "db-dir", "", "Directory for SQLite database files (empty = in-memory)")
+	fs.StringVar(&out.ImportSnapshot, "import-snapshot", "", "Path to PB snapshot JSON to import at startup")
 
 	showHelp := fs.Bool("help", false, "Show help message")
 	_ = fs.Parse(os.Args[1:])
@@ -247,10 +250,17 @@ func mustNewIngestService(app core.App, baseURL string) *ingest.Service {
 }
 
 func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags CLIFlags) {
-	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Ensure superuser exists
 		if err := ensureSuperuser(app); err != nil {
 			return fmt.Errorf("failed to ensure superuser: %w", err)
+		}
+
+		// Optional import of PB snapshot before any background loops
+		if flags.ImportSnapshot != "" {
+			if err := importer.ImportFromFile(app, flags.ImportSnapshot); err != nil {
+				return fmt.Errorf("import snapshot: %w", err)
+			}
 		}
 
 		// Reflect CLI flag into server_settings

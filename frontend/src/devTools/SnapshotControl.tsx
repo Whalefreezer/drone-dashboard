@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { currentEventAtom, eventRaceIdsAtom } from '../state/atoms.ts';
-import { RACE_DATA_ENDPOINT_TEMPLATE, SNAPSHOT_TARGET_ENDPOINTS } from './snapshotConstants.ts';
+import {
+	channelRecordsAtom,
+	clientKVRecordsAtom,
+	currentEventAtom,
+	detectionRecordsAtom,
+	eventRaceIdsAtom,
+	eventsAtom,
+	gamePointRecordsAtom,
+	ingestTargetRecordsAtom,
+	lapRecordsAtom,
+	pilotChannelRecordsAtom,
+	pilotsRecordsAtom,
+	raceRecordsAtom,
+	roundRecordsAtom,
+	serverSettingsRecordsAtom,
+} from '../state/atoms.ts';
 
 // Basic styling for the button container
 const snapshotControlStyle: React.CSSProperties = {
@@ -37,6 +51,23 @@ const buttonDisabledStyle: React.CSSProperties = {
 
 const HIDE_DELAY = 2000; // milliseconds
 
+/**
+ * PB Snapshot exporter
+ *
+ * Exports PocketBase-backed records from atoms into a single JSON with schema:
+ * {
+ *   version: 'pb-snapshot@v1',
+ *   snapshotTime: string,
+ *   currentEventId: string | null,
+ *   collections: {
+ *     events, pilots, channels, rounds,
+ *     races, pilotChannels, laps, detections, gamePoints,
+ *     client_kv, ingest_targets, server_settings
+ *   }
+ * }
+ *
+ * Import via backend: -import-snapshot=/path/to/file.json
+ */
 function SnapshotControl() {
 	const [isCapturing, setIsCapturing] = useState(false);
 	const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -45,6 +76,20 @@ function SnapshotControl() {
 
 	const currentEvent = useAtomValue(currentEventAtom);
 	const raceIds = useAtomValue(eventRaceIdsAtom);
+
+	// Collections from PB-backed atoms
+	const events = useAtomValue(eventsAtom);
+	const pilots = useAtomValue(pilotsRecordsAtom);
+	const channels = useAtomValue(channelRecordsAtom);
+	const rounds = useAtomValue(roundRecordsAtom);
+	const races = useAtomValue(tracePass(raceRecordsAtom));
+	const pilotChannels = useAtomValue(pilotChannelRecordsAtom);
+	const laps = useAtomValue(lapRecordsAtom);
+	const detections = useAtomValue(detectionRecordsAtom);
+	const gamePoints = useAtomValue(gamePointRecordsAtom);
+	const client_kv = useAtomValue(clientKVRecordsAtom);
+	const ingest_targets = useAtomValue(ingestTargetRecordsAtom);
+	const server_settings = useAtomValue(serverSettingsRecordsAtom);
 
 	// Effect to handle mouse move and visibility timeout
 	useEffect(() => {
@@ -73,94 +118,51 @@ function SnapshotControl() {
 
 	// currentEventId already read from atom
 
-	const captureAndGenerateJson = async () => {
-		const eventId = currentEvent?.id;
-		if (!eventId) {
-			setStatusMessage('Error: Event ID not available or invalid.');
-			setTimeout(() => setStatusMessage(null), 3000);
-			return;
-		}
-
-		if (!Array.isArray(raceIds)) {
-			setStatusMessage('Error: Event Data not available or invalid.');
-			setTimeout(() => setStatusMessage(null), 3000);
-			return;
-		}
-
+	const captureAndGenerateJson = () => {
+		const eventId = currentEvent?.id || null;
 		setIsCapturing(true);
-		setStatusMessage('Capturing live data...');
-		const capturedDataMap: Record<string, unknown> = {};
-		let fetchError = false;
-
+		setStatusMessage('Capturing PocketBase data...');
 		try {
-			const fetchEndpoint = async (templatePath: string, specificRaceId?: string) => {
-				let urlPath = templatePath.replace(':eventId', eventId);
-				if (specificRaceId) {
-					urlPath = urlPath.replace(':raceId', specificRaceId);
-				}
-				const liveUrl = urlPath; // Use relative path directly
-				console.log(`Snapshot: Fetching ${liveUrl}`);
-				try {
-					const response = await fetch(liveUrl); // Direct relative fetch
-					if (!response.ok) {
-						console.error(`Snapshot Error: ${response.status} for ${liveUrl}`);
-						return { status: response.status, error: response.statusText };
-					}
-					const data = await response.json();
-					return { status: response.status, data };
-				} catch (error) {
-					console.error(`Snapshot Fetch Error for ${liveUrl}:`, error);
-					fetchError = true;
-					return { status: 503, error: `Fetch failed: ${(error as Error).message}` };
-				}
+			const payload = {
+				version: 'pb-snapshot@v1' as const,
+				snapshotTime: new Date().toISOString(),
+				currentEventId: eventId,
+				collections: {
+					events,
+					pilots,
+					channels,
+					rounds,
+					races,
+					pilotChannels,
+					laps,
+					detections,
+					gamePoints,
+					client_kv,
+					ingest_targets,
+					server_settings,
+				},
 			};
 
-			for (const templatePath of SNAPSHOT_TARGET_ENDPOINTS) {
-				if (templatePath === RACE_DATA_ENDPOINT_TEMPLATE) {
-					const bucket: Record<string, unknown> = {};
-					for (const raceId of raceIds) {
-						bucket[String(raceId)] = await fetchEndpoint(
-							templatePath,
-							String(raceId),
-						);
-					}
-					capturedDataMap[templatePath] = bucket;
-				} else {
-					capturedDataMap[templatePath] = await fetchEndpoint(templatePath);
-				}
-			}
-
-			// Add scenario context (like the eventId used) to the map
-			capturedDataMap['__scenarioContext'] = { eventId: eventId };
-
-			// Generate JSON and trigger download
-			const jsonString = JSON.stringify(capturedDataMap, null, 2);
+			const jsonString = JSON.stringify(payload, null, 2);
 			const blob = new Blob([jsonString], { type: 'application/json' });
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement('a');
+			const suffix = eventId ?? 'none';
+			const ts = new Date().toISOString().replace(/[:.]/g, '-');
 			link.href = url;
-			link.download = `snapshot-${Date.now()}.json`;
+			link.download = `pb-snapshot-${suffix}-${ts}.json`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
 
-			setStatusMessage('Snapshot downloaded! Check instructions.');
-			alert(
-				`Snapshot JSON downloaded as ${link.download}.\n\n` +
-					`**ACTION REQUIRED:**\n` +
-					`1. Move the downloaded file into: public/scenarios/\n` +
-					`2. Add the filename (without .json) and a display name to jsonScenarioFiles in: frontend/src/mocks/scenarios/index.ts\n\n` +
-					`(See docs/msw-snapshot-feature.md for details)`,
-			);
+			setStatusMessage('PB snapshot downloaded. Import with backend flag.');
 		} catch (error) {
-			console.error('Snapshot failed globally:', error);
-			setStatusMessage(`Snapshot failed: ${(error as Error).message}`);
+			console.error('PB snapshot failed:', error);
+			setStatusMessage(`PB snapshot failed: ${(error as Error).message}`);
 		} finally {
 			setIsCapturing(false);
-			if (!fetchError && !statusMessage?.startsWith('Snapshot failed')) {
-				setTimeout(() => setStatusMessage(null), 5000);
-			}
+			setTimeout(() => setStatusMessage(null), 5000);
 		}
 	};
 
@@ -180,7 +182,7 @@ function SnapshotControl() {
 				style={isCapturing || !isEventDataReady ? buttonDisabledStyle : buttonStyle}
 				title={!isEventDataReady ? 'Waiting for event data...' : ''}
 			>
-				{isCapturing ? 'Capturing...' : 'Snapshot Live Data'}
+				{isCapturing ? 'Capturing...' : 'Download PB Snapshot'}
 			</button>
 			{statusMessage && <p style={{ marginTop: '5px', color: '#ffcc00' }}>{statusMessage}</p>}
 		</div>
@@ -188,3 +190,8 @@ function SnapshotControl() {
 }
 
 export default SnapshotControl;
+
+// Small indirection for type inference on atoms returning arrays
+function tracePass<T>(v: T): T {
+	return v;
+}
