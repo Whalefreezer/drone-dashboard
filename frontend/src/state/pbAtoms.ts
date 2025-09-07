@@ -178,20 +178,20 @@ export const overallBestTimesAtom = eagerAtom((get) => {
  * namespace: 'leaderboard', key: 'splitIndex', value: JSON number
  */
 export const leaderboardSplitAtom = eagerAtom((get) => {
-    const ev = get(currentEventAtom);
-    if (!ev) return null as number | null;
-    const kv = get(clientKVRecordsAtom);
-    const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'splitIndex' && r.event === ev.id);
-    if (!rec || !rec.value) return null;
-    try {
-        const raw = JSON.parse(rec.value);
-        const n = Number(raw);
-        if (!Number.isFinite(n)) return null;
-        const v = Math.floor(n);
-        return v > 0 ? v : null;
-    } catch {
-        return null;
-    }
+	const ev = get(currentEventAtom);
+	if (!ev) return null as number | null;
+	const kv = get(clientKVRecordsAtom);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'splitIndex' && r.event === ev.id);
+	if (!rec || !rec.value) return null;
+	try {
+		const raw = JSON.parse(rec.value);
+		const n = Number(raw);
+		if (!Number.isFinite(n)) return null;
+		const v = Math.floor(n);
+		return v > 0 ? v : null;
+	} catch {
+		return null;
+	}
 });
 
 /**
