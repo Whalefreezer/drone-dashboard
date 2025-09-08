@@ -6,6 +6,7 @@ Quick Agent Rules
 - Do not leave legacy/back-compat shims; remove them in the same PR.
 - When starting work on a GitHub issue, move it to "In progress" status to indicate active development.
 - When listing GitHub issues, pass `state: OPEN` or `CLOSED` (uppercase) — using `open/closed` throws a `$states` error. For this repository, the owner is `Whalefreezer` and the repo is `drone-dashboard`.
+- To manage issue dependencies: `gh api repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by` or `gh api repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocking` to get, `.../blocked_by --method POST -F "issue_id=1"` to add, or `--method DELETE` to `...dependencies/blocked_by/ISSUE_ID` to remove.
 
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.
