@@ -13,10 +13,8 @@ export function ColumnChooser<TableCtx, RowCtx extends object>(
 		defaultVisible,
 	}: { tableId: string; columns: Array<Column<TableCtx, RowCtx>>; label?: string; compact?: boolean; defaultVisible?: string[] },
 ) {
-	// Only recreate the prefs atom if the set of column keys actually changes (not each render)
-	const keySig = useMemo(() => JSON.stringify(defaultVisible ?? columns.map((c) => c.key)), [columns, defaultVisible]);
-	const defaults = useMemo(() => defaultVisible ?? columns.map((c) => c.key), [keySig]);
-	const [visible, setVisible] = useAtom(useMemo(() => getColumnPrefsAtom(tableId, defaults), [tableId, keySig]));
+	const defaults = useMemo(() => defaultVisible ?? columns.map((c) => c.key), [columns]);
+	const [visible, setVisible] = useAtom(useMemo(() => getColumnPrefsAtom(tableId, defaults), [tableId, defaults]));
 	const [open, setOpen] = useState(false);
 
 	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
