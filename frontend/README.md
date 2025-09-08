@@ -47,6 +47,18 @@ The application will be available at `http://localhost:5173`
 - `deno task test` - Run tests
 - `deno task test:watch` - Run tests in watch mode
 
+### Router Devtools
+
+If you see Solid-related warnings in the browser console (e.g., "You appear to have multiple instances of Solid" or "computations created
+outside a createRoot"), they originate from `@tanstack/react-router-devtools` pulling a Solid runtime for its overlay UI. You can disable
+the overlay by setting:
+
+```
+VITE_ROUTER_DEVTOOLS=false
+```
+
+in your `.env` (or leave it unset). To enable explicitly during local debugging, set it to `true`.
+
 ## Project Structure
 
 ```

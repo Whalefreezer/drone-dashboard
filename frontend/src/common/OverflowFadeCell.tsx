@@ -7,15 +7,22 @@ export function OverflowFadeCell(
 	const ref = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
+		let raf = 0;
 		const checkOverflow = () => {
-			if (ref.current) {
-				const { scrollWidth, clientWidth } = ref.current;
-				setHasOverflow(scrollWidth > clientWidth);
-			}
+			raf = globalThis.requestAnimationFrame(() => {
+				if (ref.current) {
+					const { scrollWidth, clientWidth } = ref.current;
+					const next = scrollWidth > clientWidth;
+					setHasOverflow((prev) => (prev === next ? prev : next));
+				}
+			});
 		};
 		checkOverflow();
 		globalThis.addEventListener('resize', checkOverflow);
-		return () => globalThis.removeEventListener('resize', checkOverflow);
+		return () => {
+			globalThis.cancelAnimationFrame(raf);
+			globalThis.removeEventListener('resize', checkOverflow);
+		};
 	}, [children]);
 
 	return (

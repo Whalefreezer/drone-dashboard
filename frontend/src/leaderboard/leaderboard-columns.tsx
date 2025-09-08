@@ -135,6 +135,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'position',
 			header: '',
+			label: 'Position',
 			width: 32,
 			cell: function PositionCellInline({ item: { pilotId } }) {
 				const ids = useAtomValue(leaderboardPilotIdsAtom);
@@ -146,6 +147,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'pilot',
 			header: 'Pilot',
+			label: 'Pilot',
 			// Let the Pilot column flex to consume remaining space.
 			// Keep a reasonable minimum so it doesn't collapse.
 			minWidth: 100,
@@ -163,6 +165,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'channel',
 			header: 'Chan',
+			label: 'Channel',
 			width: 52,
 			cell: function ChannelCellInline({ item: { pilotId } }) {
 				const channel = useAtomValue(pilotPreferredChannelAtom(pilotId));
@@ -172,6 +175,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'laps',
 			header: 'Laps',
+			label: 'Lap Count',
 			width: 52,
 			cell: function LapsCellInline({ item: { pilotId } }) {
 				const { current } = useAtomValue(pilotTotalLapsAtom(pilotId));
@@ -181,6 +185,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'holeshot',
 			header: 'Hole shot',
+			label: 'Holeshot',
 			width: 64,
 			cell: function HoleshotCell({ item: { pilotId } }) {
 				return <RenderTimeCell metricAtom={pilotHoleshotAtom(pilotId)} />;
@@ -189,6 +194,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'top-lap',
 			header: 'Top Lap',
+			label: 'Best Lap',
 			width: 72,
 			cell: function BestLapCell({ item: { pilotId } }) {
 				return <RenderTimeCell metricAtom={pilotBestLapAtom(pilotId)} />;
@@ -198,6 +204,7 @@ export function getLeaderboardColumns(
 			? [{
 				key: 'consec',
 				header: () => `Top ${ctx.consecutiveLaps} Consec`,
+				label: `Top ${ctx.consecutiveLaps} Consecutive`,
 				width: 72,
 				cell: function ConsecCell({ item }) {
 					const { pilotId } = item;
@@ -208,6 +215,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'fastest-race',
 			header: 'Fastest Race',
+			label: 'Fastest Total',
 			width: 72,
 			cell: function TotalRaceCell({ item }) {
 				const { pilotId } = item;
@@ -217,6 +225,7 @@ export function getLeaderboardColumns(
 		{
 			key: 'next',
 			header: 'Next Race In',
+			label: 'Next Race',
 			width: 96,
 			cell: function NextRaceStatusCellInline({ item }) {
 				const { pilotId } = item;
