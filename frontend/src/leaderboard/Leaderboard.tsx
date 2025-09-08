@@ -10,6 +10,7 @@ import { leaderboardSplitAtom } from '../state/pbAtoms.ts';
 import { ColumnChooser } from '../common/ColumnChooser.tsx';
 import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
 import { useAtom } from 'jotai';
+import useBreakpoint from '../responsive/useBreakpoint.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
@@ -27,12 +28,28 @@ export function Leaderboard() {
 
 	const splitIndex = useAtomValue(leaderboardSplitAtom); // 1-based position or null
 
+	// Breakpoint-aware defaults and storage key
+	const { isMobile, isTablet, breakpoint } = useBreakpoint();
+	const defaultKeys = useMemo(() => {
+		const all = columns.map((c) => c.key);
+		if (!isMobile && !isTablet) return all; // desktop -> all
+		const base: string[] = ['position', 'pilot', 'laps', 'top-lap', 'next'];
+		if (isTablet) {
+			base.splice(2, 0, 'channel'); // after pilot
+			base.splice(base.indexOf('top-lap') + 1, 0, 'holeshot');
+			if (columns.some((c) => c.key === 'consec')) base.splice(base.indexOf('top-lap') + 2, 0, 'consec');
+		}
+		return base.filter((k) => all.includes(k));
+	}, [columns, isMobile, isTablet]);
+
+	const prefsKey = useMemo(() => `leaderboard:${breakpoint}`, [breakpoint]);
+
 	return (
 		<div className='leaderboard-container'>
 			<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6, overflow: 'visible' }}>
-				<ColumnChooser tableId='leaderboard' columns={columns} compact label='Columns' />
+				<ColumnChooser tableId={prefsKey} columns={columns} compact label='Columns' defaultVisible={defaultKeys} />
 			</div>
-			<VisibleTable columns={columns} rows={rows} ctx={ctx} splitIndex={splitIndex} />
+			<VisibleTable columns={columns} rows={rows} ctx={ctx} splitIndex={splitIndex} prefsKey={prefsKey} defaultKeys={defaultKeys} />
 		</div>
 	);
 }
@@ -43,16 +60,24 @@ function VisibleTable(
 		rows,
 		ctx,
 		splitIndex,
+		prefsKey,
+		defaultKeys,
 	}: {
 		columns: Array<Column<TableContext, LeaderboardRowProps>>;
 		rows: LeaderboardRowProps[];
 		ctx: TableContext;
 		splitIndex: number | null;
+		prefsKey: string;
+		defaultKeys: string[];
 	},
 ) {
-	const keysSig = useMemo(() => JSON.stringify(columns.map((c) => c.key)), [columns]);
-	const defaultKeys = useMemo(() => columns.map((c) => c.key), [keysSig]);
-	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom('leaderboard', defaultKeys), [keysSig]));
+	// Use per-breakpoint storage key and defaults
+	const keysSig = useMemo(() => JSON.stringify({ id: prefsKey, cols: columns.map((c) => c.key), def: defaultKeys }), [
+		prefsKey,
+		columns,
+		defaultKeys,
+	]);
+	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom(prefsKey, defaultKeys), [keysSig]));
 	return (
 		<GenericTable<TableContext, LeaderboardRowProps>
 			className='leaderboard-table'

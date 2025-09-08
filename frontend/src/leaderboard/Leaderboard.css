@@ -60,6 +60,21 @@
 	font-family: monospace;
 }
 
+/* Sticky first columns for better horizontal scroll UX */
+.leaderboard-table .gt-cell[data-col='position'] {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
+.leaderboard-table .gt-cell[data-col='pilot'] {
+	position: sticky;
+	left: 34px; /* position (32px) + borders */
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
 /* Divider for split index (applies to the row below the split) */
 .leaderboard-table .gt-row.split-after .gt-cell {
 	border-top: 2px solid #6b7280; /* slate-500 */

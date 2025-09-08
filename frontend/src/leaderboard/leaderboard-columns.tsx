@@ -39,8 +39,9 @@ function PositionCell(
 
 function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
 	if (!channel) return <div>-</div>;
+	const label = `${channel.shortBand}${channel.number}`;
 	return (
-		<OverflowFadeCell>
+		<OverflowFadeCell title={label}>
 			<div className='channel-display'>
 				{channel.shortBand}
 				{channel.number}
