@@ -109,8 +109,13 @@ export function ColumnChooser<TableCtx, RowCtx extends object>(
 			}}
 		>
 			<div style={{ display: 'flex', gap: 8, marginBottom: 6, justifyContent: 'space-between' }}>
-				<button type='button' onClick={() => setAll(true)} style={{ padding: '2px 6px' }}>All</button>
-				<button type='button' onClick={() => setAll(false)} style={{ padding: '2px 6px' }}>None</button>
+				<div style={{ display: 'flex', gap: 8 }}>
+					<button type='button' onClick={() => setAll(true)} style={{ padding: '2px 6px' }}>All</button>
+					<button type='button' onClick={() => setAll(false)} style={{ padding: '2px 6px' }}>None</button>
+				</div>
+				<button type='button' onClick={() => setVisible(defaults)} style={{ padding: '2px 6px' }} title='Reset to breakpoint defaults'>
+					Reset
+				</button>
 			</div>
 			<div style={{ display: 'grid', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
 				{/* Singles first (preserve table order) */}

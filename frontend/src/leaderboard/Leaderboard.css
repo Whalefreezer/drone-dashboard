@@ -26,6 +26,10 @@
 	font-weight: bold;
 	display: grid;
 	gap: 0;
+	/* Make header stick to the top when scrolling vertically */
+	position: sticky;
+	top: 0;
+	z-index: 3; /* Above sticky cells in rows */
 }
 
 .gt-header > * {
@@ -60,6 +64,46 @@
 	font-family: monospace;
 }
 
+/* Sticky first columns for better horizontal scroll UX
+
+	IMPORTANT: Keep these left offsets in sync with the column widths
+	defined in `frontend/src/leaderboard/leaderboard-columns.tsx`.
+
+	- If you change the Position column width (currently 32px),
+	  update both:
+	    1) body cell: `.gt-cell[data-col='pilot'] { left: <Position width>px }`
+	    2) header cell: `.gt-header [data-col='pilot'] { left: <Position width>px }`
+	- The Position column itself stays at `left: 0`.
+*/
+.leaderboard-table .gt-cell[data-col='position'] {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
+.leaderboard-table .gt-cell[data-col='pilot'] {
+	position: sticky;
+	left: 32px; /* Equal to Position column width */
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
+/* Ensure sticky header cells align with sticky left columns */
+.leaderboard-table .gt-header [data-col='position'] {
+	position: sticky;
+	left: 0;
+	z-index: 4; /* Above row cells */
+	background: #333; /* Match header background */
+}
+
+.leaderboard-table .gt-header [data-col='pilot'] {
+	position: sticky;
+	left: 32px; /* Equal to Position column width */
+	z-index: 4;
+	background: #333;
+}
+
 /* Divider for split index (applies to the row below the split) */
 .leaderboard-table .gt-row.split-after .gt-cell {
 	border-top: 2px solid #6b7280; /* slate-500 */
@@ -73,7 +117,7 @@
 	right: 0;
 	bottom: 0;
 	width: 20px;
-	background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
+	background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)) 90%);
 	pointer-events: none;
 }
 
