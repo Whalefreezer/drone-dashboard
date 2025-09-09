@@ -19,9 +19,3 @@
 	border-bottom: 2px solid #fff;
 	font-weight: bold;
 }
-
-@media (max-width: 599px) {
-	.view-selector {
-		margin-top: 40px;
-	}
-}

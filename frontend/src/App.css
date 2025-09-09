@@ -256,7 +256,7 @@
 	box-sizing: border-box;
 	gap: 4px;
 	padding: 0 16px;
-	margin-top: 40px; /* Added from App.tsx inline style */
+	margin-top: 12px; /* Added from App.tsx inline style */
 }
 
 .app-main-content.mobile {
