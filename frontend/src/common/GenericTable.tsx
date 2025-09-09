@@ -86,52 +86,55 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 	return (
 		<div className={[className, 'gt'].filter(Boolean).join(' ')} role='grid'>
 			<div className={scrollX ? 'gt-scroll' : undefined} style={scrollX ? { overflowX: 'auto' } : undefined}>
-				<div className='gt-header' role='row' style={{ display: 'grid', gridTemplateColumns }}>
-					{effectiveColumns.map((col) => {
-						const style: React.CSSProperties = {};
-						if (col.headerAlign) style.textAlign = col.headerAlign;
-						return (
-							<div key={col.key} role='columnheader' className={col.headerClassName} style={style} data-col={col.key}>
-								{typeof col.header === 'function' ? col.header(context) : col.header}
-							</div>
-						);
-					})}
-				</div>
-				<div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
-					{transitions((style, item) => {
-						const row = item.row as RowCtx;
-						const idx = indexByKey.get(item.key) ?? 0;
-						const rowClass = [
-							'gt-row',
-							idx % 2 === 0 ? 'row-odd' : 'row-even',
-							getRowClassName?.(row, idx) ?? '',
-						].filter(Boolean).join(' ');
-						return (
-							<animated.div
-								key={item.key}
-								className={rowClass}
-								role='row'
-								style={{
-									transform: style.y.to((y) => `translateY(${y}px)`),
-									height: `${rowHeight}px`,
-									display: 'grid',
-									gridTemplateColumns,
-									position: 'absolute',
-									left: 0,
-									right: 0,
-								}}
-							>
-								{effectiveColumns.map((col) => {
-									const Cell = col.cell as React.ComponentType<{ item: RowCtx }>;
-									return (
-										<div key={col.key} role='gridcell' className='gt-cell' data-col={col.key}>
-											{React.createElement(Cell, { item: row })}
-										</div>
-									);
-								})}
-							</animated.div>
-						);
-					})}
+				<div style={{ display: 'inline-block', minWidth: '100%' }}>
+					<div className='gt-header' role='row' style={{ display: 'inline-grid', minWidth: '100%', gridTemplateColumns }}>
+						{effectiveColumns.map((col) => {
+							const style: React.CSSProperties = {};
+							if (col.headerAlign) style.textAlign = col.headerAlign;
+							return (
+								<div key={col.key} role='columnheader' className={col.headerClassName} style={style} data-col={col.key}>
+									{typeof col.header === 'function' ? col.header(context) : col.header}
+								</div>
+							);
+						})}
+					</div>
+					<div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
+						{transitions((style, item) => {
+							const row = item.row as RowCtx;
+							const idx = indexByKey.get(item.key) ?? 0;
+							const rowClass = [
+								'gt-row',
+								idx % 2 === 0 ? 'row-odd' : 'row-even',
+								getRowClassName?.(row, idx) ?? '',
+							].filter(Boolean).join(' ');
+							return (
+								<animated.div
+									key={item.key}
+									className={rowClass}
+									role='row'
+									style={{
+										transform: style.y.to((y) => `translateY(${y}px)`),
+										height: `${rowHeight}px`,
+										display: 'inline-grid',
+										minWidth: '100%',
+										gridTemplateColumns,
+										position: 'absolute',
+										left: 0,
+										right: 0,
+									}}
+								>
+									{effectiveColumns.map((col) => {
+										const Cell = col.cell as React.ComponentType<{ item: RowCtx }>;
+										return (
+											<div key={col.key} role='gridcell' className='gt-cell' data-col={col.key}>
+												{React.createElement(Cell, { item: row })}
+											</div>
+										);
+									})}
+								</animated.div>
+							);
+						})}
+					</div>
 				</div>
 			</div>
 		</div>

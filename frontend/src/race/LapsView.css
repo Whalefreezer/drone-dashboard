@@ -82,7 +82,7 @@
 	right: 0;
 	bottom: 0;
 	width: 20px;
-	background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)));
+	background: linear-gradient(to right, transparent, var(--row-bg, var(--table-bg-odd)) 90%);
 	pointer-events: none;
 }
 

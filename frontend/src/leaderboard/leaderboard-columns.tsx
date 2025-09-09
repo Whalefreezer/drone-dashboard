@@ -28,12 +28,10 @@ function PositionCell(
 	const change = showChange ? prevPos - currentPosition : 0;
 
 	return (
-		<OverflowFadeCell>
-			<div className='position-container'>
-				<div>{currentPosition}</div>
-				{showChange && change > 0 && <span className='position-change'>↑{change}</span>}
-			</div>
-		</OverflowFadeCell>
+		<div className='position-container'>
+			<div>{currentPosition}</div>
+			{showChange && change > 0 && <span className='position-change'>↑{change}</span>}
+		</div>
 	);
 }
 
@@ -41,13 +39,11 @@ function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
 	if (!channel) return <div>-</div>;
 	const label = `${channel.shortBand}${channel.number}`;
 	return (
-		<OverflowFadeCell title={label}>
-			<div className='channel-display'>
-				{channel.shortBand}
-				{channel.number}
-				<ChannelSquare channelID={channel.id} />
-			</div>
-		</OverflowFadeCell>
+		<div className='channel-display'>
+			{channel.shortBand}
+			{channel.number}
+			<ChannelSquare channelID={channel.id} />
+		</div>
 	);
 }
 
@@ -86,24 +82,22 @@ function RenderTimeCell(
 	const title = `Round ${roundDisplay}, Race ${currentTime.raceNumber}`;
 
 	return (
-		<OverflowFadeCell title={title}>
-			<div style={{ display: 'flex', flexDirection: 'column' }}>
-				<div>
-					{currentTime.time.toFixed(3)}
-					<span className='source-info'>({roundDisplay}-{currentTime.raceNumber})</span>
-				</div>
-				{showDiff && previousTime && (
-					<div
-						style={{
-							fontSize: '0.8em',
-							color: previousTime.time > currentTime.time ? '#00ff00' : '#ff0000',
-						}}
-					>
-						{formatTimeDifference(currentTime.time, previousTime.time)}
-					</div>
-				)}
+		<div title={title} style={{ display: 'flex', flexDirection: 'column' }}>
+			<div>
+				{currentTime.time.toFixed(3)}
+				<span className='source-info'>({roundDisplay}-{currentTime.raceNumber})</span>
 			</div>
-		</OverflowFadeCell>
+			{showDiff && previousTime && (
+				<div
+					style={{
+						fontSize: '0.8em',
+						color: previousTime.time > currentTime.time ? '#00ff00' : '#ff0000',
+					}}
+				>
+					{formatTimeDifference(currentTime.time, previousTime.time)}
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -137,6 +131,11 @@ export function getLeaderboardColumns(
 			key: 'position',
 			header: '',
 			label: 'Position',
+			// SOURCE OF TRUTH: If you change this width, update the matching
+			// sticky left offsets in CSS to keep the second sticky column aligned.
+			// Update both selectors in frontend/src/leaderboard/Leaderboard.css:
+			//   .leaderboard-table .gt-cell[data-col='pilot'] { left: <this width>px }
+			//   .leaderboard-table .gt-header [data-col='pilot'] { left: <this width>px }
 			width: 32,
 			cell: function PositionCellInline({ item: { pilotId } }) {
 				const ids = useAtomValue(leaderboardPilotIdsAtom);
