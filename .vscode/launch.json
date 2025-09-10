@@ -8,7 +8,7 @@
             "name": "Launch Chrome",
             "request": "launch",
             "type": "chrome",
-            "url": "http://localhost:5173/admin",
+            "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}/frontend"
         },
         {
@@ -42,6 +42,20 @@
                 "--cloud-url=ws://127.0.0.1:8090/control",
                 "--auth-token=DEVSECRET",
                 "--pits-id=dev",
+            ]
+        },
+        {
+            "request": "launch",
+            "name": "Go (import)",
+            "type": "go",
+            "program": "${workspaceFolder}/backend/main.go",
+            "cwd": "${workspaceFolder}/backend",
+            "env": {},
+            "envFile": "${workspaceFolder}/backend/.env",
+            "args": [
+                "--port=8090",
+                "--ingest-enabled=false",
+                "--import-snapshot=${workspaceFolder}/snapshots/test1.json"
             ]
         },
         {
