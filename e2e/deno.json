@@ -4,7 +4,6 @@
 		"server": "docker run -p 3000:3000 --add-host=host.docker.internal:host-gateway --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c \"npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0\"",
 		"report": "deno run -A --node-modules-dir npm:playwright show-report artifacts/report",
 		"e2e": "deno task playwright test",
-		"e2e:headed": "PWDEBUG=1 deno task playwright test --headed",
 		"e2e:ci": "CI=1 deno task playwright test --reporter=line,html"
 	},
 	"imports": {

@@ -50,7 +50,13 @@ export async function globalSetup() {
 	if (!process.env.E2E_SKIP_BACKEND) {
 		tee(
 			'go',
-			['run', 'main.go', `-port=${backendPort}`, '-ingest-enabled=false'],
+			[
+				'run',
+				'main.go',
+				`-port=${backendPort}`,
+				'-ingest-enabled=false',
+				'--import-snapshot=../snapshots/test1.json',
+			],
 			path.join(artifacts, 'logs', 'backend.log'),
 			path.join('..', 'backend'),
 		);
