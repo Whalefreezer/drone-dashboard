@@ -17,8 +17,8 @@ import (
 	"strings"
 
 	"drone-dashboard/control"
-	"drone-dashboard/ingest"
 	"drone-dashboard/importer"
+	"drone-dashboard/ingest"
 	"drone-dashboard/logger"
 	_ "drone-dashboard/migrations"
 	"drone-dashboard/scheduler"
@@ -100,15 +100,15 @@ func main() {
 // ----- Structure & helpers -----
 
 type CLIFlags struct {
-	FPVTrackside  string
-	Port          int
-	LogLevel      string
-	IngestEnabled bool
-	DirectProxy   bool
-	CloudURL      string
-	AuthToken     string
-	PitsID        string
-	DBDir         string
+	FPVTrackside   string
+	Port           int
+	LogLevel       string
+	IngestEnabled  bool
+	DirectProxy    bool
+	CloudURL       string
+	AuthToken      string
+	PitsID         string
+	DBDir          string
 	ImportSnapshot string
 }
 
@@ -250,7 +250,7 @@ func mustNewIngestService(app core.App, baseURL string) *ingest.Service {
 }
 
 func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags CLIFlags) {
-    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Ensure superuser exists
 		if err := ensureSuperuser(app); err != nil {
 			return fmt.Errorf("failed to ensure superuser: %w", err)
