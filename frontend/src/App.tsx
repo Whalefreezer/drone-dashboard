@@ -38,14 +38,9 @@ function App() {
 									<Leaderboard />
 								</GenericSuspense>
 							)}
-							{activePane === 'current' && (
-								<GenericSuspense id='current-race'>
-									<CurrentRaceView />
-								</GenericSuspense>
-							)}
-							{activePane === 'next' && (
-								<GenericSuspense id='next-races'>
-									<NextRacesView />
+							{activePane === 'races' && (
+								<GenericSuspense id='races-container'>
+									<RacesContainer />
 								</GenericSuspense>
 							)}
 							{activePane === 'brackets' && (
