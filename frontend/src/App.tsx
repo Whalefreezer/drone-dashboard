@@ -23,11 +23,13 @@ function App() {
 				<SnapshotControl />
 			</GenericSuspense>
 
-			<div className='app-header'>
-				<GenericSuspense id='time-display'>
-					<TimeDisplay />
-				</GenericSuspense>
-			</div>
+			{!isMobile && (
+				<div className='app-header'>
+					<GenericSuspense id='time-display'>
+						<TimeDisplay />
+					</GenericSuspense>
+				</div>
+			)}
 			{isMobile && <ViewSelector />}
 			<div className={'app-main-content' + (isMobile ? ' mobile' : '')}>
 				{isMobile
