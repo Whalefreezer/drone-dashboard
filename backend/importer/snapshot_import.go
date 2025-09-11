@@ -12,18 +12,19 @@ import (
 )
 
 type collectionsPayload struct {
-	Events         []map[string]any `json:"events"`
-	Pilots         []map[string]any `json:"pilots"`
-	Channels       []map[string]any `json:"channels"`
-	Rounds         []map[string]any `json:"rounds"`
-	Races          []map[string]any `json:"races"`
-	PilotChannels  []map[string]any `json:"pilotChannels"`
-	Laps           []map[string]any `json:"laps"`
-	Detections     []map[string]any `json:"detections"`
-	GamePoints     []map[string]any `json:"gamePoints"`
-	ClientKV       []map[string]any `json:"client_kv"`
-	IngestTargets  []map[string]any `json:"ingest_targets"`
-	ServerSettings []map[string]any `json:"server_settings"`
+	Events        []map[string]any `json:"events"`
+	Pilots        []map[string]any `json:"pilots"`
+	Channels      []map[string]any `json:"channels"`
+	Rounds        []map[string]any `json:"rounds"`
+	Races         []map[string]any `json:"races"`
+	PilotChannels []map[string]any `json:"pilotChannels"`
+	Laps          []map[string]any `json:"laps"`
+	Detections    []map[string]any `json:"detections"`
+	GamePoints    []map[string]any `json:"gamePoints"`
+	ClientKV      []map[string]any `json:"client_kv"`
+	// Admin collections excluded from snapshots
+	IngestTargets  []map[string]any `json:"ingest_targets,omitempty"`
+	ServerSettings []map[string]any `json:"server_settings,omitempty"`
 }
 
 type Snapshot struct {
@@ -102,15 +103,20 @@ func ImportFromFile(app core.App, path string) error {
 	} else {
 		counts["client_kv"] = n
 	}
-	if n, err := importCollection(app, "ingest_targets", snap.Collections.IngestTargets); err != nil {
-		return err
-	} else {
-		counts["ingest_targets"] = n
+	// Import admin collections only if present in snapshot
+	if len(snap.Collections.IngestTargets) > 0 {
+		if n, err := importCollection(app, "ingest_targets", snap.Collections.IngestTargets); err != nil {
+			return err
+		} else {
+			counts["ingest_targets"] = n
+		}
 	}
-	if n, err := importCollection(app, "server_settings", snap.Collections.ServerSettings); err != nil {
-		return err
-	} else {
-		counts["server_settings"] = n
+	if len(snap.Collections.ServerSettings) > 0 {
+		if n, err := importCollection(app, "server_settings", snap.Collections.ServerSettings); err != nil {
+			return err
+		} else {
+			counts["server_settings"] = n
+		}
 	}
 
 	// Adjust current event flag if provided

@@ -8,13 +8,11 @@ import {
 	eventRaceIdsAtom,
 	eventsAtom,
 	gamePointRecordsAtom,
-	ingestTargetRecordsAtom,
 	lapRecordsAtom,
 	pilotChannelRecordsAtom,
 	pilotsRecordsAtom,
 	raceRecordsAtom,
 	roundRecordsAtom,
-	serverSettingsRecordsAtom,
 } from '../state/atoms.ts';
 
 // Basic styling for the button container
@@ -62,7 +60,7 @@ const HIDE_DELAY = 2000; // milliseconds
  *   collections: {
  *     events, pilots, channels, rounds,
  *     races, pilotChannels, laps, detections, gamePoints,
- *     client_kv, ingest_targets, server_settings
+ *     client_kv
  *   }
  * }
  *
@@ -88,8 +86,6 @@ function SnapshotControl() {
 	const detections = useAtomValue(detectionRecordsAtom);
 	const gamePoints = useAtomValue(gamePointRecordsAtom);
 	const client_kv = useAtomValue(clientKVRecordsAtom);
-	const ingest_targets = useAtomValue(ingestTargetRecordsAtom);
-	const server_settings = useAtomValue(serverSettingsRecordsAtom);
 
 	// Effect to handle mouse move and visibility timeout
 	useEffect(() => {
@@ -138,8 +134,6 @@ function SnapshotControl() {
 					detections,
 					gamePoints,
 					client_kv,
-					ingest_targets,
-					server_settings,
 				},
 			};
 
