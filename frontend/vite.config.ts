@@ -39,6 +39,7 @@ export default defineConfig(({ mode }: { mode: string }) => {
 		},
 
 		server: {
+			allowedHosts: ['host.docker.internal'],
 			proxy: {
 				'/api': {
 					target: env.VITE_API_URL || 'http://localhost:8090/',
