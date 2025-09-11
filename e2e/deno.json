@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "playwright": "PW_TEST_CONNECT_WS_ENDPOINT=ws://0.0.0.0:3000/ deno run -A --node-modules-dir npm:playwright",
+    "server": "docker run -p 3000:3000 --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c \"npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0\""
+  },
+  "imports": {
+    "@playwright/test": "npm:@playwright/test@^1.55.0",
+    "@std/assert": "jsr:@std/assert@1",
+    "@types/node": "npm:@types/node@^24.3.1"
+  }
+}
