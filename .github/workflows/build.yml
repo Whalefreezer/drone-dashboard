@@ -3,14 +3,97 @@ name: Build and Release
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
   release:
     types: [created]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  fast-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Frontend checks
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('frontend/deno.json', 'frontend/deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
+
+      - name: Frontend Verify (format, lint, type-check)
+        working-directory: frontend
+        run: deno task verify
+
+      - name: Frontend Test
+        working-directory: frontend
+        run: deno task test
+
+      # Backend checks
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('backend/go.mod', 'backend/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Backend Format Check
+        working-directory: backend
+        run: |
+          if [ ! -z "$(gofmt -s -l .)" ]; then
+            echo "Go code is not formatted. Run 'go fmt ./...' to fix."
+            gofmt -s -l .
+            exit 1
+          fi
+
+      - name: Backend Vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Backend Test
+        working-directory: backend
+        run: go test ./...
+
+      - name: Backend Build Check (Linux amd64)
+        working-directory: backend
+        run: go build -o /tmp/drone-dashboard-test ./...
+
   build-frontend:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +102,17 @@ jobs:
         uses: denoland/setup-deno@v1
         with:
           deno-version: v2.x
-      
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: ${{ runner.os }}-deno-build-${{ hashFiles('frontend/deno.json', 'frontend/deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-build-
+
       - name: Build Frontend
         working-directory: frontend
         run: deno task build
@@ -33,6 +126,7 @@ jobs:
 
   build-backend:
     needs: build-frontend
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,8 +141,16 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-          # Note: setup-go can cache modules automatically, but we'll add an explicit cache step
-          # to make it clear and to also cache the go build cache.
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-${{ hashFiles('backend/go.mod', 'backend/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
 
       - name: Pre-fetch Go modules
         working-directory: backend
@@ -69,7 +171,7 @@ jobs:
 
   create-release:
     needs: build-backend
-    if: github.event_name == 'release' && github.event.action == 'created'
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
