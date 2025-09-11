@@ -46,7 +46,7 @@
         },
         {
             "request": "launch",
-            "name": "Go (import)",
+            "name": "Go (Import)",
             "type": "go",
             "program": "${workspaceFolder}/backend/main.go",
             "cwd": "${workspaceFolder}/backend",
@@ -112,6 +112,20 @@
         }
     ],
     "compounds": [
+        {
+            "name": "🚀 Full Stack Dev (Offline)",
+            "configurations": [
+                "Deno Dev",
+                "Launch Chrome",
+                "Go (Import)",
+            ],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "fullstack",
+                "order": 1
+            }
+        },
         {
             "name": "🚀 Full Stack Dev (Cloud+Pits)",
             "configurations": [

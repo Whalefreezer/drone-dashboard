@@ -4,9 +4,8 @@ Quick Agent Rules
 - Indent with tabs (deno fmt enforces this).
 - After changes, run `deno task verify` locally.
 - Do not leave legacy/back-compat shims; remove them in the same PR.
-- Before starting work on a GitHub issue, move it to "In progress" status to indicate active development.
-- When listing GitHub issues, pass `state: OPEN` or `CLOSED` (uppercase) — using `open/closed` throws a `$states` error. For this repository, the owner is `Whalefreezer` and the repo is `drone-dashboard`.
-- To manage issue dependencies: `gh api repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by` or `gh api repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocking` to get, `.../blocked_by --method POST -F "issue_id=1"` to add, or `--method DELETE` to `...dependencies/blocked_by/ISSUE_ID` to remove.
+- When given an ambiguous command like "go" or "work on the issue", assume its to work on the issue returned from get_current_issue in its entirety, keep working until its done.
+- Do not automaticly create a pull request or update the issue Status when done. The dev will verify work first.
 
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.

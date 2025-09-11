@@ -12,10 +12,25 @@
 	background: none;
 	color: #fff;
 	border: none;
+	border-bottom: 2px solid transparent;
 	cursor: pointer;
 }
 
 .view-selector button.active {
 	border-bottom: 2px solid #fff;
-	font-weight: bold;
+}
+
+.view-selector button:focus {
+	outline: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+}
+
+.view-selector button:active {
+	border: none;
+	border-bottom: 2px solid transparent;
+}
+
+.view-selector button:focus.active {
+	border-bottom: 2px solid #fff;
 }
