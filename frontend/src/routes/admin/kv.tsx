@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { clientKVRecordsAtom, currentEventAtom } from '../../state/pbAtoms.ts';
-import { ClientKVTable } from './ClientKVTable.tsx';
+import { ClientKVTable } from '../../admin/ClientKVTable.tsx';
 import { useMemo, useState } from 'react';
 import { pb } from '../../api/pb.ts';
 

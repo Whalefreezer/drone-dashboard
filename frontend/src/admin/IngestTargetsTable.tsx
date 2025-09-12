@@ -1,5 +1,5 @@
-import { type Column, GenericTable } from '../../common/GenericTable.tsx';
-import type { PBIngestTargetRecord } from '../../api/pbTypes.ts';
+import { type Column, GenericTable } from '../common/GenericTable.tsx';
+import type { PBIngestTargetRecord } from '../api/pbTypes.ts';
 import { Center, Mono, Right } from './cells.tsx';
 import { formatEpochMs, formatSecondsFromNow } from './admin-utils.ts';
 

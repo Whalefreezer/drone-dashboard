@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { ingestTargetRecordsAtom } from '../../state/pbAtoms.ts';
-import { IngestTargetsTable } from './IngestTargetsTable.tsx';
+import { IngestTargetsTable } from '../../admin/IngestTargetsTable.tsx';
 
 function IngestPage() {
 	const ingestTargets = useAtomValue(ingestTargetRecordsAtom);

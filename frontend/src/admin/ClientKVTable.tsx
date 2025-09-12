@@ -1,7 +1,7 @@
-import { type Column, GenericTable } from '../../common/GenericTable.tsx';
-import type { PBClientKVRecord } from '../../api/pbTypes.ts';
+import { type Column, GenericTable } from '../common/GenericTable.tsx';
+import type { PBClientKVRecord } from '../api/pbTypes.ts';
 import { Mono, Right } from './cells.tsx';
-import { OverflowFadeCell } from '../../common/OverflowFadeCell.tsx';
+import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { formatSecondsFromNow } from './admin-utils.ts';
 
 type KVRow = PBClientKVRecord;
