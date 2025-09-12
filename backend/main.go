@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"drone-dashboard/control"
 	"drone-dashboard/importer"
@@ -292,6 +293,14 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte(string(bytes)))
 			return nil
+		})
+
+		// Health check endpoint
+		se.Router.GET("/health", func(c *core.RequestEvent) error {
+			return c.JSON(http.StatusOK, map[string]interface{}{
+				"status":    "ok",
+				"timestamp": fmt.Sprintf("%d", time.Now().Unix()),
+			})
 		})
 
 		// Catch-all static last

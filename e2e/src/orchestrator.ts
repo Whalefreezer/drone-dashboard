@@ -68,7 +68,7 @@ export async function globalSetup() {
 		if (!process.env.E2E_SKIP_FRONTEND) {
 			tee(
 				'deno',
-				['task', 'dev', '--host'],
+				['task', 'dev', '--host', `--port=${frontendPort}`, '--strictPort'],
 				path.join(artifacts, 'logs', 'frontend.log'),
 				path.join('..', 'frontend'),
 			);
