@@ -1,15 +1,15 @@
 package ingest
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "net/http"
-    "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
 
-    "drone-dashboard/control"
-    "regexp"
-    "strings"
+	"drone-dashboard/control"
+	"regexp"
+	"strings"
 )
 
 // Source abstracts where we fetch FPVTrackside-like data from.
@@ -71,23 +71,23 @@ func (r *RemoteSource) fetchJSON(path string, out any) error {
 	if err != nil {
 		return err
 	}
-    status, hdrs, body := control.DecodeResponse(resp)
-    if status == http.StatusNotModified {
-        if c, ok := r.cache[path]; ok {
-            body = c.body
-        } else {
-            return fmt.Errorf("304 but no cache for %s", path)
-        }
-    }
-    etag, _ := hdrs["ETag"]
-    if err := json.Unmarshal(body, out); err != nil {
-        // Do not cache invalid payloads
-        return err
-    }
-    if etag != "" {
-        r.cache[path] = cached{etag: etag, body: body}
-    }
-    return nil
+	status, hdrs, body := control.DecodeResponse(resp)
+	if status == http.StatusNotModified {
+		if c, ok := r.cache[path]; ok {
+			body = c.body
+		} else {
+			return fmt.Errorf("304 but no cache for %s", path)
+		}
+	}
+	etag, _ := hdrs["ETag"]
+	if err := json.Unmarshal(body, out); err != nil {
+		// Do not cache invalid payloads
+		return err
+	}
+	if etag != "" {
+		r.cache[path] = cached{etag: etag, body: body}
+	}
+	return nil
 }
 
 func (r *RemoteSource) FetchEvent(eventSourceId string) (EventFile, error) {
@@ -116,37 +116,41 @@ func (r *RemoteSource) FetchRace(eventSourceId, raceId string) (RaceFile, error)
 	return o, err
 }
 func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
-    var out ResultsFile
-    path := "/events/" + eventSourceId + "/Results.json"
-    ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-    defer cancel()
-    var ifNone string
-    if c, ok := r.cache[path]; ok { ifNone = c.etag }
-    resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000})
-    if err != nil { return out, err }
-    status, hdrs, body := control.DecodeResponse(resp)
-    if status == http.StatusNotModified {
-        if c, ok := r.cache[path]; ok {
-            body = c.body
-        } else {
-            return out, fmt.Errorf("304 but no cache for %s", path)
-        }
-    }
-    etag := hdrs["ETag"]
-    // Special-case: Results.json is often 0 bytes; treat as empty results
-    if len(strings.TrimSpace(string(body))) == 0 {
-        if etag != "" {
-            r.cache[path] = cached{etag: etag, body: body}
-        }
-        return ResultsFile{}, nil
-    }
-    if err := json.Unmarshal(body, &out); err != nil {
-        return out, err
-    }
-    if etag != "" {
-        r.cache[path] = cached{etag: etag, body: body}
-    }
-    return out, nil
+	var out ResultsFile
+	path := "/events/" + eventSourceId + "/Results.json"
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	var ifNone string
+	if c, ok := r.cache[path]; ok {
+		ifNone = c.etag
+	}
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000})
+	if err != nil {
+		return out, err
+	}
+	status, hdrs, body := control.DecodeResponse(resp)
+	if status == http.StatusNotModified {
+		if c, ok := r.cache[path]; ok {
+			body = c.body
+		} else {
+			return out, fmt.Errorf("304 but no cache for %s", path)
+		}
+	}
+	etag := hdrs["ETag"]
+	// Special-case: Results.json is often 0 bytes; treat as empty results
+	if len(strings.TrimSpace(string(body))) == 0 {
+		if etag != "" {
+			r.cache[path] = cached{etag: etag, body: body}
+		}
+		return ResultsFile{}, nil
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return out, err
+	}
+	if etag != "" {
+		r.cache[path] = cached{etag: etag, body: body}
+	}
+	return out, nil
 }
 func (r *RemoteSource) FetchEventSourceId() (string, error) {
 	// Fetch root page and scrape event id, mirroring FPVClient behavior
