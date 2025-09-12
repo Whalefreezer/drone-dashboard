@@ -23,6 +23,9 @@ export default defineConfig({
 		['html', { outputFolder: 'artifacts/report' }],
 		['json', { outputFile: 'artifacts/summary.json' }],
 	],
+	expect: {
+		timeout: 1000,
+	},
 	use: {
 		baseURL: process.env.E2E_BASE_URL ?? 'http://host.docker.internal:5173',
 		trace: 'on-first-retry',
