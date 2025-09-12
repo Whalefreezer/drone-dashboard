@@ -132,9 +132,8 @@ async function runTests(): Promise<{ success: boolean; output: string }> {
 	const output = new TextDecoder().decode(stdout);
 	const errorOutput = new TextDecoder().decode(stderr);
 
-	console.log(output);
-	if (errorOutput) console.error(errorOutput);
-
+	// Do not print full Playwright output here. Return it to the caller
+	// so we can decide what to show based on success/failure.
 	return { success: code === 0, output: output + errorOutput };
 }
 
@@ -192,8 +191,13 @@ async function main(): Promise<void> {
 		// Run tests
 		const { success, output } = await runTests();
 
-		// Show summary
-		showSummary(output);
+		// On success, keep output minimal. On failure, show a summary.
+		if (success) {
+			console.log("✅ Everything's OK");
+		} else {
+			console.log('\n❌ E2E tests failed');
+			showSummary(output);
+		}
 
 		// Stop Playwright server if we started it (orchestrator handles others)
 		if (!serverWasRunning) {
