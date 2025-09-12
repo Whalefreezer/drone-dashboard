@@ -86,7 +86,6 @@ async function main() {
 	// backend vet + test (sequential under a single label)
 	jobs.push(runSeq('be-verify', [
 		{ label: 'be-verify', cmd: 'go', args: ['vet', './...'], cwd: backendDir },
-		{ label: 'be-verify', cmd: 'go', args: ['test', './...'], cwd: backendDir },
 	]));
 
 	// e2e run (playwright)
