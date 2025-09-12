@@ -5,14 +5,34 @@ function basename(p: string): string {
 	return i >= 0 ? p.slice(i + 1) : p;
 }
 
+type TestError = {
+	message?: string;
+	value?: string;
+};
+
+type TestResult = {
+	outcome: string;
+	titlePath?: string[];
+	title: string;
+	errors?: TestError[];
+	error?: TestError;
+};
+
+type SuiteResult = {
+	tests?: TestResult[];
+	suites?: SuiteResult[];
+};
+
+type Stats = {
+	expected?: number;
+	unexpected?: number;
+	flaky?: number;
+	skipped?: number;
+};
+
 type JsonReport = {
-	stats?: {
-		expected: number;
-		unexpected: number;
-		flaky: number;
-		skipped: number;
-	};
-	suites?: any[];
+	stats?: Stats;
+	suites?: SuiteResult[];
 };
 
 function color(label: string, code: number) {
@@ -52,7 +72,10 @@ async function tailFile(path: string, lines = 80): Promise<string> {
 	}
 }
 
-function extractFailures(node: any, out: { title: string; error?: string }[]) {
+function extractFailures(
+	node: SuiteResult | undefined,
+	out: { title: string; error?: string }[],
+) {
 	if (!node) return;
 	if (node.tests) {
 		for (const t of node.tests) {
@@ -77,14 +100,18 @@ async function main() {
 			'No artifacts/summary.json found. Run tests first with `deno task e2e`.',
 		);
 	} else {
-		const stats = json.stats ?? {} as any;
+		const stats: Stats = json.stats ?? {};
 		console.log(
 			`tests: expected=${stats.expected ?? 0} unexpected=$
 				{stats.unexpected ?? 0}
 			} flaky=${stats.flaky ?? 0} skipped=${stats.skipped ?? 0}`,
 		);
 		const failures: { title: string; error?: string }[] = [];
-		extractFailures(json as any, failures);
+		if (json.suites) {
+			for (const suite of json.suites) {
+				extractFailures(suite, failures);
+			}
+		}
 		if (failures.length) {
 			console.log(color('\nFailures:', 31));
 			for (const f of failures) {

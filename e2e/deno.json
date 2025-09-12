@@ -10,7 +10,7 @@
 		"e2e:summary": "deno run -A src/summary.ts",
 		"e2e:run": "deno run -A src/e2e-runner.ts",
 		"e2e:report": "deno task playwright show-report artifacts/report",
-		"verify": "deno fmt --check && deno lint && deno check"
+		"verify": "deno fmt --check && deno lint && deno check -q"
 	},
 	"imports": {
 		"@playwright/test": "npm:@playwright/test@^1.55.0",

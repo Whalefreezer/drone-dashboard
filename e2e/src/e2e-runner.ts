@@ -3,7 +3,6 @@
 const CONTAINER_NAME = 'playwright-server';
 const SERVER_PORT = 3000;
 const FRONTEND_PORT = 5173;
-const BACKEND_PORT = 8090;
 const SERVER_HOST = '0.0.0.0';
 
 /**
@@ -142,7 +141,7 @@ async function runTests(): Promise<{ success: boolean; output: string }> {
 /**
  * Show test summary
  */
-async function showSummary(testOutput: string): Promise<void> {
+function showSummary(testOutput: string): void {
 	console.log('\n📊 Test Summary');
 	console.log('='.repeat(50));
 
@@ -194,7 +193,7 @@ async function main(): Promise<void> {
 		const { success, output } = await runTests();
 
 		// Show summary
-		await showSummary(output);
+		showSummary(output);
 
 		// Stop Playwright server if we started it (orchestrator handles others)
 		if (!serverWasRunning) {

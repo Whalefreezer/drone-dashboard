@@ -67,7 +67,7 @@ async function killProcessOnPort(port: number) {
 				}
 			}
 		}
-	} catch (error) {
+	} catch {
 		// lsof might not be available, try fallback
 		console.log(`⚠️ Could not check processes on port ${port}, continuing...`);
 	}
@@ -208,7 +208,7 @@ async function killProcessTree(pid: number, name: string) {
 		} catch {
 			// Parent might already be dead
 		}
-	} catch (error) {
+	} catch {
 		console.warn(`⚠️ Failed to kill process tree: ${name}`);
 	}
 }
@@ -217,7 +217,9 @@ export async function globalTeardown() {
 	if (procs.length > 0) {
 		console.log(`🧹 Cleaning up ${procs.length} test processes...`);
 		for (const { name, p } of procs.reverse()) {
-			await killProcessTree(p.pid, name);
+			if (p.pid) {
+				await killProcessTree(p.pid, name);
+			}
 		}
 	}
 }

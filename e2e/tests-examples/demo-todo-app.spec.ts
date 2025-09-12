@@ -449,12 +449,17 @@ async function checkNumberOfTodosInLocalStorage(page: Page, expected: number) {
 	}, expected);
 }
 
+type Todo = {
+	completed: boolean;
+	title: string;
+};
+
 async function checkNumberOfCompletedTodosInLocalStorage(
 	page: Page,
 	expected: number,
 ) {
 	return await page.waitForFunction((e) => {
-		return JSON.parse(localStorage['react-todos']).filter((todo: any) =>
+		return (JSON.parse(localStorage['react-todos']) as Todo[]).filter((todo) =>
 			todo.completed
 		).length === e;
 	}, expected);
@@ -462,7 +467,7 @@ async function checkNumberOfCompletedTodosInLocalStorage(
 
 async function checkTodosInLocalStorage(page: Page, title: string) {
 	return await page.waitForFunction((t) => {
-		return JSON.parse(localStorage['react-todos']).map((todo: any) =>
+		return (JSON.parse(localStorage['react-todos']) as Todo[]).map((todo) =>
 			todo.title
 		).includes(t);
 	}, title);
