@@ -125,22 +125,21 @@ export async function globalSetup() {
 	await waitFor(`http://localhost:${backendPort}`);
 
 	if (mode === 'dev') {
-		// Frontend dev server (optional skip)
-		if (!process.env.E2E_SKIP_FRONTEND) {
-			// Set VITE_API_URL for frontend to connect to backend
-			const frontendEnv = {
-				...process.env,
-				'VITE_API_URL': `http://host.docker.internal:${backendPort}`,
-			};
+		// Frontend dev server
+		// Set VITE_API_URL for frontend to connect to backend
+		const frontendEnv = {
+			...process.env,
+			'VITE_API_URL': `http://host.docker.internal:${backendPort}`,
+		};
 
-			tee(
-				'deno',
-				['task', 'dev', '--host', `--port=${frontendPort}`, '--strictPort'],
-				path.join(artifacts, 'logs', 'frontend.log'),
-				path.join('..', 'frontend'),
-				frontendEnv,
-			);
-		}
+		tee(
+			'deno',
+			['task', 'dev', '--host', `--port=${frontendPort}`, '--strictPort'],
+			path.join(artifacts, 'logs', 'frontend.log'),
+			path.join('..', 'frontend'),
+			frontendEnv,
+		);
+
 		await waitFor(`http://localhost:${frontendPort}`);
 		// Default baseURL for remote PW browsers to reach host
 		process.env.E2E_BASE_URL ??= `http://host.docker.internal:${frontendPort}`;

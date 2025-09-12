@@ -126,7 +126,6 @@ async function runTests(): Promise<{ success: boolean; output: string }> {
 			'CI': '1',
 			'PW_TEST_CONNECT_WS_ENDPOINT': `ws://0.0.0.0:${SERVER_PORT}/`,
 			'PW_TEST_BASE_URL': `http://localhost:${FRONTEND_PORT}`,
-			'E2E_SKIP_FRONTEND': '1', // Prevent global setup from starting its own frontend
 		},
 	});
 
