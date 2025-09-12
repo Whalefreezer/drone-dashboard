@@ -11,6 +11,14 @@ function mkdirp(p: string) {
 	fs.mkdirSync(p, { recursive: true });
 }
 
+const NO_COLOR_ENV = {
+	'NO_COLOR': '1',
+	'FORCE_COLOR': '0',
+	'CLICOLOR': '0',
+	'CLICOLOR_FORCE': '0',
+	'TERM': 'dumb',
+};
+
 function tee(
 	cmd: string,
 	args: string[],
@@ -109,6 +117,10 @@ export async function globalSetup() {
 
 	// Backend (optional skip)
 	if (!process.env.E2E_SKIP_BACKEND) {
+		const backendEnv = { ...process.env, ...NO_COLOR_ENV } as Record<
+			string,
+			string
+		>;
 		tee(
 			'go',
 			[
@@ -120,6 +132,7 @@ export async function globalSetup() {
 			],
 			path.join(artifacts, 'logs', 'backend.log'),
 			path.join('..', 'backend'),
+			backendEnv,
 		);
 	}
 	await waitFor(`http://localhost:${backendPort}`);
@@ -129,8 +142,9 @@ export async function globalSetup() {
 		// Set VITE_API_URL for frontend to connect to backend
 		const frontendEnv = {
 			...process.env,
+			...NO_COLOR_ENV,
 			'VITE_API_URL': `http://host.docker.internal:${backendPort}`,
-		};
+		} as Record<string, string>;
 
 		tee(
 			'deno',
@@ -145,11 +159,16 @@ export async function globalSetup() {
 		process.env.E2E_BASE_URL ??= `http://host.docker.internal:${frontendPort}`;
 	} else {
 		// Production-like: build frontend, then serve via backend static if applicable
+		const frontendBuildEnv = { ...process.env, ...NO_COLOR_ENV } as Record<
+			string,
+			string
+		>;
 		tee(
 			'deno',
 			['task', 'build'],
 			path.join(artifacts, 'logs', 'frontend.log'),
 			path.join('..', 'frontend'),
+			frontendBuildEnv,
 		);
 		// In prod mode we target backend port by default
 		process.env.E2E_BASE_URL ??= `http://host.docker.internal:${backendPort}`;

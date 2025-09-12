@@ -1,5 +1,7 @@
 #!/usr/bin/env -S deno run --allow-run --allow-net --allow-env --allow-read
 
+import { main as runSummaryMain } from './summary.ts';
+
 const CONTAINER_NAME = 'playwright-server';
 const SERVER_PORT = 3000;
 const FRONTEND_PORT = 5173;
@@ -86,7 +88,7 @@ async function startServer(): Promise<void> {
  * Stop the Playwright server container
  */
 async function stopServer(): Promise<void> {
-	console.log('🛑 Stopping Playwright server...');
+	// console.log('🛑 Stopping Playwright server...');
 
 	const cmd = new Deno.Command('docker', {
 		args: ['stop', CONTAINER_NAME],
@@ -135,6 +137,14 @@ async function runTests(): Promise<{ success: boolean; output: string }> {
 	// Do not print full Playwright output here. Return it to the caller
 	// so we can decide what to show based on success/failure.
 	return { success: code === 0, output: output + errorOutput };
+}
+
+/**
+ * Run the post-test summary script. It only prints output when there are
+ * unexpected failures, so we can always invoke it safely.
+ */
+async function runSummary(): Promise<void> {
+	await runSummaryMain();
 }
 
 /**
@@ -193,11 +203,14 @@ async function main(): Promise<void> {
 
 		// On success, keep output minimal. On failure, show a summary.
 		if (success) {
-			console.log("✅ Everything's OK");
+			console.log('✅ All E2E tests passed successfully');
 		} else {
 			console.log('\n❌ E2E tests failed');
 			showSummary(output);
 		}
+
+		// Always run summary script; it is quiet on success.
+		await runSummary();
 
 		// Stop Playwright server if we started it (orchestrator handles others)
 		if (!serverWasRunning) {
