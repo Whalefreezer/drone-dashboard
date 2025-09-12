@@ -109,6 +109,28 @@
                 "src/pilot/PilotChannelView.test.tsx"
             ],
             "attachSimplePort": 9229
+        },
+        {
+            "request": "launch",
+            "name": "🧪 Run E2E Tests",
+            "type": "node",
+            "cwd": "${workspaceFolder}/e2e",
+            "runtimeExecutable": "deno",
+            "outputCapture": "std",
+            "runtimeArgs": [
+                "run",
+                "--inspect-wait",
+                "--allow-run",
+                "--allow-net",
+                "--allow-env",
+                "--allow-read",
+                "src/e2e-runner.ts"
+            ],
+            "attachSimplePort": 9229,
+            "presentation": {
+                "group": "test",
+                "order": 1
+            }
         }
     ],
     "compounds": [

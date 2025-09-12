@@ -46,3 +46,10 @@ run-pits/
 pocketbase_docs/
 __debug_bin*
 .gocache
+
+# Playwright
+/e2e/test-results/
+/e2e/playwright-report/
+/e2e/blob-report/
+/e2e/playwright/.cache/
+/e2e/artifacts/

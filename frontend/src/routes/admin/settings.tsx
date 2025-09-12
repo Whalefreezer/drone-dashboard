@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { serverSettingsRecordsAtom } from '../../state/pbAtoms.ts';
-import { ServerSettingsEditor } from './ServerSettingsEditor.tsx';
+import { ServerSettingsEditor } from '../../admin/ServerSettingsEditor.tsx';
 
 function SettingsPage() {
 	const settings = useAtomValue(serverSettingsRecordsAtom);

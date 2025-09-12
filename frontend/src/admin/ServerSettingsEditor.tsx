@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { type Column, GenericTable } from '../../common/GenericTable.tsx';
-import type { PBServerSettingRecord } from '../../api/pbTypes.ts';
-import { pb } from '../../api/pb.ts';
+import { type Column, GenericTable } from '../common/GenericTable.tsx';
+import type { PBServerSettingRecord } from '../api/pbTypes.ts';
+import { pb } from '../api/pb.ts';
 import { inferSettingKind, normalizeSettingValue } from './admin-utils.ts';
 
 type SettingRowData = PBServerSettingRecord & {

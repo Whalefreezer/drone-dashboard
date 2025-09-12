@@ -1,6 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router';
-import '../admin.css';
-import { authenticatedKind, logout } from '../../api/pb.ts';
+import './admin.css';
+import { authenticatedKind, logout } from '../api/pb.ts';
 import React from 'react';
 
 export function AdminLayout() {
