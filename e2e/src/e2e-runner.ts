@@ -102,184 +102,9 @@ async function stopServer(): Promise<void> {
 	}
 }
 
-/**
- * Start the frontend dev server
- */
-async function startFrontend(): Promise<Deno.ChildProcess> {
-	console.log('🚀 Starting frontend dev server...');
+// Note: Backend and frontend servers are managed by orchestrator.ts
 
-	const cmd = new Deno.Command('deno', {
-		args: ['task', 'dev', '--host', '0.0.0.0'],
-		cwd: '../frontend',
-		env: {
-			...Deno.env.toObject(),
-			'E2E_BASE_URL': `http://localhost:${FRONTEND_PORT}`,
-			'VITE_API_URL': `http://localhost:${BACKEND_PORT}`,
-			'NO_COLOR': '1', // Disable colors to avoid TTY issues
-		},
-		stdout: 'null',
-		stderr: 'null',
-	});
-
-	// Start the process in background and return it for later cleanup
-	const process = cmd.spawn();
-
-	console.log('✅ Frontend server started successfully');
-
-	return process;
-}
-
-/**
- * Start the backend server
- */
-async function startBackend(): Promise<Deno.ChildProcess> {
-	console.log('🚀 Starting backend server...');
-
-	const cmd = new Deno.Command('go', {
-		args: [
-			'run',
-			'main.go',
-			`-port=${BACKEND_PORT}`,
-			'-ingest-enabled=false',
-			'--import-snapshot=../snapshots/test1.json',
-		],
-		cwd: '../backend',
-		env: {
-			...Deno.env.toObject(),
-		},
-		stdout: 'null',
-		stderr: 'null',
-	});
-
-	// Start the process in background and return it for later cleanup
-	const process = cmd.spawn();
-
-	console.log('✅ Backend server started successfully');
-
-	return process;
-}
-
-/**
- * Stop the frontend dev server
- */
-async function stopFrontend(process: Deno.ChildProcess): Promise<void> {
-	console.log('🛑 Stopping frontend server...');
-
-	try {
-		// Try to kill the process gracefully first
-		process.kill('SIGTERM');
-
-		// Wait a bit for graceful shutdown
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-
-		// If it's still running, force kill it
-		if (!process.killed) {
-			process.kill('SIGKILL');
-		}
-
-		console.log('✅ Frontend server stopped successfully');
-	} catch (error) {
-		console.warn(
-			`⚠️  Warning: Failed to stop frontend server: ${error.message}`,
-		);
-	}
-}
-
-/**
- * Stop the backend server
- */
-async function stopBackend(process: Deno.ChildProcess): Promise<void> {
-	console.log('🛑 Stopping backend server...');
-
-	try {
-		// Try to kill the process gracefully first
-		process.kill('SIGTERM');
-
-		// Wait a bit for graceful shutdown
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-
-		// If it's still running, force kill it
-		if (!process.killed) {
-			process.kill('SIGKILL');
-		}
-
-		console.log('✅ Backend server stopped successfully');
-	} catch (error) {
-		console.warn(
-			`⚠️  Warning: Failed to stop backend server: ${error.message}`,
-		);
-	}
-}
-
-/**
- * Wait for servers to be ready
- */
-async function waitForServers(maxAttempts = 3): Promise<void> {
-	console.log('⏳ Waiting for servers to be ready...');
-
-	let playwrightReady = false;
-	let frontendReady = false;
-	let backendReady = false;
-
-	for (let i = 0; i < maxAttempts; i++) {
-		// Check Playwright server
-		if (!playwrightReady) {
-			try {
-				const conn = await Deno.connect({
-					hostname: '0.0.0.0',
-					port: SERVER_PORT,
-				});
-				conn.close();
-				playwrightReady = true;
-				console.log('✅ Playwright server is ready!');
-			} catch {
-				// Still waiting
-			}
-		}
-
-		// Check frontend server
-		if (!frontendReady) {
-			try {
-				const response = await fetch(`http://localhost:${FRONTEND_PORT}`);
-				if (response.ok) {
-					frontendReady = true;
-					console.log('✅ Frontend server is ready!');
-				}
-			} catch (error) {
-				// Still waiting, but log the error for debugging
-				if (i === maxAttempts - 1) {
-					console.log(`❌ Frontend server check failed: ${error.message}`);
-				}
-			}
-		}
-
-		// Check backend server
-		if (!backendReady) {
-			try {
-				const response = await fetch(`http://localhost:${BACKEND_PORT}/health`);
-				if (response.ok) {
-					backendReady = true;
-					console.log('✅ Backend server is ready!');
-				}
-			} catch (error) {
-				// Still waiting, but log the error for debugging
-				if (i === maxAttempts - 1) {
-					console.log(`❌ Backend server check failed: ${error.message}`);
-				}
-			}
-		}
-
-		if (playwrightReady && frontendReady && backendReady) {
-			console.log('🎉 All servers are ready!');
-			return;
-		}
-
-		console.log(`   Attempt ${i + 1}/${maxAttempts}...`);
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-	}
-
-	throw new Error('Servers failed to start within timeout');
-}
+// Note: Backend and frontend server cleanup is handled by orchestrator.ts globalTeardown
 
 /**
  * Run Playwright tests
@@ -343,8 +168,6 @@ async function showSummary(testOutput: string): Promise<void> {
  */
 async function main(): Promise<void> {
 	let serverWasRunning = false;
-	let frontendProcess: Deno.ChildProcess | null = null;
-	let backendProcess: Deno.ChildProcess | null = null;
 
 	try {
 		// Check container status
@@ -368,67 +191,27 @@ async function main(): Promise<void> {
 			serverWasRunning = true;
 		}
 
-		// Always start backend (we need fresh state for tests)
-		console.log('🔄 Starting backend server...');
-		backendProcess = await startBackend();
-
-		// Always start frontend (it's lightweight and we want fresh state)
-		console.log('🔄 Starting frontend dev server...');
-		// Set environment variable to override the default host.docker.internal
-		Deno.env.set('E2E_BASE_URL', `http://localhost:${FRONTEND_PORT}`);
-		frontendProcess = await startFrontend();
-
-		// Wait for all servers to be ready
-		await waitForServers();
-
 		// Run tests
 		const { success, output } = await runTests();
 
 		// Show summary
 		await showSummary(output);
 
-		// Stop servers only if we started them
+		// Stop Playwright server if we started it (orchestrator handles others)
 		if (!serverWasRunning) {
 			await stopServer();
-		}
-
-		// Stop backend if we started it
-		if (backendProcess) {
-			await stopBackend(backendProcess);
-		}
-
-		// Stop frontend if we started it
-		if (frontendProcess) {
-			await stopFrontend(frontendProcess);
 		}
 
 		// Exit with appropriate code
 		Deno.exit(success ? 0 : 1);
 	} catch (error) {
-		console.error('❌ Error:', error.message);
+		const message = error instanceof Error ? error.message : String(error);
+		console.error('❌ Error:', message);
 
-		// Try to stop servers if we started them
+		// Try to stop Playwright server if we started it
 		if (!serverWasRunning) {
 			try {
 				await stopServer();
-			} catch {
-				// Ignore cleanup errors
-			}
-		}
-
-		// Try to stop backend if we started it
-		if (backendProcess) {
-			try {
-				await stopBackend(backendProcess);
-			} catch {
-				// Ignore cleanup errors
-			}
-		}
-
-		// Try to stop frontend if we started it
-		if (frontendProcess) {
-			try {
-				await stopFrontend(frontendProcess);
 			} catch {
 				// Ignore cleanup errors
 			}

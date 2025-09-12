@@ -11,17 +11,69 @@ function mkdirp(p: string) {
 	fs.mkdirSync(p, { recursive: true });
 }
 
-function tee(cmd: string, args: string[], logPath: string, cwd?: string) {
+function tee(
+	cmd: string,
+	args: string[],
+	logPath: string,
+	cwd?: string,
+	env?: Record<string, string>,
+) {
 	mkdirp(path.dirname(logPath));
-	const p = spawn(cmd, args, { env: process.env, shell: true, cwd });
+	const spawnEnv = env || process.env;
+	const p = spawn(cmd, args, { env: spawnEnv, shell: true, cwd });
 	const out = fs.createWriteStream(logPath, { flags: 'a' });
 	p.stdout.on('data', (d) => out.write(d));
 	p.stderr.on('data', (d) => out.write(d));
-	procs.push({ name: `${cmd} ${args.join(' ')}`, p });
+
+	const processName = `${cmd} ${args.join(' ')}`;
+	procs.push({ name: processName, p });
 	return p;
 }
 
-async function waitFor(url: string, timeoutMs = 60000) {
+async function checkPortInUse(port: number): Promise<boolean> {
+	try {
+		const conn = await Deno.connect({ hostname: '0.0.0.0', port });
+		conn.close();
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function killProcessOnPort(port: number) {
+	try {
+		// Find process listening on port using lsof or netstat
+		const cmd = spawn('lsof', [`-ti:${port}`], { stdio: 'pipe' });
+		let output = '';
+
+		cmd.stdout?.on('data', (data) => {
+			output += data.toString();
+		});
+
+		await new Promise((resolve, reject) => {
+			cmd.on('close', resolve);
+			cmd.on('error', reject);
+		});
+
+		const pids = output.trim().split('\n').filter(Boolean);
+		if (pids.length > 0) {
+			for (const pid of pids) {
+				try {
+					process.kill(parseInt(pid), 'SIGTERM');
+					// Brief wait for process to die
+					await new Promise((resolve) => setTimeout(resolve, 100));
+				} catch {
+					// Process might already be dead
+				}
+			}
+		}
+	} catch (error) {
+		// lsof might not be available, try fallback
+		console.log(`⚠️ Could not check processes on port ${port}, continuing...`);
+	}
+}
+
+async function waitFor(url: string, timeoutMs = 15000) {
 	const start = Date.now();
 	while (Date.now() - start < timeoutMs) {
 		const ok = await new Promise<boolean>((res) => {
@@ -29,7 +81,7 @@ async function waitFor(url: string, timeoutMs = 60000) {
 			req.on('error', () => res(false));
 		});
 		if (ok) return;
-		await new Promise((r) => setTimeout(r, 500));
+		await new Promise((r) => setTimeout(r, 200));
 	}
 	throw new Error(`Timeout waiting for ${url}`);
 }
@@ -45,6 +97,15 @@ export async function globalSetup() {
 	const frontendPort = Number(process.env.E2E_FRONTEND_PORT ?? 5173);
 	const artifacts = artifactsRoot();
 	process.env.E2E_ARTIFACTS = artifacts;
+
+	// Check for port conflicts and clean them up
+	const backendPortInUse = await checkPortInUse(backendPort);
+	const frontendPortInUse = await checkPortInUse(frontendPort);
+
+	if (backendPortInUse || frontendPortInUse) {
+		if (backendPortInUse) await killProcessOnPort(backendPort);
+		if (frontendPortInUse) await killProcessOnPort(frontendPort);
+	}
 
 	// Backend (optional skip)
 	if (!process.env.E2E_SKIP_BACKEND) {
@@ -66,11 +127,18 @@ export async function globalSetup() {
 	if (mode === 'dev') {
 		// Frontend dev server (optional skip)
 		if (!process.env.E2E_SKIP_FRONTEND) {
+			// Set VITE_API_URL for frontend to connect to backend
+			const frontendEnv = {
+				...process.env,
+				'VITE_API_URL': `http://host.docker.internal:${backendPort}`,
+			};
+
 			tee(
 				'deno',
 				['task', 'dev', '--host', `--port=${frontendPort}`, '--strictPort'],
 				path.join(artifacts, 'logs', 'frontend.log'),
 				path.join('..', 'frontend'),
+				frontendEnv,
 			);
 		}
 		await waitFor(`http://localhost:${frontendPort}`);
@@ -89,11 +157,69 @@ export async function globalSetup() {
 	}
 }
 
-export async function globalTeardown() {
-	for (const { p } of procs.reverse()) {
+async function findChildProcesses(parentPid: number): Promise<number[]> {
+	try {
+		// Use pgrep to find child processes
+		const cmd = spawn('pgrep', ['-P', parentPid.toString()], { stdio: 'pipe' });
+		let output = '';
+
+		cmd.stdout?.on('data', (data) => {
+			output += data.toString();
+		});
+
+		await new Promise((resolve, reject) => {
+			cmd.on('close', resolve);
+			cmd.on('error', reject);
+		});
+
+		return output.trim().split('\n').filter(Boolean).map(Number);
+	} catch {
+		return [];
+	}
+}
+
+async function killProcessTree(pid: number, name: string) {
+	try {
+		// Find all child processes
+		const children = await findChildProcesses(pid);
+
+		// Kill all child processes first
+		for (const childPid of children) {
+			try {
+				process.kill(childPid, 'SIGTERM');
+			} catch {
+				// Child might already be dead
+			}
+		}
+
+		// Then kill the parent
 		try {
-			p.kill('SIGTERM');
-		} catch {}
+			process.kill(pid, 'SIGTERM');
+
+			// Wait for graceful shutdown
+			await new Promise((resolve) => setTimeout(resolve, 200));
+
+			// Check if parent is still running
+			try {
+				process.kill(pid, 0); // Signal 0 just checks if process exists
+				process.kill(pid, 'SIGKILL'); // Force kill if still running
+			} catch {
+				// Process is already dead, which is good
+			}
+		} catch {
+			// Parent might already be dead
+		}
+	} catch (error) {
+		console.warn(`⚠️ Failed to kill process tree: ${name}`);
+	}
+}
+
+export async function globalTeardown() {
+	if (procs.length > 0) {
+		console.log(`🧹 Cleaning up ${procs.length} test processes...`);
+		for (const { name, p } of procs.reverse()) {
+			await killProcessTree(p.pid, name);
+		}
 	}
 }
 
