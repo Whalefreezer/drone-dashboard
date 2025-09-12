@@ -9,6 +9,7 @@
 		"e2e:ci": "deno task server:start && sleep 2 && CI=1 deno task playwright test --reporter=line,html; deno task server:stop",
 		"e2e:summary": "deno run -A src/summary.ts",
 		"e2e:run": "deno run -A src/e2e-runner.ts",
+		"preflight": "deno run -A src/preflight.ts",
 		"e2e:report": "deno task playwright show-report artifacts/report",
 		"verify": "deno fmt --check && deno lint && deno check -q"
 	},
