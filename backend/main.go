@@ -303,9 +303,9 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			})
 		})
 
-		// Catch-all static last
+		// Catch-all static last with SPA index fallback
 		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
-			staticHandler := apis.Static(static, false)
+			staticHandler := apis.Static(static, true)
 			return staticHandler(c)
 		})
 
