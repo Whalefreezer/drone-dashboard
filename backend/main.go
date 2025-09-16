@@ -138,6 +138,12 @@ func parseFlags() CLIFlags {
 		fmt.Printf(helpText(), os.Args[0])
 		os.Exit(0)
 	}
+
+	// Check for AUTH_TOKEN environment variable if not set via flag
+	if out.AuthToken == "" {
+		out.AuthToken = os.Getenv("AUTH_TOKEN")
+	}
+
 	return out
 }
 
@@ -165,6 +171,9 @@ Options:
   --pits-id string         Identifier for this pits instance
   --db-dir string          Directory for SQLite database files (empty = in-memory)
   --help                   Show this help message
+
+Environment Variables:
+  AUTH_TOKEN               Authentication token (alternative to --auth-token flag)
 
 Behavior Modes:
   Standalone (default): No auth-token provided
@@ -196,6 +205,9 @@ Examples:
 
   # Pits mode - connects to cloud server
   drone-dashboard -auth-token="your-token-here" -cloud-url="ws://cloud.example.com/ws"
+
+  # Using environment variable for auth token
+  AUTH_TOKEN="your-token-here" drone-dashboard
 `
 }
 
