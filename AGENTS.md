@@ -40,6 +40,3 @@ Quick Agent Rules
 ## Security & Configuration
 - Copy `.env.example` → `.env`. Frontend uses Vite `VITE_*` vars; backend accepts flags `-fpvtrackside-api` and `-port`. Do not commit secrets.
 
-## Worktree Helper
-- Purpose: quickly spin up a worktree at `/tree/<name>` on branch `feat/<name>` and copy existing `.env*` files.
-- Usage: `bash scripts/new-worktree.sh <name>` (or `chmod +x` once and run `scripts/new-worktree.sh <name>`).

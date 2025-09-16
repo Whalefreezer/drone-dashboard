@@ -3,14 +3,16 @@ package control
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pocketbase/pocketbase/core"
-	"sync"
 )
 
 // Conn wraps a gorilla websocket connection with JSON helpers.
@@ -74,6 +76,17 @@ func serveConn(c *Conn, hub *Hub) {
 		var env Envelope
 		c.ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 		if err := c.ws.ReadJSON(&env); err != nil {
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				if err := c.SendJSON(NewEnvelope(TypePing, "", nil)); err != nil {
+					slog.Warn("control.server.ping.error", "err", err)
+					if c.PitsID != "" {
+						hub.Unregister(c.PitsID, c)
+					}
+					return
+				}
+				continue
+			}
 			slog.Warn("control.server.read.error", "err", err)
 			if c.PitsID != "" {
 				hub.Unregister(c.PitsID, c)
@@ -96,6 +109,8 @@ func serveConn(c *Conn, hub *Hub) {
 			hub.deliver(env)
 		case TypePing:
 			_ = c.SendJSON(NewEnvelope(TypePong, env.ID, nil))
+		case TypePong:
+			// ignore
 		default:
 			// ignore
 		}

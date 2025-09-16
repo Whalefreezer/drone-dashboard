@@ -46,6 +46,22 @@
         },
         {
             "request": "launch",
+            "name": "Go (Remote)",
+            "type": "go",
+            "program": "${workspaceFolder}/backend/main.go",
+            "cwd": "${workspaceFolder}/backend",
+            "env": {},
+            "envFile": "${workspaceFolder}/backend/.env",
+            "args": [
+                "--port=8091",
+                "--fpvtrackside=http://127.0.0.1:8080",
+                "--cloud-url=wss://dashboard.roboenator.com/control",
+                "--log-level=trace",
+                "--ingest-enabled=false"
+            ]
+        },
+        {
+            "request": "launch",
             "name": "Go (Import)",
             "type": "go",
             "program": "${workspaceFolder}/backend/main.go",

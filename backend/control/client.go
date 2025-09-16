@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"sync"
 )
 
 // PitsClient maintains an outbound WS to cloud and handles fetch commands.
@@ -82,6 +84,13 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
 		var env Envelope
 		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 		if err := ws.ReadJSON(&env); err != nil {
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypePing, "", nil)); err != nil {
+					return err
+				}
+				continue
+			}
 			return err
 		}
 		switch env.Type {
@@ -91,6 +100,8 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
 			go p.handleFetch(&writeMu, ws, env)
 		case TypePing:
 			_ = safeWriteJSON(&writeMu, ws, NewEnvelope(TypePong, env.ID, nil))
+		case TypePong:
+			// ignore
 		default:
 			// ignore
 		}
