@@ -3,9 +3,7 @@ package control
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -13,6 +11,11 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pocketbase/pocketbase/core"
+)
+
+const (
+	serverPingInterval = 30 * time.Second
+	serverReadTimeout  = 60 * time.Second
 )
 
 // Conn wraps a gorilla websocket connection with JSON helpers.
@@ -58,6 +61,7 @@ func RegisterServer(app core.App, hub *Hub, authSecret string) {
 			if err != nil {
 				return c.InternalServerError("upgrade", err)
 			}
+			slog.Debug("control.server.connection", "remote", r.RemoteAddr)
 			conn := &Conn{ws: ws, hub: hub}
 
 			go serveConn(conn, hub)
@@ -71,28 +75,40 @@ func serveConn(c *Conn, hub *Hub) {
 	defer c.ws.Close()
 	// On connect, send hello
 	_ = c.SendJSON(NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, ServerTimeMs: time.Now().UnixMilli()}))
+	slog.Debug("control.server.hello_sent", "pitsId", c.PitsID)
+
+	stopPing := make(chan struct{})
+	ticker := time.NewTicker(serverPingInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopPing:
+				slog.Debug("control.server.ping.stop", "pitsId", c.PitsID, "reason", "loop_exit")
+				return
+			case <-ticker.C:
+				if err := c.SendJSON(NewEnvelope(TypePing, "", nil)); err != nil {
+					slog.Warn("control.server.ping.error", "err", err, "pitsId", c.PitsID)
+					_ = c.ws.Close()
+					return
+				}
+				slog.Debug("control.server.ping.sent", "pitsId", c.PitsID)
+			}
+		}
+	}()
+	defer close(stopPing)
 
 	for {
 		var env Envelope
-		c.ws.SetReadDeadline(time.Now().Add(60 * time.Second))
+		c.ws.SetReadDeadline(time.Now().Add(serverReadTimeout))
 		if err := c.ws.ReadJSON(&env); err != nil {
-			var netErr net.Error
-			if errors.As(err, &netErr) && netErr.Timeout() {
-				if err := c.SendJSON(NewEnvelope(TypePing, "", nil)); err != nil {
-					slog.Warn("control.server.ping.error", "err", err)
-					if c.PitsID != "" {
-						hub.Unregister(c.PitsID, c)
-					}
-					return
-				}
-				continue
-			}
-			slog.Warn("control.server.read.error", "err", err)
+			slog.Warn("control.server.read.error", "err", err, "pitsId", c.PitsID)
 			if c.PitsID != "" {
 				hub.Unregister(c.PitsID, c)
 			}
 			return
 		}
+		slog.Debug("control.server.frame", "type", env.Type, "id", env.ID, "pitsId", c.PitsID)
 
 		switch env.Type {
 		case TypeHello:
@@ -104,10 +120,13 @@ func serveConn(c *Conn, hub *Hub) {
 			if c.PitsID == "" {
 				c.PitsID = "default"
 			}
+			slog.Debug("control.server.register", "pitsId", c.PitsID)
 			hub.Register(c.PitsID, c)
 		case TypeResponse, TypeError:
+			slog.Debug("control.server.deliver", "id", env.ID, "type", env.Type, "pitsId", c.PitsID)
 			hub.deliver(env)
 		case TypePing:
+			slog.Debug("control.server.pong", "id", env.ID, "pitsId", c.PitsID)
 			_ = c.SendJSON(NewEnvelope(TypePong, env.ID, nil))
 		case TypePong:
 			// ignore

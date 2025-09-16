@@ -31,6 +31,7 @@ type WSConn interface {
 func (h *Hub) Register(pitsID string, c *Conn) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	slog.Debug("control.hub.register", "pitsId", pitsID)
 	if prev, ok := h.conns[pitsID]; ok {
 		_ = prev.Close()
 	}
@@ -40,6 +41,7 @@ func (h *Hub) Register(pitsID string, c *Conn) {
 func (h *Hub) Unregister(pitsID string, c *Conn) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	slog.Debug("control.hub.unregister", "pitsId", pitsID)
 	if cur, ok := h.conns[pitsID]; ok {
 		if curc, ok2 := cur.(*Conn); ok2 && curc == c {
 			delete(h.conns, pitsID)

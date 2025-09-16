@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,6 +13,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	clientPingInterval = 30 * time.Second
+	clientReadTimeout  = 60 * time.Second
 )
 
 // PitsClient maintains an outbound WS to cloud and handles fetch commands.
@@ -44,6 +47,7 @@ func (p *PitsClient) Start(ctx context.Context) {
 	backoff := time.Second
 	for {
 		if ctx.Err() != nil {
+			slog.Debug("control.pits.context_done")
 			return
 		}
 		if err := p.runOnce(ctx); err != nil {
@@ -70,6 +74,7 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
 	q.Set("role", "pits")
 	q.Set("version", "1")
 	u.RawQuery = q.Encode()
+	slog.Debug("control.pits.dial", "url", u.String(), "pitsId", p.PitsID)
 	ws, _, err := dialer.DialContext(ctx, u.String(), hdr)
 	if err != nil {
 		return err
@@ -78,21 +83,43 @@ func (p *PitsClient) runOnce(ctx context.Context) error {
 	// serialize all writes to this websocket
 	var writeMu sync.Mutex
 	// Send hello
-	_ = safeWriteJSON(&writeMu, ws, NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}}))
+	if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}})); err != nil {
+		return err
+	}
+	slog.Debug("control.pits.hello_sent", "pitsId", p.PitsID)
+
+	stopPing := make(chan struct{})
+	ticker := time.NewTicker(clientPingInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Debug("control.pits.ping.stop", "reason", "ctx")
+				return
+			case <-stopPing:
+				slog.Debug("control.pits.ping.stop", "reason", "loop_exit")
+				return
+			case <-ticker.C:
+				if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypePing, "", nil)); err != nil {
+					slog.Warn("control.pits.ping.error", "err", err)
+					_ = ws.Close()
+					return
+				}
+				slog.Debug("control.pits.ping.sent")
+			}
+		}
+	}()
+	defer close(stopPing)
 
 	for {
 		var env Envelope
-		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
+		ws.SetReadDeadline(time.Now().Add(clientReadTimeout))
 		if err := ws.ReadJSON(&env); err != nil {
-			var netErr net.Error
-			if errors.As(err, &netErr) && netErr.Timeout() {
-				if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypePing, "", nil)); err != nil {
-					return err
-				}
-				continue
-			}
+			slog.Warn("control.pits.read.error", "err", err)
 			return err
 		}
+		slog.Debug("control.pits.frame", "type", env.Type, "id", env.ID)
 		switch env.Type {
 		case TypeHello:
 			// ignore
@@ -123,6 +150,7 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "BAD_REQUEST", Message: "invalid fetch"}))
 		return
 	}
+	slog.Debug("control.pits.fetch", "path", f.Path, "timeoutMs", f.TimeoutMs)
 	if strings.ToUpper(f.Method) != "GET" && strings.ToUpper(f.Method) != "HEAD" {
 		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "method not allowed"}))
 		return
