@@ -1,6 +1,7 @@
 package control
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"log/slog"
@@ -77,13 +78,26 @@ func serveConn(c *Conn, hub *Hub) {
 	_ = c.SendJSON(NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, ServerTimeMs: time.Now().UnixMilli()}))
 	slog.Debug("control.server.hello_sent", "pitsId", c.PitsID)
 
-	stopPing := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stopPing := c.startPingLoop(ctx)
+	defer stopPing()
+
+	_ = c.consumeFrames(hub)
+}
+
+func (c *Conn) startPingLoop(ctx context.Context) func() {
+	stop := make(chan struct{})
+	var once sync.Once
 	ticker := time.NewTicker(serverPingInterval)
 	go func() {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-stopPing:
+			case <-ctx.Done():
+				slog.Debug("control.server.ping.stop", "pitsId", c.PitsID, "reason", "ctx")
+				return
+			case <-stop:
 				slog.Debug("control.server.ping.stop", "pitsId", c.PitsID, "reason", "loop_exit")
 				return
 			case <-ticker.C:
@@ -96,8 +110,12 @@ func serveConn(c *Conn, hub *Hub) {
 			}
 		}
 	}()
-	defer close(stopPing)
+	return func() {
+		once.Do(func() { close(stop) })
+	}
+}
 
+func (c *Conn) consumeFrames(hub *Hub) error {
 	for {
 		var env Envelope
 		c.ws.SetReadDeadline(time.Now().Add(serverReadTimeout))
@@ -106,34 +124,40 @@ func serveConn(c *Conn, hub *Hub) {
 			if c.PitsID != "" {
 				hub.Unregister(c.PitsID, c)
 			}
-			return
+			return err
 		}
 		slog.Debug("control.server.frame", "type", env.Type, "id", env.ID, "pitsId", c.PitsID)
-
-		switch env.Type {
-		case TypeHello:
-			// Extract pits id
-			b, _ := json.Marshal(env.Payload)
-			var h Hello
-			_ = json.Unmarshal(b, &h)
-			c.PitsID = h.PitsID
-			if c.PitsID == "" {
-				c.PitsID = "default"
-			}
-			slog.Debug("control.server.register", "pitsId", c.PitsID)
-			hub.Register(c.PitsID, c)
-		case TypeResponse, TypeError:
-			slog.Debug("control.server.deliver", "id", env.ID, "type", env.Type, "pitsId", c.PitsID)
-			hub.deliver(env)
-		case TypePing:
-			slog.Debug("control.server.pong", "id", env.ID, "pitsId", c.PitsID)
-			_ = c.SendJSON(NewEnvelope(TypePong, env.ID, nil))
-		case TypePong:
-			// ignore
-		default:
-			// ignore
-		}
+		c.handleEnvelope(hub, env)
 	}
+}
+
+func (c *Conn) handleEnvelope(hub *Hub, env Envelope) {
+	switch env.Type {
+	case TypeHello:
+		c.registerPits(hub, env)
+	case TypeResponse, TypeError:
+		slog.Debug("control.server.deliver", "id", env.ID, "type", env.Type, "pitsId", c.PitsID)
+		hub.deliver(env)
+	case TypePing:
+		slog.Debug("control.server.pong", "id", env.ID, "pitsId", c.PitsID)
+		_ = c.SendJSON(NewEnvelope(TypePong, env.ID, nil))
+	case TypePong:
+		// ignore
+	default:
+		// ignore
+	}
+}
+
+func (c *Conn) registerPits(hub *Hub, env Envelope) {
+	b, _ := json.Marshal(env.Payload)
+	var h Hello
+	_ = json.Unmarshal(b, &h)
+	c.PitsID = h.PitsID
+	if c.PitsID == "" {
+		c.PitsID = "default"
+	}
+	slog.Debug("control.server.register", "pitsId", c.PitsID)
+	hub.Register(c.PitsID, c)
 }
 
 // DecodeResponse decodes a control Response into status, headers, and body bytes.

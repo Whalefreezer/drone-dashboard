@@ -61,78 +61,16 @@ func (p *PitsClient) Start(ctx context.Context) {
 }
 
 func (p *PitsClient) runOnce(ctx context.Context) error {
-	dialer := websocket.Dialer{}
-	hdr := http.Header{}
-	if p.AuthToken != "" {
-		hdr.Set("Authorization", "Bearer "+p.AuthToken)
-	}
-	u, err := url.Parse(p.CloudURL)
-	if err != nil {
-		return err
-	}
-	q := u.Query()
-	q.Set("role", "pits")
-	q.Set("version", "1")
-	u.RawQuery = q.Encode()
-	slog.Debug("control.pits.dial", "url", u.String(), "pitsId", p.PitsID)
-	ws, _, err := dialer.DialContext(ctx, u.String(), hdr)
+	ws, writeMu, err := p.connect(ctx)
 	if err != nil {
 		return err
 	}
 	defer ws.Close()
-	// serialize all writes to this websocket
-	var writeMu sync.Mutex
-	// Send hello
-	if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}})); err != nil {
-		return err
-	}
-	slog.Debug("control.pits.hello_sent", "pitsId", p.PitsID)
 
-	stopPing := make(chan struct{})
-	ticker := time.NewTicker(clientPingInterval)
-	go func() {
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				slog.Debug("control.pits.ping.stop", "reason", "ctx")
-				return
-			case <-stopPing:
-				slog.Debug("control.pits.ping.stop", "reason", "loop_exit")
-				return
-			case <-ticker.C:
-				if err := safeWriteJSON(&writeMu, ws, NewEnvelope(TypePing, "", nil)); err != nil {
-					slog.Warn("control.pits.ping.error", "err", err)
-					_ = ws.Close()
-					return
-				}
-				slog.Debug("control.pits.ping.sent")
-			}
-		}
-	}()
-	defer close(stopPing)
+	stopPing := p.startPingLoop(ctx, ws, writeMu)
+	defer stopPing()
 
-	for {
-		var env Envelope
-		ws.SetReadDeadline(time.Now().Add(clientReadTimeout))
-		if err := ws.ReadJSON(&env); err != nil {
-			slog.Warn("control.pits.read.error", "err", err)
-			return err
-		}
-		slog.Debug("control.pits.frame", "type", env.Type, "id", env.ID)
-		switch env.Type {
-		case TypeHello:
-			// ignore
-		case TypeFetch:
-			go p.handleFetch(&writeMu, ws, env)
-		case TypePing:
-			_ = safeWriteJSON(&writeMu, ws, NewEnvelope(TypePong, env.ID, nil))
-		case TypePong:
-			// ignore
-		default:
-			// ignore
-		}
-	}
+	return p.consumeFrames(ctx, ws, writeMu)
 }
 
 // safeWriteJSON serializes writes across goroutines and sets a write deadline.
@@ -197,6 +135,91 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 	}
 	payload := Response{Status: resp.StatusCode, Headers: hdrs, BodyB64: base64.StdEncoding.EncodeToString(body)}
 	_ = safeWriteJSON(mu, ws, NewEnvelope(TypeResponse, env.ID, payload))
+}
+
+func (p *PitsClient) connect(ctx context.Context) (*websocket.Conn, *sync.Mutex, error) {
+	dialer := websocket.Dialer{}
+	hdr := http.Header{}
+	if p.AuthToken != "" {
+		hdr.Set("Authorization", "Bearer "+p.AuthToken)
+	}
+	u, err := url.Parse(p.CloudURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	q := u.Query()
+	q.Set("role", "pits")
+	q.Set("version", "1")
+	u.RawQuery = q.Encode()
+	slog.Debug("control.pits.dial", "url", u.String(), "pitsId", p.PitsID)
+	ws, _, err := dialer.DialContext(ctx, u.String(), hdr)
+	if err != nil {
+		return nil, nil, err
+	}
+	writeMu := &sync.Mutex{}
+	if err := safeWriteJSON(writeMu, ws, NewEnvelope(TypeHello, "", Hello{ProtocolVersion: 1, PitsID: p.PitsID, SWVersion: "dev", Features: []string{"etag"}})); err != nil {
+		_ = ws.Close()
+		return nil, nil, err
+	}
+	slog.Debug("control.pits.hello_sent", "pitsId", p.PitsID)
+	return ws, writeMu, nil
+}
+
+func (p *PitsClient) startPingLoop(ctx context.Context, ws *websocket.Conn, writeMu *sync.Mutex) func() {
+	stop := make(chan struct{})
+	var once sync.Once
+	ticker := time.NewTicker(clientPingInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Debug("control.pits.ping.stop", "reason", "ctx")
+				return
+			case <-stop:
+				slog.Debug("control.pits.ping.stop", "reason", "loop_exit")
+				return
+			case <-ticker.C:
+				if err := safeWriteJSON(writeMu, ws, NewEnvelope(TypePing, "", nil)); err != nil {
+					slog.Warn("control.pits.ping.error", "err", err)
+					_ = ws.Close()
+					return
+				}
+				slog.Debug("control.pits.ping.sent")
+			}
+		}
+	}()
+	return func() {
+		once.Do(func() { close(stop) })
+	}
+}
+
+func (p *PitsClient) consumeFrames(ctx context.Context, ws *websocket.Conn, writeMu *sync.Mutex) error {
+	for {
+		var env Envelope
+		ws.SetReadDeadline(time.Now().Add(clientReadTimeout))
+		if err := ws.ReadJSON(&env); err != nil {
+			slog.Warn("control.pits.read.error", "err", err)
+			return err
+		}
+		slog.Debug("control.pits.frame", "type", env.Type, "id", env.ID)
+		p.handleEnvelope(writeMu, ws, env)
+	}
+}
+
+func (p *PitsClient) handleEnvelope(writeMu *sync.Mutex, ws *websocket.Conn, env Envelope) {
+	switch env.Type {
+	case TypeHello:
+		// ignore
+	case TypeFetch:
+		go p.handleFetch(writeMu, ws, env)
+	case TypePing:
+		_ = safeWriteJSON(writeMu, ws, NewEnvelope(TypePong, env.ID, nil))
+	case TypePong:
+		// ignore
+	default:
+		// ignore
+	}
 }
 
 func ioReadAllCap(r io.Reader, max int64) ([]byte, error) {
