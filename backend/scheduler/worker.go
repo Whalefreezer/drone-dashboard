@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
 
 	"drone-dashboard/ingest"
+
 	"github.com/pocketbase/dbx"
 )
 
@@ -21,6 +23,34 @@ type dueRow struct {
 	NextDueAt  int64  `db:"nextDueAt"`
 	IntervalMs int    `db:"intervalMs"`
 	Priority   int    `db:"priority"`
+}
+
+var targetDependencies = map[string][]string{
+	"event":    {},
+	"pilots":   {"event"},
+	"channels": {"event"},
+	"rounds":   {"event"},
+	"race":     {"event", "rounds", "pilots", "channels"},
+	"results":  {"event", "rounds", "pilots", "channels"},
+}
+
+// shouldDeferTarget returns true when the row has upstream dependencies that aren't ready yet.
+func (m *Manager) shouldDeferTarget(rw dueRow) (int64, string, bool) {
+	deps := append([]string{}, targetDependencies[rw.Type]...)
+	if len(deps) == 0 {
+		return 0, "", false
+	}
+	// Deduplicate while preserving order so status messaging stays stable.
+	seen := make(map[string]struct{}, len(deps))
+	uniq := make([]string, 0, len(deps))
+	for _, d := range deps {
+		if _, ok := seen[d]; ok {
+			continue
+		}
+		seen[d] = struct{}{}
+		uniq = append(uniq, d)
+	}
+	return m.deferUntilTargetsReady(rw.Event, uniq)
 }
 
 func (m *Manager) workerLimiter() chan struct{} {
@@ -82,13 +112,9 @@ func (m *Manager) fetchDueRows(limit int) ([]dueRow, error) {
 }
 
 func (m *Manager) processDueRow(rw dueRow) {
-	// Gate non-event targets on upstream health (event target represents upstream availability)
-	if rw.Type != "event" {
-		if deferUntil, shouldDefer := m.deferUntilEventHealthy(rw.Event); shouldDefer {
-			// Defer this target until after the event probe next runs
-			m.rescheduleRowCustom(rw.ID, deferUntil, "blocked: upstream unavailable")
-			return
-		}
+	if nextDue, status, blocked := m.shouldDeferTarget(rw); blocked {
+		m.rescheduleRowCustom(rw.ID, nextDue, status)
+		return
 	}
 
 	t := rw.Type
@@ -193,35 +219,63 @@ func max(a, b int) int {
 	return b
 }
 
-// deferUntilEventHealthy decides whether a non-event target should be deferred until the upstream is healthy.
-// It returns (deferUntilMs, true) if the row should be deferred; otherwise (0, false).
-func (m *Manager) deferUntilEventHealthy(eventPBID string) (int64, bool) {
-	// If we don't know the event yet, defer non-event ingestion to avoid thrash until discovery seeds it.
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// deferUntilTargetsReady ensures prerequisite ingest targets have completed successfully before running.
+// It returns (nextDueAtMs, status, true) if the row should be rescheduled to wait for dependencies.
+func (m *Manager) deferUntilTargetsReady(eventPBID string, deps []string) (int64, string, bool) {
+	if len(deps) == 0 {
+		return 0, "", false
+	}
+	now := time.Now()
 	if eventPBID == "" {
-		return time.Now().Add(m.Cfg.FullInterval).UnixMilli(), true
+		next := now.Add(m.Cfg.FullInterval).UnixMilli()
+		return next, "waiting for event", true
 	}
-	// Look up the event target row for this event
-	type healthRow struct {
-		LastStatus string `db:"lastStatus"`
-		NextDueAt  int64  `db:"nextDueAt"`
-	}
-	var hr healthRow
-	q := `SELECT lastStatus, nextDueAt FROM ingest_targets WHERE type = 'event' AND event = {:e} LIMIT 1`
-	if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"e": eventPBID}).One(&hr); err != nil {
-		// If no event target yet, defer until next discovery pass
-		return time.Now().Add(m.Cfg.FullInterval).UnixMilli(), true
-	}
-	// If event is not OK, defer non-event rows until shortly after the next event probe.
-	if hr.LastStatus != "ok" {
-		// Nudge a bit after event's nextDueAt to allow the probe to run first
-		deferAt := time.UnixMilli(hr.NextDueAt).Add(150 * time.Millisecond)
-		// Guard against past times; if nextDueAt already elapsed, push by a second
-		if deferAt.Before(time.Now()) {
-			deferAt = time.Now().Add(1 * time.Second)
+	nowMs := now.UnixMilli()
+	var (
+		nextDue int64
+		waiting []string
+	)
+	for _, depType := range deps {
+		var dep struct {
+			ID         string `db:"id"`
+			LastStatus string `db:"lastStatus"`
+			NextDueAt  int64  `db:"nextDueAt"`
 		}
-		return deferAt.UnixMilli(), true
+		query := `SELECT id, lastStatus, nextDueAt FROM ingest_targets WHERE type = {:type} AND event = {:event} LIMIT 1`
+		if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"type": depType, "event": eventPBID}).One(&dep); err != nil || dep.ID == "" {
+			waiting = append(waiting, depType)
+			nextDue = max64(nextDue, now.Add(m.Cfg.FullInterval).UnixMilli())
+			if err != nil {
+				slog.Warn("scheduler.dependencies.lookup.error", "dep", depType, "event", eventPBID, "err", err)
+			}
+			continue
+		}
+		if dep.LastStatus != "ok" {
+			waiting = append(waiting, depType)
+			candidate := dep.NextDueAt
+			if candidate == 0 || candidate <= nowMs {
+				candidate = now.Add(time.Second).UnixMilli()
+			} else {
+				candidate = time.UnixMilli(candidate).Add(150 * time.Millisecond).UnixMilli()
+			}
+			nextDue = max64(nextDue, candidate)
+		}
 	}
-	return 0, false
+	if len(waiting) == 0 {
+		return 0, "", false
+	}
+	if nextDue == 0 {
+		nextDue = now.Add(time.Second).UnixMilli()
+	}
+	status := fmt.Sprintf("waiting for %s", strings.Join(waiting, ","))
+	return nextDue, status, true
 }
 
 // rescheduleRowCustom updates nextDueAt and optionally lastStatus without changing lastFetchedAt.
