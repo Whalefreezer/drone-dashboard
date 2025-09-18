@@ -65,7 +65,7 @@ increase frequency, etc.
 
 - Generic settings table (name TBD, e.g., `server_settings`)
   - `key` (text, unique): e.g., `scheduler.enabled`, `scheduler.concurrency`,
-    `scheduler.burst`, `scheduler.fullIntervalMs`, `scheduler.raceActiveMs`,
+    `scheduler.fullIntervalMs`, `scheduler.raceActiveMs`,
     `scheduler.raceIdleMs`, `scheduler.resultsMs`, `scheduler.jitterMs`
   - `value` (text or JSON): value for the key; parsed at read time
 

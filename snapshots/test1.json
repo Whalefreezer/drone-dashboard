@@ -10593,13 +10593,6 @@
       {
         "collectionId": "pbc_1236061419",
         "collectionName": "server_settings",
-        "id": "gbsums1t7s5jp43",
-        "key": "scheduler.burst",
-        "value": "2"
-      },
-      {
-        "collectionId": "pbc_1236061419",
-        "collectionName": "server_settings",
         "id": "6f93nehl3rn91at",
         "key": "scheduler.raceActiveMs",
         "value": "200"

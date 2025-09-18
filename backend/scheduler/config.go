@@ -16,9 +16,8 @@ type Config struct {
 	RaceIdle         time.Duration
 	ResultsInterval  time.Duration
 	ChannelsInterval time.Duration
-	Concurrency      int
-	Burst            int
 	JitterMs         int
+	Concurrency      int
 }
 
 func (m *Manager) ensureDefaultSettings() {
@@ -32,8 +31,7 @@ func (m *Manager) ensureDefaultSettings() {
 		"scheduler.resultsMs":          "0",
 		"scheduler.channelsIntervalMs": "60000",
 		"scheduler.jitterMs":           "150",
-		"scheduler.burst":              "2",
-		"scheduler.concurrency":        "1",
+		"scheduler.concurrency":        "2",
 	}
 	col, err := m.App.FindCollectionByNameOrId("server_settings")
 	if err != nil {
@@ -72,7 +70,6 @@ func (m *Manager) loadConfigFromDB() {
 	m.Cfg.RaceIdle = time.Duration(readInt("scheduler.raceIdleMs", 5000)) * time.Millisecond
 	m.Cfg.ResultsInterval = time.Duration(readInt("scheduler.resultsMs", 2000)) * time.Millisecond
 	m.Cfg.ChannelsInterval = time.Duration(readInt("scheduler.channelsIntervalMs", 60000)) * time.Millisecond
-	m.Cfg.Burst = readInt("scheduler.burst", 2)
-	m.Cfg.Concurrency = readInt("scheduler.concurrency", 1)
+	m.Cfg.Concurrency = readInt("scheduler.concurrency", 2)
 	m.Cfg.JitterMs = readInt("scheduler.jitterMs", 150)
 }

@@ -79,7 +79,7 @@ Key code:
 - `scheduler.raceActiveMs=200`
 - `scheduler.raceIdleMs=5000`
 - `scheduler.resultsMs=2000`
-- `scheduler.burst=2`, `scheduler.jitterMs=150`
+- `scheduler.concurrency=2`, `scheduler.jitterMs=150`
 
 ## Inefficiencies and Clunkiness
 
@@ -105,8 +105,8 @@ Key code:
 ## Improvements (Proposed)
 
 1. Query only due targets
-   - Replace fetch‑all with: `enabled=1 AND nextDueAt <= now` ordered by
-     `(nextDueAt ASC, priority DESC)` with `LIMIT burst`.
+   - Replace fetch-all with: `enabled=1 AND nextDueAt <= now` ordered by
+     `(nextDueAt ASC, priority DESC)` with `LIMIT concurrency`.
 2. Skip no‑op writes
    - Cache last current `(raceId, order)` per event; only run bulk `UPDATE` and
      KV publish when it changes.

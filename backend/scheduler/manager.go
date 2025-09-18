@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"drone-dashboard/ingest"
@@ -13,6 +14,9 @@ type Manager struct {
 	App     core.App
 	Service *ingest.Service
 	Cfg     Config
+
+	workerSlotsOnce sync.Once
+	workerSlots     chan struct{}
 }
 
 func NewManager(app core.App, service *ingest.Service, cfg Config) *Manager {

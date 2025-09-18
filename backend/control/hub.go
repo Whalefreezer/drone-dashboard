@@ -7,15 +7,17 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // Hub manages active pits connections and request/response correlation.
 type Hub struct {
-	mu      sync.RWMutex
-	conns   map[string]WSConn // pitsId -> connection
-	pending map[string]chan Envelope
-	timeout time.Duration
+	mu       sync.RWMutex
+	conns    map[string]WSConn // pitsId -> connection
+	pending  map[string]chan Envelope
+	timeout  time.Duration
+	inflight atomic.Int64
 }
 
 func NewHub() *Hub {
@@ -52,12 +54,26 @@ func (h *Hub) Unregister(pitsID string, c *Conn) {
 
 func (h *Hub) SetTimeout(d time.Duration) { h.timeout = d }
 
-func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (Response, error) {
+func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Response, err error) {
+	start := time.Now()
+	started := h.inflight.Add(1)
+	defer func() {
+		remaining := h.inflight.Add(-1)
+		fields := []any{"pitsId", pitsID, "path", f.Path, "latencyMs", time.Since(start).Milliseconds(), "inflight", remaining, "startedInflight", started}
+		if err != nil {
+			fields = append(fields, "error", err.Error())
+		} else {
+			fields = append(fields, "status", resp.Status)
+		}
+		slog.Debug("control.hub.fetch", fields...)
+	}()
+
 	h.mu.RLock()
 	connRaw, ok := h.conns[pitsID]
 	h.mu.RUnlock()
 	if !ok {
-		return Response{}, fmt.Errorf("no pits connection for %s", pitsID)
+		err = fmt.Errorf("no pits connection for %s", pitsID)
+		return
 	}
 	id := fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Unix())
 	env := NewEnvelope(TypeFetch, id, f)
@@ -73,23 +89,25 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (Response, er
 		h.mu.Unlock()
 	}()
 
-	if err := connRaw.SendJSON(env); err != nil {
-		return Response{}, err
+	if err = connRaw.SendJSON(env); err != nil {
+		return
 	}
 
 	select {
 	case <-ctx.Done():
-		return Response{}, ctx.Err()
+		err = ctx.Err()
+		return
 	case envResp := <-ch:
 		switch envResp.Type {
 		case TypeResponse:
 			var r Response
 			// envResp.Payload is raw json; re-marshal to bytes then unmarshal
 			b, _ := json.Marshal(envResp.Payload)
-			if err := json.Unmarshal(b, &r); err != nil {
-				return Response{}, err
+			if err = json.Unmarshal(b, &r); err != nil {
+				return
 			}
-			return r, nil
+			resp = r
+			return
 		case TypeError:
 			b, _ := json.Marshal(envResp.Payload)
 			var er Error
@@ -97,13 +115,20 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (Response, er
 			if er.Message == "" {
 				er.Message = "remote error"
 			}
-			return Response{}, errors.New(er.Message)
+			err = errors.New(er.Message)
+			return
 		default:
-			return Response{}, fmt.Errorf("unexpected response type: %s", envResp.Type)
+			err = fmt.Errorf("unexpected response type: %s", envResp.Type)
+			return
 		}
 	case <-time.After(h.timeout):
-		return Response{}, fmt.Errorf("timeout waiting for response")
+		err = fmt.Errorf("timeout waiting for response")
+		return
 	}
+}
+
+func (h *Hub) InFlight() int64 {
+	return h.inflight.Load()
 }
 
 // deliver is called by the server when a message with matching id arrives.

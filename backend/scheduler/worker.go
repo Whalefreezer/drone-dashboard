@@ -11,25 +11,38 @@ import (
 
 // -------------------- Worker --------------------
 
+type dueRow struct {
+	ID         string `db:"id"`
+	Type       string `db:"type"`
+	SourceID   string `db:"sourceId"`
+	Event      string `db:"event"`
+	NextDueAt  int64  `db:"nextDueAt"`
+	IntervalMs int    `db:"intervalMs"`
+	Priority   int    `db:"priority"`
+}
+
+func (m *Manager) workerLimiter() chan struct{} {
+	m.workerSlotsOnce.Do(func() {
+		limit := m.Cfg.Concurrency
+		if limit <= 0 {
+			limit = 1
+		}
+		m.workerSlots = make(chan struct{}, limit)
+	})
+	return m.workerSlots
+}
+
 func (m *Manager) drainOnce() {
-	nowMs := time.Now().UnixMilli()
-	// Query only due & enabled targets ordered by nextDueAt, priority
-	type dueRow struct {
-		ID         string `db:"id"`
-		Type       string `db:"type"`
-		SourceID   string `db:"sourceId"`
-		Event      string `db:"event"`
-		NextDueAt  int64  `db:"nextDueAt"`
-		IntervalMs int    `db:"intervalMs"`
-		Priority   int    `db:"priority"`
+	limiter := m.workerLimiter()
+	if limiter == nil {
+		return
 	}
-	var rows []dueRow
-	q := `SELECT id, type, sourceId, event, nextDueAt, intervalMs, priority
-	      FROM ingest_targets
-	      WHERE enabled = 1 AND nextDueAt <= {:now}
-	      ORDER BY nextDueAt ASC, priority DESC
-	      LIMIT {:lim}`
-	if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": m.Cfg.Burst}).All(&rows); err != nil {
+	available := m.availableSlots(limiter)
+	if available <= 0 {
+		return
+	}
+	rows, err := m.fetchDueRows(available)
+	if err != nil {
 		slog.Warn("scheduler.worker.query.error", "err", err)
 		return
 	}
@@ -37,40 +50,70 @@ func (m *Manager) drainOnce() {
 		return
 	}
 	for _, rw := range rows {
-		// Gate non-event targets on upstream health (event target represents upstream availability)
-		if rw.Type != "event" {
-			if deferUntil, shouldDefer := m.deferUntilEventHealthy(rw.Event); shouldDefer {
-				// Defer this target until after the event probe next runs
-				m.rescheduleRowCustom(rw.ID, deferUntil, "blocked: upstream unavailable")
-				continue
-			}
-		}
-		t := rw.Type
-		sid := rw.SourceID
-		// Resolve event sourceId from event relation id
-		eventSourceId := m.resolveEventSourceIdByPBID(rw.Event)
-		var runErr error
-		switch t {
-		case "event":
-			runErr = m.Service.IngestEventMeta(eventSourceId)
-		case "pilots":
-			runErr = m.Service.IngestPilots(eventSourceId)
-		case "channels":
-			runErr = m.Service.IngestChannels(eventSourceId)
-		case "rounds":
-			runErr = m.Service.IngestRounds(eventSourceId)
-		case "race":
-			runErr = m.Service.IngestRace(eventSourceId, sid)
-		case "results":
-			_, runErr = m.Service.IngestResults(eventSourceId)
-		default:
-			slog.Warn("scheduler.worker.unknownType", "type", t)
-		}
-		if runErr != nil {
-			slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
-		}
-		m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)
+		limiter <- struct{}{}
+		go func(r dueRow) {
+			defer func() { <-limiter }()
+			m.processDueRow(r)
+		}(rw)
 	}
+}
+
+func (m *Manager) availableSlots(limiter chan struct{}) int {
+	return cap(limiter) - len(limiter)
+}
+
+func (m *Manager) fetchDueRows(limit int) ([]dueRow, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	nowMs := time.Now().UnixMilli()
+	var rows []dueRow
+	q := `SELECT id, type, sourceId, event, nextDueAt, intervalMs, priority
+		      FROM ingest_targets
+		      WHERE enabled = 1 AND nextDueAt <= {:now}
+		      ORDER BY nextDueAt ASC, priority DESC
+		      LIMIT {:lim}`
+	if err := m.App.DB().NewQuery(q).Bind(dbx.Params{"now": nowMs, "lim": limit}).All(&rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (m *Manager) processDueRow(rw dueRow) {
+	// Gate non-event targets on upstream health (event target represents upstream availability)
+	if rw.Type != "event" {
+		if deferUntil, shouldDefer := m.deferUntilEventHealthy(rw.Event); shouldDefer {
+			// Defer this target until after the event probe next runs
+			m.rescheduleRowCustom(rw.ID, deferUntil, "blocked: upstream unavailable")
+			return
+		}
+	}
+
+	t := rw.Type
+	sid := rw.SourceID
+	// Resolve event sourceId from event relation id
+	eventSourceId := m.resolveEventSourceIdByPBID(rw.Event)
+	var runErr error
+	switch t {
+	case "event":
+		runErr = m.Service.IngestEventMeta(eventSourceId)
+	case "pilots":
+		runErr = m.Service.IngestPilots(eventSourceId)
+	case "channels":
+		runErr = m.Service.IngestChannels(eventSourceId)
+	case "rounds":
+		runErr = m.Service.IngestRounds(eventSourceId)
+	case "race":
+		runErr = m.Service.IngestRace(eventSourceId, sid)
+	case "results":
+		_, runErr = m.Service.IngestResults(eventSourceId)
+	default:
+		slog.Warn("scheduler.worker.unknownType", "type", t)
+	}
+	if runErr != nil {
+		slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
+	}
+	m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)
 }
 
 // rescheduleRow updates scheduling fields using the DAO to ensure subscriptions trigger.
