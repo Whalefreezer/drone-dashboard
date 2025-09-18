@@ -1,11 +1,13 @@
 package scheduler
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
 	"time"
 
+	"drone-dashboard/ingest"
 	"github.com/pocketbase/dbx"
 )
 
@@ -111,7 +113,12 @@ func (m *Manager) processDueRow(rw dueRow) {
 		slog.Warn("scheduler.worker.unknownType", "type", t)
 	}
 	if runErr != nil {
-		slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
+		var missing *ingest.EntityNotFoundError
+		if errors.As(runErr, &missing) {
+			slog.Info("scheduler.worker.dependencyMissing", "type", t, "sourceId", sid, "event", rw.Event, "collection", missing.Collection, "missingSourceId", missing.SourceID, "error", runErr)
+		} else {
+			slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
+		}
 	}
 	m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)
 }
@@ -131,10 +138,14 @@ func (m *Manager) rescheduleRow(id string, intervalMs int, runErr error) {
 		return
 	}
 
-	hadError := runErr != nil
-	if hadError {
-		// Update fields for error case
-		record.Set("lastStatus", fmt.Sprintf("error: %v", runErr))
+	if runErr != nil {
+		// Update fields for error case while distinguishing dependency gaps
+		var missing *ingest.EntityNotFoundError
+		if errors.As(runErr, &missing) {
+			record.Set("lastStatus", fmt.Sprintf("waiting for %s:%s", missing.Collection, missing.SourceID))
+		} else {
+			record.Set("lastStatus", fmt.Sprintf("error: %v", runErr))
+		}
 		record.Set("nextDueAt", m.nextDueAt(now, interval, true))
 	} else {
 		// Update fields for success case

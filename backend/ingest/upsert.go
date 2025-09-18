@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -9,6 +10,22 @@ import (
 )
 
 const sourceName = "fpvtrackside"
+
+// EntityNotFoundError indicates that an expected record was not present in PocketBase.
+type EntityNotFoundError struct {
+	Collection string
+	SourceID   string
+}
+
+func (e *EntityNotFoundError) Error() string {
+	return fmt.Sprintf("entity not found: collection=%s, sourceId=%s", e.Collection, e.SourceID)
+}
+
+// IsEntityNotFound reports whether the provided error represents a missing entity.
+func IsEntityNotFound(err error) bool {
+	var target *EntityNotFoundError
+	return errors.As(err, &target)
+}
 
 // Upserter writes data into PocketBase using core.App
 // Note: This is a minimal skeleton; concrete calls will be filled in Phase 3.
@@ -44,7 +61,7 @@ func (u *Upserter) GetExistingId(collection string, sourceId string) (string, er
 		return "", err
 	}
 	if id == "" {
-		return "", fmt.Errorf("entity not found: collection=%s, sourceId=%s", collection, sourceId)
+		return "", &EntityNotFoundError{Collection: collection, SourceID: sourceId}
 	}
 	return id, nil
 }

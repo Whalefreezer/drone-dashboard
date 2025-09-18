@@ -8,6 +8,7 @@
             "name": "Launch Chrome",
             "request": "launch",
             "type": "chrome",
+            "runtimeExecutable": "/run/current-system/sw/bin/google-chrome-stable",
             "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}/frontend"
         },
