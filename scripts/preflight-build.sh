@@ -43,6 +43,7 @@ main() {
 	build_frontend
 	build_backend_linux
 	log "Done. Artifacts available in frontend/dist and backend/build"
+	log "Backend binary: $ROOT_DIR/backend/build/drone-dashboard_linux_x86"
 }
 
 main "$@"

@@ -1,4 +1,4 @@
-import { QRCodeSVG } from 'npm:qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Define the core props we expect to use
 interface CoreQRCodeProps {

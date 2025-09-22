@@ -1,4 +1,4 @@
-import PocketBase, { RecordSubscription } from 'npm:pocketbase';
+import PocketBase, { RecordSubscription } from 'pocketbase';
 import { Atom, atom } from 'jotai';
 import { PBBaseRecord } from './pbTypes.ts';
 import { batchDebounce } from '../common/utils.ts';
