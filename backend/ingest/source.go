@@ -63,11 +63,12 @@ func NewRemoteSource(h *control.Hub, pitsID string) *RemoteSource {
 func (r *RemoteSource) fetchJSON(path string, out any) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
+	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000})
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000, TraceID: traceID})
 	if err != nil {
 		return err
 	}
@@ -120,11 +121,12 @@ func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 	path := "/events/" + eventSourceId + "/Results.json"
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
+	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000})
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000, TraceID: traceID})
 	if err != nil {
 		return out, err
 	}
@@ -156,7 +158,8 @@ func (r *RemoteSource) FetchEventSourceId() (string, error) {
 	// Fetch root page and scrape event id, mirroring FPVClient behavior
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: "/", TimeoutMs: 5000})
+	ctx, traceID := control.EnsureTraceID(ctx)
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: "/", TimeoutMs: 5000, TraceID: traceID})
 	if err != nil {
 		return "", err
 	}

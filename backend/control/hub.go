@@ -57,9 +57,24 @@ func (h *Hub) SetTimeout(d time.Duration) { h.timeout = d }
 func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Response, err error) {
 	start := time.Now()
 	started := h.inflight.Add(1)
+	ctx, traceID := EnsureTraceID(ctx)
+	var requestID string
 	defer func() {
 		remaining := h.inflight.Add(-1)
-		fields := []any{"pitsId", pitsID, "path", f.Path, "latencyMs", time.Since(start).Milliseconds(), "inflight", remaining, "startedInflight", started}
+		latency := time.Since(start).Milliseconds()
+		traceField := traceID
+		if traceErr, ok := err.(TraceCarrier); ok && traceErr.TraceID() != "" {
+			traceField = traceErr.TraceID()
+		}
+		fields := []any{
+			"pitsId", pitsID,
+			"path", f.Path,
+			"latencyMs", latency,
+			"inflight", remaining,
+			"startedInflight", started,
+			"traceId", traceField,
+			"requestId", requestID,
+		}
 		if err != nil {
 			fields = append(fields, "error", err.Error())
 		} else {
@@ -72,11 +87,27 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Respons
 	connRaw, ok := h.conns[pitsID]
 	h.mu.RUnlock()
 	if !ok {
-		err = fmt.Errorf("no pits connection for %s", pitsID)
+		err = NewTraceError(traceID, fmt.Errorf("no pits connection for %s", pitsID))
 		return
 	}
 	id := fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Unix())
-	env := NewEnvelope(TypeFetch, id, f)
+	requestID = id
+	fetch := f
+	fetch.TraceID = traceID
+	env := NewEnvelope(TypeFetch, id, fetch)
+	env.TraceID = traceID
+
+	fields := []any{
+		"pitsId", pitsID,
+		"path", fetch.Path,
+		"requestId", requestID,
+		"traceId", traceID,
+		"timeoutMs", fetch.TimeoutMs,
+	}
+	if fetch.IfNoneMatch != "" {
+		fields = append(fields, "ifNoneMatch", fetch.IfNoneMatch)
+	}
+	slog.Debug("control.hub.fetch.send", fields...)
 
 	ch := make(chan Envelope, 1)
 	h.mu.Lock()
@@ -90,20 +121,26 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Respons
 	}()
 
 	if err = connRaw.SendJSON(env); err != nil {
+		err = NewTraceError(traceID, err)
 		return
 	}
 
 	select {
 	case <-ctx.Done():
-		err = ctx.Err()
+		err = NewTraceError(traceID, ctx.Err())
 		return
 	case envResp := <-ch:
+		respTraceID := envResp.TraceID
+		if respTraceID == "" {
+			respTraceID = traceID
+		}
 		switch envResp.Type {
 		case TypeResponse:
 			var r Response
 			// envResp.Payload is raw json; re-marshal to bytes then unmarshal
 			b, _ := json.Marshal(envResp.Payload)
 			if err = json.Unmarshal(b, &r); err != nil {
+				err = NewTraceError(respTraceID, err)
 				return
 			}
 			resp = r
@@ -115,14 +152,14 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Respons
 			if er.Message == "" {
 				er.Message = "remote error"
 			}
-			err = errors.New(er.Message)
+			err = NewTraceError(respTraceID, errors.New(er.Message))
 			return
 		default:
-			err = fmt.Errorf("unexpected response type: %s", envResp.Type)
+			err = NewTraceError(respTraceID, fmt.Errorf("unexpected response type: %s", envResp.Type))
 			return
 		}
 	case <-time.After(h.timeout):
-		err = fmt.Errorf("timeout waiting for response")
+		err = NewTraceError(traceID, fmt.Errorf("timeout waiting for response"))
 		return
 	}
 }
@@ -137,7 +174,7 @@ func (h *Hub) deliver(env Envelope) {
 	ch, ok := h.pending[env.ID]
 	h.mu.RUnlock()
 	if !ok {
-		slog.Warn("control.hub.deliver.no_pending", "id", env.ID)
+		slog.Warn("control.hub.deliver.no_pending", "id", env.ID, "traceId", env.TraceID)
 		return
 	}
 	ch <- env

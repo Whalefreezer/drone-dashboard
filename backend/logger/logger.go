@@ -6,8 +6,9 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
-	"time"
 )
 
 // ANSI color codes
@@ -20,6 +21,8 @@ const (
 	colorGray   = "\033[90m"
 	colorBold   = "\033[1m"
 )
+
+const logTimeLayout = "2006-01-02T15:04:05.000Z07:00"
 
 // levelVar holds the current log level; defaults to Info.
 var levelVar slog.LevelVar
@@ -67,16 +70,16 @@ func (h *ColorHandler) Handle(ctx context.Context, r slog.Record) error {
 	})
 
 	// Write prefix: LEVEL timestamp message, each with distinct styling
-	ts := r.Time.Format(time.RFC3339)
+	ts := r.Time.Format(logTimeLayout)
 	if shouldUseColors() {
-		// level (severity color) + timestamp (gray) + message (cyan)
+		// timestamp (gray) + level (severity color) + message (cyan)
 		fmt.Fprintf(h.writer, "%s%s%s %s%s%s %s%s%s ",
-			color, level, colorReset,
 			colorGray, ts, colorReset,
+			color, level, colorReset,
 			colorCyan, r.Message, colorReset,
 		)
 	} else {
-		fmt.Fprintf(h.writer, "%s %s %s ", level, ts, r.Message)
+		fmt.Fprintf(h.writer, "%s %s %s ", ts, level, r.Message)
 	}
 
 	// Delegate to text handler for the remaining keyed attrs only
@@ -98,28 +101,69 @@ func (h *ColorHandler) WithGroup(name string) slog.Handler {
 }
 
 // logger is the package-wide logger configured with ColorHandler.
-var logger *slog.Logger
+var (
+	logger  *slog.Logger
+	logFile *os.File
+)
+
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+type dualWriter struct {
+	color io.Writer
+	plain io.Writer
+}
+
+func (w dualWriter) Write(p []byte) (int, error) {
+	if w.color != nil {
+		if _, err := w.color.Write(p); err != nil {
+			return 0, err
+		}
+	}
+	if w.plain != nil {
+		clean := ansiRegex.ReplaceAll(p, nil)
+		if _, err := w.plain.Write(clean); err != nil {
+			return 0, err
+		}
+	}
+	return len(p), nil
+}
 
 func init() {
 	// Check if colors should be disabled (e.g., for log files)
+	logWriter := io.Writer(os.Stdout)
+	if path := strings.TrimSpace(os.Getenv("LOG_FILE")); path != "" {
+		dir := filepath.Dir(path)
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to create log directory %s: %v\n", dir, err)
+			}
+		}
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to open log file %s: %v\n", path, err)
+		} else {
+			logFile = f
+			logWriter = dualWriter{color: os.Stdout, plain: f}
+		}
+	}
 	useColors := shouldUseColors()
 
 	var handler slog.Handler
 	if useColors {
 		handler = &ColorHandler{
-			handler: slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			handler: slog.NewTextHandler(logWriter, &slog.HandlerOptions{
 				Level:       &levelVar,
 				ReplaceAttr: replaceAttrFunc,
 			}),
-			writer: os.Stdout,
+			writer: logWriter,
 		}
 	} else {
 		handler = &ColorHandler{
-			handler: slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			handler: slog.NewTextHandler(logWriter, &slog.HandlerOptions{
 				Level:       &levelVar,
 				ReplaceAttr: replaceAttrFunc,
 			}),
-			writer: os.Stdout,
+			writer: logWriter,
 		}
 	}
 

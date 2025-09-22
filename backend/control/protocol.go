@@ -16,6 +16,7 @@ type Envelope struct {
 	ID      string      `json:"id"`
 	Type    string      `json:"type"`
 	TS      int64       `json:"ts"`
+	TraceID string      `json:"traceId,omitempty"`
 	Payload interface{} `json:"payload"`
 }
 
@@ -37,6 +38,7 @@ type Fetch struct {
 	IfNoneMatch string            `json:"ifNoneMatch,omitempty"`
 	Headers     map[string]string `json:"headers,omitempty"`
 	TimeoutMs   int               `json:"timeoutMs"`
+	TraceID     string            `json:"traceId,omitempty"`
 }
 
 type Response struct {

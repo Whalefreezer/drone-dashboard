@@ -126,7 +126,7 @@ func (c *Conn) consumeFrames(hub *Hub) error {
 			}
 			return err
 		}
-		slog.Debug("control.server.frame", "type", env.Type, "id", env.ID, "pitsId", c.PitsID)
+		slog.Debug("control.server.frame", "type", env.Type, "id", env.ID, "traceId", env.TraceID, "pitsId", c.PitsID)
 		c.handleEnvelope(hub, env)
 	}
 }
@@ -136,11 +136,13 @@ func (c *Conn) handleEnvelope(hub *Hub, env Envelope) {
 	case TypeHello:
 		c.registerPits(hub, env)
 	case TypeResponse, TypeError:
-		slog.Debug("control.server.deliver", "id", env.ID, "type", env.Type, "pitsId", c.PitsID)
+		slog.Debug("control.server.deliver", "id", env.ID, "type", env.Type, "traceId", env.TraceID, "pitsId", c.PitsID)
 		hub.deliver(env)
 	case TypePing:
-		slog.Debug("control.server.pong", "id", env.ID, "pitsId", c.PitsID)
-		_ = c.SendJSON(NewEnvelope(TypePong, env.ID, nil))
+		slog.Debug("control.server.pong", "id", env.ID, "traceId", env.TraceID, "pitsId", c.PitsID)
+		pong := NewEnvelope(TypePong, env.ID, nil)
+		pong.TraceID = env.TraceID
+		_ = c.SendJSON(pong)
 	case TypePong:
 		// ignore
 	default:

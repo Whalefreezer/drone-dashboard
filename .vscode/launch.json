@@ -12,34 +12,39 @@
             "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}/frontend"
         },
-        {
-            "request": "launch",
-            "name": "Go (Cloud)",
-            "type": "go",
-            "program": "${workspaceFolder}/backend/main.go",
-            "cwd": "${workspaceFolder}/backend",
-            "env": {},
+		{
+			"request": "launch",
+			"name": "Go (Cloud)",
+			"type": "go",
+			"program": "${workspaceFolder}/backend/main.go",
+			"cwd": "${workspaceFolder}/backend",
+			"env": {
+				"LOG_FILE": "${workspaceFolder}/backend/run-cloud/cloud.log"
+			},
             "envFile": "${workspaceFolder}/backend/.env",
             "args": [
                 "--port=8090",
                 "--auth-token=DEVSECRET",
-                "--log-level=info",
+                "--log-level=trace",
                 "--db-dir=./run-cloud"
             ]
         },
-        {
-            "request": "launch",
-            "name": "Go (Pits)",
-            "type": "go",
-            "program": "${workspaceFolder}/backend/main.go",
-            "cwd": "${workspaceFolder}/backend",
-            "env": {},
+		{
+			"request": "launch",
+			"name": "Go (Pits)",
+			"type": "go",
+			"program": "${workspaceFolder}/backend/main.go",
+			"cwd": "${workspaceFolder}/backend",
+			"env": {
+				"LOG_FILE": "${workspaceFolder}/backend/run-pits/pits.log"
+			},
             "envFile": "${workspaceFolder}/backend/.env",
             "args": [
                 "--port=8091",
                 "--fpvtrackside=http://127.0.0.1:8080",
                 "--cloud-url=ws://127.0.0.1:8090/control",
                 "--auth-token=DEVSECRET",
+                "--log-level=trace",
             ]
         },
         {

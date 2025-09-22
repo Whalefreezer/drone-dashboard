@@ -39,7 +39,7 @@ func NewPitsClient(cloudURL, authToken, pitsID string, fpvBase string) (*PitsCli
 		AuthToken: authToken,
 		PitsID:    pitsID,
 		FPVBase:   u,
-		HTTP:      &http.Client{Timeout: 5 * time.Second},
+		HTTP:      &http.Client{Timeout: 1 * time.Second},
 	}, nil
 }
 
@@ -85,17 +85,27 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 	b, _ := json.Marshal(env.Payload)
 	var f Fetch
 	if err := json.Unmarshal(b, &f); err != nil {
-		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "BAD_REQUEST", Message: "invalid fetch"}))
+		errEnv := NewEnvelope(TypeError, env.ID, Error{Code: "BAD_REQUEST", Message: "invalid fetch"})
+		errEnv.TraceID = env.TraceID
+		_ = safeWriteJSON(mu, ws, errEnv)
 		return
 	}
-	slog.Debug("control.pits.fetch", "path", f.Path, "timeoutMs", f.TimeoutMs)
+	traceID := f.TraceID
+	if traceID == "" {
+		traceID = env.TraceID
+	}
+	slog.Debug("control.pits.fetch", "path", f.Path, "timeoutMs", f.TimeoutMs, "traceId", traceID)
 	if strings.ToUpper(f.Method) != "GET" && strings.ToUpper(f.Method) != "HEAD" {
-		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "method not allowed"}))
+		errEnv := NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "method not allowed"})
+		errEnv.TraceID = traceID
+		_ = safeWriteJSON(mu, ws, errEnv)
 		return
 	}
 	// basic allowlist: only /events, /httpfiles, root
 	if !(f.Path == "/" || strings.HasPrefix(f.Path, "/events/") || strings.HasPrefix(f.Path, "/httpfiles/")) {
-		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "path not allowed"}))
+		errEnv := NewEnvelope(TypeError, env.ID, Error{Code: "DENIED", Message: "path not allowed"})
+		errEnv.TraceID = traceID
+		_ = safeWriteJSON(mu, ws, errEnv)
 		return
 	}
 	// Build URL
@@ -107,9 +117,17 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 	if f.TimeoutMs > 0 {
 		p.HTTP.Timeout = time.Duration(f.TimeoutMs) * time.Millisecond
 	}
+	start := time.Now()
 	resp, err := p.HTTP.Do(req)
 	if err != nil {
-		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeError, env.ID, Error{Code: "INTERNAL", Message: err.Error()}))
+		slog.Warn("control.pits.fetch.http_error", "path", f.Path, "requestId", env.ID, "traceId", traceID, "err", err)
+		errEnv := NewEnvelope(TypeError, env.ID, Error{Code: "INTERNAL", Message: err.Error()})
+		errEnv.TraceID = traceID
+		if sendErr := safeWriteJSON(mu, ws, errEnv); sendErr != nil {
+			slog.Warn("control.pits.fetch.send.error", "path", f.Path, "requestId", env.ID, "traceId", traceID, "err", sendErr)
+		} else {
+			slog.Debug("control.pits.fetch.sent", "path", f.Path, "requestId", env.ID, "traceId", traceID, "status", "error", "bytes", 0)
+		}
 		return
 	}
 	defer resp.Body.Close()
@@ -124,8 +142,30 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 		}
 	}
 	etag = ComputeETag(body)
+	latency := time.Since(start).Milliseconds()
+	commonFields := []any{
+		"path", f.Path,
+		"requestId", env.ID,
+		"traceId", traceID,
+		"latencyMs", latency,
+		"originStatus", resp.StatusCode,
+		"bytes", len(body),
+		"etag", etag,
+	}
+	if f.IfNoneMatch != "" {
+		commonFields = append(commonFields, "ifNoneMatch", f.IfNoneMatch)
+	}
 	if f.IfNoneMatch != "" && f.IfNoneMatch == etag {
-		_ = safeWriteJSON(mu, ws, NewEnvelope(TypeResponse, env.ID, Response{Status: http.StatusNotModified, Headers: map[string]string{"ETag": etag}}))
+		resultFields := append([]any{}, commonFields...)
+		resultFields = append(resultFields, "status", http.StatusNotModified, "fromCache", true)
+		slog.Debug("control.pits.fetch.result", resultFields...)
+		respEnv := NewEnvelope(TypeResponse, env.ID, Response{Status: http.StatusNotModified, Headers: map[string]string{"ETag": etag}})
+		respEnv.TraceID = traceID
+		if err := safeWriteJSON(mu, ws, respEnv); err != nil {
+			slog.Warn("control.pits.fetch.send.error", "path", f.Path, "requestId", env.ID, "traceId", traceID, "err", err)
+			return
+		}
+		slog.Debug("control.pits.fetch.sent", "path", f.Path, "requestId", env.ID, "traceId", traceID, "status", http.StatusNotModified, "bytes", 0)
 		return
 	}
 	// Headers
@@ -134,7 +174,16 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 		hdrs["Content-Type"] = ct
 	}
 	payload := Response{Status: resp.StatusCode, Headers: hdrs, BodyB64: base64.StdEncoding.EncodeToString(body)}
-	_ = safeWriteJSON(mu, ws, NewEnvelope(TypeResponse, env.ID, payload))
+	resultFields := append([]any{}, commonFields...)
+	resultFields = append(resultFields, "status", resp.StatusCode, "fromCache", false)
+	slog.Debug("control.pits.fetch.result", resultFields...)
+	respEnv := NewEnvelope(TypeResponse, env.ID, payload)
+	respEnv.TraceID = traceID
+	if err := safeWriteJSON(mu, ws, respEnv); err != nil {
+		slog.Warn("control.pits.fetch.send.error", "path", f.Path, "requestId", env.ID, "traceId", traceID, "err", err)
+		return
+	}
+	slog.Debug("control.pits.fetch.sent", "path", f.Path, "requestId", env.ID, "traceId", traceID, "status", resp.StatusCode, "bytes", len(body))
 }
 
 func (p *PitsClient) connect(ctx context.Context) (*websocket.Conn, *sync.Mutex, error) {
@@ -202,7 +251,7 @@ func (p *PitsClient) consumeFrames(ctx context.Context, ws *websocket.Conn, writ
 			slog.Warn("control.pits.read.error", "err", err)
 			return err
 		}
-		slog.Debug("control.pits.frame", "type", env.Type, "id", env.ID)
+		slog.Debug("control.pits.frame", "type", env.Type, "id", env.ID, "traceId", env.TraceID)
 		p.handleEnvelope(writeMu, ws, env)
 	}
 }
@@ -214,7 +263,9 @@ func (p *PitsClient) handleEnvelope(writeMu *sync.Mutex, ws *websocket.Conn, env
 	case TypeFetch:
 		go p.handleFetch(writeMu, ws, env)
 	case TypePing:
-		_ = safeWriteJSON(writeMu, ws, NewEnvelope(TypePong, env.ID, nil))
+		pong := NewEnvelope(TypePong, env.ID, nil)
+		pong.TraceID = env.TraceID
+		_ = safeWriteJSON(writeMu, ws, pong)
 	case TypePong:
 		// ignore
 	default:

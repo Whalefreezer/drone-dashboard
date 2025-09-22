@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"drone-dashboard/control"
 	"drone-dashboard/ingest"
 
 	"github.com/pocketbase/dbx"
@@ -143,7 +144,12 @@ func (m *Manager) processDueRow(rw dueRow) {
 		if errors.As(runErr, &missing) {
 			slog.Info("scheduler.worker.dependencyMissing", "type", t, "sourceId", sid, "event", rw.Event, "collection", missing.Collection, "missingSourceId", missing.SourceID, "error", runErr)
 		} else {
-			slog.Warn("scheduler.worker.drainOnce.ingestError", "type", t, "sourceId", sid, "event", rw.Event, "error", runErr)
+			fields := []any{"type", t, "sourceId", sid, "event", rw.Event, "error", runErr}
+			var traced control.TraceCarrier
+			if errors.As(runErr, &traced) && traced != nil && traced.TraceID() != "" {
+				fields = append(fields, "traceId", traced.TraceID())
+			}
+			slog.Warn("scheduler.worker.drainOnce.ingestError", fields...)
 		}
 	}
 	m.rescheduleRow(rw.ID, rw.IntervalMs, runErr)

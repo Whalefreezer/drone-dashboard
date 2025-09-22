@@ -114,6 +114,19 @@ Behavior modes
 - Cloud: `-auth-token` provided, no `-cloud-url`. Hosts WS control at `/control`.
 - Pits: `-auth-token` and `-cloud-url` provided. Connects outbound to cloud.
 
+## Trace Debugging
+
+- Every control fetch and scheduler ingest log now carries a `traceId` so you can follow requests across cloud and pits instances.
+- Merge logs locally with the helper script:
+  ```bash
+  deno run -A scripts/trace-log-viewer.ts \
+    --cloud backend/run-cloud/cloud.log \
+    --pits backend/run-pits/pits.log \
+    --trace <traceId>
+  ```
+  The script sorts entries by timestamp, prefixes each line with its source (`[cloud]` or `[pits]`), and optionally filters to a specific trace.
+- The VS Code launch configs write logs to `backend/run-cloud/cloud.log` and `backend/run-pits/pits.log`; use those defaults or point the script to any other captured files (e.g. `go run ... | tee custom.log`).
+
 ## Commands
 
 Frontend (from `frontend/`)
