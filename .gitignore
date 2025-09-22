@@ -46,6 +46,7 @@ run-pits/
 pocketbase_docs/
 __debug_bin*
 .gocache
+.trees
 
 # Playwright
 /e2e/test-results/
