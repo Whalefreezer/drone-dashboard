@@ -60,15 +60,20 @@ func NewRemoteSource(h *control.Hub, pitsID string) *RemoteSource {
 	return &RemoteSource{Hub: h, PitsID: pitsID, cache: make(map[string]cached)}
 }
 
+const (
+	cloudFetchTimeout = 3 * time.Second
+	pitsHTTPTimeoutMs = 1000
+)
+
 func (r *RemoteSource) fetchJSON(path string, out any) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cloudFetchTimeout)
 	defer cancel()
 	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000, TraceID: traceID})
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: pitsHTTPTimeoutMs, TraceID: traceID})
 	if err != nil {
 		return err
 	}
@@ -119,14 +124,14 @@ func (r *RemoteSource) FetchRace(eventSourceId, raceId string) (RaceFile, error)
 func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 	var out ResultsFile
 	path := "/events/" + eventSourceId + "/Results.json"
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cloudFetchTimeout)
 	defer cancel()
 	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: 8000, TraceID: traceID})
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: pitsHTTPTimeoutMs, TraceID: traceID})
 	if err != nil {
 		return out, err
 	}
@@ -156,10 +161,10 @@ func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 }
 func (r *RemoteSource) FetchEventSourceId() (string, error) {
 	// Fetch root page and scrape event id, mirroring FPVClient behavior
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cloudFetchTimeout)
 	defer cancel()
 	ctx, traceID := control.EnsureTraceID(ctx)
-	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: "/", TimeoutMs: 5000, TraceID: traceID})
+	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: "/", TimeoutMs: pitsHTTPTimeoutMs, TraceID: traceID})
 	if err != nil {
 		return "", err
 	}

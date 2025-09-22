@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,12 +10,13 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"drone-dashboard/fpvhttp"
 )
 
 // FPVClient fetches FPVTrackside Browser API via the configured base URL.
 type FPVClient struct {
 	BaseURL *url.URL
-	HTTP    *http.Client
 }
 
 func NewFPVClient(base string) (*FPVClient, error) {
@@ -22,19 +24,19 @@ func NewFPVClient(base string) (*FPVClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FPVClient{BaseURL: u, HTTP: &http.Client{
-		Timeout: 1 * time.Second,
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-			MaxConnsPerHost:   1,
-		},
-	}}, nil
+	return &FPVClient{BaseURL: u}, nil
 }
 
 func (c *FPVClient) GetBytes(path string) ([]byte, error) {
 	u := *c.BaseURL
 	u.Path = path
-	resp, err := c.HTTP.Get(u.String())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := fpvhttp.Shared().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +116,13 @@ func (c *FPVClient) FetchResults(eventSourceId string) (ResultsFile, error) {
 	// custom handling: empty body means no results yet
 	u := *c.BaseURL
 	u.Path = fmt.Sprintf("/events/%s/Results.json", eventSourceId)
-	resp, err := c.HTTP.Get(u.String())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return out, err
+	}
+	resp, err := fpvhttp.Shared().Do(req)
 	if err != nil {
 		return out, err
 	}
@@ -145,7 +153,13 @@ func (c *FPVClient) FetchResults(eventSourceId string) (ResultsFile, error) {
 func (c *FPVClient) FetchEventSourceId() (string, error) {
 	u := *c.BaseURL
 	u.Path = "/"
-	resp, err := c.HTTP.Get(u.String())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := fpvhttp.Shared().Do(req)
 	if err != nil {
 		return "", err
 	}

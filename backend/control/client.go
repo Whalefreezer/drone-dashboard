@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"drone-dashboard/fpvhttp"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -39,7 +41,7 @@ func NewPitsClient(cloudURL, authToken, pitsID string, fpvBase string) (*PitsCli
 		AuthToken: authToken,
 		PitsID:    pitsID,
 		FPVBase:   u,
-		HTTP:      &http.Client{Timeout: 1 * time.Second},
+		HTTP:      fpvhttp.Shared(),
 	}, nil
 }
 
@@ -111,12 +113,15 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 	// Build URL
 	u := *p.FPVBase
 	u.Path = f.Path
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	timeout := time.Second
+	if f.TimeoutMs > 0 {
+		timeout = time.Duration(f.TimeoutMs) * time.Millisecond
+	}
+	ctxFetch, cancelFetch := context.WithTimeout(context.Background(), timeout)
+	defer cancelFetch()
+	req, _ := http.NewRequestWithContext(ctxFetch, http.MethodGet, u.String(), nil)
 	// Prefer uncompressed to simplify hashing
 	req.Header.Set("Accept-Encoding", "identity")
-	if f.TimeoutMs > 0 {
-		p.HTTP.Timeout = time.Duration(f.TimeoutMs) * time.Millisecond
-	}
 	start := time.Now()
 	resp, err := p.HTTP.Do(req)
 	if err != nil {
