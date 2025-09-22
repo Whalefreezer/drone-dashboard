@@ -39,9 +39,10 @@ func (c *Conn) SendJSON(v any) error {
 func (c *Conn) Close() error { return c.ws.Close() }
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	ReadBufferSize:    4096,
+	WriteBufferSize:   4096,
+	EnableCompression: true,
+	CheckOrigin:       func(r *http.Request) bool { return true },
 }
 
 // RegisterServer registers the /control route on the PocketBase router for cloud mode.

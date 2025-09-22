@@ -192,7 +192,7 @@ func (p *PitsClient) handleFetch(mu *sync.Mutex, ws *websocket.Conn, env Envelop
 }
 
 func (p *PitsClient) connect(ctx context.Context) (*websocket.Conn, *sync.Mutex, error) {
-	dialer := websocket.Dialer{}
+	dialer := websocket.Dialer{EnableCompression: true}
 	hdr := http.Header{}
 	if p.AuthToken != "" {
 		hdr.Set("Authorization", "Bearer "+p.AuthToken)
