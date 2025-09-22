@@ -25,7 +25,7 @@
             "args": [
                 "--port=8090",
                 "--auth-token=DEVSECRET",
-                "--log-level=trace",
+                "--log-level=info",
                 "--db-dir=./run-cloud"
             ]
         },
@@ -44,7 +44,7 @@
                 "--fpvtrackside=http://127.0.0.1:8080",
                 "--cloud-url=ws://127.0.0.1:8090/control",
                 "--auth-token=DEVSECRET",
-                "--log-level=trace",
+                "--log-level=info",
             ]
         },
         {
