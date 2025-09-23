@@ -197,3 +197,7 @@ Target high coverage (~80%) where practical.
 - Admin UI credentials: set `SUPERUSER_EMAIL`/`SUPERUSER_PASSWORD` or check logs for the generated password on first run.
 - Direct FPVTrackside fetch: start backend with `-direct-proxy` and use `/direct/*` routes for diagnostics.
 4. Tag maintainers for urgent matters
+
+## Additional Docs
+
+- [Architecture Guide](docs/ARCHITECTURE.md) — quick map of ingestion services, PocketBase collections, and admin tooling touchpoints.
