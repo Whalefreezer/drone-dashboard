@@ -46,6 +46,13 @@ const ASCENDING = SortDirection.Ascending;
 
 const LAST = NullHandling.Last;
 
+// Helper to create value getters that access race-specific atoms
+const createValueGetter = (
+	atomFamily: (key: [string, string]) => Atom<unknown>,
+) =>
+(get: EagerGetter, pilotId: string, context: { raceId: string }): number | null =>
+	get(atomFamily([context.raceId, pilotId])) as number | null;
+
 // ===== Race-specific pilot metric atoms =====
 
 /**
@@ -179,31 +186,25 @@ export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilot
 );
 
 export const createRaceSortConfig = (
-	raceId: string,
 	getChannelOrder: (get: EagerGetter, pilotId: string) => number | null,
 	isRaceRound: boolean,
-): SortGroup[] => {
-	const completedCondition = (get: EagerGetter, pilotId: string) =>
-		get(racePilotFinishElapsedMsAtom([raceId, pilotId])) != null ||
-		get(racePilotCompletionTimeAtom([raceId, pilotId])) != null;
+): SortGroup<{ raceId: string }>[] => {
+	const completedCondition = (get: EagerGetter, pilotId: string, context: { raceId: string }) =>
+		get(racePilotFinishElapsedMsAtom([context.raceId, pilotId])) != null ||
+		get(racePilotCompletionTimeAtom([context.raceId, pilotId])) != null;
 
-	const hasConsecutiveCondition = (get: EagerGetter, pilotId: string) => get(racePilotConsecutiveTimeAtom([raceId, pilotId])) != null;
+	const hasConsecutiveCondition = (get: EagerGetter, pilotId: string, context: { raceId: string }) =>
+		get(racePilotConsecutiveTimeAtom([context.raceId, pilotId])) != null;
 
 	const channelValue = createChannelOrderGetter(getChannelOrder);
 
-	const consecutiveValue = (get: EagerGetter, pilotId: string) => get(racePilotConsecutiveTimeAtom([raceId, pilotId]));
-
-	const bestLapValue = (get: EagerGetter, pilotId: string) => get(racePilotBestLapAtom([raceId, pilotId]));
-
-	const finishElapsedValue = (get: EagerGetter, pilotId: string) => get(racePilotFinishElapsedMsAtom([raceId, pilotId]));
-
-	const finishDetectionValue = (get: EagerGetter, pilotId: string) => get(racePilotFinishDetectionMsAtom([raceId, pilotId]));
-
-	const completionTimeValue = (get: EagerGetter, pilotId: string) => get(racePilotCompletionTimeAtom([raceId, pilotId]));
-
-	const firstDetectionValue = (get: EagerGetter, pilotId: string) => get(racePilotFirstDetectionMsAtom([raceId, pilotId]));
-
-	const completedLapsValue = (get: EagerGetter, pilotId: string) => get(racePilotCompletedLapsAtom([raceId, pilotId]));
+	const consecutiveValue = createValueGetter(racePilotConsecutiveTimeAtom);
+	const bestLapValue = createValueGetter(racePilotBestLapAtom);
+	const finishElapsedValue = createValueGetter(racePilotFinishElapsedMsAtom);
+	const finishDetectionValue = createValueGetter(racePilotFinishDetectionMsAtom);
+	const completionTimeValue = createValueGetter(racePilotCompletionTimeAtom);
+	const firstDetectionValue = createValueGetter(racePilotFirstDetectionMsAtom);
+	const completedLapsValue = createValueGetter(racePilotCompletedLapsAtom);
 
 	if (isRaceRound) {
 		return [
@@ -222,7 +223,7 @@ export const createRaceSortConfig = (
 			},
 			{
 				name: 'Incomplete',
-				condition: (get: EagerGetter, pilotId: string) => !completedCondition(get, pilotId),
+				condition: (get: EagerGetter, pilotId: string, context: { raceId: string }) => !completedCondition(get, pilotId, context),
 				criteria: [
 					{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
 					{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
@@ -254,7 +255,7 @@ export const createRaceSortConfig = (
 		},
 		{
 			name: 'Without Consecutive',
-			condition: (get: EagerGetter, pilotId: string) => !hasConsecutiveCondition(get, pilotId),
+			condition: (get: EagerGetter, pilotId: string, context: { raceId: string }) => !hasConsecutiveCondition(get, pilotId, context),
 			criteria: [
 				{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
 				{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
@@ -297,7 +298,6 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 		if (pilotChannels.length === 0) return [];
 
 		const config = createRaceSortConfig(
-			raceId,
 			(getter, pilotId) => {
 				const order = getter(racePilotChannelOrderAtom(raceId));
 				return order.get(pilotId) ?? null;
@@ -305,7 +305,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 			isRaceRound,
 		);
 		const pilotIds = pilotChannels.map((pc) => pc.pilotId);
-		const sortedIds = sortPilotIds(pilotIds, get, config);
+		const sortedIds = sortPilotIds(pilotIds, get, config, { raceId });
 		const pilotChannelMap = new Map<string, { id: string; pilotId: string; channelId: string }>();
 		pilotChannels.forEach((pc) => pilotChannelMap.set(pc.pilotId, pc));
 		return sortedIds.map((pilotId, idx) => ({
