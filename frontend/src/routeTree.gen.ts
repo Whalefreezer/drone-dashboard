@@ -22,6 +22,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings.tsx'
 import { Route as AdminKvRouteImport } from './routes/admin/kv.tsx'
 import { Route as AdminIngestRouteImport } from './routes/admin/ingest.tsx'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard.tsx'
+import { Route as AdminControlRouteImport } from './routes/admin/control.tsx'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -68,11 +69,17 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminControlRoute = AdminControlRouteImport.update({
+  id: '/control',
+  path: '/control',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
   '/admin/kv': typeof AdminKvRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
   '/admin/kv': typeof AdminKvRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
   '/admin/kv': typeof AdminKvRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
     | '/admin/kv'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
     | '/admin/kv'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
     | '/admin/kv'
@@ -208,10 +220,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/control': {
+      id: '/admin/control'
+      path: '/control'
+      fullPath: '/admin/control'
+      preLoaderRoute: typeof AdminControlRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminControlRoute: typeof AdminControlRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminIngestRoute: typeof AdminIngestRoute
   AdminKvRoute: typeof AdminKvRoute
@@ -221,6 +241,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminControlRoute: AdminControlRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminIngestRoute: AdminIngestRoute,
   AdminKvRoute: AdminKvRoute,

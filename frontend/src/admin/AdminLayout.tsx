@@ -13,6 +13,8 @@ export function AdminLayout() {
 					{/* @ts-ignore see repository note */}
 					<Link to='/admin/dashboard' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
 					{/* @ts-ignore */}
+					<Link to='/admin/control' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Control</Link>
+					{/* @ts-ignore */}
 					<Link to='/admin/kv' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Client KV</Link>
 					{/* @ts-ignore */}
 					<Link to='/admin/settings' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Server Settings</Link>
