@@ -157,13 +157,20 @@ async function generatePilots(
 
 	const pilots = [];
 	for (let i = 0; i < options.pilotCount; i++) {
+		let name: string;
 		const firstName = faker.person.firstName();
 		const lastName = faker.person.lastName();
-		const fullName = `${firstName} ${lastName}`;
+
+		// Use callsign if available, otherwise use generated full name
+		if (i < callsigns.length) {
+			name = callsigns[i];
+		} else {
+			name = `${firstName} ${lastName}`;
+		}
 
 		pilots.push({
 			id: await generateId(seed, 1000 + i),
-			name: fullName,
+			name,
 			firstName,
 			lastName,
 			discordId: faker.datatype.boolean(0.3) ? faker.string.uuid() : undefined, // 30% chance of discord ID
@@ -544,6 +551,106 @@ EXAMPLES:
 		console.log(`   Detections: ${snapshot.collections.detections.length}`);
 	}
 }
+
+const callsigns = [
+	'Robo',
+	'JEGZ',
+	'Add to cart',
+	'JustHappyToBeHere',
+	'uewepuep',
+	'Beau Babe',
+	'Bones',
+	'CGO',
+	'Tex',
+	'Hitnstuff',
+	'PropFPV',
+	'Ethan FPV',
+	'FLUX',
+	'Wilf',
+	'Le Star',
+	'Red2Rotor',
+	'IQ0',
+	'Heepsy',
+	'FalcoFPV',
+	'BEAR',
+	'NugNug',
+	'Pitstop',
+	'BlackWolf',
+	'JWebb',
+	'There Yet',
+	'Whitephos',
+	'MCQUEEN',
+	'subb20',
+	'Acquado',
+	'ManMadeTree',
+	'Davey FPV',
+	'ironoid',
+	'Phoenix FPV',
+	'Lovers',
+	'Wubbz',
+	'Blondeangel',
+	'ShutterSpeed.FPV',
+	'AviationCraft',
+	'Foxur',
+	'Bread',
+	'RacingLewis',
+	'MacDaddy',
+	'EB FPV',
+	'SQuiD-FPV',
+	'Cross',
+	'CutnClose',
+	'sugarK',
+	'DimSim',
+	'Sway On FPV',
+	'WiWichoi',
+	'Spark',
+	'Dingo',
+	'ShadowFPV',
+	'Zappa',
+	'Zop',
+	'AeroplaneJelly',
+	'Djay',
+	'samtam',
+	'Chippykyay',
+	'SMILEYFPV',
+	'SHAKAS',
+	'Phix',
+	'Starry',
+	'Hopper',
+	'JohnnyGMachine',
+	'Cheesewaffle',
+	'Nacho',
+	'Gecko',
+	'timmytron',
+	'SuperDizzyDi',
+	'Troystar',
+	'Prop Out',
+	'enjenir',
+	'Spanna',
+	'Snapper FPV',
+	'Third Eye',
+	'KONGFPV',
+	'Whodeany',
+	'SALLAD',
+	'Ace',
+	'bob9',
+	'Willman',
+	'ctzsnooze',
+	'Yappasini',
+	'JD',
+	'Huddo',
+	'KONGFPV',
+	'Whodeany',
+	'SALLAD',
+	'Ace',
+	'bob9',
+	'Willman',
+	'ctzsnooze',
+	'Yappasini',
+	'JD',
+	'Huddo',
+	'Wing Nut',
+];
 
 if (import.meta.main) {
 	await main();
