@@ -30,6 +30,18 @@ interface PBInternalFields {
 	sourceId: string;
 }
 
+// Collection ID mappings for PocketBase collections
+const COLLECTION_IDS = {
+	events: 'pbc_1687431684',
+	pilots: 'pbc_2851445954',
+	channels: 'pbc_3009067695',
+	rounds: 'pbc_225224730',
+	races: 'pbc_2396323229',
+	pilotChannels: 'pbc_3318446243',
+	laps: 'pbc_1167523714',
+	detections: 'pbc_2875209709',
+} as const;
+
 type SnapshotEvent = PBEventRecord & PBInternalFields;
 type SnapshotPilot = PBPilotRecord & PBInternalFields;
 type SnapshotChannel = PBChannelRecord & PBInternalFields;
@@ -126,7 +138,7 @@ async function generateEvent(
 		start: new Date().toISOString().split('T')[0] + ' 0:00:00',
 		end: '0001/01/01 0:00:00',
 		// PocketBase snapshot fields
-		collectionId: 'pbc_1687431684',
+		collectionId: COLLECTION_IDS.events,
 		collectionName: 'events',
 		source: 'fpvtrackside',
 		sourceId: generateUUID(),
@@ -158,7 +170,7 @@ async function generatePilots(
 			practicePilot: false,
 			event: eventId,
 			// PocketBase snapshot fields
-			collectionId: 'pbc_2851445954',
+			collectionId: COLLECTION_IDS.pilots,
 			collectionName: 'pilots',
 			source: 'fpvtrackside',
 			sourceId: generateUUID(),
@@ -217,7 +229,7 @@ async function generateChannels(
 			channelDisplayName: '',
 			event: eventId,
 			// PocketBase snapshot fields
-			collectionId: 'pbc_3009067695',
+			collectionId: COLLECTION_IDS.channels,
 			collectionName: 'channels',
 			source: 'fpvtrackside',
 			sourceId: `000000${
@@ -242,7 +254,7 @@ async function generateRounds(
 			eventType: EventType.Race,
 			event: eventId,
 			// PocketBase snapshot fields
-			collectionId: 'pbc_225224730',
+			collectionId: COLLECTION_IDS.rounds,
 			collectionName: 'rounds',
 			source: 'fpvtrackside',
 			sourceId: generateUUID(),
@@ -274,7 +286,7 @@ async function generateRaces(
 				event: round.event!,
 				round: round.id,
 				// PocketBase snapshot fields
-				collectionId: 'pbc_2396323229',
+				collectionId: COLLECTION_IDS.races,
 				collectionName: 'races',
 			});
 			raceCounter++;
@@ -299,7 +311,7 @@ async function generatePilotChannels(
 				channel: channels[counter].id,
 				event: pilot.event,
 				// PocketBase snapshot fields
-				collectionId: 'pbc_3318446243',
+				collectionId: COLLECTION_IDS.pilotChannels,
 				collectionName: 'pilotChannels',
 				source: 'fpvtrackside',
 				sourceId: generateUUID(),
@@ -346,7 +358,7 @@ async function generateLaps(
 					event: race.event,
 					source: 'fpvtrackside',
 					sourceId: generateUUID(),
-					collectionId: 'pbc_1167523714',
+					collectionId: COLLECTION_IDS.laps,
 					collectionName: 'laps',
 				});
 
@@ -400,7 +412,7 @@ async function generateDetectionsForLap(
 			valid: true,
 			source: 'fpvtrackside',
 			sourceId: generateUUID(),
-			collectionId: 'pbc_2875209709',
+			collectionId: COLLECTION_IDS.detections,
 			collectionName: 'detections',
 		});
 	}

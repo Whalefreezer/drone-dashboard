@@ -3,15 +3,11 @@ import { racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
+import { pilotsAtom } from '../state/pbAtoms.ts';
 
 export const leaderboardPilotIdsAtom = eagerAtom((get): string[] => {
-	const raceIds = get(currentRaceIdsAtom);
-	const idSet = new Set<string>();
-	raceIds.forEach((raceId) => {
-		const pilotChannels = get(racePilotChannelsAtom(raceId));
-		pilotChannels.forEach((pc) => idSet.add(pc.pilotId));
-	});
-	const ids = Array.from(idSet);
+	const pilots = get(pilotsAtom);
+	const ids = pilots.map((pilot) => pilot.id);
 	return sortPilotIds(ids, get, defaultSortConfigCurrent);
 });
 

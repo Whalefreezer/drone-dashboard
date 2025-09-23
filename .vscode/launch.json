@@ -74,7 +74,7 @@
             "args": [
                 "--port=8090",
                 "--ingest-enabled=false",
-                "--import-snapshot=${workspaceFolder}/snapshots/test1.json"
+                "--import-snapshot=${workspaceFolder}/snapshots/96-pilots.json"
             ]
         },
         {
