@@ -192,24 +192,17 @@ async function generateChannels(
 	seed: string,
 ): Promise<SnapshotChannel[]> {
 	const channels: SnapshotChannel[] = [];
-	const frequencies = [
-		5658,
-		5695,
-		5732,
-		5769,
-		5806,
-		5843,
-		5880,
-		5917,
-		5325,
-		5362,
-		5399,
-		5436,
-		5473,
-		5510,
-		5547,
-		5584,
+
+	// Only use specific channels: R1, R2, F2, F4, R7, R8
+	const channelConfigs = [
+		{ number: 1, band: 'R', frequency: 5658 },
+		{ number: 2, band: 'R', frequency: 5695 },
+		{ number: 2, band: 'F', frequency: 5362 }, // F2
+		{ number: 4, band: 'F', frequency: 5436 }, // F4
+		{ number: 7, band: 'R', frequency: 5880 },
+		{ number: 8, band: 'R', frequency: 5917 },
 	];
+
 	const channelColors = [
 		'#FF0000',
 		'#00FF00',
@@ -217,19 +210,19 @@ async function generateChannels(
 		'#FFFF00',
 		'#FF00FF',
 		'#00FFFF',
-		'#FFFFFF',
-		'#FFA500',
 	];
 
-	for (let i = 0; i < Math.min(options.pilotCount, frequencies.length); i++) {
-		const band = i < 8 ? 'R' : 'F';
+	const maxChannels = Math.min(options.pilotCount, channelConfigs.length);
+
+	for (let i = 0; i < maxChannels; i++) {
+		const config = channelConfigs[i];
 
 		channels.push({
 			id: await generateId(seed, 2000 + i),
-			number: i + 1,
-			band,
-			shortBand: band,
-			frequency: frequencies[i],
+			number: config.number,
+			band: config.band,
+			shortBand: config.band,
+			frequency: config.frequency,
 			channelColor: channelColors[i % channelColors.length],
 			channelPrefix: '\u0000',
 			displayName: '',
@@ -240,7 +233,7 @@ async function generateChannels(
 			collectionName: 'channels',
 			source: 'fpvtrackside',
 			sourceId: `000000${
-				(i + 1).toString().padStart(2, '0')
+				config.band + config.number.toString().padStart(2, '0')
 			}-0000-0000-0000-000000000000`,
 		});
 	}
@@ -314,7 +307,6 @@ async function generatePilotChannels(
 	const pilotsPerRace = 6;
 	const totalPilots = Math.min(
 		pilots.length,
-		channels.length,
 		races.length * pilotsPerRace,
 	);
 
@@ -335,27 +327,25 @@ async function generatePilotChannels(
 
 		for (let i = 0; i < pilotsForThisRace; i++) {
 			const pilot = shuffledPilots[pilotIndex++];
-			const channelIndex = pilotIndex - 1; // Use pilotIndex-1 as channel index
+			const channelIndex = (pilotIndex - 1) % channels.length; // Cycle through available channels
 
-			if (channelIndex < channels.length) {
-				pilotChannels.push({
-					id: await generateId(seed, 5000 + pilotIndex - 1),
-					pilot: pilot.id,
-					channel: channels[channelIndex].id,
-					race: race.id, // Set raceId to define which race this pilot-channel belongs to
-					event: pilot.event,
-					// PocketBase snapshot fields
-					collectionId: COLLECTION_IDS.pilotChannels,
-					collectionName: 'pilotChannels',
-					source: 'fpvtrackside',
-					sourceId: generateUUID(),
-				});
+			pilotChannels.push({
+				id: await generateId(seed, 5000 + pilotIndex - 1),
+				pilot: pilot.id,
+				channel: channels[channelIndex].id,
+				race: race.id, // Set raceId to define which race this pilot-channel belongs to
+				event: pilot.event,
+				// PocketBase snapshot fields
+				collectionId: COLLECTION_IDS.pilotChannels,
+				collectionName: 'pilotChannels',
+				source: 'fpvtrackside',
+				sourceId: generateUUID(),
+			});
 
-				racePilots.push(pilot);
-			}
+			racePilots.push(pilot);
 		}
 
-		// If we don't have enough pilots for this race, break
+		// If we've assigned all available pilots, stop assigning to more races
 		if (pilotIndex >= shuffledPilots.length) {
 			break;
 		}
