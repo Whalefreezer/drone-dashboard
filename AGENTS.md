@@ -6,8 +6,7 @@ Quick Agent Rules
 - Do not leave legacy/back-compat shims; remove them in the same PR.
 - When given an ambiguous command like "go" or "work on the issue", assume its to work on the issue returned from get_current_issue in its entirety, keep working until its done.
 - Do not automaticly create a pull request or update the issue Status when done. The dev will verify work first.
-- You run in an environment where ast-grep (sg) is available; whenever a search requires syntax-aware or structural matching, default to sg -lang typescript -p'<pattern>' (or set --lang appropriately) and avoid falling back to text-only tools like 'g' or 'grep unless I explicitly request a plain-text search.
-- The parameter `--cursor-ignore` is not available on `rg`
+- You run in an environment where ast-grep is available; whenever a search requires syntax-aware or structural matching, default to ast-grep -lang typescript -p'<pattern>' (or set --lang appropriately) and avoid falling back to text-only tools like 'g' or 'grep unless I explicitly request a plain-text search.
 
 ## Project Structure & Module Organization
 - `frontend/`: Deno + React + Vite app. Source in `src/`, public assets in `public/`, tests co-located as `*.test.ts(x)`, production build in `dist/`.
