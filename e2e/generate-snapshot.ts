@@ -404,11 +404,11 @@ async function generateLaps(
 						lapEndTime = lastDetection.time;
 
 						if (lapStartTime && lapEndTime) {
-							lapLengthSeconds =
-								(parseInt(lapEndTime) - parseInt(lapStartTime)) /
-								1000;
+							const startMs = parseInt(lapStartTime);
+							const endMs = parseInt(lapEndTime);
+							lapLengthSeconds = Math.max((endMs - startMs) / 1000, 0.001); // Minimum 1ms duration
 							// Update pilot's race time for next lap
-							pilotRaceTimeMs = parseInt(lapEndTime);
+							pilotRaceTimeMs = endMs;
 						}
 
 						// Find the lap end detection (isLapEnd: true)
@@ -446,16 +446,17 @@ async function generateLaps(
 	return { laps, detections };
 }
 
-// Simple seeded random number generator
+// Simple seeded random number generator with better entropy
 function seededRandom(seed: string, index: number): number {
-	const hash = seed + index;
-	let h = 0;
+	const hash = seed + '-' + index;
+	let h = 5381; // DJB2 hash start value
 	for (let i = 0; i < hash.length; i++) {
 		const char = hash.charCodeAt(i);
-		h = ((h << 5) - h) + char;
-		h = h & h; // Convert to 32-bit integer
+		h = ((h << 5) + h) + char; // DJB2 hash formula: h = ((h << 5) + h) + char
+		h = h & 0xFFFFFFFF; // Keep as 32-bit
 	}
-	return Math.abs(h) / 2147483647; // Normalize to 0-1
+	// Convert to 0-1 range, ensure positive
+	return (h % 1000000) / 1000000;
 }
 
 async function generateDetectionsForLap(
@@ -472,12 +473,21 @@ async function generateDetectionsForLap(
 	const detections: SnapshotDetection[] = [];
 
 	// Generate deterministic detection count (2-4) based on seed
-	const detectionCount = 2 +
-		Math.floor(seededRandom(`${seed}-detections-${detectionCounter}`, 0) * 3);
+	const detectionCount = Math.max(
+		2,
+		2 +
+			Math.floor(
+				seededRandom(`${seed}-detections-${pilotId}-${lapNumber}`, 0) * 3,
+			),
+	);
 
-	// Generate deterministic lap time (30-60 seconds) based on seed
-	const lapDurationMs = 30000 +
-		seededRandom(`${seed}-lap-duration-${detectionCounter}`, 0) * 30000;
+	// Generate deterministic lap time (20-90 seconds) based on seed for more variation
+	// Add more entropy by including raceId and detectionCounter for uniqueness
+	const lapDurationMs = 20000 +
+		seededRandom(
+				`${seed}-lap-duration-${pilotId}-${raceId}-${lapNumber}-${detectionCounter}`,
+				0,
+			) * 70000;
 
 	for (let i = 0; i < detectionCount; i++) {
 		// Spread detections throughout the lap with seeded randomness
