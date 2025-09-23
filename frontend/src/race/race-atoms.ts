@@ -1,8 +1,5 @@
-// PB-native race atoms
-// This replaces the legacy raceFamilyAtom with a cleaner, more direct approach
-
 import { atomFamily } from 'jotai/utils';
-import { Atom } from 'jotai';
+import type { Atom } from 'jotai';
 import {
 	consecutiveLapsAtom,
 	currentEventAtom,
@@ -12,16 +9,13 @@ import {
 	raceRecordsAtom,
 	roundsDataAtom,
 } from '../state/pbAtoms.ts';
+import { deepEqualAtomFamily } from '../state/jotai-utils.ts';
 import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
 import { sortPilotIds } from '../leaderboard/leaderboard-sorter.ts';
 import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from '../leaderboard/sorting-types.ts';
-import deepEqual from 'fast-deep-equal';
-
-// Helper for atomFamily with deep equality comparison
-const deepEqualAtomFamily = <T, A extends Atom<unknown>>(fn: (param: T) => A) => atomFamily(fn, deepEqual);
 
 const parsePbTimestamp = (value?: string | null): number => {
 	if (!value) return Number.POSITIVE_INFINITY;
@@ -38,18 +32,12 @@ const ASCENDING = SortDirection.Ascending;
 
 const LAST = NullHandling.Last;
 
-// Helper to create value getters that access race-specific atoms
 const createValueGetter = (
 	atomFamily: (key: [string, string]) => Atom<unknown>,
 ) =>
 (get: EagerGetter, pilotId: string, context: { raceId: string }): number | null =>
 	get(atomFamily([context.raceId, pilotId])) as number | null;
 
-// ===== Race-specific pilot metric atoms =====
-
-/**
- * Number of completed laps for a pilot in a specific race
- */
 export const racePilotCompletedLapsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
@@ -57,9 +45,6 @@ export const racePilotCompletedLapsAtom = deepEqualAtomFamily(([raceId, pilotId]
 	})
 );
 
-/**
- * Consecutive time for a pilot in a specific race (best N consecutive laps)
- */
 export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number | null => {
 		const n = get(consecutiveLapsAtom);
@@ -77,9 +62,6 @@ export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotI
 	})
 );
 
-/**
- * Best lap time for a pilot in a specific race
- */
 export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
@@ -89,9 +71,6 @@ export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [str
 	})
 );
 
-/**
- * Finish elapsed time for a pilot in a specific race (detection-derived)
- */
 export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
@@ -116,9 +95,6 @@ export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotI
 	})
 );
 
-/**
- * Finish detection timestamp for a pilot in a specific race
- */
 export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
@@ -180,9 +156,6 @@ export const racePilotTotalTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [s
 	})
 );
 
-/**
- * First detection timestamp for a pilot in a specific race
- */
 export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
 	eagerAtom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
