@@ -219,6 +219,8 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
 					valid: detection.valid ?? false,
 					startTime: lap.startTime ?? '',
 					endTime: lap.endTime ?? '',
+					detectionId: detection.id ?? '',
+					detectionTime: detection.time ?? '',
 					isHoleshot: detection.isHoleshot ?? false,
 				} as ProcessedLap;
 			})

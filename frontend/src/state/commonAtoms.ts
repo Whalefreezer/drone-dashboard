@@ -13,6 +13,8 @@ export interface ProcessedLap {
 	valid: boolean;
 	startTime: string;
 	endTime: string;
+	detectionId: string;
+	detectionTime: string;
 	isHoleshot: boolean;
 }
 

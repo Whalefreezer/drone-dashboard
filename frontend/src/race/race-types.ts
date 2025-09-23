@@ -15,6 +15,8 @@ export interface ProcessedLap {
 	valid: boolean;
 	startTime: string;
 	endTime: string;
+	detectionId: string;
+	detectionTime: string;
 	isHoleshot: boolean;
 }
 
@@ -59,6 +61,8 @@ export function computeProcessedLaps(
 				valid: detection.valid ?? false,
 				startTime: lap.startTime ?? '',
 				endTime: lap.endTime ?? '',
+				detectionId: detection.id ?? '',
+				detectionTime: detection.time ?? '',
 				isHoleshot: detection.isHoleshot ?? false,
 			} as ProcessedLap;
 		})

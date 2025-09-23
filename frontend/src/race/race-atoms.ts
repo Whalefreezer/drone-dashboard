@@ -16,18 +16,157 @@ import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
 
-type PilotCalc = {
+export type RacePilotCalc = {
 	pilotChannel: { id: string; pilotId: string; channelId: string };
 	completedLaps: number;
-	completionTime: number; // holeshot + first N laps (N = targetLaps), Infinity if not completed
+	completionTime: number; // holeshot + first N laps (legacy fallback for missing timestamps)
 	consecutiveTime: number; // best N-consecutive time (N = event pbLaps), Infinity if not enough
+	finishElapsedMs: number; // detection-derived elapsed finish time, Infinity if not completed
+	finishDetectionMs: number; // absolute finish detection timestamp, Infinity if missing
+	firstDetectionMs: number; // earliest detection timestamp for the pilot
+	bestLapSeconds: number; // quickest non-holeshot lap, Infinity if none
+};
+
+const parsePbTimestamp = (value?: string | null): number => {
+	if (!value) return Number.POSITIVE_INFINITY;
+	const trimmed = value.trim();
+	if (!trimmed) return Number.POSITIVE_INFINITY;
+	const numeric = Number(trimmed);
+	if (Number.isFinite(numeric)) return numeric;
+	const parsed = Date.parse(trimmed);
+	return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+};
+
+const compareFiniteAsc = (a: number, b: number): number => {
+	const aFinite = Number.isFinite(a);
+	const bFinite = Number.isFinite(b);
+	if (aFinite && bFinite) {
+		const diff = a - b;
+		if (diff !== 0) return diff;
+		return 0;
+	}
+	if (aFinite) return -1;
+	if (bFinite) return 1;
+	return 0;
+};
+
+const compareChannelTieBreaker = (a: RacePilotCalc, b: RacePilotCalc): number => {
+	const channelDiff = a.pilotChannel.channelId.localeCompare(b.pilotChannel.channelId);
+	if (channelDiff !== 0) return channelDiff;
+	// Fall back to pilotId for absolute determinism if channel IDs match
+	return a.pilotChannel.pilotId.localeCompare(b.pilotChannel.pilotId);
+};
+
+const sortRaceRoundCalcs = (calcs: RacePilotCalc[]): RacePilotCalc[] => {
+	const completed: RacePilotCalc[] = [];
+	const incomplete: RacePilotCalc[] = [];
+
+	for (const calc of calcs) {
+		if (Number.isFinite(calc.finishElapsedMs) || Number.isFinite(calc.completionTime)) {
+			completed.push(calc);
+		} else {
+			incomplete.push(calc);
+		}
+	}
+
+	completed.sort((a, b) => {
+		let diff = compareFiniteAsc(a.finishElapsedMs, b.finishElapsedMs);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.finishDetectionMs, b.finishDetectionMs);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.completionTime, b.completionTime);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
+		if (diff !== 0) return diff;
+
+		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
+
+		return compareChannelTieBreaker(a, b);
+	});
+
+	incomplete.sort((a, b) => {
+		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
+
+		let diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
+		if (diff !== 0) return diff;
+
+		return compareChannelTieBreaker(a, b);
+	});
+
+	return [...completed, ...incomplete];
+};
+
+const sortNonRaceRoundCalcs = (calcs: RacePilotCalc[]): RacePilotCalc[] => {
+	const withConsecutive: RacePilotCalc[] = [];
+	const withoutConsecutive: RacePilotCalc[] = [];
+
+	for (const calc of calcs) {
+		if (Number.isFinite(calc.consecutiveTime)) {
+			withConsecutive.push(calc);
+		} else {
+			withoutConsecutive.push(calc);
+		}
+	}
+
+	withConsecutive.sort((a, b) => {
+		let diff = compareFiniteAsc(a.consecutiveTime, b.consecutiveTime);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.finishElapsedMs, b.finishElapsedMs);
+		if (diff !== 0) return diff;
+
+		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
+
+		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
+		if (diff !== 0) return diff;
+
+		return compareChannelTieBreaker(a, b);
+	});
+
+	withoutConsecutive.sort((a, b) => {
+		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
+
+		let diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
+		if (diff !== 0) return diff;
+
+		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
+		if (diff !== 0) return diff;
+
+		return compareChannelTieBreaker(a, b);
+	});
+
+	return [...withConsecutive, ...withoutConsecutive];
+};
+
+/**
+ * LapsView ordering rules (separate from leaderboard sort requirement):
+ * Race rounds → completed pilots first (detection-backed finish elapsed, finish detection timestamp, legacy completion time),
+ * then best lap, first detection, completed lap count, and channel/pilot tie-breakers. Remaining pilots fall back to laps → best lap → detection → channel.
+ * Non-race rounds → pilots with N-consecutive totals first (ascending), then best lap, finish elapsed, completed laps, detection, channel.
+ * Remaining pilots are ordered by completed laps, best lap, detection, channel to avoid unstable fallback behaviour.
+ */
+export const sortRacePilotRows = (calcs: RacePilotCalc[], isRaceRound: boolean): RacePilotCalc[] => {
+	if (calcs.length <= 1) return [...calcs];
+	return isRaceRound ? sortRaceRoundCalcs(calcs) : sortNonRaceRoundCalcs(calcs);
 };
 
 /**
  * Per-race pilot calculations used for ranking in LapsView
  */
 export const racePilotCalcsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): PilotCalc[] => {
+	eagerAtom((get): RacePilotCalc[] => {
 		const race = get(raceDataAtom(raceId));
 		if (!race) return [];
 
@@ -37,31 +176,81 @@ export const racePilotCalcsAtom = atomFamily((raceId: string) =>
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
 
+		const lapsByPilot = new Map<string, typeof processedLaps>();
+		for (const lap of processedLaps) {
+			const existing = lapsByPilot.get(lap.pilotId);
+			if (existing) {
+				existing.push(lap);
+			} else {
+				lapsByPilot.set(lap.pilotId, [lap]);
+			}
+		}
+
+		const raceStartTs = parsePbTimestamp(race.start);
+		const target = race.targetLaps ?? 0;
+
 		return pilotChannels.map((pilotChannel) => {
-			const lapsForPilot = processedLaps.filter((lap) => lap.pilotId === pilotChannel.pilotId);
-			const holeshot = lapsForPilot.find((l) => l.isHoleshot) ?? null;
-			const racingLaps = lapsForPilot.filter((l) => !l.isHoleshot);
+			const lapsForPilot = lapsByPilot.get(pilotChannel.pilotId) ?? [];
+			const holeshotLap = lapsForPilot.find((lap) => lap.isHoleshot) ?? null;
+			const racingLaps = lapsForPilot.filter((lap) => !lap.isHoleshot);
 			const completedLaps = racingLaps.length;
 
-			// Completion time for targetLaps (Race rounds)
-			const target = race.targetLaps ?? 0;
 			let completionTime = Number.POSITIVE_INFINITY;
-			if (target > 0 && holeshot && racingLaps.length >= target) {
-				const hs = holeshot.lengthSeconds;
-				const firstN = racingLaps.slice(0, target).reduce((s, l) => s + l.lengthSeconds, 0);
-				completionTime = hs + firstN;
+			if (target > 0 && holeshotLap && racingLaps.length >= target) {
+				const holeshotSeconds = holeshotLap.lengthSeconds;
+				const firstNLapSeconds = racingLaps
+					.slice(0, target)
+					.reduce((total, lap) => total + lap.lengthSeconds, 0);
+				completionTime = holeshotSeconds + firstNLapSeconds;
 			}
 
-			// Fastest N consecutive (Practice/TimeTrial/etc)
 			let consecutiveTime = Number.POSITIVE_INFINITY;
 			if (nConsec > 0 && racingLaps.length >= nConsec) {
 				for (let i = 0; i <= racingLaps.length - nConsec; i++) {
-					const sum = racingLaps.slice(i, i + nConsec).reduce((s, l) => s + l.lengthSeconds, 0);
-					if (sum < consecutiveTime) consecutiveTime = sum;
+					let windowSum = 0;
+					for (let j = 0; j < nConsec; j++) windowSum += racingLaps[i + j].lengthSeconds;
+					if (windowSum < consecutiveTime) consecutiveTime = windowSum;
 				}
 			}
 
-			return { pilotChannel, completedLaps, completionTime, consecutiveTime };
+			let bestLapSeconds = Number.POSITIVE_INFINITY;
+			for (const lap of racingLaps) {
+				if (lap.lengthSeconds > 0 && lap.lengthSeconds < bestLapSeconds) {
+					bestLapSeconds = lap.lengthSeconds;
+				}
+			}
+
+			let finishDetectionMs = Number.POSITIVE_INFINITY;
+			if (target > 0 && racingLaps.length >= target) {
+				const finishLap = racingLaps[target - 1];
+				const parsedFinish = parsePbTimestamp(finishLap.detectionTime);
+				if (Number.isFinite(parsedFinish)) finishDetectionMs = parsedFinish;
+			}
+
+			const holeshotDetectionMs = holeshotLap ? parsePbTimestamp(holeshotLap.detectionTime) : Number.POSITIVE_INFINITY;
+			let finishElapsedMs = Number.POSITIVE_INFINITY;
+			if (Number.isFinite(finishDetectionMs)) {
+				const baseline = Number.isFinite(raceStartTs) ? raceStartTs : holeshotDetectionMs;
+				if (Number.isFinite(baseline)) {
+					const elapsed = finishDetectionMs - baseline;
+					if (Number.isFinite(elapsed) && elapsed >= 0) finishElapsedMs = elapsed;
+				}
+			}
+			const detectionTimes = lapsForPilot
+				.map((lap) => parsePbTimestamp(lap.detectionTime))
+				.filter((value) => Number.isFinite(value));
+			const firstDetectionMs = detectionTimes.length > 0 ? Math.min(...detectionTimes) : Number.POSITIVE_INFINITY;
+
+			return {
+				pilotChannel,
+				completedLaps,
+				completionTime,
+				consecutiveTime,
+				finishElapsedMs,
+				finishDetectionMs,
+				firstDetectionMs,
+				bestLapSeconds,
+			};
 		});
 	})
 );
@@ -79,21 +268,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 		const isRaceRound = rounds.find((r) => r.id === (race.round ?? ''))?.eventType === EventType.Race;
 		const calcs = get(racePilotCalcsAtom(raceId));
 
-		let sorted: PilotCalc[];
-		if (isRaceRound) {
-			const completed = calcs.filter((p) => Number.isFinite(p.completionTime))
-				.sort((a, b) => a.completionTime - b.completionTime);
-			const notCompleted = calcs.filter((p) => !Number.isFinite(p.completionTime))
-				.sort((a, b) => b.completedLaps - a.completedLaps);
-			sorted = [...completed, ...notCompleted];
-		} else {
-			const haveConsec = calcs.filter((p) => Number.isFinite(p.consecutiveTime))
-				.sort((a, b) => a.consecutiveTime - b.consecutiveTime);
-			const noConsec = calcs.filter((p) => !Number.isFinite(p.consecutiveTime))
-				.sort((a, b) => b.completedLaps - a.completedLaps);
-			sorted = [...haveConsec, ...noConsec];
-		}
-
+		const sorted = sortRacePilotRows(calcs, isRaceRound);
 		return sorted.map((p, idx) => ({ pilotChannel: p.pilotChannel, position: idx + 1 }));
 	})
 );

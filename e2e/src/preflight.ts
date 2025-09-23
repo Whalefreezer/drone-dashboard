@@ -88,7 +88,7 @@ async function main() {
 		{ label: 'be-verify', cmd: 'go', args: ['vet', './...'], cwd: backendDir },
 	]));
 
-	// // e2e run (playwright)
+	// e2e run (playwright)
 	// jobs.push(streamProcess({
 	// 	label: 'e2e-run',
 	// 	cmd: 'deno',
