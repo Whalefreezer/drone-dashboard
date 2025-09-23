@@ -22,6 +22,7 @@ type Hub struct {
 	inflight atomic.Int64
 	statsMu  sync.RWMutex
 	stats    map[string]*fetchMetrics
+	statsStore FetchStatsStore
 }
 
 func NewHub() *Hub {
@@ -49,6 +50,16 @@ type FetchStatsSnapshot struct {
 }
 
 const overallStatsKey = "overall"
+
+// FetchStatsStore persists fetch metrics snapshots for external consumers.
+type FetchStatsStore interface {
+	UpsertFetchStats(ctx context.Context, bucket string, stats FetchStatsSnapshot) error
+}
+
+// SetFetchStatsStore configures an optional persistence sink for fetch stats.
+func (h *Hub) SetFetchStatsStore(store FetchStatsStore) {
+	h.statsStore = store
+}
 
 // WSConn abstracts the minimal send/close operations used by the hub.
 type WSConn interface {
@@ -215,14 +226,16 @@ func (h *Hub) deliver(env Envelope) {
 }
 
 func (h *Hub) recordFetchResult(path string, status int, err error) {
-	buckets := []*fetchMetrics{h.ensureMetricsBucket(overallStatsKey)}
+	keys := []string{overallStatsKey}
 	if key := classifyFetchPath(path); key != "" {
-		buckets = append(buckets, h.ensureMetricsBucket(key))
+		keys = append(keys, key)
 	}
-	for _, bucket := range buckets {
+	for _, key := range keys {
+		bucket := h.ensureMetricsBucket(key)
 		bucket.total.Add(1)
 		if err != nil {
 			bucket.errors.Add(1)
+			h.persistFetchStats(key, bucket)
 			continue
 		}
 		if status == http.StatusNotModified {
@@ -230,6 +243,7 @@ func (h *Hub) recordFetchResult(path string, status int, err error) {
 		} else {
 			bucket.fullResponses.Add(1)
 		}
+		h.persistFetchStats(key, bucket)
 	}
 }
 
@@ -250,6 +264,16 @@ func (h *Hub) ensureMetricsBucket(key string) *fetchMetrics {
 	return bucket
 }
 
+func (h *Hub) persistFetchStats(key string, bucket *fetchMetrics) {
+	if h.statsStore == nil {
+		return
+	}
+	snapshot := snapshotFetchMetrics(bucket)
+	if err := h.statsStore.UpsertFetchStats(context.Background(), key, snapshot); err != nil {
+		slog.Warn("control.hub.fetch_stats.persist.error", "bucket", key, "err", err)
+	}
+}
+
 func (h *Hub) FetchStatsSnapshot() map[string]FetchStatsSnapshot {
 	h.statsMu.RLock()
 	defer h.statsMu.RUnlock()
@@ -266,6 +290,15 @@ func (h *Hub) FetchStatsSnapshot() map[string]FetchStatsSnapshot {
 		out[overallStatsKey] = FetchStatsSnapshot{}
 	}
 	return out
+}
+
+func snapshotFetchMetrics(bucket *fetchMetrics) FetchStatsSnapshot {
+	return FetchStatsSnapshot{
+		Total:         bucket.total.Load(),
+		FullResponses: bucket.fullResponses.Load(),
+		ETagHits:      bucket.etagHits.Load(),
+		Errors:        bucket.errors.Load(),
+	}
 }
 
 func classifyFetchPath(path string) string {

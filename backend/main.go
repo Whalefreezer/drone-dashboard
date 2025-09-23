@@ -58,6 +58,7 @@ func main() {
 	// Select ingest source based on configuration
 	var ingestService *ingest.Service
 	hub := control.NewHub()
+	hub.SetFetchStatsStore(control.NewPocketBaseFetchStatsStore(app))
 
 	if flags.AuthToken != "" {
 		if flags.CloudURL != "" {
