@@ -33,14 +33,6 @@ const parsePbTimestamp = (value?: string | null): number => {
 	return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
 };
 
-const createChannelOrderGetter = (
-	getIndex: (get: EagerGetter, pilotId: string) => number | null,
-): (get: EagerGetter, pilotId: string) => number | null =>
-(get, pilotId) => {
-	const idx = getIndex(get, pilotId);
-	return idx == null ? null : idx;
-};
-
 const DESCENDING = SortDirection.Descending;
 const ASCENDING = SortDirection.Ascending;
 
@@ -171,6 +163,24 @@ export const racePilotCompletionTimeAtom = deepEqualAtomFamily(([raceId, pilotId
 );
 
 /**
+ * Total race time for a pilot (holeshot + all completed laps) - used for sorting incomplete pilots
+ */
+export const racePilotTotalTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
+	eagerAtom((get): number | null => {
+		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
+		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
+		const holeshot = pilotLaps.find((lap) => lap.isHoleshot);
+		const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
+
+		if (!holeshot) return null;
+
+		const holeshotTime = holeshot.lengthSeconds;
+		const racingTime = racingLaps.reduce((sum, lap) => sum + lap.lengthSeconds, 0);
+		return holeshotTime + racingTime;
+	})
+);
+
+/**
  * First detection timestamp for a pilot in a specific race
  */
 export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
@@ -186,7 +196,6 @@ export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilot
 );
 
 export const createRaceSortConfig = (
-	getChannelOrder: (get: EagerGetter, pilotId: string) => number | null,
 	isRaceRound: boolean,
 ): SortGroup<{ raceId: string }>[] => {
 	const completedCondition = (get: EagerGetter, pilotId: string, context: { raceId: string }) =>
@@ -196,13 +205,15 @@ export const createRaceSortConfig = (
 	const hasConsecutiveCondition = (get: EagerGetter, pilotId: string, context: { raceId: string }) =>
 		get(racePilotConsecutiveTimeAtom([context.raceId, pilotId])) != null;
 
-	const channelValue = createChannelOrderGetter(getChannelOrder);
+	const channelValue = (get: EagerGetter, pilotId: string, context: { raceId: string }) =>
+		get(racePilotChannelOrderAtom(context.raceId)).get(pilotId) ?? null;
 
 	const consecutiveValue = createValueGetter(racePilotConsecutiveTimeAtom);
 	const bestLapValue = createValueGetter(racePilotBestLapAtom);
 	const finishElapsedValue = createValueGetter(racePilotFinishElapsedMsAtom);
 	const finishDetectionValue = createValueGetter(racePilotFinishDetectionMsAtom);
 	const completionTimeValue = createValueGetter(racePilotCompletionTimeAtom);
+	const totalTimeValue = createValueGetter(racePilotTotalTimeAtom);
 	const firstDetectionValue = createValueGetter(racePilotFirstDetectionMsAtom);
 	const completedLapsValue = createValueGetter(racePilotCompletedLapsAtom);
 
@@ -226,7 +237,7 @@ export const createRaceSortConfig = (
 				condition: (get: EagerGetter, pilotId: string, context: { raceId: string }) => !completedCondition(get, pilotId, context),
 				criteria: [
 					{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
-					{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: totalTimeValue, direction: ASCENDING, nullHandling: LAST },
 					{ getValue: firstDetectionValue, direction: ASCENDING, nullHandling: LAST },
 					{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
 				],
@@ -297,13 +308,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 		const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
 		if (pilotChannels.length === 0) return [];
 
-		const config = createRaceSortConfig(
-			(getter, pilotId) => {
-				const order = getter(racePilotChannelOrderAtom(raceId));
-				return order.get(pilotId) ?? null;
-			},
-			isRaceRound,
-		);
+		const config = createRaceSortConfig(isRaceRound);
 		const pilotIds = pilotChannels.map((pc) => pc.pilotId);
 		const sortedIds = sortPilotIds(pilotIds, get, config, { raceId });
 		const pilotChannelMap = new Map<string, { id: string; pilotId: string; channelId: string }>();
