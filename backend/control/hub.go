@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,11 +20,35 @@ type Hub struct {
 	pending  map[string]chan Envelope
 	timeout  time.Duration
 	inflight atomic.Int64
+	statsMu  sync.RWMutex
+	stats    map[string]*fetchMetrics
 }
 
 func NewHub() *Hub {
-	return &Hub{conns: make(map[string]WSConn), pending: make(map[string]chan Envelope), timeout: 10 * time.Second}
+	return &Hub{
+		conns:   make(map[string]WSConn),
+		pending: make(map[string]chan Envelope),
+		stats:   make(map[string]*fetchMetrics),
+		timeout: 10 * time.Second,
+	}
 }
+
+type fetchMetrics struct {
+	total         atomic.Int64
+	fullResponses atomic.Int64
+	etagHits      atomic.Int64
+	errors        atomic.Int64
+}
+
+// FetchStatsSnapshot captures aggregate fetch metrics for reporting.
+type FetchStatsSnapshot struct {
+	Total         int64 `json:"total"`
+	FullResponses int64 `json:"fullResponses"`
+	ETagHits      int64 `json:"etagHits"`
+	Errors        int64 `json:"errors"`
+}
+
+const overallStatsKey = "overall"
 
 // WSConn abstracts the minimal send/close operations used by the hub.
 type WSConn interface {
@@ -59,6 +85,13 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Respons
 	started := h.inflight.Add(1)
 	ctx, traceID := EnsureTraceID(ctx)
 	var requestID string
+	sentToPits := false
+	defer func() {
+		if !sentToPits {
+			return
+		}
+		h.recordFetchResult(f.Path, resp.Status, err)
+	}()
 	defer func() {
 		remaining := h.inflight.Add(-1)
 		latency := time.Since(start).Milliseconds()
@@ -124,6 +157,7 @@ func (h *Hub) DoFetch(ctx context.Context, pitsID string, f Fetch) (resp Respons
 		err = NewTraceError(traceID, err)
 		return
 	}
+	sentToPits = true
 
 	select {
 	case <-ctx.Done():
@@ -178,4 +212,81 @@ func (h *Hub) deliver(env Envelope) {
 		return
 	}
 	ch <- env
+}
+
+func (h *Hub) recordFetchResult(path string, status int, err error) {
+	buckets := []*fetchMetrics{h.ensureMetricsBucket(overallStatsKey)}
+	if key := classifyFetchPath(path); key != "" {
+		buckets = append(buckets, h.ensureMetricsBucket(key))
+	}
+	for _, bucket := range buckets {
+		bucket.total.Add(1)
+		if err != nil {
+			bucket.errors.Add(1)
+			continue
+		}
+		if status == http.StatusNotModified {
+			bucket.etagHits.Add(1)
+		} else {
+			bucket.fullResponses.Add(1)
+		}
+	}
+}
+
+func (h *Hub) ensureMetricsBucket(key string) *fetchMetrics {
+	h.statsMu.RLock()
+	bucket, ok := h.stats[key]
+	h.statsMu.RUnlock()
+	if ok {
+		return bucket
+	}
+	h.statsMu.Lock()
+	defer h.statsMu.Unlock()
+	if bucket, ok = h.stats[key]; ok {
+		return bucket
+	}
+	bucket = &fetchMetrics{}
+	h.stats[key] = bucket
+	return bucket
+}
+
+func (h *Hub) FetchStatsSnapshot() map[string]FetchStatsSnapshot {
+	h.statsMu.RLock()
+	defer h.statsMu.RUnlock()
+	out := make(map[string]FetchStatsSnapshot, len(h.stats))
+	for key, bucket := range h.stats {
+		out[key] = FetchStatsSnapshot{
+			Total:         bucket.total.Load(),
+			FullResponses: bucket.fullResponses.Load(),
+			ETagHits:      bucket.etagHits.Load(),
+			Errors:        bucket.errors.Load(),
+		}
+	}
+	if _, ok := out[overallStatsKey]; !ok {
+		out[overallStatsKey] = FetchStatsSnapshot{}
+	}
+	return out
+}
+
+func classifyFetchPath(path string) string {
+	switch {
+	case path == "/":
+		return "eventSource"
+	case strings.HasSuffix(path, "/Event.json"):
+		return "event"
+	case strings.HasSuffix(path, "/Pilots.json"):
+		return "pilots"
+	case strings.HasSuffix(path, "/Rounds.json"):
+		return "rounds"
+	case strings.HasSuffix(path, "/Results.json"):
+		return "results"
+	case strings.HasSuffix(path, "/Race.json"):
+		return "race"
+	case strings.HasSuffix(path, "/Channels.json"):
+		return "channels"
+	case path == "":
+		return ""
+	default:
+		return "other"
+	}
 }

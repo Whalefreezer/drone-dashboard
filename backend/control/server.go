@@ -48,6 +48,9 @@ var upgrader = websocket.Upgrader{
 // RegisterServer registers the /control route on the PocketBase router for cloud mode.
 func RegisterServer(app core.App, hub *Hub, authSecret string) {
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		se.Router.GET("/control/etag-stats", func(c *core.RequestEvent) error {
+			return c.JSON(http.StatusOK, hub.FetchStatsSnapshot())
+		})
 		se.Router.Any("/control", func(c *core.RequestEvent) error {
 			// Simple bearer check; production can be JWT or mTLS (handled at proxy)
 			if authSecret != "" {
