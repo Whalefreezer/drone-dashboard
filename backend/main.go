@@ -113,6 +113,8 @@ type CLIFlags struct {
 	PitsID         string
 	DBDir          string
 	ImportSnapshot string
+	UITitle        string
+	UITitleProvided bool
 }
 
 func parseFlags() CLIFlags {
@@ -133,6 +135,7 @@ func parseFlags() CLIFlags {
 	fs.StringVar(&out.PitsID, "pits-id", "default", "Identifier for this pits instance")
 	fs.StringVar(&out.DBDir, "db-dir", "", "Directory for SQLite database files (empty = in-memory)")
 	fs.StringVar(&out.ImportSnapshot, "import-snapshot", "", "Path to PB snapshot JSON to import at startup")
+	uiTitle := fs.String("ui-title", "", "UI title shown in the browser tab (default: Drone Dashboard)")
 
 	showHelp := fs.Bool("help", false, "Show help message")
 	_ = fs.Parse(os.Args[1:])
@@ -145,6 +148,16 @@ func parseFlags() CLIFlags {
 	if out.AuthToken == "" {
 		out.AuthToken = os.Getenv("AUTH_TOKEN")
 	}
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "ui-title" {
+			out.UITitleProvided = true
+		}
+	})
+	trimmedTitle := strings.TrimSpace(*uiTitle)
+	if trimmedTitle == "" {
+		trimmedTitle = "Drone Dashboard"
+	}
+	out.UITitle = trimmedTitle
 
 	return out
 }
@@ -167,6 +180,7 @@ Options:
   --log-level string       Log level: error|warn|info|debug|trace
   --ingest-enabled bool    Enable background scheduler loops (default: true)
   --direct-proxy           Enable /direct/* proxy to FPVTrackside (default: false)
+  --ui-title string        UI title shown in the browser tab (default: Drone Dashboard)
 
   --cloud-url string       Cloud WebSocket URL (required for pits mode)
   --auth-token string      Authentication token (enables cloud or pits mode)
@@ -280,6 +294,7 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 
 		// Reflect CLI flag into server_settings
 		setSchedulerEnabledFromFlag(app, flags.IngestEnabled)
+		setUITitleFromFlag(app, flags.UITitle, flags.UITitleProvided)
 
 		// Start loops
 		ctx := context.Background()
@@ -397,6 +412,30 @@ func setSchedulerEnabledFromFlag(app core.App, enabled bool) {
 	rec.Set("value", strconv.FormatBool(enabled))
 	if err := app.Save(rec); err != nil {
 		slog.Warn("server_settings.save.error", "key", "scheduler.enabled", "err", err)
+	}
+}
+
+func setUITitleFromFlag(app core.App, title string, provided bool) {
+	if !provided {
+		return
+	}
+	trimmed := strings.TrimSpace(title)
+	if trimmed == "" {
+		trimmed = "Drone Dashboard"
+	}
+	col, err := app.FindCollectionByNameOrId("server_settings")
+	if err != nil {
+		slog.Warn("server_settings.collection.find.error", "err", err)
+		return
+	}
+	rec, _ := app.FindFirstRecordByFilter("server_settings", "key = 'ui.title'", nil)
+	if rec == nil {
+		rec = core.NewRecord(col)
+		rec.Set("key", "ui.title")
+	}
+	rec.Set("value", trimmed)
+	if err := app.Save(rec); err != nil {
+		slog.Warn("server_settings.save.error", "key", "ui.title", "err", err)
 	}
 }
 

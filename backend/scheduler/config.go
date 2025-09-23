@@ -32,6 +32,7 @@ func (m *Manager) ensureDefaultSettings() {
 		"scheduler.channelsIntervalMs": "60000",
 		"scheduler.jitterMs":           "150",
 		"scheduler.concurrency":        "2",
+		"ui.title":                     "Drone Dashboard",
 	}
 	col, err := m.App.FindCollectionByNameOrId("server_settings")
 	if err != nil {

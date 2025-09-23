@@ -114,6 +114,24 @@ export const ingestTargetRecordsAtom = pbSubscribeCollection<PBIngestTargetRecor
 export const serverSettingsRecordsAtom = pbSubscribeCollection<PBServerSettingRecord>('server_settings');
 export const controlStatsRecordsAtom = pbSubscribeCollection<PBControlStatsRecord>('control_stats');
 
+export const DEFAULT_APP_TITLE = 'Drone Dashboard';
+
+export const serverSettingRecordAtom = atomFamily((key: string) =>
+	eagerAtom((get) => {
+		const settings = get(serverSettingsRecordsAtom);
+		const record = settings.find((setting) => setting.key === key);
+		return record ?? null;
+	})
+);
+
+export const appTitleAtom = eagerAtom((get) => {
+	const record = get(serverSettingRecordAtom('ui.title'));
+	const raw = record?.value;
+	const text = raw == null ? '' : String(raw);
+	const trimmed = text.trim();
+	return trimmed || DEFAULT_APP_TITLE;
+});
+
 // Use the new PB-native race atoms instead of legacy ComputedRace
 export const racesAtom = allRacesAtom;
 export const currentRaceAtom = newCurrentRaceAtom;
