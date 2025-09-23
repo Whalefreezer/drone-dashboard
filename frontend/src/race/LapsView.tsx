@@ -280,9 +280,9 @@ function LapsTable(
 
 	const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
 
-	const keysSig = useMemo(() => JSON.stringify(columns.map((c) => c.key)), [columns]);
-	const defaultKeys = useMemo(() => columns.map((c) => c.key), [keysSig]);
-	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom('laps', defaultKeys), [keysSig]));
+	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
+	const prefsAtom = useMemo(() => getColumnPrefsAtom('laps', allKeys, allKeys), [allKeys]);
+	const [visible] = useAtom(prefsAtom);
 
 	return (
 		<GenericTable<LapsTableContext, LapsRow>

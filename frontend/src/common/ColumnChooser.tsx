@@ -13,11 +13,15 @@ export function ColumnChooser<TableCtx, RowCtx extends object>(
 		defaultVisible,
 	}: { tableId: string; columns: Array<Column<TableCtx, RowCtx>>; label?: string; compact?: boolean; defaultVisible?: string[] },
 ) {
-	const defaults = useMemo(() => defaultVisible ?? columns.map((c) => c.key), [columns]);
-	const [visible, setVisible] = useAtom(useMemo(() => getColumnPrefsAtom(tableId, defaults), [tableId, defaults]));
-	const [open, setOpen] = useState(false);
-
 	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
+	const defaults = useMemo(() => {
+		if (!defaultVisible) return allKeys;
+		const allowed = new Set(allKeys);
+		return defaultVisible.filter((key) => allowed.has(key));
+	}, [allKeys, defaultVisible]);
+	const prefsAtom = useMemo(() => getColumnPrefsAtom(tableId, allKeys, defaults), [tableId, allKeys, defaults]);
+	const [visible, setVisible] = useAtom(prefsAtom);
+	const [open, setOpen] = useState(false);
 	const labelFor = (c: Column<TableCtx, RowCtx>) => c.label ?? (typeof c.header === 'string' ? c.header : c.key);
 
 	const toggle = (key: string) => {

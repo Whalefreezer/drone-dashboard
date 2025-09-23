@@ -72,12 +72,10 @@ function VisibleTable(
 	},
 ) {
 	// Use per-breakpoint storage key and defaults
-	const keysSig = useMemo(() => JSON.stringify({ id: prefsKey, cols: columns.map((c) => c.key), def: defaultKeys }), [
-		prefsKey,
-		columns,
-		defaultKeys,
-	]);
-	const [visible] = useAtom(useMemo(() => getColumnPrefsAtom(prefsKey, defaultKeys), [keysSig]));
+	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
+	const defaults = useMemo(() => defaultKeys.filter((key) => allKeys.includes(key)), [allKeys, defaultKeys]);
+	const prefsAtom = useMemo(() => getColumnPrefsAtom(prefsKey, allKeys, defaults), [prefsKey, allKeys, defaults]);
+	const [visible] = useAtom(prefsAtom);
 	return (
 		<GenericTable<TableContext, LeaderboardRowProps>
 			className='leaderboard-table'
