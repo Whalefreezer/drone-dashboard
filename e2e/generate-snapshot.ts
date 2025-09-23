@@ -9,143 +9,37 @@
 import { faker } from '@faker-js/faker';
 import { parseArgs } from '@std/cli/parse-args';
 import { ensureDir } from '@std/fs';
-// Snapshot-specific interfaces that match the actual PocketBase snapshot format
-interface SnapshotEvent extends PBBaseRecord {
-	name: string;
-	eventType: string;
-	isCurrent?: boolean;
-	laps?: number;
-	pbLaps?: number;
-	packLimit?: number;
-	raceLength?: string;
-	minStartDelay?: string;
-	maxStartDelay?: string;
-	primaryTimingSystemLocation?: string;
-	raceStartIgnoreDetections?: string;
-	minLapTime?: string;
-	lastOpened?: string;
-	start?: string;
-	end?: string;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
+import { EventType } from '../frontend/src/api/pbTypes.ts';
+import type {
+	PBChannelRecord,
+	PBClientKVRecord,
+	PBDetectionRecord,
+	PBEventRecord,
+	PBGamePointRecord,
+	PBLapRecord,
+	PBPilotChannelRecord,
+	PBPilotRecord,
+	PBRaceRecord,
+	PBRoundRecord,
+} from '../frontend/src/api/pbTypes.ts';
+// PocketBase internal fields that appear in snapshots but not in frontend API types
+interface PBInternalFields {
+	collectionId: string;
+	collectionName: string;
+	source: string;
+	sourceId: string;
 }
 
-interface SnapshotPilot extends PBBaseRecord {
-	name: string;
-	firstName?: string;
-	lastName?: string;
-	discordId?: string;
-	practicePilot?: boolean;
-	event?: string;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotChannel extends PBBaseRecord {
-	number?: number;
-	band?: string;
-	shortBand?: string;
-	channelPrefix?: string;
-	frequency?: number;
-	channelColor?: string;
-	displayName?: string;
-	channelDisplayName?: string;
-	event?: string;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotRound extends PBBaseRecord {
-	name?: string;
-	order?: number;
-	eventType?: string;
-	event?: string;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotRace extends PBBaseRecord {
-	raceNumber?: number;
-	source?: string;
-	sourceId?: string;
-	valid?: boolean;
-	bracket?: string;
-	targetLaps?: number;
-	raceOrder?: number;
-	event?: string;
-	round?: string;
-	collectionId?: string;
-	collectionName?: string;
-	laps?: number;
-	minStartDelay?: string;
-	order?: number;
-	pilotCount?: number;
-	startTime?: string | null;
-	state?: string;
-}
-
-interface SnapshotPilotChannel extends PBBaseRecord {
-	pilot?: string;
-	channel?: string;
-	event?: string;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotLap extends PBBaseRecord {
-	lap?: number;
-	pilot?: string;
-	race?: string;
-	channel?: string;
-	time?: number;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotDetection extends PBBaseRecord {
-	pilot?: string;
-	race?: string;
-	channel?: string;
-	lap?: string;
-	frequency?: number;
-	rssi?: number;
-	strength?: number;
-	time?: number;
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotGamePoint extends PBBaseRecord {
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface SnapshotClientKV extends PBBaseRecord {
-	source?: string;
-	sourceId?: string;
-	collectionId?: string;
-	collectionName?: string;
-}
-
-interface PBBaseRecord {
-	id: string;
-}
+type SnapshotEvent = PBEventRecord & PBInternalFields;
+type SnapshotPilot = PBPilotRecord & PBInternalFields;
+type SnapshotChannel = PBChannelRecord & PBInternalFields;
+type SnapshotRound = PBRoundRecord & PBInternalFields;
+type SnapshotRace = PBRaceRecord & PBInternalFields;
+type SnapshotPilotChannel = PBPilotChannelRecord & PBInternalFields;
+type SnapshotLap = PBLapRecord & PBInternalFields;
+type SnapshotDetection = PBDetectionRecord & PBInternalFields;
+type SnapshotGamePoint = PBGamePointRecord & PBInternalFields;
+type SnapshotClientKV = PBClientKVRecord & PBInternalFields;
 
 interface GeneratorOptions {
 	pilotCount: number;
@@ -214,7 +108,7 @@ async function generateEvent(
 		id: eventId,
 		name: faker.company.name() + ' ' +
 			faker.company.buzzPhrase().split(' ').slice(0, 2).join(' ') + ' Race',
-		eventType: 'Race',
+		eventType: EventType.Race,
 		isCurrent: true,
 		laps: options.lapsPerRace,
 		pbLaps: 2,
@@ -345,7 +239,7 @@ async function generateRounds(
 			id: await generateId(seed, 3000 + i),
 			name: `Round ${i + 1}`,
 			order: i + 1,
-			eventType: 'Race' as const,
+			eventType: EventType.Race,
 			event: eventId,
 			// PocketBase snapshot fields
 			collectionId: 'pbc_225224730',
@@ -360,7 +254,7 @@ async function generateRounds(
 async function generateRaces(
 	options: GeneratorOptions,
 	rounds: SnapshotRound[],
-	pilots: SnapshotPilot[],
+	_pilots: SnapshotPilot[],
 	seed: string,
 ): Promise<SnapshotRace[]> {
 	const races: SnapshotRace[] = [];
@@ -382,12 +276,6 @@ async function generateRaces(
 				// PocketBase snapshot fields
 				collectionId: 'pbc_2396323229',
 				collectionName: 'races',
-				laps: options.lapsPerRace,
-				minStartDelay: '00:00:00.5000000',
-				order: i + 1,
-				pilotCount: Math.min(pilots.length, 8), // Typical heat size
-				startTime: null,
-				state: 'waiting',
 			});
 			raceCounter++;
 		}
@@ -428,79 +316,93 @@ async function generateLaps(
 	pilots: SnapshotPilot[],
 	pilotChannels: SnapshotPilotChannel[],
 	seed: string,
-): Promise<SnapshotLap[]> {
-	if (!options.includeTelemetry) return [];
-
+): Promise<{ laps: SnapshotLap[]; detections: SnapshotDetection[] }> {
 	const laps: SnapshotLap[] = [];
+	const detections: SnapshotDetection[] = [];
+
+	if (!options.includeTelemetry) {
+		return { laps, detections };
+	}
+
 	let lapCounter = 0;
 
 	for (const race of races) {
-		// Assign random pilots to this race (up to pilotCount)
+		// Assign random pilots to this race (typical heat size: 8)
 		const racePilots = pilots
 			.sort(() => Math.random() - 0.5)
-			.slice(0, Math.min(race.pilotCount!, pilots.length));
+			.slice(0, Math.min(8, pilots.length));
 
 		for (const pilot of racePilots) {
 			const pilotChannel = pilotChannels.find((pc) => pc.pilot === pilot.id);
-			if (!pilotChannel) continue;
+			if (!pilotChannel || !pilotChannel.channel) continue;
 
 			for (let lapNum = 1; lapNum <= options.lapsPerRace; lapNum++) {
-				const baseTime = 2000 + Math.random() * 3000; // 2-5 seconds per lap
-				const lapTime = Math.round(baseTime + (lapNum - 1) * 100); // Getting slower each lap
-
+				const lapId = await generateId(seed, 6000 + lapCounter);
 				laps.push({
-					id: await generateId(seed, 6000 + lapCounter),
-					lap: lapNum,
+					id: lapId,
+					lapNumber: lapNum,
+					detection: await generateId(seed, 8000 + lapCounter), // Dummy detection ID
 					race: race.id,
-					channel: pilotChannel.channel,
-					pilot: pilot.id,
-					time: lapTime,
+					event: race.event,
 					source: 'fpvtrackside',
 					sourceId: generateUUID(),
 					collectionId: 'pbc_1167523714',
 					collectionName: 'laps',
 				});
+
+				// Generate detections for this lap
+				if (options.includeTelemetry) {
+					const lapDetections = await generateDetectionsForLap(
+						lapId,
+						pilot.id,
+						pilotChannel.channel,
+						race.id,
+						race.event!,
+						lapNum,
+						seed,
+					);
+					detections.push(...lapDetections);
+				}
+
 				lapCounter++;
 			}
 		}
 	}
-	return laps;
+	return { laps, detections };
 }
 
-async function generateDetections(
-	options: GeneratorOptions,
-	laps: SnapshotLap[],
+async function generateDetectionsForLap(
+	_lapId: string,
+	pilotId: string,
+	channelId: string,
+	raceId: string,
+	eventId: string,
+	lapNumber: number,
 	seed: string,
 ): Promise<SnapshotDetection[]> {
-	if (!options.includeTelemetry) return [];
-
 	const detections: SnapshotDetection[] = [];
-	let detectionCounter = 0;
+	// Generate 2-4 detections per lap (entry and exit of timing gate)
+	const detectionCount = 2 + Math.floor(Math.random() * 3);
 
-	for (const lap of laps) {
-		// Generate 2-4 detections per lap (entry and exit of timing gate)
-		const detectionCount = 2 + Math.floor(Math.random() * 3);
+	for (let i = 0; i < detectionCount; i++) {
+		const offset = i * 50 + Math.random() * 100; // Spread detections over the lap time
 
-		for (let i = 0; i < detectionCount; i++) {
-			const offset = i * 50 + Math.random() * 100; // Spread detections over the lap time
-
-			detections.push({
-				id: await generateId(seed, 7000 + detectionCounter),
-				pilot: lap.pilot,
-				race: lap.race,
-				channel: lap.channel,
-				lap: lap.id,
-				frequency: 5658000000 + Math.floor(Math.random() * 1000000), // Around 5.6GHz
-				rssi: -30 - Math.floor(Math.random() * 40), // RSSI between -30 and -70
-				strength: Math.floor(Math.random() * 100),
-				time: Math.floor(offset),
-				source: 'fpvtrackside',
-				sourceId: generateUUID(),
-				collectionId: 'pbc_2875209709',
-				collectionName: 'detections',
-			});
-			detectionCounter++;
-		}
+		detections.push({
+			id: await generateId(seed, 7000 + Math.floor(Math.random() * 10000)),
+			pilot: pilotId,
+			race: raceId,
+			channel: channelId,
+			event: eventId,
+			lapNumber: lapNumber,
+			time: Math.floor(offset).toString(),
+			peak: Math.floor(Math.random() * 1000),
+			isLapEnd: true,
+			valid: true,
+			source: 'fpvtrackside',
+			sourceId: generateUUID(),
+			collectionId: 'pbc_2875209709',
+			collectionName: 'detections',
+		});
 	}
 	return detections;
 }
@@ -513,8 +415,13 @@ async function generateSnapshot(options: GeneratorOptions): Promise<Snapshot> {
 	const rounds = await generateRounds(options, event.id, seed);
 	const races = await generateRaces(options, rounds, pilots, seed);
 	const pilotChannels = await generatePilotChannels(pilots, channels, seed);
-	const laps = await generateLaps(options, races, pilots, pilotChannels, seed);
-	const detections = await generateDetections(options, laps, seed);
+	const { laps, detections } = await generateLaps(
+		options,
+		races,
+		pilots,
+		pilotChannels,
+		seed,
+	);
 
 	return {
 		version: 'pb-snapshot@v1',
