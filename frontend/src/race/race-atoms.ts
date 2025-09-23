@@ -15,6 +15,8 @@ import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
+import { sortPilotIds } from '../leaderboard/leaderboard-sorter.ts';
+import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from '../leaderboard/sorting-types.ts';
 
 export type RacePilotCalc = {
 	pilotChannel: { id: string; pilotId: string; channelId: string };
@@ -37,129 +39,131 @@ const parsePbTimestamp = (value?: string | null): number => {
 	return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
 };
 
-const compareFiniteAsc = (a: number, b: number): number => {
-	const aFinite = Number.isFinite(a);
-	const bFinite = Number.isFinite(b);
-	if (aFinite && bFinite) {
-		const diff = a - b;
-		if (diff !== 0) return diff;
-		return 0;
+const finiteOrNull = (value: number): number | null => Number.isFinite(value) ? value : null;
+
+type CalcSelector = (calc: RacePilotCalc) => number;
+
+const createValueGetter = (
+	getCalc: (get: EagerGetter, pilotId: string) => RacePilotCalc | null,
+	select: CalcSelector,
+): (get: EagerGetter, pilotId: string) => number | null =>
+(get, pilotId) => {
+	const calc = getCalc(get, pilotId);
+	if (!calc) return null;
+	return finiteOrNull(select(calc));
+};
+
+const createBooleanCondition = (
+	getCalc: (get: EagerGetter, pilotId: string) => RacePilotCalc | null,
+	predicate: (calc: RacePilotCalc) => boolean,
+): (get: EagerGetter, pilotId: string) => boolean =>
+(get, pilotId) => {
+	const calc = getCalc(get, pilotId);
+	return calc ? predicate(calc) : false;
+};
+
+const createChannelOrderGetter = (
+	getIndex: (get: EagerGetter, pilotId: string) => number | null,
+): (get: EagerGetter, pilotId: string) => number | null =>
+(get, pilotId) => {
+	const idx = getIndex(get, pilotId);
+	return idx == null ? null : idx;
+};
+
+const createCompletedCondition = (
+	getCalc: (get: EagerGetter, pilotId: string) => RacePilotCalc | null,
+): (get: EagerGetter, pilotId: string) => boolean =>
+	createBooleanCondition(getCalc, (calc) => Number.isFinite(calc.finishElapsedMs) || Number.isFinite(calc.completionTime));
+
+const createHasConsecutiveCondition = (
+	getCalc: (get: EagerGetter, pilotId: string) => RacePilotCalc | null,
+): (get: EagerGetter, pilotId: string) => boolean => createBooleanCondition(getCalc, (calc) => Number.isFinite(calc.consecutiveTime));
+
+const DESCENDING = SortDirection.Descending;
+const ASCENDING = SortDirection.Ascending;
+
+const LAST = NullHandling.Last;
+
+export const createRaceSortConfig = (
+	getCalc: (get: EagerGetter, pilotId: string) => RacePilotCalc | null,
+	getChannelOrder: (get: EagerGetter, pilotId: string) => number | null,
+	isRaceRound: boolean,
+): SortGroup[] => {
+	const completedCondition = createCompletedCondition(getCalc);
+	const hasConsecutiveCondition = createHasConsecutiveCondition(getCalc);
+	const channelValue = createChannelOrderGetter(getChannelOrder);
+	const consecutiveValue = createValueGetter(getCalc, (calc) => calc.consecutiveTime);
+	const bestLapValue = createValueGetter(getCalc, (calc) => calc.bestLapSeconds);
+	const finishElapsedValue = createValueGetter(getCalc, (calc) => calc.finishElapsedMs);
+	const finishDetectionValue = createValueGetter(getCalc, (calc) => calc.finishDetectionMs);
+	const completionTimeValue = createValueGetter(getCalc, (calc) => calc.completionTime);
+	const firstDetectionValue = createValueGetter(getCalc, (calc) => calc.firstDetectionMs);
+	const completedLapsValue = createValueGetter(getCalc, (calc) => calc.completedLaps);
+
+	if (isRaceRound) {
+		return [
+			{
+				name: 'Completed',
+				condition: completedCondition,
+				criteria: [
+					{ getValue: finishElapsedValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: finishDetectionValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: completionTimeValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: firstDetectionValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
+					{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+				],
+			},
+			{
+				name: 'Incomplete',
+				condition: (get, pilotId) => !completedCondition(get, pilotId),
+				criteria: [
+					{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
+					{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: firstDetectionValue, direction: ASCENDING, nullHandling: LAST },
+					{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+				],
+			},
+			{
+				name: 'Fallback',
+				criteria: [
+					{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+				],
+			},
+		];
 	}
-	if (aFinite) return -1;
-	if (bFinite) return 1;
-	return 0;
-};
 
-const compareChannelTieBreaker = (a: RacePilotCalc, b: RacePilotCalc): number => {
-	const channelDiff = a.pilotChannel.channelId.localeCompare(b.pilotChannel.channelId);
-	if (channelDiff !== 0) return channelDiff;
-	// Fall back to pilotId for absolute determinism if channel IDs match
-	return a.pilotChannel.pilotId.localeCompare(b.pilotChannel.pilotId);
-};
-
-const sortRaceRoundCalcs = (calcs: RacePilotCalc[]): RacePilotCalc[] => {
-	const completed: RacePilotCalc[] = [];
-	const incomplete: RacePilotCalc[] = [];
-
-	for (const calc of calcs) {
-		if (Number.isFinite(calc.finishElapsedMs) || Number.isFinite(calc.completionTime)) {
-			completed.push(calc);
-		} else {
-			incomplete.push(calc);
-		}
-	}
-
-	completed.sort((a, b) => {
-		let diff = compareFiniteAsc(a.finishElapsedMs, b.finishElapsedMs);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.finishDetectionMs, b.finishDetectionMs);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.completionTime, b.completionTime);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
-		if (diff !== 0) return diff;
-
-		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
-
-		return compareChannelTieBreaker(a, b);
-	});
-
-	incomplete.sort((a, b) => {
-		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
-
-		let diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
-		if (diff !== 0) return diff;
-
-		return compareChannelTieBreaker(a, b);
-	});
-
-	return [...completed, ...incomplete];
-};
-
-const sortNonRaceRoundCalcs = (calcs: RacePilotCalc[]): RacePilotCalc[] => {
-	const withConsecutive: RacePilotCalc[] = [];
-	const withoutConsecutive: RacePilotCalc[] = [];
-
-	for (const calc of calcs) {
-		if (Number.isFinite(calc.consecutiveTime)) {
-			withConsecutive.push(calc);
-		} else {
-			withoutConsecutive.push(calc);
-		}
-	}
-
-	withConsecutive.sort((a, b) => {
-		let diff = compareFiniteAsc(a.consecutiveTime, b.consecutiveTime);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.finishElapsedMs, b.finishElapsedMs);
-		if (diff !== 0) return diff;
-
-		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
-
-		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
-		if (diff !== 0) return diff;
-
-		return compareChannelTieBreaker(a, b);
-	});
-
-	withoutConsecutive.sort((a, b) => {
-		if (a.completedLaps !== b.completedLaps) return b.completedLaps - a.completedLaps;
-
-		let diff = compareFiniteAsc(a.bestLapSeconds, b.bestLapSeconds);
-		if (diff !== 0) return diff;
-
-		diff = compareFiniteAsc(a.firstDetectionMs, b.firstDetectionMs);
-		if (diff !== 0) return diff;
-
-		return compareChannelTieBreaker(a, b);
-	});
-
-	return [...withConsecutive, ...withoutConsecutive];
-};
-
-/**
- * LapsView ordering rules (separate from leaderboard sort requirement):
- * Race rounds → completed pilots first (detection-backed finish elapsed, finish detection timestamp, legacy completion time),
- * then best lap, first detection, completed lap count, and channel/pilot tie-breakers. Remaining pilots fall back to laps → best lap → detection → channel.
- * Non-race rounds → pilots with N-consecutive totals first (ascending), then best lap, finish elapsed, completed laps, detection, channel.
- * Remaining pilots are ordered by completed laps, best lap, detection, channel to avoid unstable fallback behaviour.
- */
-export const sortRacePilotRows = (calcs: RacePilotCalc[], isRaceRound: boolean): RacePilotCalc[] => {
-	if (calcs.length <= 1) return [...calcs];
-	return isRaceRound ? sortRaceRoundCalcs(calcs) : sortNonRaceRoundCalcs(calcs);
+	return [
+		{
+			name: 'With Consecutive',
+			condition: hasConsecutiveCondition,
+			criteria: [
+				{ getValue: consecutiveValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: finishElapsedValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
+				{ getValue: firstDetectionValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+			],
+		},
+		{
+			name: 'Without Consecutive',
+			condition: (get, pilotId) => !hasConsecutiveCondition(get, pilotId),
+			criteria: [
+				{ getValue: completedLapsValue, direction: DESCENDING, nullHandling: LAST },
+				{ getValue: bestLapValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: firstDetectionValue, direction: ASCENDING, nullHandling: LAST },
+				{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+			],
+		},
+		{
+			name: 'Fallback',
+			criteria: [
+				{ getValue: channelValue, direction: ASCENDING, nullHandling: LAST },
+			],
+		},
+	];
 };
 
 /**
@@ -255,6 +259,28 @@ export const racePilotCalcsAtom = atomFamily((raceId: string) =>
 	})
 );
 
+export const racePilotCalcMapAtom = atomFamily((raceId: string) =>
+	eagerAtom((get): Map<string, RacePilotCalc> => {
+		const calcs = get(racePilotCalcsAtom(raceId));
+		const map = new Map<string, RacePilotCalc>();
+		for (const calc of calcs) {
+			map.set(calc.pilotChannel.pilotId, calc);
+		}
+		return map;
+	})
+);
+
+const racePilotChannelOrderAtom = atomFamily((raceId: string) =>
+	eagerAtom((get): Map<string, number> => {
+		const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
+		const order = new Map<string, number>();
+		pilotChannels.forEach((channel, index) => {
+			order.set(channel.pilotId, index);
+		});
+		return order;
+	})
+);
+
 /**
  * Sorted pilot rows for LapsView based on event type:
  * - Race: first to complete targetLaps, then by most laps
@@ -267,9 +293,32 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 		const rounds = get(roundsDataAtom);
 		const isRaceRound = rounds.find((r) => r.id === (race.round ?? ''))?.eventType === EventType.Race;
 		const calcs = get(racePilotCalcsAtom(raceId));
-
-		const sorted = sortRacePilotRows(calcs, isRaceRound);
-		return sorted.map((p, idx) => ({ pilotChannel: p.pilotChannel, position: idx + 1 }));
+		if (calcs.length === 0) return [];
+		const config = createRaceSortConfig(
+			(getter, pilotId) => {
+				const map = getter(racePilotCalcMapAtom(raceId));
+				return map.get(pilotId) ?? null;
+			},
+			(getter, pilotId) => {
+				const order = getter(racePilotChannelOrderAtom(raceId));
+				return order.get(pilotId) ?? null;
+			},
+			isRaceRound,
+		);
+		const pilotIds = calcs.map((calc) => calc.pilotChannel.pilotId);
+		const sortedIds = sortPilotIds(pilotIds, get, config);
+		const calcMap = get(racePilotCalcMapAtom(raceId));
+		const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
+		const pilotChannelMap = new Map<string, { id: string; pilotId: string; channelId: string }>();
+		pilotChannels.forEach((pc) => pilotChannelMap.set(pc.pilotId, pc));
+		return sortedIds.map((pilotId, idx) => {
+			const calc = calcMap.get(pilotId);
+			const pilotChannel = calc?.pilotChannel ?? pilotChannelMap.get(pilotId);
+			return {
+				pilotChannel: pilotChannel ?? { id: pilotId, pilotId, channelId: '' },
+				position: idx + 1,
+			};
+		});
 	})
 );
 
