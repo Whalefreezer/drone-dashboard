@@ -93,19 +93,6 @@ async function generateId(seed: string, counter: number): Promise<string> {
 		.toLowerCase().slice(0, 15);
 }
 
-// Generate a UUID-like string
-function generateUUID(): string {
-	const array = new Uint8Array(16);
-	crypto.getRandomValues(array);
-	array[6] = (array[6] & 0x0f) | 0x40; // Version 4
-	array[8] = (array[8] & 0x3f) | 0x80; // Variant 10
-	return [...array].map((b, i) => {
-		const hex = b.toString(16).padStart(2, '0');
-		if (i === 4 || i === 6 || i === 8 || i === 10) return hex + '-';
-		return hex;
-	}).join('').slice(0, 36);
-}
-
 async function generateEvent(
 	options: GeneratorOptions,
 	seed: string,
@@ -131,17 +118,14 @@ async function generateEvent(
 		primaryTimingSystemLocation: 'Holeshot',
 		raceStartIgnoreDetections: '00:00:00.5000000',
 		minLapTime: '00:00:05',
-		lastOpened: new Date().toISOString().replace('T', ' ').replace(
-			/\.\d{3}Z$/,
-			'',
-		),
-		start: new Date().toISOString().split('T')[0] + ' 0:00:00',
+		lastOpened: '2025-09-23 12:00:00', // Fixed timestamp for deterministic output
+		start: '2025-09-23 12:00:00', // Fixed timestamp for deterministic output
 		end: '0001/01/01 0:00:00',
 		// PocketBase snapshot fields
 		collectionId: COLLECTION_IDS.events,
 		collectionName: 'events',
 		source: 'fpvtrackside',
-		sourceId: generateUUID(),
+		sourceId: await generateId(seed, 10000), // Use seeded ID for events
 	};
 }
 
@@ -180,7 +164,7 @@ async function generatePilots(
 			collectionId: COLLECTION_IDS.pilots,
 			collectionName: 'pilots',
 			source: 'fpvtrackside',
-			sourceId: generateUUID(),
+			sourceId: await generateId(seed, 1000 + i), // Use seeded ID for pilots
 		});
 	}
 	return pilots;
@@ -232,9 +216,7 @@ async function generateChannels(
 			collectionId: COLLECTION_IDS.channels,
 			collectionName: 'channels',
 			source: 'fpvtrackside',
-			sourceId: `000000${
-				config.band + config.number.toString().padStart(2, '0')
-			}-0000-0000-0000-000000000000`,
+			sourceId: await generateId(seed, 2000 + i), // Use seeded ID for channels
 		});
 	}
 	return channels;
@@ -257,7 +239,7 @@ async function generateRounds(
 			collectionId: COLLECTION_IDS.rounds,
 			collectionName: 'rounds',
 			source: 'fpvtrackside',
-			sourceId: generateUUID(),
+			sourceId: await generateId(seed, 3000 + i), // Use seeded ID for rounds
 		});
 	}
 	return rounds;
@@ -276,7 +258,7 @@ async function generateRaces(
 		for (let i = 0; i < options.raceCount; i++) {
 			races.push({
 				id: await generateId(seed, 4000 + raceCounter),
-				sourceId: generateUUID(),
+				sourceId: await generateId(seed, 4000 + raceCounter), // Use seeded ID for races
 				source: 'fpvtrackside',
 				raceNumber: raceCounter + 1,
 				valid: true,
@@ -339,7 +321,7 @@ async function generatePilotChannels(
 				collectionId: COLLECTION_IDS.pilotChannels,
 				collectionName: 'pilotChannels',
 				source: 'fpvtrackside',
-				sourceId: generateUUID(),
+				sourceId: await generateId(seed, 5000 + pilotIndex - 1), // Use seeded ID for pilotChannels
 			});
 
 			racePilots.push(pilot);
@@ -449,7 +431,7 @@ async function generateLaps(
 					race: race.id,
 					event: race.event,
 					source: 'fpvtrackside',
-					sourceId: generateUUID(),
+					sourceId: await generateId(seed, 6000 + lapCounter), // Use seeded ID for laps
 					collectionId: COLLECTION_IDS.laps,
 					collectionName: 'laps',
 				});
@@ -459,6 +441,18 @@ async function generateLaps(
 		}
 	}
 	return { laps, detections };
+}
+
+// Simple seeded random number generator
+function seededRandom(seed: string, index: number): number {
+	const hash = seed + index;
+	let h = 0;
+	for (let i = 0; i < hash.length; i++) {
+		const char = hash.charCodeAt(i);
+		h = ((h << 5) - h) + char;
+		h = h & h; // Convert to 32-bit integer
+	}
+	return Math.abs(h) / 2147483647; // Normalize to 0-1
 }
 
 async function generateDetectionsForLap(
@@ -473,16 +467,24 @@ async function generateDetectionsForLap(
 	raceStartTimeMs: number,
 ): Promise<SnapshotDetection[]> {
 	const detections: SnapshotDetection[] = [];
-	// Generate 2-4 detections per lap (entry and exit of timing gate)
-	const detectionCount = 2 + Math.floor(Math.random() * 3);
 
-	// Generate realistic lap time (30-60 seconds)
-	const lapDurationMs = 30000 + Math.random() * 30000; // 30-60 seconds
+	// Generate deterministic detection count (2-4) based on seed
+	const detectionCount = 2 +
+		Math.floor(seededRandom(`${seed}-detections-${detectionCounter}`, 0) * 3);
+
+	// Generate deterministic lap time (30-60 seconds) based on seed
+	const lapDurationMs = 30000 +
+		seededRandom(`${seed}-lap-duration-${detectionCounter}`, 0) * 30000;
 
 	for (let i = 0; i < detectionCount; i++) {
-		// Spread detections throughout the lap
-		const timeOffsetWithinLap = (i / (detectionCount - 1)) * lapDurationMs +
-			(Math.random() - 0.5) * 1000; // Add some randomness
+		// Spread detections throughout the lap with seeded randomness
+		const baseOffset = detectionCount > 1
+			? (i / (detectionCount - 1)) * lapDurationMs
+			: lapDurationMs / 2;
+		const randomness =
+			(seededRandom(`${seed}-detection-offset-${detectionCounter}-${i}`, 0) -
+				0.5) * 1000;
+		const timeOffsetWithinLap = baseOffset + randomness;
 		const absoluteTimeMs = raceStartTimeMs + Math.max(0, timeOffsetWithinLap);
 		const isLastDetection = i === detectionCount - 1;
 
@@ -494,11 +496,13 @@ async function generateDetectionsForLap(
 			event: eventId,
 			lapNumber: lapNumber,
 			time: Math.floor(absoluteTimeMs).toString(),
-			peak: Math.floor(Math.random() * 1000),
+			peak: Math.floor(
+				seededRandom(`${seed}-peak-${detectionCounter}-${i}`, 0) * 1000,
+			),
 			isLapEnd: isLastDetection, // Only the last detection marks lap end
 			valid: true,
 			source: 'fpvtrackside',
-			sourceId: generateUUID(),
+			sourceId: await generateId(seed, 9000 + detectionCounter + i), // Use seeded ID instead of UUID
 			collectionId: COLLECTION_IDS.detections,
 			collectionName: 'detections',
 		});
@@ -529,7 +533,7 @@ async function generateSnapshot(options: GeneratorOptions): Promise<Snapshot> {
 
 	return {
 		version: 'pb-snapshot@v1',
-		snapshotTime: new Date().toISOString(),
+		snapshotTime: '2025-09-23T12:00:00.000Z', // Fixed timestamp for deterministic output
 		currentEventId: event.id,
 		collections: {
 			events: [event],
@@ -555,6 +559,7 @@ async function main() {
 			races: '3',
 			laps: '4',
 			rounds: '1',
+			seed: 'default-seed-123',
 			telemetry: true,
 			output: undefined,
 		},
@@ -584,7 +589,7 @@ OPTIONS:
   -r, --races <number>      Number of races per round (default: 3)
   -l, --laps <number>       Number of laps per race (default: 4)
   -R, --rounds <number>     Number of rounds (default: 1)
-  -s, --seed <string>       Random seed for reproducible generation
+  -s, --seed <string>       Random seed for reproducible generation (default: default-seed-123)
   -o, --output <path>       Output file path (default: snapshots/generated-<seed>.json)
   -t, --telemetry           Include lap and detection telemetry data (default: true)
   -h, --help                Show this help message
