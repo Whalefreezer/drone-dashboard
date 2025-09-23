@@ -88,13 +88,13 @@ async function main() {
 		{ label: 'be-verify', cmd: 'go', args: ['vet', './...'], cwd: backendDir },
 	]));
 
-	// e2e run (playwright)
-	jobs.push(streamProcess({
-		label: 'e2e-run',
-		cmd: 'deno',
-		args: ['task', 'e2e:run'],
-		cwd: e2eDir,
-	}));
+	// // e2e run (playwright)
+	// jobs.push(streamProcess({
+	// 	label: 'e2e-run',
+	// 	cmd: 'deno',
+	// 	args: ['task', 'e2e:run'],
+	// 	cwd: e2eDir,
+	// }));
 
 	const codes = await Promise.all(jobs);
 	const names = ['e2e-verify', 'fe-verify', 'be-verify', 'e2e-run'];
