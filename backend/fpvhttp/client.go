@@ -14,7 +14,7 @@ var (
 
 const (
 	requestTimeout       = 1 * time.Second
-	requestThrottleDelay = 25 * time.Millisecond
+	requestThrottleDelay = 5 * time.Millisecond
 	sleepStep            = 5 * time.Millisecond
 )
 
