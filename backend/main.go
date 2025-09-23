@@ -59,6 +59,7 @@ func main() {
 	var ingestService *ingest.Service
 	hub := control.NewHub()
 	hub.SetFetchStatsStore(control.NewPocketBaseFetchStatsStore(app))
+	hub.SetCurrentRaceProvider(control.NewClientKVCurrentRaceProvider(app, time.Second))
 
 	if flags.AuthToken != "" {
 		if flags.CloudURL != "" {

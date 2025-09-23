@@ -15,14 +15,15 @@ import (
 
 // Hub manages active pits connections and request/response correlation.
 type Hub struct {
-	mu       sync.RWMutex
-	conns    map[string]WSConn // pitsId -> connection
-	pending  map[string]chan Envelope
-	timeout  time.Duration
-	inflight atomic.Int64
-	statsMu  sync.RWMutex
-	stats    map[string]*fetchMetrics
-	statsStore FetchStatsStore
+	mu                  sync.RWMutex
+	conns               map[string]WSConn // pitsId -> connection
+	pending             map[string]chan Envelope
+	timeout             time.Duration
+	inflight            atomic.Int64
+	statsMu             sync.RWMutex
+	stats               map[string]*fetchMetrics
+	statsStore          FetchStatsStore
+	currentRaceProvider CurrentRaceProvider
 }
 
 func NewHub() *Hub {
@@ -59,6 +60,11 @@ type FetchStatsStore interface {
 // SetFetchStatsStore configures an optional persistence sink for fetch stats.
 func (h *Hub) SetFetchStatsStore(store FetchStatsStore) {
 	h.statsStore = store
+}
+
+// SetCurrentRaceProvider configures an optional provider to detect the active race.
+func (h *Hub) SetCurrentRaceProvider(provider CurrentRaceProvider) {
+	h.currentRaceProvider = provider
 }
 
 // WSConn abstracts the minimal send/close operations used by the hub.
@@ -227,8 +233,21 @@ func (h *Hub) deliver(env Envelope) {
 
 func (h *Hub) recordFetchResult(path string, status int, err error) {
 	keys := []string{overallStatsKey}
-	if key := classifyFetchPath(path); key != "" {
-		keys = append(keys, key)
+
+	var currentRace CurrentRaceInfo
+	if h.currentRaceProvider != nil {
+		if info, infoErr := h.currentRaceProvider.CurrentRace(); infoErr == nil {
+			currentRace = info
+		} else if !errors.Is(infoErr, ErrNoCurrentRace) {
+			slog.Debug("control.hub.currentRace.lookup.error", "err", infoErr)
+		}
+	}
+
+	if primary, extras := classifyFetchPath(path, currentRace); primary != "" {
+		keys = append(keys, primary)
+		if len(extras) > 0 {
+			keys = append(keys, extras...)
+		}
 	}
 	for _, key := range keys {
 		bucket := h.ensureMetricsBucket(key)
@@ -301,25 +320,53 @@ func snapshotFetchMetrics(bucket *fetchMetrics) FetchStatsSnapshot {
 	}
 }
 
-func classifyFetchPath(path string) string {
+func classifyFetchPath(path string, current CurrentRaceInfo) (string, []string) {
+	cleanPath := stripQuery(path)
 	switch {
-	case path == "/":
-		return "eventSource"
-	case strings.HasSuffix(path, "/Event.json"):
-		return "event"
-	case strings.HasSuffix(path, "/Pilots.json"):
-		return "pilots"
-	case strings.HasSuffix(path, "/Rounds.json"):
-		return "rounds"
-	case strings.HasSuffix(path, "/Results.json"):
-		return "results"
-	case strings.HasSuffix(path, "/Race.json"):
-		return "race"
-	case strings.HasSuffix(path, "/Channels.json"):
-		return "channels"
-	case path == "":
-		return ""
+	case cleanPath == "/":
+		return "eventSource", nil
+	case strings.HasSuffix(cleanPath, "/Event.json"):
+		return "event", nil
+	case strings.HasSuffix(cleanPath, "/Pilots.json"):
+		return "pilots", nil
+	case strings.HasSuffix(cleanPath, "/Rounds.json"):
+		return "rounds", nil
+	case strings.HasSuffix(cleanPath, "/Results.json"):
+		return "results", nil
+	case strings.HasSuffix(cleanPath, "/Race.json"):
+		if current.EventSourceID != "" && current.RaceSourceID != "" {
+			eventID, raceID := extractEventRaceIdentifiers(cleanPath)
+			if eventID == current.EventSourceID && raceID == current.RaceSourceID {
+				return "raceCurrent", nil
+			}
+		}
+		return "raceOther", nil
+	case strings.HasSuffix(cleanPath, "/Channels.json"):
+		return "channels", nil
+	case cleanPath == "":
+		return "", nil
 	default:
-		return "other"
+		return "other", nil
 	}
+}
+
+func stripQuery(path string) string {
+	if i := strings.Index(path, "?"); i >= 0 {
+		return path[:i]
+	}
+	return path
+}
+
+func extractEventRaceIdentifiers(path string) (string, string) {
+	trimmed := strings.Trim(path, "/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 4 {
+		return "", ""
+	}
+	if parts[0] != "events" {
+		return "", ""
+	}
+	eventID := parts[1]
+	raceID := parts[2]
+	return eventID, raceID
 }

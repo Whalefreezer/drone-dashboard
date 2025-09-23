@@ -4,6 +4,30 @@ import { useMemo, useState } from 'react';
 import type { PBControlStatsRecord } from '../../api/pbTypes.ts';
 import { controlStatsRecordsAtom } from '../../state/pbAtoms.ts';
 
+const CONTROL_BUCKET_ORDER = [
+	'raceCurrent',
+	'raceOther',
+	'results',
+	'rounds',
+	'event',
+	'pilots',
+	'channels',
+	'eventSource',
+	'other',
+] as const;
+
+const CONTROL_BUCKET_LABELS: Record<string, string> = {
+	raceCurrent: 'Current race',
+	raceOther: 'Other races',
+	results: 'Results',
+	rounds: 'Rounds',
+	event: 'Event metadata',
+	pilots: 'Pilots',
+	channels: 'Channels',
+	eventSource: 'Event source',
+	other: 'Other',
+};
+
 function ControlPage() {
 	const controlStats = useAtomValue(controlStatsRecordsAtom);
 	const [controlBaseline, setControlBaseline] = useState<Record<string, ControlTotals>>({});
@@ -11,7 +35,13 @@ function ControlPage() {
 	const baselineSnapshot = useMemo(() => controlBaseline, [controlBaseline]);
 
 	const controlBuckets = controlStats.filter((stat) => stat.bucket !== 'overall');
-	const sortedControl = [...controlBuckets].sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
+	const orderedKnownBuckets = CONTROL_BUCKET_ORDER
+		.map((bucket) => controlBuckets.find((stat) => stat.bucket === bucket))
+		.filter((stat): stat is PBControlStatsRecord => Boolean(stat));
+	const remainingBuckets = controlBuckets
+		.filter((stat) => !CONTROL_BUCKET_ORDER.includes(stat.bucket as (typeof CONTROL_BUCKET_ORDER)[number]))
+		.sort((a, b) => a.bucket.localeCompare(b.bucket));
+	const sortedControl = [...orderedKnownBuckets, ...remainingBuckets];
 	const overall = controlStats.find((stat) => stat.bucket === 'overall');
 	const overallTotals = summariseControlStats(overall, baselineSnapshot['overall']);
 
@@ -47,10 +77,11 @@ function ControlPage() {
 					{sortedControl.length === 0 && <EmptyHint message='Waiting for control traffic…' />}
 					{sortedControl.map((bucket) => {
 						const summary = summariseControlStats(bucket, baselineSnapshot[bucket.bucket]);
+						const label = formatBucketLabel(bucket.bucket);
 						return (
 							<div key={bucket.id ?? bucket.bucket} className='control-row'>
 								<div className='control-label'>
-									<span className='badge'>{bucket.bucket}</span>
+									<span className='badge'>{label}</span>
 									<span className='muted'>
 										{formatNumber(summary.total)} requests
 									</span>
@@ -140,6 +171,21 @@ function summariseControlStats(
 function formatNumber(value: number | undefined | null) {
 	if (!value) return '0';
 	return new Intl.NumberFormat().format(value);
+}
+
+function formatBucketLabel(bucket: string) {
+	const label = CONTROL_BUCKET_LABELS[bucket];
+	if (label) return label;
+	return titleCaseFromKey(bucket);
+}
+
+function titleCaseFromKey(value: string) {
+	const spaced = value
+		.replace(/[-_]+/g, ' ')
+		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+		.trim();
+	if (spaced === '') return value;
+	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function extractControlTotals(stat?: { total?: number; fullResponses?: number; etagHits?: number; errors?: number }): ControlTotals {
