@@ -33,8 +33,6 @@ const parsePbTimestamp = (value?: string | null): number => {
 	return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
 };
 
-const finiteOrNull = (value: number): number | null => Number.isFinite(value) ? value : null;
-
 const createChannelOrderGetter = (
 	getIndex: (get: EagerGetter, pilotId: string) => number | null,
 ): (get: EagerGetter, pilotId: string) => number | null =>
@@ -64,12 +62,12 @@ export const racePilotCompletedLapsAtom = deepEqualAtomFamily(([raceId, pilotId]
  * Consecutive time for a pilot in a specific race (best N consecutive laps)
  */
 export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const n = get(consecutiveLapsAtom);
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const racingLaps = processedLaps.filter((lap) => lap.pilotId === pilotId && !lap.isHoleshot);
 
-		if (n <= 0 || racingLaps.length < n) return Number.POSITIVE_INFINITY;
+		if (n <= 0 || racingLaps.length < n) return null;
 
 		let bestTime = Number.POSITIVE_INFINITY;
 		for (let i = 0; i <= racingLaps.length - n; i++) {
@@ -84,10 +82,10 @@ export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotI
  * Best lap time for a pilot in a specific race
  */
 export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const racingLaps = processedLaps.filter((lap) => lap.pilotId === pilotId && !lap.isHoleshot);
-		if (racingLaps.length === 0) return Number.POSITIVE_INFINITY;
+		if (racingLaps.length === 0) return null;
 		return Math.min(...racingLaps.map((lap) => lap.lengthSeconds));
 	})
 );
@@ -96,23 +94,23 @@ export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [str
  * Finish elapsed time for a pilot in a specific race (detection-derived)
  */
 export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
 
-		if (target === 0) return Number.POSITIVE_INFINITY;
+		if (target === 0) return null;
 
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
 
-		if (racingLaps.length < target) return Number.POSITIVE_INFINITY;
+		if (racingLaps.length < target) return null;
 
 		// Find the target-th racing lap
 		const targetLap = racingLaps[target - 1];
 		const detectionTime = parsePbTimestamp(targetLap.detectionTime);
 
-		if (!Number.isFinite(detectionTime)) return Number.POSITIVE_INFINITY;
+		if (!Number.isFinite(detectionTime)) return null;
 
 		const raceStartTs = parsePbTimestamp(race?.start);
 		return Number.isFinite(raceStartTs) ? detectionTime - raceStartTs : detectionTime;
@@ -123,21 +121,22 @@ export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotI
  * Finish detection timestamp for a pilot in a specific race
  */
 export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
 
-		if (target === 0) return Number.POSITIVE_INFINITY;
+		if (target === 0) return null;
 
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
 
-		if (racingLaps.length < target) return Number.POSITIVE_INFINITY;
+		if (racingLaps.length < target) return null;
 
 		// Find the target-th racing lap
 		const targetLap = racingLaps[target - 1];
-		return parsePbTimestamp(targetLap.detectionTime);
+		const detectionTime = parsePbTimestamp(targetLap.detectionTime);
+		return Number.isFinite(detectionTime) ? detectionTime : null;
 	})
 );
 
@@ -145,18 +144,18 @@ export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilo
  * Completion time for a pilot in a specific race (holeshot + first N laps)
  */
 export const racePilotCompletionTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
 
-		if (target === 0) return Number.POSITIVE_INFINITY;
+		if (target === 0) return null;
 
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const holeshot = pilotLaps.find((lap) => lap.isHoleshot);
 		const racingLaps = pilotLaps.filter((lap) => !lap.isHoleshot);
 
-		if (!holeshot || racingLaps.length < target) return Number.POSITIVE_INFINITY;
+		if (!holeshot || racingLaps.length < target) return null;
 
 		const holeshotTime = holeshot.lengthSeconds;
 		const racingTime = racingLaps.slice(0, target).reduce((sum, lap) => sum + lap.lengthSeconds, 0);
@@ -168,14 +167,14 @@ export const racePilotCompletionTimeAtom = deepEqualAtomFamily(([raceId, pilotId
  * First detection timestamp for a pilot in a specific race
  */
 export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	eagerAtom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const detectionTimes = pilotLaps
 			.map((lap) => parsePbTimestamp(lap.detectionTime))
 			.filter((time) => Number.isFinite(time));
 
-		return detectionTimes.length > 0 ? Math.min(...detectionTimes) : Number.POSITIVE_INFINITY;
+		return detectionTimes.length > 0 ? Math.min(...detectionTimes) : null;
 	})
 );
 
@@ -185,27 +184,26 @@ export const createRaceSortConfig = (
 	isRaceRound: boolean,
 ): SortGroup[] => {
 	const completedCondition = (get: EagerGetter, pilotId: string) =>
-		Number.isFinite(get(racePilotFinishElapsedMsAtom([raceId, pilotId]))) ||
-		Number.isFinite(get(racePilotCompletionTimeAtom([raceId, pilotId])));
+		get(racePilotFinishElapsedMsAtom([raceId, pilotId])) != null ||
+		get(racePilotCompletionTimeAtom([raceId, pilotId])) != null;
 
-	const hasConsecutiveCondition = (get: EagerGetter, pilotId: string) =>
-		Number.isFinite(get(racePilotConsecutiveTimeAtom([raceId, pilotId])));
+	const hasConsecutiveCondition = (get: EagerGetter, pilotId: string) => get(racePilotConsecutiveTimeAtom([raceId, pilotId])) != null;
 
 	const channelValue = createChannelOrderGetter(getChannelOrder);
 
-	const consecutiveValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotConsecutiveTimeAtom([raceId, pilotId])));
+	const consecutiveValue = (get: EagerGetter, pilotId: string) => get(racePilotConsecutiveTimeAtom([raceId, pilotId]));
 
-	const bestLapValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotBestLapAtom([raceId, pilotId])));
+	const bestLapValue = (get: EagerGetter, pilotId: string) => get(racePilotBestLapAtom([raceId, pilotId]));
 
-	const finishElapsedValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotFinishElapsedMsAtom([raceId, pilotId])));
+	const finishElapsedValue = (get: EagerGetter, pilotId: string) => get(racePilotFinishElapsedMsAtom([raceId, pilotId]));
 
-	const finishDetectionValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotFinishDetectionMsAtom([raceId, pilotId])));
+	const finishDetectionValue = (get: EagerGetter, pilotId: string) => get(racePilotFinishDetectionMsAtom([raceId, pilotId]));
 
-	const completionTimeValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotCompletionTimeAtom([raceId, pilotId])));
+	const completionTimeValue = (get: EagerGetter, pilotId: string) => get(racePilotCompletionTimeAtom([raceId, pilotId]));
 
-	const firstDetectionValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotFirstDetectionMsAtom([raceId, pilotId])));
+	const firstDetectionValue = (get: EagerGetter, pilotId: string) => get(racePilotFirstDetectionMsAtom([raceId, pilotId]));
 
-	const completedLapsValue = (get: EagerGetter, pilotId: string) => finiteOrNull(get(racePilotCompletedLapsAtom([raceId, pilotId])));
+	const completedLapsValue = (get: EagerGetter, pilotId: string) => get(racePilotCompletedLapsAtom([raceId, pilotId]));
 
 	if (isRaceRound) {
 		return [
