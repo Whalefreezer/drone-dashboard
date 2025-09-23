@@ -292,11 +292,14 @@ async function generatePilotChannels(
 		races.length * pilotsPerRace,
 	);
 
-	// Shuffle pilots for fair distribution
-	const shuffledPilots = [...pilots].sort(() => Math.random() - 0.5).slice(
-		0,
-		totalPilots,
-	);
+	// Shuffle pilots for fair distribution (seeded)
+	const shuffledPilots = [...pilots].sort((a, b) => {
+		const hashA = seed + a.id;
+		const hashB = seed + b.id;
+		const randomA = seededRandom(hashA, 0);
+		const randomB = seededRandom(hashB, 0);
+		return randomA - randomB;
+	}).slice(0, totalPilots);
 
 	let pilotIndex = 0;
 
