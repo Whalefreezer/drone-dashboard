@@ -14,18 +14,18 @@ export enum NullHandling {
 
 export type EagerGetter = <Value>(anAtom: Atom<Value>) => Awaited<Value>;
 
-export type ValueGetter = (get: EagerGetter, pilotId: string) => number | null;
-export type Condition = (get: EagerGetter, pilotId: string) => boolean;
+export type ValueGetter<TContext = void> = (get: EagerGetter, pilotId: string, context: TContext) => number | null;
+export type Condition<TContext = void> = (get: EagerGetter, pilotId: string, context: TContext) => boolean;
 
-export interface SortCriterion {
-	getValue: ValueGetter;
+export interface SortCriterion<TContext = void> {
+	getValue: ValueGetter<TContext>;
 	direction: SortDirection;
 	nullHandling: NullHandling;
 }
 
-export interface SortGroup {
+export interface SortGroup<TContext = void> {
 	name: string;
-	criteria: SortCriterion[];
-	condition?: Condition;
-	groups?: SortGroup[];
+	criteria: SortCriterion<TContext>[];
+	condition?: Condition<TContext>;
+	groups?: SortGroup<TContext>[];
 }
