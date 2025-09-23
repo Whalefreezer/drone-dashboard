@@ -382,8 +382,14 @@ async function generateLaps(
 			const pilotChannel = pilotChannels.find((pc) => pc.pilot === pilot.id);
 			if (!pilotChannel || !pilotChannel.channel) continue;
 
+			// Reset race timing for each pilot
+			let pilotRaceTimeMs = 0;
+
 			for (let lapNum = 1; lapNum <= options.lapsPerRace; lapNum++) {
 				let lapEndDetectionId: string | undefined;
+				let lapStartTime: string | undefined;
+				let lapEndTime: string | undefined;
+				let lapLengthSeconds: number | undefined;
 
 				// Generate detections for this lap first
 				if (options.includeTelemetry) {
@@ -396,17 +402,38 @@ async function generateLaps(
 						lapNum,
 						seed,
 						detectionCounter,
+						pilotRaceTimeMs, // Pass current race time for this pilot
 					);
 					detections.push(...lapDetections);
 					detectionCounter += lapDetections.length;
 
-					// Find the lap end detection (isLapEnd: true)
-					const lapEndDetection = lapDetections.find((d) => d.isLapEnd);
-					if (lapEndDetection) {
-						lapEndDetectionId = lapEndDetection.id;
-					} else if (lapDetections.length > 0) {
-						// Fallback: use the last detection if no explicit lap end
-						lapEndDetectionId = lapDetections[lapDetections.length - 1].id;
+					// Calculate lap timing from detections
+					if (lapDetections.length > 0) {
+						const sortedDetections = lapDetections.sort((a, b) =>
+							parseInt(a.time!) - parseInt(b.time!)
+						);
+						const firstDetection = sortedDetections[0];
+						const lastDetection = sortedDetections[sortedDetections.length - 1];
+
+						lapStartTime = firstDetection.time;
+						lapEndTime = lastDetection.time;
+
+						if (lapStartTime && lapEndTime) {
+							lapLengthSeconds =
+								(parseInt(lapEndTime) - parseInt(lapStartTime)) /
+								1000;
+							// Update pilot's race time for next lap
+							pilotRaceTimeMs = parseInt(lapEndTime);
+						}
+
+						// Find the lap end detection (isLapEnd: true)
+						const lapEndDetection = lapDetections.find((d) => d.isLapEnd);
+						if (lapEndDetection) {
+							lapEndDetectionId = lapEndDetection.id;
+						} else {
+							// Fallback: use the last detection
+							lapEndDetectionId = lastDetection.id;
+						}
 					}
 				}
 
@@ -416,6 +443,9 @@ async function generateLaps(
 					lapNumber: lapNum,
 					detection: lapEndDetectionId ||
 						await generateId(seed, 8000 + lapCounter), // Use real detection ID or fallback
+					lengthSeconds: lapLengthSeconds,
+					startTime: lapStartTime,
+					endTime: lapEndTime,
 					race: race.id,
 					event: race.event,
 					source: 'fpvtrackside',
@@ -440,13 +470,20 @@ async function generateDetectionsForLap(
 	lapNumber: number,
 	seed: string,
 	detectionCounter: number,
+	raceStartTimeMs: number,
 ): Promise<SnapshotDetection[]> {
 	const detections: SnapshotDetection[] = [];
 	// Generate 2-4 detections per lap (entry and exit of timing gate)
 	const detectionCount = 2 + Math.floor(Math.random() * 3);
 
+	// Generate realistic lap time (30-60 seconds)
+	const lapDurationMs = 30000 + Math.random() * 30000; // 30-60 seconds
+
 	for (let i = 0; i < detectionCount; i++) {
-		const offset = i * 50 + Math.random() * 100; // Spread detections over the lap time
+		// Spread detections throughout the lap
+		const timeOffsetWithinLap = (i / (detectionCount - 1)) * lapDurationMs +
+			(Math.random() - 0.5) * 1000; // Add some randomness
+		const absoluteTimeMs = raceStartTimeMs + Math.max(0, timeOffsetWithinLap);
 		const isLastDetection = i === detectionCount - 1;
 
 		detections.push({
@@ -456,7 +493,7 @@ async function generateDetectionsForLap(
 			channel: channelId,
 			event: eventId,
 			lapNumber: lapNumber,
-			time: Math.floor(offset).toString(),
+			time: Math.floor(absoluteTimeMs).toString(),
 			peak: Math.floor(Math.random() * 1000),
 			isLapEnd: isLastDetection, // Only the last detection marks lap end
 			valid: true,
