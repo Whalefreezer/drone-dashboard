@@ -369,6 +369,7 @@ async function generateLaps(
 	}
 
 	let lapCounter = 0;
+	let detectionCounter = 0;
 
 	for (const race of races) {
 		// Get pilots assigned to this race via pilotChannels
@@ -382,11 +383,39 @@ async function generateLaps(
 			if (!pilotChannel || !pilotChannel.channel) continue;
 
 			for (let lapNum = 1; lapNum <= options.lapsPerRace; lapNum++) {
+				let lapEndDetectionId: string | undefined;
+
+				// Generate detections for this lap first
+				if (options.includeTelemetry) {
+					const lapDetections = await generateDetectionsForLap(
+						await generateId(seed, 6000 + lapCounter), // lapId
+						pilot.id,
+						pilotChannel.channel,
+						race.id,
+						race.event!,
+						lapNum,
+						seed,
+						detectionCounter,
+					);
+					detections.push(...lapDetections);
+					detectionCounter += lapDetections.length;
+
+					// Find the lap end detection (isLapEnd: true)
+					const lapEndDetection = lapDetections.find((d) => d.isLapEnd);
+					if (lapEndDetection) {
+						lapEndDetectionId = lapEndDetection.id;
+					} else if (lapDetections.length > 0) {
+						// Fallback: use the last detection if no explicit lap end
+						lapEndDetectionId = lapDetections[lapDetections.length - 1].id;
+					}
+				}
+
 				const lapId = await generateId(seed, 6000 + lapCounter);
 				laps.push({
 					id: lapId,
 					lapNumber: lapNum,
-					detection: await generateId(seed, 8000 + lapCounter), // Dummy detection ID
+					detection: lapEndDetectionId ||
+						await generateId(seed, 8000 + lapCounter), // Use real detection ID or fallback
 					race: race.id,
 					event: race.event,
 					source: 'fpvtrackside',
@@ -394,20 +423,6 @@ async function generateLaps(
 					collectionId: COLLECTION_IDS.laps,
 					collectionName: 'laps',
 				});
-
-				// Generate detections for this lap
-				if (options.includeTelemetry) {
-					const lapDetections = await generateDetectionsForLap(
-						lapId,
-						pilot.id,
-						pilotChannel.channel,
-						race.id,
-						race.event!,
-						lapNum,
-						seed,
-					);
-					detections.push(...lapDetections);
-				}
 
 				lapCounter++;
 			}
@@ -424,6 +439,7 @@ async function generateDetectionsForLap(
 	eventId: string,
 	lapNumber: number,
 	seed: string,
+	detectionCounter: number,
 ): Promise<SnapshotDetection[]> {
 	const detections: SnapshotDetection[] = [];
 	// Generate 2-4 detections per lap (entry and exit of timing gate)
@@ -431,9 +447,10 @@ async function generateDetectionsForLap(
 
 	for (let i = 0; i < detectionCount; i++) {
 		const offset = i * 50 + Math.random() * 100; // Spread detections over the lap time
+		const isLastDetection = i === detectionCount - 1;
 
 		detections.push({
-			id: await generateId(seed, 7000 + Math.floor(Math.random() * 10000)),
+			id: await generateId(seed, 7000 + detectionCounter + i),
 			pilot: pilotId,
 			race: raceId,
 			channel: channelId,
@@ -441,7 +458,7 @@ async function generateDetectionsForLap(
 			lapNumber: lapNumber,
 			time: Math.floor(offset).toString(),
 			peak: Math.floor(Math.random() * 1000),
-			isLapEnd: true,
+			isLapEnd: isLastDetection, // Only the last detection marks lap end
 			valid: true,
 			source: 'fpvtrackside',
 			sourceId: generateUUID(),
@@ -501,7 +518,7 @@ async function main() {
 			races: '3',
 			laps: '4',
 			rounds: '1',
-			telemetry: false,
+			telemetry: true,
 			output: undefined,
 		},
 		alias: {
@@ -532,7 +549,7 @@ OPTIONS:
   -R, --rounds <number>     Number of rounds (default: 1)
   -s, --seed <string>       Random seed for reproducible generation
   -o, --output <path>       Output file path (default: snapshots/generated-<seed>.json)
-  -t, --telemetry           Include lap and detection telemetry data
+  -t, --telemetry           Include lap and detection telemetry data (default: true)
   -h, --help                Show this help message
 
 EXAMPLES:
