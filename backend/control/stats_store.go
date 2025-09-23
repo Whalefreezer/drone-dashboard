@@ -2,6 +2,8 @@ package control
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -24,7 +26,10 @@ type pocketBaseFetchStatsStore struct {
 func (s *pocketBaseFetchStatsStore) UpsertFetchStats(ctx context.Context, bucket string, stats FetchStatsSnapshot) error {
 	rec, err := s.app.FindFirstRecordByFilter(fetchStatsCollection, "bucket = {:bucket}", dbx.Params{"bucket": bucket})
 	if err != nil {
-		return err
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		rec = nil
 	}
 	if rec == nil {
 		col, err := s.app.FindCollectionByNameOrId(fetchStatsCollection)

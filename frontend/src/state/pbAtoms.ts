@@ -28,7 +28,7 @@ import {
 	PBRaceRecord,
 	PBRoundRecord,
 } from '../api/pbTypes.ts';
-import { PBIngestTargetRecord, PBServerSettingRecord } from '../api/pbTypes.ts';
+import { PBControlStatsRecord, PBIngestTargetRecord, PBServerSettingRecord } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
 import { eagerAtom } from 'jotai-eager';
 
@@ -112,6 +112,7 @@ export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('ga
 // Ingest targets (live subscription)
 export const ingestTargetRecordsAtom = pbSubscribeCollection<PBIngestTargetRecord>('ingest_targets');
 export const serverSettingsRecordsAtom = pbSubscribeCollection<PBServerSettingRecord>('server_settings');
+export const controlStatsRecordsAtom = pbSubscribeCollection<PBControlStatsRecord>('control_stats');
 
 // Use the new PB-native race atoms instead of legacy ComputedRace
 export const racesAtom = allRacesAtom;

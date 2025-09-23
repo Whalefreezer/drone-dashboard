@@ -170,6 +170,15 @@ export interface PBServerSettingRecord extends PBBaseRecord {
 	value?: string;
 }
 
+// control_stats (control channel telemetry)
+export interface PBControlStatsRecord extends PBBaseRecord {
+	bucket: string;
+	total?: number;
+	fullResponses?: number;
+	etagHits?: number;
+	errors?: number;
+}
+
 // Convenience union for any PB record our API deals with
 export type AnyPBRecord =
 	| PBEventRecord
