@@ -306,9 +306,6 @@ export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
 // Re-export the dedicated atoms for convenience in race domain
 export { baseRacePilotChannelsAtom as racePilotChannelsAtom, baseRaceProcessedLapsAtom as raceProcessedLapsAtom };
 
-/**
- * PB-native race atom family - much cleaner than the legacy ComputedRace approach
- */
 export const raceDataAtom = atomFamily((raceId: string) =>
 	eagerAtom((get): PBRaceRecord | null => {
 		const currentEvent = get(currentEventAtom);

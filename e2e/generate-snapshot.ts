@@ -305,27 +305,62 @@ async function generateRaces(
 async function generatePilotChannels(
 	pilots: SnapshotPilot[],
 	channels: SnapshotChannel[],
+	races: SnapshotRace[],
 	seed: string,
 ): Promise<SnapshotPilotChannel[]> {
 	const pilotChannels: SnapshotPilotChannel[] = [];
-	let counter = 0;
 
-	for (const pilot of pilots) {
-		if (counter < channels.length) {
-			pilotChannels.push({
-				id: await generateId(seed, 5000 + counter),
-				pilot: pilot.id,
-				channel: channels[counter].id,
-				event: pilot.event,
-				// PocketBase snapshot fields
-				collectionId: COLLECTION_IDS.pilotChannels,
-				collectionName: 'pilotChannels',
-				source: 'fpvtrackside',
-				sourceId: generateUUID(),
-			});
-			counter++;
+	// Distribute pilots across races, max 6 pilots per race
+	const pilotsPerRace = 6;
+	const totalPilots = Math.min(
+		pilots.length,
+		channels.length,
+		races.length * pilotsPerRace,
+	);
+
+	// Shuffle pilots for fair distribution
+	const shuffledPilots = [...pilots].sort(() => Math.random() - 0.5).slice(
+		0,
+		totalPilots,
+	);
+
+	let pilotIndex = 0;
+
+	for (const race of races) {
+		const racePilots = [];
+		const pilotsForThisRace = Math.min(
+			pilotsPerRace,
+			shuffledPilots.length - pilotIndex,
+		);
+
+		for (let i = 0; i < pilotsForThisRace; i++) {
+			const pilot = shuffledPilots[pilotIndex++];
+			const channelIndex = pilotIndex - 1; // Use pilotIndex-1 as channel index
+
+			if (channelIndex < channels.length) {
+				pilotChannels.push({
+					id: await generateId(seed, 5000 + pilotIndex - 1),
+					pilot: pilot.id,
+					channel: channels[channelIndex].id,
+					race: race.id, // Set raceId to define which race this pilot-channel belongs to
+					event: pilot.event,
+					// PocketBase snapshot fields
+					collectionId: COLLECTION_IDS.pilotChannels,
+					collectionName: 'pilotChannels',
+					source: 'fpvtrackside',
+					sourceId: generateUUID(),
+				});
+
+				racePilots.push(pilot);
+			}
+		}
+
+		// If we don't have enough pilots for this race, break
+		if (pilotIndex >= shuffledPilots.length) {
+			break;
 		}
 	}
+
 	return pilotChannels;
 }
 
@@ -346,10 +381,11 @@ async function generateLaps(
 	let lapCounter = 0;
 
 	for (const race of races) {
-		// Assign random pilots to this race (typical heat size: 8)
-		const racePilots = pilots
-			.sort(() => Math.random() - 0.5)
-			.slice(0, Math.min(8, pilots.length));
+		// Get pilots assigned to this race via pilotChannels
+		const racePilotChannels = pilotChannels.filter((pc) => pc.race === race.id);
+		const racePilots = racePilotChannels.map((pc) =>
+			pilots.find((p) => p.id === pc.pilot)
+		).filter((p) => p !== undefined);
 
 		for (const pilot of racePilots) {
 			const pilotChannel = pilotChannels.find((pc) => pc.pilot === pilot.id);
@@ -433,7 +469,12 @@ async function generateSnapshot(options: GeneratorOptions): Promise<Snapshot> {
 	const channels = await generateChannels(options, event.id, seed);
 	const rounds = await generateRounds(options, event.id, seed);
 	const races = await generateRaces(options, rounds, pilots, seed);
-	const pilotChannels = await generatePilotChannels(pilots, channels, seed);
+	const pilotChannels = await generatePilotChannels(
+		pilots,
+		channels,
+		races,
+		seed,
+	);
 	const { laps, detections } = await generateLaps(
 		options,
 		races,
