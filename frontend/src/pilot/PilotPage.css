@@ -1,0 +1,505 @@
+.pilot-page {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px;
+}
+
+.pilot-header {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.pilot-header-main {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pilot-back-link {
+	color: #9ba3ff;
+	text-decoration: none;
+	font-size: 0.9rem;
+}
+
+.pilot-back-link.secondary {
+	color: #fff;
+}
+
+.pilot-header-main h1 {
+	margin: 0;
+	font-size: 2rem;
+	line-height: 1.2;
+}
+
+.pilot-given-name {
+	font-size: 1rem;
+	color: #bbb;
+}
+
+.pilot-header-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.pilot-meta-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	background-color: rgba(255, 255, 255, 0.06);
+	border-radius: 999px;
+	font-size: 0.9rem;
+}
+
+.pilot-meta-sub {
+	color: #9bd2ff;
+	font-size: 0.8rem;
+}
+
+.pilot-stat-grid {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.pilot-stat-card {
+	background-color: rgba(255, 255, 255, 0.04);
+	border-radius: 12px;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pilot-stat-card--empty {
+	opacity: 0.65;
+}
+
+.pilot-stat-label {
+	font-size: 0.85rem;
+	color: #9ba3ff;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.pilot-stat-value {
+	font-size: 1.3rem;
+	font-weight: 600;
+}
+
+.pilot-stat-subtitle {
+	font-size: 0.85rem;
+	color: #bbb;
+}
+
+.pilot-tabs {
+	display: flex;
+	gap: 4px;
+	background-color: rgba(255, 255, 255, 0.04);
+	border-radius: 999px;
+	padding: 4px;
+	align-self: flex-start;
+}
+
+.pilot-tabs button {
+	border: none;
+	background: none;
+	color: #fff;
+	padding: 8px 16px;
+	border-radius: 999px;
+	cursor: pointer;
+	font-size: 0.95rem;
+}
+
+.pilot-tabs button.active {
+	background-color: #9ba3ff;
+	color: #0d0d0d;
+	font-weight: 600;
+}
+
+.pilot-tabs button:focus-visible {
+	outline: 2px solid #9ba3ff;
+	outline-offset: 2px;
+}
+
+.pilot-tab-panel {
+	background-color: rgba(0, 0, 0, 0.35);
+	border-radius: 16px;
+	padding: 16px;
+	min-height: 240px;
+}
+
+.pilot-empty-state {
+	text-align: center;
+	padding: 48px 16px;
+	color: #bbb;
+}
+
+.pilot-not-found {
+	padding: 48px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+	.pilot-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: flex-end;
+	}
+
+	.pilot-header-main {
+		max-width: 60%;
+	}
+}
+
+.pilot-analytics-tab {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.pilot-analytics-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.pilot-axis-toggle {
+	display: inline-flex;
+	gap: 4px;
+	background-color: rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	padding: 4px;
+}
+
+.pilot-axis-toggle button {
+	border: none;
+	background: none;
+	color: #fff;
+	padding: 6px 14px;
+	border-radius: 999px;
+	cursor: pointer;
+	font-size: 0.9rem;
+}
+
+.pilot-axis-toggle button.active {
+	background-color: #9ba3ff;
+	color: #12131f;
+	font-weight: 600;
+}
+
+.pilot-axis-toggle button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.pilot-overlay-toggles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.pilot-overlay-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.9rem;
+	color: #ddd;
+}
+
+.pilot-overlay-toggle input {
+	accent-color: #9ba3ff;
+}
+
+.pilot-overlay-color {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border-radius: 4px;
+}
+
+.pilot-analytics-chart-area {
+	position: relative;
+	height: clamp(280px, 50vh, 420px);
+}
+
+.pilot-analytics-chart-wrapper {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	background: rgba(12, 12, 18, 0.65);
+	border-radius: 16px;
+	overflow: hidden;
+}
+
+.pilot-zoom-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: transparent;
+}
+
+.pilot-zoom-overlay.dragging {
+	cursor: grabbing;
+}
+
+.pilot-analytics-toolbar {
+	position: absolute;
+	bottom: 12px;
+	right: 12px;
+	display: flex;
+	gap: 8px;
+}
+
+.pilot-analytics-toolbar button {
+	border: none;
+	padding: 6px 12px;
+	border-radius: 6px;
+	background-color: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	cursor: pointer;
+}
+
+.pilot-race-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.pilot-race-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background-color: rgba(255, 255, 255, 0.08);
+	font-size: 0.85rem;
+}
+
+.pilot-race-chip-color {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+}
+
+.pilot-tooltip {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background-color: rgba(12, 12, 18, 0.92);
+	padding: 8px 10px;
+	border-radius: 8px;
+	color: #fff;
+}
+
+.pilot-tooltip-title {
+	font-weight: 600;
+}
+
+.pilot-lap-table-tab {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.pilot-lap-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.pilot-lap-count {
+	font-size: 0.9rem;
+	color: #bbb;
+}
+
+.pilot-lap-sort {
+	display: inline-flex;
+	gap: 4px;
+	background-color: rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	padding: 4px;
+}
+
+.pilot-lap-sort button {
+	border: none;
+	background: none;
+	color: #fff;
+	padding: 6px 14px;
+	border-radius: 999px;
+	cursor: pointer;
+	font-size: 0.9rem;
+}
+
+.pilot-lap-sort button.active {
+	background-color: #9ba3ff;
+	color: #12131f;
+	font-weight: 600;
+}
+
+.pilot-lap-table .pilot-lap-time--best {
+	color: #71e0c9;
+	font-weight: 600;
+}
+
+.pilot-lap-table .pilot-lap-channel {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pilot-lap-channel-placeholder {
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0.12);
+	display: inline-block;
+}
+
+.pilot-lap-race {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.pilot-lap-table .gt-row:hover {
+	background-color: rgba(255, 255, 255, 0.06);
+}
+
+.pilot-upcoming-tab {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.pilot-next-card {
+	background: linear-gradient(135deg, rgba(155, 163, 255, 0.25), rgba(113, 224, 201, 0.18));
+	border-radius: 18px;
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	color: #fff;
+}
+
+.pilot-next-card h2 {
+	margin: 0;
+	font-size: 1.1rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: rgba(255, 255, 255, 0.82);
+}
+
+.pilot-next-card p {
+	margin: 0;
+	font-size: 1.4rem;
+	font-weight: 600;
+}
+
+.pilot-next-countdown {
+	display: inline-block;
+	margin-top: 6px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background-color: rgba(18, 19, 31, 0.35);
+	font-size: 0.85rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.pilot-upcoming-grid {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.pilot-upcoming-card {
+	background-color: rgba(255, 255, 255, 0.05);
+	border-radius: 16px;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.pilot-upcoming-card h3 {
+	margin: 0;
+	font-size: 1.05rem;
+	color: #fff;
+}
+
+.pilot-upcoming-card p {
+	margin: 2px 0 0;
+	color: #bbb;
+	font-size: 0.9rem;
+}
+
+.pilot-upcoming-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.pilot-upcoming-line {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.pilot-upcoming-label {
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.pilot-upcoming-channel {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pilot-upcoming-channel-placeholder {
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0.12);
+	display: inline-block;
+}
+
+.pilot-upcoming-competitors {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	align-items: flex-start;
+}
+
+.pilot-upcoming-competitor {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	border-radius: 999px;
+	background-color: rgba(255, 255, 255, 0.08);
+	font-size: 0.85rem;
+}
+
+.pilot-upcoming-empty {
+	color: #bbb;
+	font-size: 0.85rem;
+}

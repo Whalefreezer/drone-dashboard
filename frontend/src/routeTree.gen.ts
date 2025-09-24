@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login.tsx'
 import { Route as AdminRouteImport } from './routes/admin.tsx'
 import { Route as IndexRouteImport } from './routes/index.tsx'
 import { Route as AdminIndexRouteImport } from './routes/admin/index.tsx'
+import { Route as PilotsPilotIdRouteImport } from './routes/pilots/$pilotId.tsx'
 import { Route as AdminToolsRouteImport } from './routes/admin/tools.tsx'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings.tsx'
 import { Route as AdminKvRouteImport } from './routes/admin/kv.tsx'
@@ -43,6 +44,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const PilotsPilotIdRoute = PilotsPilotIdRouteImport.update({
+  id: '/pilots/$pilotId',
+  path: '/pilots/$pilotId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminToolsRoute = AdminToolsRouteImport.update({
   id: '/tools',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/admin/kv': typeof AdminKvRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tools': typeof AdminToolsRoute
+  '/pilots/$pilotId': typeof PilotsPilotIdRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/admin/kv': typeof AdminKvRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tools': typeof AdminToolsRoute
+  '/pilots/$pilotId': typeof PilotsPilotIdRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/admin/kv': typeof AdminKvRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tools': typeof AdminToolsRoute
+  '/pilots/$pilotId': typeof PilotsPilotIdRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/admin/kv'
     | '/admin/settings'
     | '/admin/tools'
+    | '/pilots/$pilotId'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/admin/kv'
     | '/admin/settings'
     | '/admin/tools'
+    | '/pilots/$pilotId'
     | '/admin'
   id:
     | '__root__'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/admin/kv'
     | '/admin/settings'
     | '/admin/tools'
+    | '/pilots/$pilotId'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PilotsPilotIdRoute: typeof PilotsPilotIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/pilots/$pilotId': {
+      id: '/pilots/$pilotId'
+      path: '/pilots/$pilotId'
+      fullPath: '/pilots/$pilotId'
+      preLoaderRoute: typeof PilotsPilotIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/tools': {
       id: '/admin/tools'
@@ -256,6 +276,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  PilotsPilotIdRoute: PilotsPilotIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

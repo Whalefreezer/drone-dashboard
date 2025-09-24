@@ -121,6 +121,19 @@
 	pointer-events: none;
 }
 
+.leaderboard-pilot-link {
+	color: inherit;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.leaderboard-pilot-link:hover,
+.leaderboard-pilot-link:focus-visible {
+	text-decoration: underline;
+}
+
 /* --- Position Display & Animation --- */
 .position-container {
 	display: flex;

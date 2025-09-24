@@ -2,6 +2,7 @@ import React from 'react';
 import type { Atom } from 'jotai';
 import type { Column } from '../common/GenericTable.tsx';
 import { useAtomValue } from 'jotai';
+import { Link } from '@tanstack/react-router';
 import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
 import { pilotEliminatedInfoAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom } from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
@@ -157,7 +158,13 @@ export function getLeaderboardColumns(
 				if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
 				return (
 					<OverflowFadeCell className='pilot-col' title={pilot.name}>
-						{pilot.name}
+						<Link
+							to='/pilots/$pilotId'
+							params={{ pilotId }}
+							className='leaderboard-pilot-link'
+						>
+							{pilot.name}
+						</Link>
 					</OverflowFadeCell>
 				);
 			},
