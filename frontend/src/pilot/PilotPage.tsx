@@ -56,6 +56,7 @@ export function PilotPage({ pilotId }: { pilotId: string }) {
 		<div className='pilot-page'>
 			<header className='pilot-header'>
 				<div className='pilot-header-main'>
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/' className='pilot-back-link'>← Back to dashboard</Link>
 					<h1>{record.name}</h1>
 					{givenName && <span className='pilot-given-name'>{givenName}</span>}
@@ -166,6 +167,7 @@ function PilotNotFound() {
 		<div className='pilot-not-found'>
 			<h2>Pilot not found</h2>
 			<p>The requested pilot does not exist or is unavailable for this event.</p>
+			{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 			<Link to='/' className='pilot-back-link secondary'>Return to dashboard</Link>
 		</div>
 	);

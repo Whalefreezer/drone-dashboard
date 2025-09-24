@@ -101,7 +101,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, description, value, to, accent }: MetricCardProps) {
 	return (
-		/* @ts-ignore - TanStack Router typing quirk */
+		/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
 		<Link to={to} className={`metric-card accent-${accent}`}>
 			<div>
 				<span className='metric-title'>{title}</span>

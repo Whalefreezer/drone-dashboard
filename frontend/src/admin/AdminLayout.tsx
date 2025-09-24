@@ -10,17 +10,17 @@ export function AdminLayout() {
 			<aside className='admin-sidebar'>
 				<div className='brand'>Admin</div>
 				<nav className='nav'>
-					{/* @ts-ignore see repository note */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/dashboard' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
-					{/* @ts-ignore */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/control' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Control</Link>
-					{/* @ts-ignore */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/kv' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Client KV</Link>
-					{/* @ts-ignore */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/settings' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Server Settings</Link>
-					{/* @ts-ignore */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/ingest' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Ingest Targets</Link>
-					{/* @ts-ignore */}
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/tools' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Tools</Link>
 				</nav>
 				<div className='sidebar-footer'>

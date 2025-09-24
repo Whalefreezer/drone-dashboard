@@ -158,6 +158,7 @@ export function getLeaderboardColumns(
 				if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
 				return (
 					<OverflowFadeCell className='pilot-col' title={pilot.name}>
+						{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 						<Link
 							to='/pilots/$pilotId'
 							params={{ pilotId }}

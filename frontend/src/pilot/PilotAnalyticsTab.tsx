@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ParentSize } from '@visx/responsive';
-import { Axis, DataContext, GlyphSeries, Grid, LineSeries, Tooltip, XYChart } from '@visx/xychart';
+import { Axis, BarSeries, DataContext, Grid, LineSeries, Tooltip, XYChart } from '@visx/xychart';
 import { curveLinear, curveStepAfter } from 'd3-shape';
 import { scaleLinear } from '@visx/scale';
 import { Zoom } from '@visx/zoom';
@@ -108,13 +108,23 @@ export function PilotAnalyticsTab(
 	const lapPoints = useMemo<LapPoint[]>(() => {
 		if (timeline.length === 0) return [];
 		const firstTimestamp = timeline.find((lap) => lap.detectionTimestampMs != null)?.detectionTimestampMs ?? null;
+
+		// Calculate cumulative offset for each race
+		const raceOffsets = new Map<string, number>();
+		let cumulativeOffset = 0;
+		for (const group of lapGroups) {
+			raceOffsets.set(group.race.id, cumulativeOffset);
+			cumulativeOffset += 1.0; // Add horizontal space between races
+		}
+
 		return timeline.map((lap) => {
 			const timeSeconds = lap.detectionTimestampMs != null && firstTimestamp != null
 				? (lap.detectionTimestampMs - firstTimestamp) / 1000
 				: null;
+			const raceOffset = raceOffsets.get(lap.raceId) ?? 0;
 			return {
 				id: lap.id,
-				order: lap.overallIndex + 1,
+				order: lap.overallIndex + 1 + raceOffset,
 				timeSeconds,
 				lapTime: lap.lengthSeconds,
 				raceId: lap.raceId,
@@ -123,7 +133,7 @@ export function PilotAnalyticsTab(
 				deltaBest: metrics.bestLapTimeSeconds != null ? lap.lengthSeconds - metrics.bestLapTimeSeconds : null,
 			};
 		});
-	}, [timeline, metrics.bestLapTimeSeconds]);
+	}, [timeline, lapGroups, metrics.bestLapTimeSeconds]);
 
 	const supportsTimeAxis = useMemo(() => lapPoints.filter((p) => p.timeSeconds != null).length >= 2, [lapPoints]);
 
@@ -356,30 +366,12 @@ export function PilotAnalyticsTab(
 													hideAxisLine
 													tickFormat={(value) => formatSeconds(Number(value))}
 												/>
-												<LineSeries
+												<BarSeries
 													dataKey='Lap time'
 													data={dataForAxis}
 													xAccessor={axisAccessor}
 													yAccessor={(d) => d.lapTime}
-													stroke='#ffffff'
-													curve={curveLinear}
-												/>
-												<GlyphSeries
-													dataKey='Lap markers'
-													data={dataForAxis}
-													xAccessor={axisAccessor}
-													yAccessor={(d) => d.lapTime}
-													renderGlyph={({ x, y, key }) => (
-														<circle
-															key={key}
-															cx={x ?? 0}
-															cy={y ?? 0}
-															r={3.5}
-															fill='#1f2330'
-															stroke='#9ba3ff'
-															strokeWidth={1.5}
-														/>
-													)}
+													colorAccessor={() => '#ffffff'}
 												/>
 												{overlays.bestLap && filteredSeries.bestLap.length > 0 && (
 													<LineSeries
