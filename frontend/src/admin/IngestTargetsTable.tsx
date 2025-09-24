@@ -48,7 +48,8 @@ export function IngestTargetsTable({ data }: { data: IngestRow[] }) {
 			data={data}
 			context={{}}
 			getRowKey={(row) => row.id}
-			rowHeight={40}
+			estimatedRowHeight={40}
+			rowMode='fixed'
 			className='ingest-table'
 		/>
 	);

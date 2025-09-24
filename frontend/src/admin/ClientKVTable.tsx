@@ -51,7 +51,8 @@ export function ClientKVTable({ data }: { data: KVRow[] }) {
 			data={data}
 			context={{}}
 			getRowKey={(r) => r.id}
-			rowHeight={36}
+			estimatedRowHeight={36}
+			rowMode='fixed'
 			className='kv-table'
 		/>
 	);

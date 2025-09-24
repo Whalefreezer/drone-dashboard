@@ -98,7 +98,8 @@ export function ServerSettingsEditor({ settings }: { settings: PBServerSettingRe
 				data={tableData}
 				context={{}}
 				getRowKey={(r) => r.id}
-				rowHeight={40}
+				estimatedRowHeight={40}
+				rowMode='fixed'
 				className='server-settings-table'
 			/>
 		</div>

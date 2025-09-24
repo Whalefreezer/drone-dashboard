@@ -291,7 +291,8 @@ function LapsTable(
 			data={rows}
 			context={ctx}
 			getRowKey={(row) => row.pilotChannel.id}
-			rowHeight={30}
+			estimatedRowHeight={30}
+			rowMode='fixed'
 			visibleColumns={visible}
 			scrollX
 		/>
