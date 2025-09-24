@@ -71,7 +71,7 @@ export function PilotLapTableTab(
 				data={sortedRows}
 				context={{ bestLapSeconds }}
 				getRowKey={(row) => row.id}
-				estimatedRowHeight={36}
+				estimatedRowHeight={34}
 				rowMode='dynamic'
 				scrollX
 			/>

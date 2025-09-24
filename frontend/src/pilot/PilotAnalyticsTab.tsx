@@ -33,8 +33,6 @@ const barPalette = [
 	'#baffc9', // Mint
 ];
 
-type AxisMode = 'order' | 'time';
-
 type LapPoint = {
 	id: string;
 	order: number;
@@ -113,7 +111,6 @@ interface PilotAnalyticsTabProps {
 export function PilotAnalyticsTab(
 	{ timeline, lapGroups, metrics }: PilotAnalyticsTabProps,
 ) {
-	const [axisMode, setAxisMode] = useState<AxisMode>('order');
 	const [overlays, setOverlays] = useState({ bestLap: true, consecutive: false, raceTotal: false });
 
 	const lapPoints = useMemo<LapPoint[]>(() => {
@@ -145,12 +142,6 @@ export function PilotAnalyticsTab(
 			};
 		});
 	}, [timeline, lapGroups, metrics.bestLapTimeSeconds]);
-
-	const supportsTimeAxis = useMemo(() => lapPoints.filter((p) => p.timeSeconds != null).length >= 2, [lapPoints]);
-
-	useEffect(() => {
-		if (!supportsTimeAxis) setAxisMode('order');
-	}, [supportsTimeAxis]);
 
 	const bestLapSeries = useMemo<OverlayPoint[]>(() => {
 		let runningMin = Number.POSITIVE_INFINITY;
@@ -252,10 +243,7 @@ export function PilotAnalyticsTab(
 		return map;
 	}, [lapGroups]);
 
-	const dataForAxis = useMemo(() => (axisMode === 'time' ? lapPoints.filter((p) => p.timeSeconds != null) : lapPoints), [
-		lapPoints,
-		axisMode,
-	]);
+	const dataForAxis = lapPoints;
 
 	const overlaySeries = useMemo(() => ({
 		bestLap: bestLapSeries,
@@ -265,7 +253,7 @@ export function PilotAnalyticsTab(
 
 	const initialDomain = useMemo<ZoomDomain>(() => {
 		if (dataForAxis.length === 0) return { x: [0, 1], y: [0, 1] };
-		const xValues = axisMode === 'order' ? dataForAxis.map((p) => p.order) : dataForAxis.map((p) => p.timeSeconds ?? 0);
+		const xValues = dataForAxis.map((p) => p.order);
 		const overlayValues = Object.values(overlaySeries)
 			.flatMap((series) => series.map((p) => p.value).filter(notNull));
 		const yValues = [...dataForAxis.map((p) => p.lapTime), ...overlayValues];
@@ -279,22 +267,15 @@ export function PilotAnalyticsTab(
 			x: [xMin, xMax + (xSpan === 0 ? 1 : 0)],
 			y: [Math.max(0, yMin - ySpan * 0.1), yMax + ySpan * 0.1],
 		};
-	}, [dataForAxis, overlaySeries, axisMode]);
+	}, [dataForAxis, overlaySeries]);
 
 	if (lapPoints.length === 0) {
 		return <div className='pilot-empty-state'>No laps recorded yet.</div>;
 	}
 
-	const axisAccessor = axisMode === 'order'
-		? (point: { order: number }) => point.order
-		: (point: { timeSeconds: number | null }) => point.timeSeconds ?? 0;
+	const axisAccessor = (point: { order: number }) => point.order;
 
-	const overlayFilter = (series: OverlayPoint[]) =>
-		series.filter((item) => {
-			if (!notNull(item.value)) return false;
-			if (axisMode === 'time') return item.timeSeconds != null;
-			return true;
-		});
+	const overlayFilter = (series: OverlayPoint[]) => series.filter((item) => notNull(item.value));
 
 	const filteredSeries = {
 		bestLap: overlayFilter(overlaySeries.bestLap),
@@ -309,23 +290,6 @@ export function PilotAnalyticsTab(
 	return (
 		<div className='pilot-analytics-tab'>
 			<div className='pilot-analytics-controls'>
-				<div className='pilot-axis-toggle' role='group' aria-label='X axis mode'>
-					<button
-						type='button'
-						className={axisMode === 'order' ? 'active' : ''}
-						onClick={() => setAxisMode('order')}
-					>
-						Lap order
-					</button>
-					<button
-						type='button'
-						className={axisMode === 'time' ? 'active' : ''}
-						disabled={!supportsTimeAxis}
-						onClick={() => supportsTimeAxis && setAxisMode('time')}
-					>
-						Detection time
-					</button>
-				</div>
 				<div className='pilot-overlay-toggles'>
 					<OverlayToggle
 						label='Best lap (running)'
@@ -376,7 +340,7 @@ export function PilotAnalyticsTab(
 												xScale={{ type: 'linear', domain: domain.x }}
 												yScale={{ type: 'linear', domain: domain.y }}
 											>
-												<RaceBands bands={bands} axisMode={axisMode} />
+												<RaceBands bands={bands} />
 												<Grid columns numTicks={6} stroke='rgba(255,255,255,0.08)' />
 												<Axis
 													hideAxisLine
@@ -486,7 +450,7 @@ function OverlayToggle(
 	);
 }
 
-function RaceBands({ bands, axisMode }: { bands: RaceBand[]; axisMode: AxisMode }) {
+function RaceBands({ bands }: { bands: RaceBand[] }) {
 	const context = useContext(DataContext);
 	const xScale = context?.xScale;
 	const innerHeight = context?.innerHeight;
@@ -495,9 +459,8 @@ function RaceBands({ bands, axisMode }: { bands: RaceBand[]; axisMode: AxisMode 
 	return (
 		<g className='pilot-race-bands'>
 			{bands.map((band) => {
-				const startValue = axisMode === 'order' ? band.startOrder : band.startTime;
-				const endValue = axisMode === 'order' ? band.endOrder : band.endTime;
-				if (startValue == null || endValue == null) return null;
+				const startValue = band.startOrder;
+				const endValue = band.endOrder;
 				const rawStart = xScale(startValue as number);
 				const rawEnd = xScale(endValue as number);
 				if (rawStart == null || rawEnd == null) return null;
