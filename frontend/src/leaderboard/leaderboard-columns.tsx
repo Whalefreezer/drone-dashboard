@@ -161,6 +161,7 @@ export function getLeaderboardColumns(
 						{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 						<Link
 							to='/pilots/$pilotId'
+							/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
 							params={{ pilotId }}
 							className='leaderboard-pilot-link'
 						>

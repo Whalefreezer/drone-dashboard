@@ -308,6 +308,20 @@
 	font-weight: 600;
 }
 
+/* Bar chart styling */
+.pilot-analytics-chart-wrapper svg rect[data-testid*='bar'] {
+	fill: rgba(255, 255, 255, 0.9) !important;
+	stroke: rgba(255, 255, 255, 0.2);
+	stroke-width: 1px;
+	rx: 2px;
+	ry: 2px;
+	transition: opacity 0.2s ease;
+}
+
+.pilot-analytics-chart-wrapper svg rect[data-testid*='bar']:hover {
+	opacity: 1;
+}
+
 .pilot-lap-table-tab {
 	display: flex;
 	flex-direction: column;
