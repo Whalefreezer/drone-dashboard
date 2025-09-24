@@ -94,6 +94,23 @@ func RegisterRoutes(app core.App, service *Service) {
 			return c.JSON(http.StatusOK, summary)
 		})
 
+		se.Router.POST("/ingest/purge", func(c *core.RequestEvent) error {
+			info, err := c.RequestInfo()
+			if err != nil || info.Auth == nil || !info.Auth.IsSuperuser() {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "admin only"})
+			}
+
+			summary, perr := service.Purge()
+			if perr != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]any{
+					"ok":      false,
+					"message": "Purge failed",
+					"error":   perr.Error(),
+				})
+			}
+			return c.JSON(http.StatusOK, summary)
+		})
+
 		return se.Next()
 	})
 }

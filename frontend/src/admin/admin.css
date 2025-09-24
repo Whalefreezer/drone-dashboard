@@ -448,3 +448,32 @@
 	font-family: monospace;
 	color: #e5e7eb;
 }
+
+/* Purge summary styles */
+.purge-result {
+	background: var(--card-bg);
+	padding: 12px;
+	border-radius: 8px;
+	border: 1px solid var(--card-border);
+}
+
+.purge-result h4 {
+	color: var(--accent);
+	margin: 0 0 12px 0;
+}
+
+.purge-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 8px;
+}
+
+.purge-stat-item {
+	color: var(--accent);
+}
+
+.purge-result-footer {
+	margin-top: 12px;
+	color: var(--muted);
+	font-size: 14px;
+}

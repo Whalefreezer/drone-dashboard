@@ -23,6 +23,7 @@ type CurrentRaceInfo struct {
 // CurrentRaceProvider exposes the current race identifiers for classification.
 type CurrentRaceProvider interface {
 	CurrentRace() (CurrentRaceInfo, error)
+	ClearCache()
 }
 
 type clientKVCurrentRaceProvider struct {
@@ -114,4 +115,11 @@ func (p *clientKVCurrentRaceProvider) fetchCurrentRace() (CurrentRaceInfo, error
 	}
 
 	return CurrentRaceInfo{EventSourceID: eventSourceID, RaceSourceID: payload.SourceID}, nil
+}
+
+func (p *clientKVCurrentRaceProvider) ClearCache() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.cachedAt = time.Time{} // Zero time means no cache
+	p.lastErr = nil
 }

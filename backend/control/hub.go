@@ -67,6 +67,13 @@ func (h *Hub) SetCurrentRaceProvider(provider CurrentRaceProvider) {
 	h.currentRaceProvider = provider
 }
 
+// ClearCurrentRaceCache clears the current race provider cache if set.
+func (h *Hub) ClearCurrentRaceCache() {
+	if h.currentRaceProvider != nil {
+		h.currentRaceProvider.ClearCache()
+	}
+}
+
 // WSConn abstracts the minimal send/close operations used by the hub.
 type WSConn interface {
 	SendJSON(v any) error
