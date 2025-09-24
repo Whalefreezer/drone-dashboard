@@ -112,7 +112,7 @@ function NextRaceCell(
 	let content: React.ReactNode;
 	if (racesUntilNext === -1 && isEliminated) content = <span className='done-text'>Done</span>;
 	else if (racesUntilNext === -1) content = '-';
-	else if (racesUntilNext === 0) content = <span className='next-text'>To Staging</span>;
+	else if (racesUntilNext === 0) content = <span className='next-text'>Staging</span>;
 	else if (racesUntilNext === -2) content = <span className='racing-text'>Racing</span>;
 	else content = `${racesUntilNext}`;
 	return <div>{content}</div>;
