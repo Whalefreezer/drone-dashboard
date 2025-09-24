@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ParentSize } from '@visx/responsive';
-import { AnimatedAxis, AnimatedGrid, AnimatedLineSeries, DataContext, GlyphSeries, Tooltip, XYChart } from '@visx/xychart';
+import { Axis, DataContext, GlyphSeries, Grid, LineSeries, Tooltip, XYChart } from '@visx/xychart';
 import { curveLinear, curveStepAfter } from 'd3-shape';
 import { scaleLinear } from '@visx/scale';
 import { Zoom } from '@visx/zoom';
@@ -344,18 +344,19 @@ export function PilotAnalyticsTab(
 												yScale={{ type: 'linear', domain: domain.y }}
 											>
 												<RaceBands bands={bands} axisMode={axisMode} />
-												<AnimatedGrid columns numTicks={6} stroke='rgba(255,255,255,0.08)' />
-												<AnimatedAxis
+												<Grid columns numTicks={6} stroke='rgba(255,255,255,0.08)' />
+												<Axis
 													hideAxisLine
 													orientation='bottom'
-													tickFormat={(value) => axisMode === 'order' ? `#${Number(value)}` : `${value}s`}
+													tickValues={bands.map((band) => (band.startOrder + band.endOrder) / 2)}
+													tickFormat={(value, index) => bands[index]?.label || ''}
 												/>
-												<AnimatedAxis
+												<Axis
 													orientation='left'
 													hideAxisLine
 													tickFormat={(value) => formatSeconds(Number(value))}
 												/>
-												<AnimatedLineSeries
+												<LineSeries
 													dataKey='Lap time'
 													data={dataForAxis}
 													xAccessor={axisAccessor}
@@ -381,7 +382,7 @@ export function PilotAnalyticsTab(
 													)}
 												/>
 												{overlays.bestLap && filteredSeries.bestLap.length > 0 && (
-													<AnimatedLineSeries
+													<LineSeries
 														dataKey='Best lap running'
 														data={filteredSeries.bestLap}
 														xAccessor={axisAccessor}
@@ -391,7 +392,7 @@ export function PilotAnalyticsTab(
 													/>
 												)}
 												{overlays.consecutive && filteredSeries.consecutive.length > 0 && (
-													<AnimatedLineSeries
+													<LineSeries
 														dataKey='Fastest consecutive'
 														data={filteredSeries.consecutive}
 														xAccessor={axisAccessor}
@@ -401,7 +402,7 @@ export function PilotAnalyticsTab(
 													/>
 												)}
 												{overlays.raceTotal && filteredSeries.raceTotal.length > 0 && (
-													<AnimatedLineSeries
+													<LineSeries
 														dataKey='Best race total'
 														data={filteredSeries.raceTotal}
 														xAccessor={axisAccessor}
@@ -454,17 +455,6 @@ export function PilotAnalyticsTab(
 					}}
 				</ParentSize>
 			</div>
-
-			{bands.length > 0 && (
-				<div className='pilot-race-legend'>
-					{bands.map((band) => (
-						<div key={band.raceId} className='pilot-race-chip'>
-							<span className='pilot-race-chip-color' style={{ backgroundColor: band.color }} />
-							<span>{band.label}</span>
-						</div>
-					))}
-				</div>
-			)}
 		</div>
 	);
 }
@@ -485,6 +475,7 @@ function RaceBands({ bands, axisMode }: { bands: RaceBand[]; axisMode: AxisMode 
 	const context = useContext(DataContext);
 	const xScale = context?.xScale;
 	const innerHeight = context?.innerHeight;
+	const marginTop = context?.margin?.top ?? 0;
 	if (!xScale || innerHeight == null) return null;
 	return (
 		<g className='pilot-race-bands'>
@@ -505,7 +496,7 @@ function RaceBands({ bands, axisMode }: { bands: RaceBand[]; axisMode: AxisMode 
 						key={band.raceId}
 						x={Math.min(startPosition, endPosition)}
 						width={width}
-						y={0}
+						y={marginTop}
 						height={innerHeight}
 						fill={band.color}
 						rx={4}

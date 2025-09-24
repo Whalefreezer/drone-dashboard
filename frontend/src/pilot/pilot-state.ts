@@ -21,9 +21,9 @@ const parseTimestampMs = (value?: string | number | null): number | null => {
 };
 
 const buildRaceLabel = (race: PBRaceRecord, round?: PBRoundRecord): string => {
-	const roundLabel = round?.name || (round?.roundNumber ? `Round ${round.roundNumber}` : 'Round');
-	const raceLabel = race.raceNumber != null ? `Race ${race.raceNumber}` : `Order ${race.raceOrder}`;
-	return `${roundLabel} — ${raceLabel}`;
+	const roundNum = round?.roundNumber ?? 1;
+	const raceNum = race.raceNumber ?? race.raceOrder;
+	return `${roundNum}-${raceNum}`;
 };
 
 const toChannelSummary = (channel: PBChannelRecord | null | undefined): ChannelSummary | null => {
