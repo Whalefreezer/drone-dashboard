@@ -22,6 +22,17 @@ const bandPalette = [
 	'rgba(255, 214, 165, 0.12)',
 ];
 
+const barPalette = [
+	'#9ba3ff', // Blue
+	'#9bd2ff', // Light blue
+	'#ffade2', // Pink
+	'#beffc9', // Green
+	'#ffd6a5', // Orange
+	'#a5d6ff', // Sky blue
+	'#ffb3ba', // Coral
+	'#baffc9', // Mint
+];
+
 type AxisMode = 'order' | 'time';
 
 type LapPoint = {
@@ -229,6 +240,18 @@ export function PilotAnalyticsTab(
 		return results;
 	}, [lapGroups, lapPoints]);
 
+	// Create mapping from raceId to bar color for bar coloring
+	const raceColorMap = useMemo(() => {
+		const map = new Map<string, string>();
+		let colorIndex = 0;
+		for (const group of lapGroups) {
+			const color = barPalette[colorIndex % barPalette.length];
+			map.set(group.race.id, color);
+			colorIndex++;
+		}
+		return map;
+	}, [lapGroups]);
+
 	const dataForAxis = useMemo(() => (axisMode === 'time' ? lapPoints.filter((p) => p.timeSeconds != null) : lapPoints), [
 		lapPoints,
 		axisMode,
@@ -371,7 +394,7 @@ export function PilotAnalyticsTab(
 													data={dataForAxis}
 													xAccessor={axisAccessor}
 													yAccessor={(d) => d.lapTime}
-													colorAccessor={() => '#ffffff'}
+													colorAccessor={(d) => raceColorMap.get(d.raceId) ?? '#ffffff'}
 												/>
 												{overlays.bestLap && filteredSeries.bestLap.length > 0 && (
 													<LineSeries
