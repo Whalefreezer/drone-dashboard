@@ -292,9 +292,7 @@ export default function TimelineEditor() {
 						<input type='checkbox' checked={cascadeShift} onChange={(e) => setCascadeShift(e.currentTarget.checked)} />
 						<span>Cascade shifts</span>
 					</label>
-					<span className='timeline-dirty-indicator muted'>
-						{hasDirty ? `${dirtyCount} draft change${dirtyCount === 1 ? '' : 's'}` : 'No draft changes'}
-					</span>
+					<span className='muted'>{hasDirty ? `${dirtyCount} draft change${dirtyCount === 1 ? '' : 's'}` : 'No draft changes'}</span>
 				</div>
 			</header>
 
@@ -318,9 +316,8 @@ export default function TimelineEditor() {
 							<SortableContext items={rows.map((row) => row.record.id)} strategy={verticalListSortingStrategy}>
 								<div className='timeline-table-head'>
 									<div />
-									<div>Title</div>
-									<div>Timing</div>
-									<div>Category</div>
+									<div>Timestamps</div>
+									<div>Details</div>
 									<div>Flags</div>
 									<div>Actions</div>
 								</div>

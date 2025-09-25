@@ -96,7 +96,7 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 
 			const viewportHeight = container.clientHeight;
 			const targetPosition = viewportHeight * 0.33;
-			const desiredTranslation = targetPosition - nowPx + panMinutes * pixelsPerMinute;
+			const desiredTranslation = targetPosition - nowPx - panMinutes * pixelsPerMinute;
 			const minTranslation = Math.min(0, viewportHeight - layout.totalHeightPx);
 			const maxTranslation = 0;
 			const translation = Math.max(minTranslation, Math.min(desiredTranslation, maxTranslation));

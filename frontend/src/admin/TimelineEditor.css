@@ -107,7 +107,7 @@
 
 .timeline-table-head {
 	display: grid;
-	grid-template-columns: 82px minmax(180px, 2.2fr) minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.9fr) minmax(200px, 1fr);
+	grid-template-columns: 82px minmax(180px, 2fr) minmax(200px, 1.4fr) minmax(200px, 1fr) minmax(200px, 1.2fr);
 	gap: 12px;
 	padding: 12px 16px;
 	border-bottom: 1px solid rgba(148, 163, 184, 0.2);
@@ -119,7 +119,7 @@
 
 .timeline-table-row {
 	display: grid;
-	grid-template-columns: 82px minmax(180px, 2.2fr) minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.9fr) minmax(200px, 1fr);
+	grid-template-columns: 82px minmax(180px, 2fr) minmax(200px, 1.4fr) minmax(200px, 1fr) minmax(200px, 1.2fr);
 	gap: 12px;
 	padding: 14px 16px;
 	border: 1px solid rgba(148, 163, 184, 0.12);
@@ -300,9 +300,4 @@
 	.timeline-table-row > :not(:nth-child(-n+2)) {
 		grid-column: span 2;
 	}
-}
-.timeline-dirty-indicator {
-	font-size: 0.8rem;
-	margin-left: auto;
-	white-space: nowrap;
 }
