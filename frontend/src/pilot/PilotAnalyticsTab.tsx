@@ -12,14 +12,6 @@ const overlayColors = {
 	raceTotal: '#71e0c9',
 } as const;
 
-const bandPalette = [
-	'rgba(155, 163, 255, 0.16)',
-	'rgba(155, 210, 255, 0.14)',
-	'rgba(255, 173, 226, 0.14)',
-	'rgba(190, 255, 201, 0.14)',
-	'rgba(255, 214, 165, 0.12)',
-];
-
 const barPalette = [
 	'#9ba3ff',
 	'#9bd2ff',
@@ -64,8 +56,7 @@ const insideZoomId = 'pilot-analytics-inside-zoom';
 
 type BarSeriesData = NonNullable<BarSeriesOption['data']>;
 type LineSeriesData = NonNullable<LineSeriesOption['data']>;
-type MarkAreaSegment = NonNullable<NonNullable<BarSeriesOption['markArea']>['data']>[number];
-type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean };
+type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean; bars: boolean };
 
 interface OverlaySeriesBundle {
 	bestLap: OverlayPoint[];
@@ -99,9 +90,10 @@ export function PilotAnalyticsTab(
 	{ timeline, lapGroups, metrics }: PilotAnalyticsTabProps,
 ) {
 	const [overlays, setOverlays] = useState<OverlayToggleState>({
-		bestLap: true,
+		bestLap: false,
 		consecutive: false,
 		raceTotal: false,
+		bars: true,
 	});
 	const chartInstanceRef = useRef<EChartsType | null>(null);
 
@@ -205,17 +197,6 @@ export function PilotAnalyticsTab(
 		return map;
 	}, [lapGroups]);
 
-	const raceBandColorMap = useMemo(() => {
-		const map = new Map<string, string>();
-		let colorIndex = 0;
-		for (const group of lapGroups) {
-			const color = bandPalette[colorIndex % bandPalette.length];
-			map.set(group.race.id, color);
-			colorIndex++;
-		}
-		return map;
-	}, [lapGroups]);
-
 	const overlaySeries = useMemo<OverlaySeriesBundle>(() => ({
 		bestLap: bestLapSeries,
 		consecutive: consecutiveSeries,
@@ -228,41 +209,42 @@ export function PilotAnalyticsTab(
 	);
 
 	const yDomain = useMemo(() => {
-		const values = [
-			...lapPoints.map((p) => p.lapTime),
-			...bestLapSeries.map((p) => p.value).filter(notNull),
-			...consecutiveSeries.map((p) => p.value).filter(notNull),
-			...raceTotalSeries.map((p) => p.value).filter(notNull),
-		];
+		const values = [...lapPoints.map((p) => p.lapTime)];
+
+		// Include overlay values only if they are enabled
+		if (overlays.bestLap) {
+			values.push(...bestLapSeries.map((p) => p.value).filter(notNull));
+		}
+		if (overlays.consecutive) {
+			values.push(...consecutiveSeries.map((p) => p.value).filter(notNull));
+		}
+		if (overlays.raceTotal) {
+			values.push(...raceTotalSeries.map((p) => p.value).filter(notNull));
+		}
+
 		if (values.length === 0) return { min: 0, max: 1 };
 		const min = Math.min(...values);
 		const max = Math.max(...values);
 		const span = max - min;
-		const padding = span === 0 ? min * 0.1 || 1 : span * 0.1;
+		const padding = span === 0 ? max * 0.1 || 1 : span * 0.1;
 		return {
-			min: Math.max(0, min - padding),
+			min: 0,
 			max: max + padding,
 		};
-	}, [lapPoints, bestLapSeries, consecutiveSeries, raceTotalSeries]);
-
-	const markAreaSegments = useMemo(
-		() => buildMarkAreaSegments(chartStructure, lapGroups, raceBandColorMap),
-		[chartStructure, lapGroups, raceBandColorMap],
-	);
+	}, [lapPoints, overlays.bestLap, overlays.consecutive, overlays.raceTotal, bestLapSeries, consecutiveSeries, raceTotalSeries]);
 
 	const chartOption = useMemo(
 		() =>
 			buildChartOption({
 				structure: chartStructure,
 				raceColorMap,
-				markAreaSegments,
 				overlays,
 				yDomain,
 			}),
 		[
 			chartStructure,
 			raceColorMap,
-			markAreaSegments,
+			overlays.bars,
 			overlays.bestLap,
 			overlays.consecutive,
 			overlays.raceTotal,
@@ -291,6 +273,12 @@ export function PilotAnalyticsTab(
 			<div className='pilot-analytics-controls'>
 				<div className='pilot-overlay-toggles'>
 					<OverlayToggle
+						label='Lap times'
+						checked={overlays.bars}
+						color='#ffffff'
+						onChange={() => onToggleOverlay('bars')}
+					/>
+					<OverlayToggle
 						label='Best lap (running)'
 						checked={overlays.bestLap}
 						color={overlayColors.bestLap}
@@ -309,6 +297,9 @@ export function PilotAnalyticsTab(
 						onChange={() => onToggleOverlay('raceTotal')}
 					/>
 				</div>
+				<div className='pilot-analytics-toolbar'>
+					<button type='button' onClick={handleResetZoom}>Reset view</button>
+				</div>
 			</div>
 
 			<div className='pilot-analytics-chart-area'>
@@ -320,9 +311,6 @@ export function PilotAnalyticsTab(
 						}}
 						className='pilot-analytics-chart'
 					/>
-					<div className='pilot-analytics-toolbar'>
-						<button type='button' onClick={handleResetZoom}>Reset view</button>
-					</div>
 				</div>
 			</div>
 		</div>
@@ -332,7 +320,6 @@ export function PilotAnalyticsTab(
 interface ChartOptionParams {
 	structure: ChartStructure;
 	raceColorMap: Map<string, string>;
-	markAreaSegments: MarkAreaSegment[];
 	overlays: OverlayToggleState;
 	yDomain: { min: number; max: number };
 }
@@ -380,37 +367,8 @@ function buildChartStructure(
 	return { slots, raceIndexRanges };
 }
 
-function buildMarkAreaSegments(
-	structure: ChartStructure,
-	lapGroups: PilotRaceLapGroup[],
-	raceBandColorMap: Map<string, string>,
-): MarkAreaSegment[] {
-	const segments: MarkAreaSegment[] = [];
-	for (const group of lapGroups) {
-		const range = structure.raceIndexRanges.get(group.race.id);
-		if (!range) continue;
-		const startSlot = structure.slots[range.start];
-		const endSlot = structure.slots[range.end];
-		if (!startSlot || !endSlot) continue;
-		segments.push([
-			{ xAxis: startSlot.key },
-			{
-				xAxis: endSlot.key,
-				itemStyle: { color: raceBandColorMap.get(group.race.id) ?? 'rgba(255, 255, 255, 0.05)' },
-				label: {
-					show: true,
-					formatter: group.race.label,
-					color: '#d7dcff',
-					fontSize: 12,
-				},
-			},
-		] as MarkAreaSegment);
-	}
-	return segments;
-}
-
 function buildChartOption(
-	{ structure, raceColorMap, markAreaSegments, overlays, yDomain }: ChartOptionParams,
+	{ structure, raceColorMap, overlays, yDomain }: ChartOptionParams,
 ): EChartsOption {
 	const categories = structure.slots.map((slot) => slot.key);
 	const barSeriesData = structure.slots.map((slot) => {
@@ -457,15 +415,18 @@ function buildChartOption(
 		].join('');
 	};
 
-	const series: SeriesOption[] = [{
-		type: 'bar',
-		name: 'Lap time',
-		barWidth: '60%',
-		data: barSeriesData,
-		z: 2,
-		markArea: { silent: true, data: markAreaSegments },
-		emphasis: { focus: 'series' },
-	}];
+	const series: SeriesOption[] = [];
+
+	if (overlays.bars) {
+		series.push({
+			type: 'bar',
+			name: 'Lap time',
+			barWidth: '60%',
+			data: barSeriesData,
+			z: 2,
+			emphasis: { focus: 'series' },
+		});
+	}
 
 	if (overlays.bestLap) {
 		series.push(buildLineSeries('bestLap', 'Best lap running', overlayColors.bestLap));
