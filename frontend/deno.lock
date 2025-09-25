@@ -18,6 +18,9 @@
     "jsr:@std/path@~0.213.1": "0.213.1",
     "jsr:@std/testing@1.0.11": "1.0.11",
     "npm:@deno/vite-plugin@^1.0.4": "1.0.5_vite@6.3.6__picomatch@4.0.3_@types+node@24.2.0",
+    "npm:@dnd-kit/core@^6.1.0": "6.3.1_react@19.1.1_react-dom@19.1.1__react@19.1.1",
+    "npm:@dnd-kit/modifiers@6": "6.0.1_@dnd-kit+core@6.3.1__react@19.1.1__react-dom@19.1.1___react@19.1.1_react@19.1.1_react-dom@19.1.1__react@19.1.1",
+    "npm:@dnd-kit/sortable@9": "9.0.0_@dnd-kit+core@6.3.1__react@19.1.1__react-dom@19.1.1___react@19.1.1_react@19.1.1_react-dom@19.1.1__react@19.1.1",
     "npm:@react-spring/web@^10.0.1": "10.0.2_react@19.1.1_react-dom@19.1.1__react@19.1.1",
     "npm:@tanstack/query-core@^5.75.0": "5.87.4",
     "npm:@tanstack/react-router-devtools@^1.131.35": "1.131.36_@tanstack+react-router@1.131.36__react@19.1.1__react-dom@19.1.1___react@19.1.1_react@19.1.1_react-dom@19.1.1__react@19.1.1",
@@ -398,6 +401,48 @@
       "integrity": "sha512-tLja5n4dyMhcze1NzvSs2iiriBymfBlDCZIrjMTxb9O2ru0gvmV6mn5oBD2teNw5Sd92cj3YJzKwsAs8tMJXlg==",
       "dependencies": [
         "vite@6.3.6_picomatch@4.0.3_@types+node@24.2.0"
+      ]
+    },
+    "@dnd-kit/accessibility@3.1.1_react@19.1.1": {
+      "integrity": "sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==",
+      "dependencies": [
+        "react",
+        "tslib@2.8.1"
+      ]
+    },
+    "@dnd-kit/core@6.3.1_react@19.1.1_react-dom@19.1.1__react@19.1.1": {
+      "integrity": "sha512-xkGBRQQab4RLwgXxoqETICr6S5JlogafbhNsidmrkVv2YRs5MLwpjoF2qpiGjQt8S9AoxtIV603s0GIUpY5eYQ==",
+      "dependencies": [
+        "@dnd-kit/accessibility",
+        "@dnd-kit/utilities",
+        "react",
+        "react-dom",
+        "tslib@2.8.1"
+      ]
+    },
+    "@dnd-kit/modifiers@6.0.1_@dnd-kit+core@6.3.1__react@19.1.1__react-dom@19.1.1___react@19.1.1_react@19.1.1_react-dom@19.1.1__react@19.1.1": {
+      "integrity": "sha512-rbxcsg3HhzlcMHVHWDuh9LCjpOVAgqbV78wLGI8tziXY3+qcMQ61qVXIvNKQFuhj75dSfD+o+PYZQ/NUk2A23A==",
+      "dependencies": [
+        "@dnd-kit/core",
+        "@dnd-kit/utilities",
+        "react",
+        "tslib@2.8.1"
+      ]
+    },
+    "@dnd-kit/sortable@9.0.0_@dnd-kit+core@6.3.1__react@19.1.1__react-dom@19.1.1___react@19.1.1_react@19.1.1_react-dom@19.1.1__react@19.1.1": {
+      "integrity": "sha512-3/9r8Mmba0nKTbo8kPnVSFZKf/VSy94nXZ3aUwzPEh78j/LooQ/EFKRZENak4PHKBkN53mgTF/z+Sd8H+FcAnQ==",
+      "dependencies": [
+        "@dnd-kit/core",
+        "@dnd-kit/utilities",
+        "react",
+        "tslib@2.8.1"
+      ]
+    },
+    "@dnd-kit/utilities@3.2.2_react@19.1.1": {
+      "integrity": "sha512-+MKAJEOfaBe5SmV6t34p80MMKhjvUz0vRrvVJbPT0WElzaOJ/1xs+D+KDv+tD/NE5ujfrChEcshd4fLn0wpiqg==",
+      "dependencies": [
+        "react",
+        "tslib@2.8.1"
       ]
     },
     "@esbuild/aix-ppc64@0.25.9": {
@@ -2283,6 +2328,9 @@
       "jsr:@std/assert@1.0.13",
       "jsr:@std/testing@1.0.11",
       "npm:@deno/vite-plugin@^1.0.4",
+      "npm:@dnd-kit/core@^6.1.0",
+      "npm:@dnd-kit/modifiers@6",
+      "npm:@dnd-kit/sortable@9",
       "npm:@react-spring/web@^10.0.1",
       "npm:@tanstack/query-core@^5.75.0",
       "npm:@tanstack/react-router-devtools@^1.131.35",

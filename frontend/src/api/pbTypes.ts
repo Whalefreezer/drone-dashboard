@@ -48,6 +48,32 @@ export enum EventType {
 	Game = 'Game',
 }
 
+export const TIMELINE_EVENT_CATEGORIES = [
+	'mandatory',
+	'briefing',
+	'practice',
+	'qualifying',
+	'race',
+	'eliminations',
+	'buffer',
+	'break',
+	'meal',
+	'other',
+] as const;
+
+export type TimelineEventCategory = typeof TIMELINE_EVENT_CATEGORIES[number];
+
+export interface PBTimelineEventRecord extends PBBaseRecord {
+	event: string; // relation → events.id
+	startAt: string;
+	endAt?: string;
+	title: string;
+	description?: string;
+	category?: TimelineEventCategory;
+	isAllDay?: boolean;
+	sortKey?: number;
+}
+
 // pilots
 export interface PBPilotRecord extends PBBaseRecord {
 	name: string;
@@ -187,6 +213,7 @@ export type AnyPBRecord =
 	| PBChannelRecord
 	| PBTrackRecord
 	| PBRaceRecord
+	| PBTimelineEventRecord
 	| PBPilotChannelRecord
 	| PBDetectionRecord
 	| PBLapRecord

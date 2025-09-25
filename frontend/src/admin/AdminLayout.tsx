@@ -19,6 +19,8 @@ export function AdminLayout() {
 					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/settings' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Server Settings</Link>
 					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
+					<Link to='/admin/timeline' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Timeline</Link>
+					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/ingest' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Ingest Targets</Link>
 					{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 					<Link to='/admin/tools' className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Tools</Link>

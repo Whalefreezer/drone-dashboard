@@ -4,6 +4,7 @@ import useBreakpoint from '../responsive/useBreakpoint.ts';
 import './ViewSelector.css';
 
 const mobilePanes: { key: DashboardPane; label: string }[] = [
+	{ key: 'timeline', label: 'Timeline' },
 	{ key: 'leaderboard', label: 'Leaderboard' },
 	{ key: 'races', label: 'Races' },
 	{ key: 'brackets', label: 'Brackets' },
@@ -11,6 +12,7 @@ const mobilePanes: { key: DashboardPane; label: string }[] = [
 ];
 
 const desktopPanes: { key: DashboardPane; label: string }[] = [
+	{ key: 'timeline', label: 'Timeline' },
 	{ key: 'leaderboard', label: 'Leaderboard' },
 	{ key: 'races', label: 'Races' },
 	{ key: 'brackets', label: 'Brackets' },

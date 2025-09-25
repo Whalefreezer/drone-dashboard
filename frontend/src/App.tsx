@@ -1,7 +1,7 @@
 import './App.css';
 
 import { Legend, TimeDisplay, ViewSelector } from './common/index.ts';
-import { CurrentRaceView, NextRacesView, RacesContainer } from './race/index.ts';
+import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
@@ -10,6 +10,7 @@ import { GenericSuspense } from './common/GenericSuspense.tsx';
 import { useAtomValue } from 'jotai';
 import useBreakpoint from './responsive/useBreakpoint.ts';
 import { activePaneAtom } from './state/viewAtoms.ts';
+import TimelineView from './timeline/TimelineView.tsx';
 
 function App() {
 	// Use the custom hook to handle cursor visibility
@@ -35,6 +36,11 @@ function App() {
 				{isMobile
 					? (
 						<>
+							{activePane === 'timeline' && (
+								<GenericSuspense id='timeline-view'>
+									<TimelineView />
+								</GenericSuspense>
+							)}
 							{activePane === 'leaderboard' && (
 								<GenericSuspense id='leaderboard'>
 									<Leaderboard />
@@ -59,15 +65,22 @@ function App() {
 					)
 					: (
 						<>
-							<GenericSuspense id='races-container'>
-								<RacesContainer />
+							<GenericSuspense id='timeline-view'>
+								<TimelineView />
 							</GenericSuspense>
-							<GenericSuspense id='leaderboard'>
-								<Leaderboard />
-							</GenericSuspense>
-							<GenericSuspense id='eliminated-pilots-view'>
-								<EliminatedPilotsView />
-							</GenericSuspense>
+							<div className='app-secondary-column'>
+								<GenericSuspense id='races-container'>
+									<RacesContainer />
+								</GenericSuspense>
+								<div className='app-secondary-stack'>
+									<GenericSuspense id='leaderboard'>
+										<Leaderboard />
+									</GenericSuspense>
+									<GenericSuspense id='eliminated-pilots-view'>
+										<EliminatedPilotsView />
+									</GenericSuspense>
+								</div>
+							</div>
 						</>
 					)}
 			</div>
