@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EChartsOption, EChartsType, SeriesOption } from 'echarts';
+import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { CallbackDataParams } from 'echarts/types/dist/shared';
 import { EChart } from './EChart.tsx';
 import type { PilotMetricSummary } from './pilot-hooks.ts';
@@ -61,6 +62,22 @@ type ChartSlot = {
 const sliderZoomId = 'pilot-analytics-slider-zoom';
 const insideZoomId = 'pilot-analytics-inside-zoom';
 
+type BarSeriesData = NonNullable<BarSeriesOption['data']>;
+type LineSeriesData = NonNullable<LineSeriesOption['data']>;
+type MarkAreaSegment = NonNullable<NonNullable<BarSeriesOption['markArea']>['data']>[number];
+type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean };
+
+interface OverlaySeriesBundle {
+	bestLap: OverlayPoint[];
+	consecutive: OverlayPoint[];
+	raceTotal: OverlayPoint[];
+}
+
+interface ChartStructure {
+	slots: ChartSlot[];
+	raceIndexRanges: Map<string, { start: number; end: number }>;
+}
+
 const formatSeconds = (time: number): string => `${time.toFixed(3)}s`;
 
 const formatDelta = (delta: number | null): string => {
@@ -81,7 +98,11 @@ interface PilotAnalyticsTabProps {
 export function PilotAnalyticsTab(
 	{ timeline, lapGroups, metrics }: PilotAnalyticsTabProps,
 ) {
-	const [overlays, setOverlays] = useState({ bestLap: true, consecutive: false, raceTotal: false });
+	const [overlays, setOverlays] = useState<OverlayToggleState>({
+		bestLap: true,
+		consecutive: false,
+		raceTotal: false,
+	});
 	const chartInstanceRef = useRef<EChartsType | null>(null);
 
 	useEffect(() => () => {
@@ -195,45 +216,16 @@ export function PilotAnalyticsTab(
 		return map;
 	}, [lapGroups]);
 
-	const chartStructure = useMemo(() => {
-		const slots: ChartSlot[] = [];
-		const raceIndexRanges = new Map<string, { start: number; end: number }>();
-		let previousRaceId: string | null = null;
+	const overlaySeries = useMemo<OverlaySeriesBundle>(() => ({
+		bestLap: bestLapSeries,
+		consecutive: consecutiveSeries,
+		raceTotal: raceTotalSeries,
+	}), [bestLapSeries, consecutiveSeries, raceTotalSeries]);
 
-		lapPoints.forEach((point, index) => {
-			if (previousRaceId && previousRaceId !== point.raceId) {
-				slots.push({
-					key: `gap-${previousRaceId}-${point.raceId}-${index}`,
-					lap: null,
-					barValue: null,
-					overlays: { bestLap: null, consecutive: null, raceTotal: null },
-				});
-			}
-
-			const slotIndex = slots.length;
-			slots.push({
-				key: point.id,
-				lap: point,
-				barValue: point.lapTime,
-				overlays: {
-					bestLap: bestLapSeries[index]?.value ?? null,
-					consecutive: consecutiveSeries[index]?.value ?? null,
-					raceTotal: raceTotalSeries[index]?.value ?? null,
-				},
-			});
-
-			const range = raceIndexRanges.get(point.raceId);
-			if (!range) {
-				raceIndexRanges.set(point.raceId, { start: slotIndex, end: slotIndex });
-			} else {
-				range.end = slotIndex;
-			}
-
-			previousRaceId = point.raceId;
-		});
-
-		return { slots, raceIndexRanges };
-	}, [bestLapSeries, consecutiveSeries, lapPoints, raceTotalSeries]);
+	const chartStructure = useMemo<ChartStructure>(
+		() => buildChartStructure(lapPoints, overlaySeries),
+		[lapPoints, overlaySeries],
+	);
 
 	const yDomain = useMemo(() => {
 		const values = [
@@ -253,151 +245,31 @@ export function PilotAnalyticsTab(
 		};
 	}, [lapPoints, bestLapSeries, consecutiveSeries, raceTotalSeries]);
 
-	const markAreaData = useMemo(() => {
-		const data: [Record<string, unknown>, Record<string, unknown>][] = [];
-		for (const [raceId, range] of chartStructure.raceIndexRanges.entries()) {
-			const startSlot = chartStructure.slots[range.start];
-			const endSlot = chartStructure.slots[range.end];
-			if (!startSlot || !endSlot) continue;
-			const raceLabel = lapGroups.find((group) => group.race.id === raceId)?.race.label ?? '';
-			data.push([
-				{ xAxis: startSlot.key },
-				{
-					xAxis: endSlot.key,
-					itemStyle: { color: raceBandColorMap.get(raceId) ?? 'rgba(255, 255, 255, 0.05)' },
-					label: {
-						show: true,
-						formatter: raceLabel,
-						color: '#d7dcff',
-						fontSize: 12,
-					},
-				},
-			]);
-		}
-		return data;
-	}, [chartStructure, lapGroups, raceBandColorMap]) as NonNullable<SeriesOption['markArea']>['data'];
+	const markAreaSegments = useMemo(
+		() => buildMarkAreaSegments(chartStructure, lapGroups, raceBandColorMap),
+		[chartStructure, lapGroups, raceBandColorMap],
+	);
 
-	const chartOption = useMemo<EChartsOption>(() => {
-		const categories = chartStructure.slots.map((slot) => slot.key);
-		const barSeriesData = chartStructure.slots.map((slot) => {
-			if (!slot.lap || slot.barValue == null) return { value: null };
-			return {
-				value: slot.barValue,
-				itemStyle: {
-					color: raceColorMap.get(slot.lap.raceId) ?? '#ffffff',
-				},
-			};
-		});
-
-		const buildLineSeries = (key: keyof ChartSlot['overlays'], name: string, color: string): SeriesOption =>
-			({
-				type: 'line',
-				name,
-				data: chartStructure.slots.map((slot) => slot.overlays[key]),
-				showSymbol: false,
-				smooth: false,
-				lineStyle: {
-					width: 2,
-					color,
-				},
-				itemStyle: { color },
-				connectNulls: false,
-				z: 3,
-			}) as SeriesOption;
-
-		const tooltipFormatter = (params: CallbackDataParams | CallbackDataParams[]): string => {
-			const items = Array.isArray(params) ? params : [params];
-			const primary = items.find((item) => item.seriesType === 'bar' && item.dataIndex != null);
-			if (!primary || primary.dataIndex == null) return '';
-			const slot = chartStructure.slots[primary.dataIndex];
-			if (!slot?.lap) return '';
-			const datum = slot.lap;
-			return [
-				"<div class='pilot-tooltip'>",
-				`<div class='pilot-tooltip-title'>${datum.raceLabel}</div>`,
-				`<div>Lap ${datum.lapNumber}</div>`,
-				`<div>${formatSeconds(datum.lapTime)}</div>`,
-				`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
-				'</div>',
-			].join('');
-		};
-
-		const baseBarSeries: SeriesOption = {
-			type: 'bar',
-			name: 'Lap time',
-			barWidth: '60%',
-			data: barSeriesData,
-			z: 2,
-			markArea: {
-				silent: true,
-				data: markAreaData,
-			},
-			emphasis: {
-				focus: 'series',
-			},
-		};
-		const series: SeriesOption[] = [baseBarSeries];
-
-		if (overlays.bestLap) {
-			series.push(buildLineSeries('bestLap', 'Best lap running', overlayColors.bestLap));
-		}
-		if (overlays.consecutive) {
-			series.push(buildLineSeries('consecutive', 'Fastest consecutive', overlayColors.consecutive));
-		}
-		if (overlays.raceTotal) {
-			series.push(buildLineSeries('raceTotal', 'Best race total', overlayColors.raceTotal));
-		}
-
-		return {
-			backgroundColor: 'transparent',
-			grid: { left: 48, right: 16, top: 32, bottom: 72 },
-			tooltip: {
-				trigger: 'axis',
-				renderMode: 'html',
-				appendToBody: false,
-				axisPointer: { type: 'shadow' },
-				formatter: tooltipFormatter,
-				extraCssText: 'box-shadow: none;',
-			},
-			xAxis: {
-				type: 'category',
-				data: categories,
-				axisLabel: { show: false },
-				axisTick: { show: false },
-				axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.12)' } },
-				splitLine: { show: false },
-			},
-			yAxis: {
-				type: 'value',
-				min: yDomain.min,
-				max: yDomain.max,
-				axisLine: { show: false },
-				axisTick: { show: false },
-				splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
-				axisLabel: {
-					color: '#ccc',
-					formatter: (value: number) => formatSeconds(Number(value)),
-				},
-			},
-			dataZoom: [
-				{
-					type: 'slider',
-					id: sliderZoomId,
-					bottom: 16,
-					height: 20,
-					handleSize: 16,
-					borderColor: 'rgba(255, 255, 255, 0.16)',
-					textStyle: { color: '#ccc' },
-				},
-				{
-					type: 'inside',
-					id: insideZoomId,
-				},
-			],
-			animation: false,
-			series,
-		} satisfies EChartsOption;
-	}, [chartStructure, markAreaData, overlays.bestLap, overlays.consecutive, overlays.raceTotal, raceColorMap, yDomain.min, yDomain.max]);
+	const chartOption = useMemo(
+		() =>
+			buildChartOption({
+				structure: chartStructure,
+				raceColorMap,
+				markAreaSegments,
+				overlays,
+				yDomain,
+			}),
+		[
+			chartStructure,
+			raceColorMap,
+			markAreaSegments,
+			overlays.bestLap,
+			overlays.consecutive,
+			overlays.raceTotal,
+			yDomain.min,
+			yDomain.max,
+		],
+	);
 
 	const onToggleOverlay = (key: keyof typeof overlays) => {
 		setOverlays((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -455,6 +327,215 @@ export function PilotAnalyticsTab(
 			</div>
 		</div>
 	);
+}
+
+interface ChartOptionParams {
+	structure: ChartStructure;
+	raceColorMap: Map<string, string>;
+	markAreaSegments: MarkAreaSegment[];
+	overlays: OverlayToggleState;
+	yDomain: { min: number; max: number };
+}
+
+function buildChartStructure(
+	lapPoints: LapPoint[],
+	overlaySeries: OverlaySeriesBundle,
+): ChartStructure {
+	const slots: ChartSlot[] = [];
+	const raceIndexRanges = new Map<string, { start: number; end: number }>();
+	let previousRaceId: string | null = null;
+
+	lapPoints.forEach((point, index) => {
+		if (previousRaceId && previousRaceId !== point.raceId) {
+			slots.push({
+				key: `gap-${previousRaceId}-${point.raceId}-${index}`,
+				lap: null,
+				barValue: null,
+				overlays: { bestLap: null, consecutive: null, raceTotal: null },
+			});
+		}
+
+		const slotIndex = slots.length;
+		slots.push({
+			key: point.id,
+			lap: point,
+			barValue: point.lapTime,
+			overlays: {
+				bestLap: overlaySeries.bestLap[index]?.value ?? null,
+				consecutive: overlaySeries.consecutive[index]?.value ?? null,
+				raceTotal: overlaySeries.raceTotal[index]?.value ?? null,
+			},
+		});
+
+		const range = raceIndexRanges.get(point.raceId);
+		if (!range) {
+			raceIndexRanges.set(point.raceId, { start: slotIndex, end: slotIndex });
+		} else {
+			range.end = slotIndex;
+		}
+
+		previousRaceId = point.raceId;
+	});
+
+	return { slots, raceIndexRanges };
+}
+
+function buildMarkAreaSegments(
+	structure: ChartStructure,
+	lapGroups: PilotRaceLapGroup[],
+	raceBandColorMap: Map<string, string>,
+): MarkAreaSegment[] {
+	const segments: MarkAreaSegment[] = [];
+	for (const group of lapGroups) {
+		const range = structure.raceIndexRanges.get(group.race.id);
+		if (!range) continue;
+		const startSlot = structure.slots[range.start];
+		const endSlot = structure.slots[range.end];
+		if (!startSlot || !endSlot) continue;
+		segments.push([
+			{ xAxis: startSlot.key },
+			{
+				xAxis: endSlot.key,
+				itemStyle: { color: raceBandColorMap.get(group.race.id) ?? 'rgba(255, 255, 255, 0.05)' },
+				label: {
+					show: true,
+					formatter: group.race.label,
+					color: '#d7dcff',
+					fontSize: 12,
+				},
+			},
+		] as MarkAreaSegment);
+	}
+	return segments;
+}
+
+function buildChartOption(
+	{ structure, raceColorMap, markAreaSegments, overlays, yDomain }: ChartOptionParams,
+): EChartsOption {
+	const categories = structure.slots.map((slot) => slot.key);
+	const barSeriesData = structure.slots.map((slot) => {
+		if (!slot.lap || slot.barValue == null) return { value: null };
+		return {
+			value: slot.barValue,
+			itemStyle: {
+				color: raceColorMap.get(slot.lap.raceId) ?? '#ffffff',
+			},
+		};
+	}) as BarSeriesData;
+
+	const buildLineSeries = (
+		key: keyof ChartSlot['overlays'],
+		name: string,
+		color: string,
+	): SeriesOption =>
+		({
+			type: 'line',
+			name,
+			data: structure.slots.map((slot) => slot.overlays[key]) as LineSeriesData,
+			showSymbol: false,
+			smooth: false,
+			lineStyle: { width: 2, color },
+			itemStyle: { color },
+			connectNulls: true,
+			z: 3,
+		}) as SeriesOption;
+
+	const tooltipFormatter = (params: CallbackDataParams | CallbackDataParams[]): string => {
+		const items = Array.isArray(params) ? params : [params];
+		const primary = items.find((item) => item.seriesType === 'bar' && item.dataIndex != null);
+		if (!primary || primary.dataIndex == null) return '';
+		const slot = structure.slots[primary.dataIndex];
+		if (!slot?.lap) return '';
+		const datum = slot.lap;
+		return [
+			"<div class='pilot-tooltip'>",
+			`<div class='pilot-tooltip-title'>${datum.raceLabel}</div>`,
+			`<div>Lap ${datum.lapNumber}</div>`,
+			`<div>${formatSeconds(datum.lapTime)}</div>`,
+			`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
+			'</div>',
+		].join('');
+	};
+
+	const series: SeriesOption[] = [{
+		type: 'bar',
+		name: 'Lap time',
+		barWidth: '60%',
+		data: barSeriesData,
+		z: 2,
+		markArea: { silent: true, data: markAreaSegments },
+		emphasis: { focus: 'series' },
+	}];
+
+	if (overlays.bestLap) {
+		series.push(buildLineSeries('bestLap', 'Best lap running', overlayColors.bestLap));
+	}
+	if (overlays.consecutive) {
+		series.push(buildLineSeries('consecutive', 'Fastest consecutive', overlayColors.consecutive));
+	}
+	if (overlays.raceTotal) {
+		series.push(buildLineSeries('raceTotal', 'Best race total', overlayColors.raceTotal));
+	}
+
+	return {
+		backgroundColor: 'transparent',
+		grid: { left: 48, right: 48, top: 32, bottom: 72 },
+		tooltip: {
+			trigger: 'axis',
+			renderMode: 'html',
+			appendToBody: false,
+			axisPointer: { type: 'shadow' },
+			formatter: tooltipFormatter,
+			extraCssText: 'box-shadow: none;',
+		},
+		xAxis: {
+			type: 'category',
+			data: categories,
+			axisLabel: { show: false },
+			axisTick: { show: false },
+			axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.12)' } },
+			splitLine: { show: false },
+		},
+		yAxis: {
+			type: 'value',
+			min: yDomain.min,
+			max: yDomain.max,
+			axisLine: { show: false },
+			axisTick: { show: false },
+			splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+			axisLabel: {
+				color: '#ccc',
+				formatter: (value: number) => formatSeconds(Number(value)),
+			},
+		},
+		dataZoom: [
+			{
+				type: 'slider',
+				id: sliderZoomId,
+				filterMode: 'none',
+				bottom: 16,
+				height: 20,
+				handleSize: 16,
+				borderColor: 'rgba(255, 255, 255, 0.16)',
+				textStyle: { color: '#ccc' },
+			},
+			{
+				type: 'inside',
+				id: insideZoomId,
+				filterMode: 'none',
+			},
+			{
+				show: true,
+				yAxisIndex: 0,
+				filterMode: 'none',
+				width: 30,
+				height: '80%',
+				showDataShadow: false,
+				right: '0%',
+			},
+		],
+		series,
+	} satisfies EChartsOption;
 }
 
 function OverlayToggle(
