@@ -57,7 +57,7 @@ const insideZoomId = 'pilot-analytics-inside-zoom';
 type BarSeriesData = NonNullable<BarSeriesOption['data']>;
 type LineSeriesData = NonNullable<LineSeriesOption['data']>;
 type MarkLineData = NonNullable<NonNullable<BarSeriesOption['markLine']>['data']>;
-type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean; bars: boolean };
+type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean; bars: boolean; markLines: boolean };
 
 interface OverlaySeriesBundle {
 	bestLap: OverlayPoint[];
@@ -95,6 +95,7 @@ export function PilotAnalyticsTab(
 		consecutive: false,
 		raceTotal: false,
 		bars: true,
+		markLines: true,
 	});
 	const chartInstanceRef = useRef<EChartsType | null>(null);
 
@@ -250,6 +251,7 @@ export function PilotAnalyticsTab(
 			overlays.bestLap,
 			overlays.consecutive,
 			overlays.raceTotal,
+			overlays.markLines,
 			yDomain.min,
 			yDomain.max,
 			timeline,
@@ -282,19 +284,25 @@ export function PilotAnalyticsTab(
 						onChange={() => onToggleOverlay('bars')}
 					/>
 					<OverlayToggle
-						label='Best lap (running)'
+						label='Best time markers'
+						checked={overlays.markLines}
+						color='#71e0c9'
+						onChange={() => onToggleOverlay('markLines')}
+					/>
+					<OverlayToggle
+						label='Best lap'
 						checked={overlays.bestLap}
 						color={overlayColors.bestLap}
 						onChange={() => onToggleOverlay('bestLap')}
 					/>
 					<OverlayToggle
-						label='Fastest consecutive'
+						label={`Best ${consecutiveWindow} consecutive`}
 						checked={overlays.consecutive}
 						color={overlayColors.consecutive}
 						onChange={() => onToggleOverlay('consecutive')}
 					/>
 					<OverlayToggle
-						label='Best race total'
+						label='Best race'
 						checked={overlays.raceTotal}
 						color={overlayColors.raceTotal}
 						onChange={() => onToggleOverlay('raceTotal')}
@@ -534,14 +542,16 @@ function buildChartOption(
 			data: barSeriesData,
 			z: 2,
 			emphasis: { focus: 'series' },
-			markLine: {
-				silent: true,
-				label: { show: false },
-				symbol: ['none', 'none'],
-				data: markLineData,
-			},
+			markLine: overlays.markLines
+				? {
+					silent: true,
+					label: { show: false },
+					symbol: ['none', 'none'],
+					data: markLineData,
+				}
+				: undefined,
 		});
-	} else if (markLineData.length > 0) {
+	} else if (overlays.markLines && markLineData.length > 0) {
 		// Add mark lines as a separate invisible series when bars are not showing
 		series.push({
 			type: 'line',
