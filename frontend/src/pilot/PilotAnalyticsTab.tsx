@@ -240,6 +240,7 @@ export function PilotAnalyticsTab(
 				raceColorMap,
 				overlays,
 				yDomain,
+				timeline,
 			}),
 		[
 			chartStructure,
@@ -250,6 +251,7 @@ export function PilotAnalyticsTab(
 			overlays.raceTotal,
 			yDomain.min,
 			yDomain.max,
+			timeline,
 		],
 	);
 
@@ -322,6 +324,7 @@ interface ChartOptionParams {
 	raceColorMap: Map<string, string>;
 	overlays: OverlayToggleState;
 	yDomain: { min: number; max: number };
+	timeline: PilotTimelineLap[];
 }
 
 function buildChartStructure(
@@ -368,7 +371,7 @@ function buildChartStructure(
 }
 
 function buildChartOption(
-	{ structure, raceColorMap, overlays, yDomain }: ChartOptionParams,
+	{ structure, raceColorMap, overlays, yDomain, timeline }: ChartOptionParams,
 ): EChartsOption {
 	const categories = structure.slots.map((slot) => slot.key);
 	const barSeriesData = structure.slots.map((slot) => {
@@ -405,12 +408,19 @@ function buildChartOption(
 		const slot = structure.slots[primary.dataIndex];
 		if (!slot?.lap) return '';
 		const datum = slot.lap;
+
+		// Find the original lap data to get the timestamp
+		const originalLap = timeline.find((lap) => lap.id === datum.id);
+		const timestamp = originalLap?.detectionTimestampMs;
+		const dateTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown time';
+
 		return [
 			"<div class='pilot-tooltip'>",
 			`<div class='pilot-tooltip-title'>${datum.raceLabel}</div>`,
 			`<div>Lap ${datum.lapNumber}</div>`,
 			`<div>${formatSeconds(datum.lapTime)}</div>`,
 			`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
+			`<div>${dateTime}</div>`,
 			'</div>',
 		].join('');
 	};
@@ -440,10 +450,12 @@ function buildChartOption(
 
 	return {
 		backgroundColor: 'transparent',
+		animation: false,
 		grid: { left: 48, right: 48, top: 32, bottom: 72 },
 		tooltip: {
 			trigger: 'axis',
 			renderMode: 'html',
+			transitionDuration: 0,
 			appendToBody: false,
 			axisPointer: { type: 'shadow' },
 			formatter: tooltipFormatter,
@@ -452,7 +464,26 @@ function buildChartOption(
 		xAxis: {
 			type: 'category',
 			data: categories,
-			axisLabel: { show: false },
+			axisLabel: {
+				show: true,
+				color: '#ccc',
+				fontSize: 12,
+				formatter: (value: string) => {
+					const slot = structure.slots.find((s) => s.key === value);
+					if (!slot?.lap) return '';
+
+					// Show race label for the middle lap of each race
+					const raceId = slot.lap.raceId;
+					const range = structure.raceIndexRanges.get(raceId);
+					if (!range) return '';
+
+					// Check if this is the middle lap of this race
+					const middleIndex = Math.floor((range.start + range.end) / 2);
+					const isMiddleLapOfRace = slot.key === structure.slots[middleIndex]?.key;
+					return isMiddleLapOfRace ? slot.lap.raceLabel : '';
+				},
+				interval: 0,
+			},
 			axisTick: { show: false },
 			axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.12)' } },
 			splitLine: { show: false },
