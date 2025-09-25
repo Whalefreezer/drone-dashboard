@@ -1,12 +1,9 @@
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { ParentSize } from '@visx/responsive';
-import { Axis, BarSeries, DataContext, Grid, LineSeries, Tooltip, XYChart } from '@visx/xychart';
-import { curveLinear, curveStepAfter } from 'd3-shape';
-import { scaleLinear } from '@visx/scale';
-import { Zoom } from '@visx/zoom';
-import type { TransformMatrix } from '@visx/zoom/lib/types';
-import type { PilotRaceLapGroup, PilotTimelineLap } from './pilot-state.ts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { EChartsOption, EChartsType, SeriesOption } from 'echarts';
+import type { CallbackDataParams } from 'echarts/types/dist/shared';
+import { EChart } from './EChart.tsx';
 import type { PilotMetricSummary } from './pilot-hooks.ts';
+import type { PilotRaceLapGroup, PilotTimelineLap } from './pilot-state.ts';
 
 const overlayColors = {
 	bestLap: '#9ba3ff',
@@ -23,14 +20,14 @@ const bandPalette = [
 ];
 
 const barPalette = [
-	'#9ba3ff', // Blue
-	'#9bd2ff', // Light blue
-	'#ffade2', // Pink
-	'#beffc9', // Green
-	'#ffd6a5', // Orange
-	'#a5d6ff', // Sky blue
-	'#ffb3ba', // Coral
-	'#baffc9', // Mint
+	'#9ba3ff',
+	'#9bd2ff',
+	'#ffade2',
+	'#beffc9',
+	'#ffd6a5',
+	'#a5d6ff',
+	'#ffb3ba',
+	'#baffc9',
 ];
 
 type LapPoint = {
@@ -50,17 +47,19 @@ type OverlayPoint = {
 	value: number | null;
 };
 
-type RaceBand = {
-	raceId: string;
-	label: string;
-	color: string;
-	startOrder: number;
-	endOrder: number;
-	startTime: number | null;
-	endTime: number | null;
+type ChartSlot = {
+	key: string;
+	lap: LapPoint | null;
+	barValue: number | null;
+	overlays: {
+		bestLap: number | null;
+		consecutive: number | null;
+		raceTotal: number | null;
+	};
 };
 
-type ZoomDomain = { x: [number, number]; y: [number, number] };
+const sliderZoomId = 'pilot-analytics-slider-zoom';
+const insideZoomId = 'pilot-analytics-inside-zoom';
 
 const formatSeconds = (time: number): string => `${time.toFixed(3)}s`;
 
@@ -71,35 +70,6 @@ const formatDelta = (delta: number | null): string => {
 };
 
 const notNull = (value: number | null | undefined): value is number => value != null && !Number.isNaN(value);
-
-const computeZoomDomain = (
-	matrix: TransformMatrix,
-	width: number,
-	height: number,
-	initial: ZoomDomain,
-): ZoomDomain => {
-	const baseX = scaleLinear({ domain: initial.x, range: [0, width] });
-	const baseY = scaleLinear({ domain: initial.y, range: [height, 0] });
-	const topLeft = { x: matrix.translateX, y: matrix.translateY };
-	const bottomRight = {
-		x: matrix.translateX + width * matrix.scaleX,
-		y: matrix.translateY + height * matrix.scaleY,
-	};
-	const newX0 = baseX.invert(topLeft.x);
-	const newX1 = baseX.invert(bottomRight.x);
-	const newY0 = baseY.invert(bottomRight.y);
-	const newY1 = baseY.invert(topLeft.y);
-	const clampX0 = Math.max(initial.x[0], Math.min(initial.x[1], newX0));
-	const clampX1 = Math.max(initial.x[0], Math.min(initial.x[1], newX1));
-	const clampY0 = Math.max(initial.y[0], Math.min(initial.y[1], newY0));
-	const clampY1 = Math.max(initial.y[0], Math.min(initial.y[1], newY1));
-	const xSpan = Math.max(1e-6, Math.abs(clampX1 - clampX0));
-	const ySpan = Math.max(1e-6, Math.abs(clampY1 - clampY0));
-	return {
-		x: [Math.min(clampX0, clampX1), Math.min(clampX0, clampX1) + xSpan],
-		y: [Math.min(clampY0, clampY1), Math.min(clampY0, clampY1) + ySpan],
-	};
-};
 
 interface PilotAnalyticsTabProps {
 	pilotId: string;
@@ -112,19 +82,21 @@ export function PilotAnalyticsTab(
 	{ timeline, lapGroups, metrics }: PilotAnalyticsTabProps,
 ) {
 	const [overlays, setOverlays] = useState({ bestLap: true, consecutive: false, raceTotal: false });
+	const chartInstanceRef = useRef<EChartsType | null>(null);
+
+	useEffect(() => () => {
+		chartInstanceRef.current = null;
+	}, []);
 
 	const lapPoints = useMemo<LapPoint[]>(() => {
 		if (timeline.length === 0) return [];
 		const firstTimestamp = timeline.find((lap) => lap.detectionTimestampMs != null)?.detectionTimestampMs ?? null;
-
-		// Calculate cumulative offset for each race
 		const raceOffsets = new Map<string, number>();
 		let cumulativeOffset = 0;
 		for (const group of lapGroups) {
 			raceOffsets.set(group.race.id, cumulativeOffset);
-			cumulativeOffset += 1.0; // Add horizontal space between races
+			cumulativeOffset += 1.0;
 		}
-
 		return timeline.map((lap) => {
 			const timeSeconds = lap.detectionTimestampMs != null && firstTimestamp != null
 				? (lap.detectionTimestampMs - firstTimestamp) / 1000
@@ -201,37 +173,6 @@ export function PilotAnalyticsTab(
 		});
 	}, [lapPoints, completionMap]);
 
-	const bands = useMemo<RaceBand[]>(() => {
-		if (lapPoints.length === 0) return [];
-		const map = new Map<string, LapPoint[]>();
-		lapPoints.forEach((point) => {
-			const current = map.get(point.raceId);
-			if (current) current.push(point);
-			else map.set(point.raceId, [point]);
-		});
-		let colorIndex = 0;
-		const results: RaceBand[] = [];
-		for (const group of lapGroups) {
-			const groupPoints = map.get(group.race.id);
-			if (!groupPoints || groupPoints.length === 0) continue;
-			const orders = groupPoints.map((p) => p.order);
-			const times = groupPoints.map((p) => p.timeSeconds).filter(notNull);
-			const color = bandPalette[colorIndex % bandPalette.length];
-			colorIndex++;
-			results.push({
-				raceId: group.race.id,
-				label: group.race.label,
-				color,
-				startOrder: Math.min(...orders) - 0.5,
-				endOrder: Math.max(...orders) + 0.5,
-				startTime: times.length ? Math.min(...times) - 1 : null,
-				endTime: times.length ? Math.max(...times) + 1 : null,
-			});
-		}
-		return results;
-	}, [lapGroups, lapPoints]);
-
-	// Create mapping from raceId to bar color for bar coloring
 	const raceColorMap = useMemo(() => {
 		const map = new Map<string, string>();
 		let colorIndex = 0;
@@ -243,49 +184,235 @@ export function PilotAnalyticsTab(
 		return map;
 	}, [lapGroups]);
 
-	const dataForAxis = lapPoints;
+	const raceBandColorMap = useMemo(() => {
+		const map = new Map<string, string>();
+		let colorIndex = 0;
+		for (const group of lapGroups) {
+			const color = bandPalette[colorIndex % bandPalette.length];
+			map.set(group.race.id, color);
+			colorIndex++;
+		}
+		return map;
+	}, [lapGroups]);
 
-	const overlaySeries = useMemo(() => ({
-		bestLap: bestLapSeries,
-		consecutive: consecutiveSeries,
-		raceTotal: raceTotalSeries,
-	}), [bestLapSeries, consecutiveSeries, raceTotalSeries]);
+	const chartStructure = useMemo(() => {
+		const slots: ChartSlot[] = [];
+		const raceIndexRanges = new Map<string, { start: number; end: number }>();
+		let previousRaceId: string | null = null;
 
-	const initialDomain = useMemo<ZoomDomain>(() => {
-		if (dataForAxis.length === 0) return { x: [0, 1], y: [0, 1] };
-		const xValues = dataForAxis.map((p) => p.order);
-		const overlayValues = Object.values(overlaySeries)
-			.flatMap((series) => series.map((p) => p.value).filter(notNull));
-		const yValues = [...dataForAxis.map((p) => p.lapTime), ...overlayValues];
-		const xMin = Math.min(...xValues);
-		const xMax = Math.max(...xValues);
-		const yMin = Math.min(...yValues);
-		const yMax = Math.max(...yValues);
-		const xSpan = xMax - xMin;
-		const ySpan = yMax - yMin || 1;
+		lapPoints.forEach((point, index) => {
+			if (previousRaceId && previousRaceId !== point.raceId) {
+				slots.push({
+					key: `gap-${previousRaceId}-${point.raceId}-${index}`,
+					lap: null,
+					barValue: null,
+					overlays: { bestLap: null, consecutive: null, raceTotal: null },
+				});
+			}
+
+			const slotIndex = slots.length;
+			slots.push({
+				key: point.id,
+				lap: point,
+				barValue: point.lapTime,
+				overlays: {
+					bestLap: bestLapSeries[index]?.value ?? null,
+					consecutive: consecutiveSeries[index]?.value ?? null,
+					raceTotal: raceTotalSeries[index]?.value ?? null,
+				},
+			});
+
+			const range = raceIndexRanges.get(point.raceId);
+			if (!range) {
+				raceIndexRanges.set(point.raceId, { start: slotIndex, end: slotIndex });
+			} else {
+				range.end = slotIndex;
+			}
+
+			previousRaceId = point.raceId;
+		});
+
+		return { slots, raceIndexRanges };
+	}, [bestLapSeries, consecutiveSeries, lapPoints, raceTotalSeries]);
+
+	const yDomain = useMemo(() => {
+		const values = [
+			...lapPoints.map((p) => p.lapTime),
+			...bestLapSeries.map((p) => p.value).filter(notNull),
+			...consecutiveSeries.map((p) => p.value).filter(notNull),
+			...raceTotalSeries.map((p) => p.value).filter(notNull),
+		];
+		if (values.length === 0) return { min: 0, max: 1 };
+		const min = Math.min(...values);
+		const max = Math.max(...values);
+		const span = max - min;
+		const padding = span === 0 ? min * 0.1 || 1 : span * 0.1;
 		return {
-			x: [xMin, xMax + (xSpan === 0 ? 1 : 0)],
-			y: [Math.max(0, yMin - ySpan * 0.1), yMax + ySpan * 0.1],
+			min: Math.max(0, min - padding),
+			max: max + padding,
 		};
-	}, [dataForAxis, overlaySeries]);
+	}, [lapPoints, bestLapSeries, consecutiveSeries, raceTotalSeries]);
 
-	if (lapPoints.length === 0) {
-		return <div className='pilot-empty-state'>No laps recorded yet.</div>;
-	}
+	const markAreaData = useMemo(() => {
+		const data: [Record<string, unknown>, Record<string, unknown>][] = [];
+		for (const [raceId, range] of chartStructure.raceIndexRanges.entries()) {
+			const startSlot = chartStructure.slots[range.start];
+			const endSlot = chartStructure.slots[range.end];
+			if (!startSlot || !endSlot) continue;
+			const raceLabel = lapGroups.find((group) => group.race.id === raceId)?.race.label ?? '';
+			data.push([
+				{ xAxis: startSlot.key },
+				{
+					xAxis: endSlot.key,
+					itemStyle: { color: raceBandColorMap.get(raceId) ?? 'rgba(255, 255, 255, 0.05)' },
+					label: {
+						show: true,
+						formatter: raceLabel,
+						color: '#d7dcff',
+						fontSize: 12,
+					},
+				},
+			]);
+		}
+		return data;
+	}, [chartStructure, lapGroups, raceBandColorMap]) as NonNullable<SeriesOption['markArea']>['data'];
 
-	const axisAccessor = (point: { order: number }) => point.order;
+	const chartOption = useMemo<EChartsOption>(() => {
+		const categories = chartStructure.slots.map((slot) => slot.key);
+		const barSeriesData = chartStructure.slots.map((slot) => {
+			if (!slot.lap || slot.barValue == null) return { value: null };
+			return {
+				value: slot.barValue,
+				itemStyle: {
+					color: raceColorMap.get(slot.lap.raceId) ?? '#ffffff',
+				},
+			};
+		});
 
-	const overlayFilter = (series: OverlayPoint[]) => series.filter((item) => notNull(item.value));
+		const buildLineSeries = (key: keyof ChartSlot['overlays'], name: string, color: string): SeriesOption =>
+			({
+				type: 'line',
+				name,
+				data: chartStructure.slots.map((slot) => slot.overlays[key]),
+				showSymbol: false,
+				smooth: false,
+				lineStyle: {
+					width: 2,
+					color,
+				},
+				itemStyle: { color },
+				connectNulls: false,
+				z: 3,
+			}) as SeriesOption;
 
-	const filteredSeries = {
-		bestLap: overlayFilter(overlaySeries.bestLap),
-		consecutive: overlayFilter(overlaySeries.consecutive),
-		raceTotal: overlayFilter(overlaySeries.raceTotal),
-	};
+		const tooltipFormatter = (params: CallbackDataParams | CallbackDataParams[]): string => {
+			const items = Array.isArray(params) ? params : [params];
+			const primary = items.find((item) => item.seriesType === 'bar' && item.dataIndex != null);
+			if (!primary || primary.dataIndex == null) return '';
+			const slot = chartStructure.slots[primary.dataIndex];
+			if (!slot?.lap) return '';
+			const datum = slot.lap;
+			return [
+				"<div class='pilot-tooltip'>",
+				`<div class='pilot-tooltip-title'>${datum.raceLabel}</div>`,
+				`<div>Lap ${datum.lapNumber}</div>`,
+				`<div>${formatSeconds(datum.lapTime)}</div>`,
+				`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
+				'</div>',
+			].join('');
+		};
+
+		const baseBarSeries: SeriesOption = {
+			type: 'bar',
+			name: 'Lap time',
+			barWidth: '60%',
+			data: barSeriesData,
+			z: 2,
+			markArea: {
+				silent: true,
+				data: markAreaData,
+			},
+			emphasis: {
+				focus: 'series',
+			},
+		};
+		const series: SeriesOption[] = [baseBarSeries];
+
+		if (overlays.bestLap) {
+			series.push(buildLineSeries('bestLap', 'Best lap running', overlayColors.bestLap));
+		}
+		if (overlays.consecutive) {
+			series.push(buildLineSeries('consecutive', 'Fastest consecutive', overlayColors.consecutive));
+		}
+		if (overlays.raceTotal) {
+			series.push(buildLineSeries('raceTotal', 'Best race total', overlayColors.raceTotal));
+		}
+
+		return {
+			backgroundColor: 'transparent',
+			grid: { left: 48, right: 16, top: 32, bottom: 72 },
+			tooltip: {
+				trigger: 'axis',
+				renderMode: 'html',
+				appendToBody: false,
+				axisPointer: { type: 'shadow' },
+				formatter: tooltipFormatter,
+				extraCssText: 'box-shadow: none;',
+			},
+			xAxis: {
+				type: 'category',
+				data: categories,
+				axisLabel: { show: false },
+				axisTick: { show: false },
+				axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.12)' } },
+				splitLine: { show: false },
+			},
+			yAxis: {
+				type: 'value',
+				min: yDomain.min,
+				max: yDomain.max,
+				axisLine: { show: false },
+				axisTick: { show: false },
+				splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+				axisLabel: {
+					color: '#ccc',
+					formatter: (value: number) => formatSeconds(Number(value)),
+				},
+			},
+			dataZoom: [
+				{
+					type: 'slider',
+					id: sliderZoomId,
+					bottom: 16,
+					height: 20,
+					handleSize: 16,
+					borderColor: 'rgba(255, 255, 255, 0.16)',
+					textStyle: { color: '#ccc' },
+				},
+				{
+					type: 'inside',
+					id: insideZoomId,
+				},
+			],
+			animation: false,
+			series,
+		} satisfies EChartsOption;
+	}, [chartStructure, markAreaData, overlays.bestLap, overlays.consecutive, overlays.raceTotal, raceColorMap, yDomain.min, yDomain.max]);
 
 	const onToggleOverlay = (key: keyof typeof overlays) => {
 		setOverlays((prev) => ({ ...prev, [key]: !prev[key] }));
 	};
+
+	const handleResetZoom = () => {
+		const chart = chartInstanceRef.current;
+		if (!chart) return;
+		chart.dispatchAction({ type: 'dataZoom', dataZoomId: sliderZoomId, start: 0, end: 100 });
+		chart.dispatchAction({ type: 'dataZoom', dataZoomId: insideZoomId, start: 0, end: 100 });
+	};
+
+	if (lapPoints.length === 0) {
+		return <div className='pilot-empty-state'>No laps recorded yet.</div>;
+	}
 
 	return (
 		<div className='pilot-analytics-tab'>
@@ -313,126 +440,18 @@ export function PilotAnalyticsTab(
 			</div>
 
 			<div className='pilot-analytics-chart-area'>
-				<ParentSize>
-					{({ width, height }) => {
-						if (width === 0 || height === 0) return null;
-						const zoomKey = `${initialDomain.x.join(':')}|${initialDomain.y.join(':')}`;
-						return (
-							<Zoom<HTMLDivElement>
-								key={zoomKey}
-								width={width}
-								height={height}
-								scaleXMin={1}
-								scaleXMax={50}
-								scaleYMin={1}
-								scaleYMax={50}
-							>
-								{(zoom) => {
-									const handleReset = () => {
-										zoom.reset();
-									};
-									const domain = computeZoomDomain(zoom.transformMatrix, width, height, initialDomain);
-									return (
-										<div className='pilot-analytics-chart-wrapper'>
-											<XYChart
-												height={height}
-												width={width}
-												xScale={{ type: 'linear', domain: domain.x }}
-												yScale={{ type: 'linear', domain: domain.y }}
-											>
-												<RaceBands bands={bands} />
-												<Grid columns numTicks={6} stroke='rgba(255,255,255,0.08)' />
-												<Axis
-													hideAxisLine
-													orientation='bottom'
-													tickValues={bands.map((band) => (band.startOrder + band.endOrder) / 2)}
-													tickFormat={(value, index) => bands[index]?.label || ''}
-												/>
-												<Axis
-													orientation='left'
-													hideAxisLine
-													tickFormat={(value) => formatSeconds(Number(value))}
-												/>
-												<BarSeries
-													dataKey='Lap time'
-													data={dataForAxis}
-													xAccessor={axisAccessor}
-													yAccessor={(d) => d.lapTime}
-													colorAccessor={(d) => raceColorMap.get(d.raceId) ?? '#ffffff'}
-												/>
-												{overlays.bestLap && filteredSeries.bestLap.length > 0 && (
-													<LineSeries
-														dataKey='Best lap running'
-														data={filteredSeries.bestLap}
-														xAccessor={axisAccessor}
-														yAccessor={(d) => d.value ?? 0}
-														stroke={overlayColors.bestLap}
-														curve={curveLinear}
-													/>
-												)}
-												{overlays.consecutive && filteredSeries.consecutive.length > 0 && (
-													<LineSeries
-														dataKey='Fastest consecutive'
-														data={filteredSeries.consecutive}
-														xAccessor={axisAccessor}
-														yAccessor={(d) => d.value ?? 0}
-														stroke={overlayColors.consecutive}
-														curve={curveLinear}
-													/>
-												)}
-												{overlays.raceTotal && filteredSeries.raceTotal.length > 0 && (
-													<LineSeries
-														dataKey='Best race total'
-														data={filteredSeries.raceTotal}
-														xAccessor={axisAccessor}
-														yAccessor={(d) => d.value ?? 0}
-														stroke={overlayColors.raceTotal}
-														curve={curveStepAfter}
-													/>
-												)}
-												<Tooltip<LapPoint>
-													snapTooltipToDatumX
-													snapTooltipToDatumY
-													showVerticalCrosshair
-													renderTooltip={({ tooltipData }) => {
-														const datum = tooltipData?.nearestDatum?.datum as LapPoint | undefined;
-														if (!datum) return null;
-														return (
-															<div className='pilot-tooltip'>
-																<div className='pilot-tooltip-title'>{datum.raceLabel}</div>
-																<div>Lap {datum.lapNumber}</div>
-																<div>{formatSeconds(datum.lapTime)}</div>
-																<div>Δ best: {formatDelta(datum.deltaBest)}</div>
-															</div>
-														);
-													}}
-												/>
-											</XYChart>
-
-											<div
-												ref={zoom.containerRef}
-												className={`pilot-zoom-overlay${zoom.isDragging ? ' dragging' : ''}`}
-												style={{ touchAction: 'none', cursor: zoom.isDragging ? 'grabbing' : 'grab' }}
-												onMouseDown={zoom.dragStart}
-												onMouseMove={zoom.dragMove}
-												onMouseUp={zoom.dragEnd}
-												onMouseLeave={zoom.dragEnd}
-												onTouchStart={zoom.dragStart}
-												onTouchMove={zoom.dragMove}
-												onTouchEnd={zoom.dragEnd}
-												onWheel={zoom.handleWheel}
-											/>
-
-											<div className='pilot-analytics-toolbar'>
-												<button type='button' onClick={handleReset}>Reset view</button>
-											</div>
-										</div>
-									);
-								}}
-							</Zoom>
-						);
-					}}
-				</ParentSize>
+				<div className='pilot-analytics-chart-wrapper'>
+					<EChart
+						option={chartOption}
+						onReady={(chart) => {
+							chartInstanceRef.current = chart;
+						}}
+						className='pilot-analytics-chart'
+					/>
+					<div className='pilot-analytics-toolbar'>
+						<button type='button' onClick={handleResetZoom}>Reset view</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
@@ -447,41 +466,5 @@ function OverlayToggle(
 			<span className='pilot-overlay-color' style={{ backgroundColor: color }} />
 			{label}
 		</label>
-	);
-}
-
-function RaceBands({ bands }: { bands: RaceBand[] }) {
-	const context = useContext(DataContext);
-	const xScale = context?.xScale;
-	const innerHeight = context?.innerHeight;
-	const marginTop = context?.margin?.top ?? 0;
-	if (!xScale || innerHeight == null) return null;
-	return (
-		<g className='pilot-race-bands'>
-			{bands.map((band) => {
-				const startValue = band.startOrder;
-				const endValue = band.endOrder;
-				const rawStart = xScale(startValue as number);
-				const rawEnd = xScale(endValue as number);
-				if (rawStart == null || rawEnd == null) return null;
-				const startPosition = Number(rawStart);
-				const endPosition = Number(rawEnd);
-				if (!Number.isFinite(startPosition) || !Number.isFinite(endPosition)) return null;
-				const width = Math.abs(endPosition - startPosition);
-				if (width <= 0) return null;
-				return (
-					<rect
-						key={band.raceId}
-						x={Math.min(startPosition, endPosition)}
-						width={width}
-						y={marginTop}
-						height={innerHeight}
-						fill={band.color}
-						rx={4}
-						ry={4}
-					/>
-				);
-			})}
-		</g>
 	);
 }
