@@ -56,6 +56,7 @@ const insideZoomId = 'pilot-analytics-inside-zoom';
 
 type BarSeriesData = NonNullable<BarSeriesOption['data']>;
 type LineSeriesData = NonNullable<LineSeriesOption['data']>;
+type MarkLineData = NonNullable<NonNullable<BarSeriesOption['markLine']>['data']>;
 type OverlayToggleState = { bestLap: boolean; consecutive: boolean; raceTotal: boolean; bars: boolean };
 
 interface OverlaySeriesBundle {
@@ -374,12 +375,66 @@ function buildChartOption(
 	{ structure, raceColorMap, overlays, yDomain, timeline }: ChartOptionParams,
 ): EChartsOption {
 	const categories = structure.slots.map((slot) => slot.key);
-	const barSeriesData = structure.slots.map((slot) => {
+	// Calculate which laps were new best times as they happened
+	const newBestLapIndices = new Set<number>();
+	let runningBestTime = Number.POSITIVE_INFINITY;
+
+	// Calculate which laps were new best consecutive times as they happened
+	const newBestConsecutiveIndices = new Set<number>();
+	let runningBestConsecutive = Number.POSITIVE_INFINITY;
+
+	// Calculate which laps were new best race total times as they happened
+	const newBestRaceTotalIndices = new Set<number>();
+	let runningBestRaceTotal = Number.POSITIVE_INFINITY;
+
+	structure.slots.forEach((slot, index) => {
+		if (slot.lap && slot.barValue != null) {
+			// Check for new best lap time
+			if (slot.lap.lapTime < runningBestTime) {
+				runningBestTime = slot.lap.lapTime;
+				newBestLapIndices.add(index);
+			}
+
+			// Check for new best consecutive time
+			const consecutiveValue = slot.overlays.consecutive;
+			if (consecutiveValue != null && consecutiveValue < runningBestConsecutive) {
+				runningBestConsecutive = consecutiveValue;
+				newBestConsecutiveIndices.add(index);
+			}
+
+			// Check for new best race total time
+			const raceTotalValue = slot.overlays.raceTotal;
+			if (raceTotalValue != null && raceTotalValue < runningBestRaceTotal) {
+				runningBestRaceTotal = raceTotalValue;
+				newBestRaceTotalIndices.add(index);
+			}
+		}
+	});
+
+	const barSeriesData = structure.slots.map((slot, index) => {
 		if (!slot.lap || slot.barValue == null) return { value: null };
+
+		// Check if this lap was a new best time when it happened
+		const isNewBestLap = newBestLapIndices.has(index);
+		const isNewBestConsecutive = newBestConsecutiveIndices.has(index);
+		const isNewBestRaceTotal = newBestRaceTotalIndices.has(index);
+
+		// Determine border color based on which type of best was achieved
+		let borderColor: string | undefined;
+		if (isNewBestLap) {
+			borderColor = '#71e0c9'; // Teal for best lap
+		} else if (isNewBestConsecutive) {
+			borderColor = '#ffb347'; // Orange for best consecutive
+		} else if (isNewBestRaceTotal) {
+			borderColor = '#71e0c9'; // Teal for best race total
+		}
+
 		return {
 			value: slot.barValue,
 			itemStyle: {
 				color: raceColorMap.get(slot.lap.raceId) ?? '#ffffff',
+				borderColor,
+				borderWidth: (isNewBestLap || isNewBestConsecutive || isNewBestRaceTotal) ? 2 : 0,
 			},
 		};
 	}) as BarSeriesData;
@@ -414,6 +469,23 @@ function buildChartOption(
 		const timestamp = originalLap?.detectionTimestampMs;
 		const dateTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown time';
 
+		// Check if this lap was a new best time when it happened
+		const isNewBestLap = newBestLapIndices.has(primary.dataIndex);
+		const isNewBestConsecutive = newBestConsecutiveIndices.has(primary.dataIndex);
+		const isNewBestRaceTotal = newBestRaceTotalIndices.has(primary.dataIndex);
+
+		// Build status messages
+		const statusMessages = [];
+		if (isNewBestLap) {
+			statusMessages.push('<div style="color: #71e0c9; font-weight: 600;">🏆 New best lap!</div>');
+		}
+		if (isNewBestConsecutive) {
+			statusMessages.push('<div style="color: #ffb347; font-weight: 600;">🔥 New best consecutive!</div>');
+		}
+		if (isNewBestRaceTotal) {
+			statusMessages.push('<div style="color: #71e0c9; font-weight: 600;">🏁 New best race total!</div>');
+		}
+
 		return [
 			"<div class='pilot-tooltip'>",
 			`<div class='pilot-tooltip-title'>${datum.raceLabel}</div>`,
@@ -421,6 +493,7 @@ function buildChartOption(
 			`<div>${formatSeconds(datum.lapTime)}</div>`,
 			`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
 			`<div>${dateTime}</div>`,
+			...statusMessages,
 			'</div>',
 		].join('');
 	};
@@ -428,6 +501,31 @@ function buildChartOption(
 	const series: SeriesOption[] = [];
 
 	if (overlays.bars) {
+		// Create markLine data for new best times
+		const markLineData: MarkLineData = [];
+		for (const index of newBestLapIndices) {
+			markLineData.push({
+				xAxis: index,
+				lineStyle: { color: '#71e0c9', width: 2, type: 'dashed' },
+			});
+		}
+		for (const index of newBestConsecutiveIndices) {
+			if (!newBestLapIndices.has(index)) { // Don't duplicate if already marked for best lap
+				markLineData.push({
+					xAxis: index,
+					lineStyle: { color: '#ffb347', width: 2, type: 'dashed' },
+				});
+			}
+		}
+		for (const index of newBestRaceTotalIndices) {
+			if (!newBestLapIndices.has(index) && !newBestConsecutiveIndices.has(index)) { // Don't duplicate
+				markLineData.push({
+					xAxis: index,
+					lineStyle: { color: '#71e0c9', width: 2, type: 'dashed' },
+				});
+			}
+		}
+
 		series.push({
 			type: 'bar',
 			name: 'Lap time',
@@ -435,6 +533,12 @@ function buildChartOption(
 			data: barSeriesData,
 			z: 2,
 			emphasis: { focus: 'series' },
+			markLine: {
+				silent: true,
+				label: { show: false },
+				symbol: ['none', 'none'],
+				data: markLineData,
+			},
 		});
 	}
 
