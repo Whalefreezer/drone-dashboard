@@ -186,8 +186,9 @@ func (m *Manager) ensureActiveRacePriority() {
 	// SQL query already filters to only return targets that need updating.
 
 	// First, find all ingest targets that need updating
-	activeMs := int(m.Cfg.RaceActive.Milliseconds())
-	idleMs := int(m.Cfg.RaceIdle.Milliseconds())
+	cfg := m.currentConfig()
+	activeMs := int(cfg.RaceActive.Milliseconds())
+	idleMs := int(cfg.RaceIdle.Milliseconds())
 	now := time.Now()
 
 	query := `
@@ -283,4 +284,6 @@ func (m *Manager) RegisterHooks() {
 		m.ensureActiveRacePriority()
 		return e.Next()
 	})
+
+	m.registerSchedulerSettingHooks()
 }

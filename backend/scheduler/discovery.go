@@ -19,6 +19,7 @@ func (m *Manager) runDiscovery() {
 	// race conditions where targets were created before events existed in DB.
 
 	now := time.Now()
+	cfg := m.currentConfig()
 
 	// 1. Get event source ID from external system
 	eventSourceId, err := m.Service.Source.FetchEventSourceId()
@@ -55,15 +56,15 @@ func (m *Manager) runDiscovery() {
 	// 6. Create targets with proper PocketBase ID for relations
 
 	// Seed event-related targets (per-endpoint granularity)
-	m.upsertTarget("event", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
-	m.upsertTarget("pilots", eventSourceId, eventPBID, m.Cfg.FullInterval, now)
-	m.upsertTarget("channels", eventSourceId, eventPBID, m.Cfg.ChannelsInterval, now)
-	m.upsertTarget("rounds", eventSourceId, eventPBID, m.Cfg.FullInterval, now, 1)
-	m.upsertTarget("results", eventSourceId, eventPBID, m.Cfg.ResultsInterval, now)
+	m.upsertTarget("event", eventSourceId, eventPBID, cfg.FullInterval, now)
+	m.upsertTarget("pilots", eventSourceId, eventPBID, cfg.FullInterval, now)
+	m.upsertTarget("channels", eventSourceId, eventPBID, cfg.ChannelsInterval, now)
+	m.upsertTarget("rounds", eventSourceId, eventPBID, cfg.FullInterval, now, 1)
+	m.upsertTarget("results", eventSourceId, eventPBID, cfg.ResultsInterval, now)
 
 	// Seed one race target per race ID from the fetched event data
 	for _, raceID := range eventData.Races {
-		m.upsertTarget("race", string(raceID), eventPBID, m.Cfg.RaceIdle, now)
+		m.upsertTarget("race", string(raceID), eventPBID, cfg.RaceIdle, now)
 	}
 
 	// Optionally: prune orphaned targets for this event
@@ -128,6 +129,7 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		}
 		return
 	}
+	intervalMs := int(interval.Milliseconds())
 
 	isNewRecord := rec == nil
 	if isNewRecord {
@@ -139,7 +141,7 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		rec = core.NewRecord(col)
 		rec.Set("type", t)
 		rec.Set("sourceId", sourceId)
-		rec.Set("intervalMs", int(interval.Milliseconds()))
+		rec.Set("intervalMs", intervalMs)
 		rec.Set("enabled", true)
 		// Use passed priority or default to 0
 		priorityValue := 0
@@ -148,6 +150,18 @@ func (m *Manager) upsertTarget(t string, sourceId string, eventPBID string, inte
 		}
 		rec.Set("priority", priorityValue)
 		rec.Set("nextDueAt", now.UnixMilli())
+	} else {
+		recordedInterval := rec.GetInt("intervalMs")
+		if recordedInterval != intervalMs {
+			rec.Set("intervalMs", intervalMs)
+			rec.Set("nextDueAt", now.UnixMilli())
+		}
+		if !rec.GetBool("enabled") {
+			rec.Set("enabled", true)
+		}
+		if len(priority) > 0 {
+			rec.Set("priority", priority[0])
+		}
 	}
 	if eventPBID != "" {
 		rec.Set("event", eventPBID)

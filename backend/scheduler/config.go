@@ -52,7 +52,7 @@ func (m *Manager) ensureDefaultSettings() {
 	}
 }
 
-func (m *Manager) loadConfigFromDB() {
+func (m *Manager) loadConfigFromDB() Config {
 	// helper to read int setting with default
 	readInt := func(key string, def int) int {
 		rec, err := m.App.FindFirstRecordByFilter("server_settings", "key = {:k}", dbx.Params{"k": key})
@@ -65,12 +65,14 @@ func (m *Manager) loadConfigFromDB() {
 		}
 		return def
 	}
-	m.Cfg.FullInterval = time.Duration(readInt("scheduler.fullIntervalMs", 10000)) * time.Millisecond
-	m.Cfg.WorkerInterval = time.Duration(readInt("scheduler.workerIntervalMs", 200)) * time.Millisecond
-	m.Cfg.RaceActive = time.Duration(readInt("scheduler.raceActiveMs", 200)) * time.Millisecond
-	m.Cfg.RaceIdle = time.Duration(readInt("scheduler.raceIdleMs", 5000)) * time.Millisecond
-	m.Cfg.ResultsInterval = time.Duration(readInt("scheduler.resultsMs", 2000)) * time.Millisecond
-	m.Cfg.ChannelsInterval = time.Duration(readInt("scheduler.channelsIntervalMs", 60000)) * time.Millisecond
-	m.Cfg.Concurrency = readInt("scheduler.concurrency", 2)
-	m.Cfg.JitterMs = readInt("scheduler.jitterMs", 150)
+	cfg := Config{}
+	cfg.FullInterval = time.Duration(readInt("scheduler.fullIntervalMs", 10000)) * time.Millisecond
+	cfg.WorkerInterval = time.Duration(readInt("scheduler.workerIntervalMs", 200)) * time.Millisecond
+	cfg.RaceActive = time.Duration(readInt("scheduler.raceActiveMs", 200)) * time.Millisecond
+	cfg.RaceIdle = time.Duration(readInt("scheduler.raceIdleMs", 5000)) * time.Millisecond
+	cfg.ResultsInterval = time.Duration(readInt("scheduler.resultsMs", 2000)) * time.Millisecond
+	cfg.ChannelsInterval = time.Duration(readInt("scheduler.channelsIntervalMs", 60000)) * time.Millisecond
+	cfg.Concurrency = readInt("scheduler.concurrency", 2)
+	cfg.JitterMs = readInt("scheduler.jitterMs", 150)
+	return cfg
 }

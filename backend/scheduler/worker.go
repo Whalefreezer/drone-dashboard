@@ -55,13 +55,22 @@ func (m *Manager) shouldDeferTarget(rw dueRow) (int64, string, bool) {
 }
 
 func (m *Manager) workerLimiter() chan struct{} {
-	m.workerSlotsOnce.Do(func() {
-		limit := m.Cfg.Concurrency
+	m.workerSlotsMu.RLock()
+	slots := m.workerSlots
+	m.workerSlotsMu.RUnlock()
+	if slots != nil {
+		return slots
+	}
+	m.workerSlotsMu.Lock()
+	defer m.workerSlotsMu.Unlock()
+	if m.workerSlots == nil {
+		cfg := m.currentConfig()
+		limit := cfg.Concurrency
 		if limit <= 0 {
 			limit = 1
 		}
 		m.workerSlots = make(chan struct{}, limit)
-	})
+	}
 	return m.workerSlots
 }
 
@@ -160,7 +169,8 @@ func (m *Manager) rescheduleRow(id string, intervalMs int, runErr error) {
 	now := time.Now()
 	interval := time.Duration(intervalMs) * time.Millisecond
 	if interval <= 0 {
-		interval = m.Cfg.RaceIdle
+		cfg := m.currentConfig()
+		interval = cfg.RaceIdle
 	}
 
 	// Find the record using DAO
@@ -204,7 +214,8 @@ func (m *Manager) nextDueAt(now time.Time, interval time.Duration, hadError bool
 		return now.Add(backoff).UnixMilli()
 	}
 	intervalMs := int(interval / time.Millisecond)
-	jitterCapMs := m.Cfg.JitterMs
+	cfg := m.currentConfig()
+	jitterCapMs := cfg.JitterMs
 	if cap2 := intervalMs / 10; cap2 < jitterCapMs {
 		jitterCapMs = cap2
 	}
@@ -239,8 +250,9 @@ func (m *Manager) deferUntilTargetsReady(eventPBID string, deps []string) (int64
 		return 0, "", false
 	}
 	now := time.Now()
+	cfg := m.currentConfig()
 	if eventPBID == "" {
-		next := now.Add(m.Cfg.FullInterval).UnixMilli()
+		next := now.Add(cfg.FullInterval).UnixMilli()
 		return next, "waiting for event", true
 	}
 	nowMs := now.UnixMilli()
@@ -257,7 +269,7 @@ func (m *Manager) deferUntilTargetsReady(eventPBID string, deps []string) (int64
 		query := `SELECT id, lastStatus, nextDueAt FROM ingest_targets WHERE type = {:type} AND event = {:event} LIMIT 1`
 		if err := m.App.DB().NewQuery(query).Bind(dbx.Params{"type": depType, "event": eventPBID}).One(&dep); err != nil || dep.ID == "" {
 			waiting = append(waiting, depType)
-			nextDue = max64(nextDue, now.Add(m.Cfg.FullInterval).UnixMilli())
+			nextDue = max64(nextDue, now.Add(cfg.FullInterval).UnixMilli())
 			if err != nil {
 				slog.Warn("scheduler.dependencies.lookup.error", "dep", depType, "event", eventPBID, "err", err)
 			}
