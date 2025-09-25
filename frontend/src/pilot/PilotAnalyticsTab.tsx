@@ -450,6 +450,7 @@ function buildChartOption(
 			data: structure.slots.map((slot) => slot.overlays[key]) as LineSeriesData,
 			showSymbol: false,
 			smooth: false,
+			step: 'end',
 			lineStyle: { width: 2, color },
 			itemStyle: { color },
 			connectNulls: true,
@@ -458,7 +459,7 @@ function buildChartOption(
 
 	const tooltipFormatter = (params: CallbackDataParams | CallbackDataParams[]): string => {
 		const items = Array.isArray(params) ? params : [params];
-		const primary = items.find((item) => item.seriesType === 'bar' && item.dataIndex != null);
+		const primary = items.find((item) => item.dataIndex != null);
 		if (!primary || primary.dataIndex == null) return '';
 		const slot = structure.slots[primary.dataIndex];
 		if (!slot?.lap) return '';
@@ -500,32 +501,32 @@ function buildChartOption(
 
 	const series: SeriesOption[] = [];
 
-	if (overlays.bars) {
-		// Create markLine data for new best times
-		const markLineData: MarkLineData = [];
-		for (const index of newBestLapIndices) {
+	// Create markLine data for new best times (always visible)
+	const markLineData: MarkLineData = [];
+	for (const index of newBestLapIndices) {
+		markLineData.push({
+			xAxis: index,
+			lineStyle: { color: '#71e0c9', width: 2, type: 'dashed' },
+		});
+	}
+	for (const index of newBestConsecutiveIndices) {
+		if (!newBestLapIndices.has(index)) { // Don't duplicate if already marked for best lap
+			markLineData.push({
+				xAxis: index,
+				lineStyle: { color: '#ffb347', width: 2, type: 'dashed' },
+			});
+		}
+	}
+	for (const index of newBestRaceTotalIndices) {
+		if (!newBestLapIndices.has(index) && !newBestConsecutiveIndices.has(index)) { // Don't duplicate
 			markLineData.push({
 				xAxis: index,
 				lineStyle: { color: '#71e0c9', width: 2, type: 'dashed' },
 			});
 		}
-		for (const index of newBestConsecutiveIndices) {
-			if (!newBestLapIndices.has(index)) { // Don't duplicate if already marked for best lap
-				markLineData.push({
-					xAxis: index,
-					lineStyle: { color: '#ffb347', width: 2, type: 'dashed' },
-				});
-			}
-		}
-		for (const index of newBestRaceTotalIndices) {
-			if (!newBestLapIndices.has(index) && !newBestConsecutiveIndices.has(index)) { // Don't duplicate
-				markLineData.push({
-					xAxis: index,
-					lineStyle: { color: '#71e0c9', width: 2, type: 'dashed' },
-				});
-			}
-		}
+	}
 
+	if (overlays.bars) {
 		series.push({
 			type: 'bar',
 			name: 'Lap time',
@@ -533,6 +534,24 @@ function buildChartOption(
 			data: barSeriesData,
 			z: 2,
 			emphasis: { focus: 'series' },
+			markLine: {
+				silent: true,
+				label: { show: false },
+				symbol: ['none', 'none'],
+				data: markLineData,
+			},
+		});
+	} else if (markLineData.length > 0) {
+		// Add mark lines as a separate invisible series when bars are not showing
+		series.push({
+			type: 'line',
+			name: 'Best time markers',
+			data: structure.slots.map(() => null), // Invisible data points
+			showSymbol: false,
+			lineStyle: { width: 0, opacity: 0 },
+			itemStyle: { opacity: 0 },
+			silent: true,
+			z: 1,
 			markLine: {
 				silent: true,
 				label: { show: false },
