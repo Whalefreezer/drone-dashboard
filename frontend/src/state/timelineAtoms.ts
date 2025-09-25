@@ -51,13 +51,17 @@ export interface TimelineEventWithMeta extends PBTimelineEventRecord {
 	endMs: number;
 	durationMinutes: number;
 	dayKey: string;
+	usesDefaultDuration: boolean;
 }
 
 export const timelineEventModelsAtom = eagerAtom((get) => {
 	const events = get(currentEventTimelineAtom);
 	const models: TimelineEventWithMeta[] = [];
-	for (const event of events) {
-		const normalized = normalizeTimelineEvent(event);
+	for (let i = 0; i < events.length; i++) {
+		const record = events[i];
+		const nextRecord = events[i + 1];
+		const nextStartMs = nextRecord ? safeTime(nextRecord.startAt) : Number.NaN;
+		const normalized = normalizeTimelineEvent(record, nextStartMs);
 		if (normalized) models.push(normalized);
 	}
 	return models;
@@ -132,17 +136,26 @@ export const previousTimelineEventAtom = eagerAtom((get) => {
 	return null;
 });
 
-function normalizeTimelineEvent(record: PBTimelineEventRecord): TimelineEventWithMeta | null {
+function normalizeTimelineEvent(record: PBTimelineEventRecord, nextStartMs?: number): TimelineEventWithMeta | null {
 	const startDate = safeDate(record.startAt);
 	if (!startDate) return null;
 
 	let endDate = record.endAt ? safeDate(record.endAt) : null;
+	let usesDefaultDuration = false;
 
 	if (record.isAllDay) {
 		const dayStart = startOfDay(startDate);
 		endDate = new Date(dayStart.getTime() + MS_PER_DAY);
 	} else if (!endDate || endDate <= startDate) {
-		endDate = new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MINUTES * MS_PER_MINUTE);
+		const nextValid = typeof nextStartMs === 'number' && Number.isFinite(nextStartMs) && nextStartMs > startDate.getTime()
+			? new Date(nextStartMs)
+			: null;
+		if (nextValid) {
+			endDate = nextValid;
+		} else {
+			endDate = new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MINUTES * MS_PER_MINUTE);
+			usesDefaultDuration = true;
+		}
 	}
 
 	return {
@@ -153,6 +166,7 @@ function normalizeTimelineEvent(record: PBTimelineEventRecord): TimelineEventWit
 		endMs: endDate.getTime(),
 		durationMinutes: Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_MINUTE)),
 		dayKey: buildDayKey(startDate),
+		usesDefaultDuration,
 	};
 }
 

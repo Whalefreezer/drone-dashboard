@@ -387,6 +387,7 @@ function formatEventTime(event: TimelineEventWithMeta): string {
 
 function formatDuration(event: TimelineEventWithMeta): string {
 	if (event.isAllDay) return 'Whole day';
+	if (event.usesDefaultDuration) return '—';
 	return `${event.durationMinutes} min`;
 }
 

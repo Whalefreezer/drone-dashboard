@@ -195,6 +195,10 @@
 	font-size: 0.9rem;
 }
 
+.timeline-row-flags .timeline-field input {
+	width: 120px;
+}
+
 .checkbox-inline {
 	display: inline-flex;
 	align-items: center;

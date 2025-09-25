@@ -93,5 +93,6 @@ function makeEvent(id: string, startMs: number, endMs: number): TimelineEventWit
 		endMs,
 		durationMinutes: Math.round((endMs - startMs) / MS),
 		dayKey: '2025-06-01',
+		usesDefaultDuration: false,
 	};
 }
