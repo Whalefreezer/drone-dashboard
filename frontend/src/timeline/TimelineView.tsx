@@ -1,7 +1,7 @@
 import './TimelineView.css';
 
 import { useAtomValue } from 'jotai';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	activeTimelineEventAtom,
 	groupedTimelineDaysAtom,
@@ -17,6 +17,11 @@ import type { TimelineLayoutEvent } from './timeline-layout.ts';
 import type { TimelineEventCategory } from '../api/pbTypes.ts';
 
 const MS_PER_MINUTE = 60_000;
+const MIN_ZOOM = 2;
+const MAX_ZOOM = 12;
+const ZOOM_STEP = 0.5;
+const PAN_STEP_MINUTES = 15;
+const PAN_LIMIT_MINUTES = 360;
 
 interface TimelineViewProps {
 	compact?: boolean;
@@ -30,15 +35,17 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 	const upcomingEvents = useAtomValue(upcomingTimelineEventsAtom);
 	const baseNow = useAtomValue(timelineNowAtom);
 	const bounds = useAtomValue(timelineBoundsAtom);
+	const [zoom, setZoom] = useState<number>(5);
+	const [panMinutes, setPanMinutes] = useState<number>(0);
 
 	const layout = useMemo(() => {
 		return computeTimelineLayout(events, {
 			now: baseNow,
-			pixelsPerMinute: 5,
+			pixelsPerMinute: zoom,
 			minimumEventMinutes: 8,
 			minimumTimelineMinutes: 180,
 		});
-	}, [events, baseNow]);
+	}, [events, baseNow, zoom]);
 
 	const layoutMap = useMemo(() => {
 		return new Map<string, TimelineLayoutEvent>(layout.events.map((item) => [item.event.id, item]));
@@ -67,13 +74,17 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 	}, [events]);
 
 	useEffect(() => {
+		setPanMinutes(0);
+	}, [events.length]);
+
+	useEffect(() => {
 		const track = trackRef.current;
 		const container = containerRef.current;
 		const nowEl = nowRef.current;
 		if (!track || !container || !nowEl || layout.totalHeightPx === 0) return;
 
 		let rafId = 0;
-		const pixelsPerMinute = layout.totalMinutes === 0 ? 0 : layout.totalHeightPx / layout.totalMinutes;
+		const pixelsPerMinute = zoom;
 
 		const tick = () => {
 			const now = Date.now();
@@ -85,7 +96,7 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 
 			const viewportHeight = container.clientHeight;
 			const targetPosition = viewportHeight * 0.33;
-			const desiredTranslation = targetPosition - nowPx;
+			const desiredTranslation = targetPosition - nowPx + panMinutes * pixelsPerMinute;
 			const minTranslation = Math.min(0, viewportHeight - layout.totalHeightPx);
 			const maxTranslation = 0;
 			const translation = Math.max(minTranslation, Math.min(desiredTranslation, maxTranslation));
@@ -97,9 +108,42 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 		rafId = requestAnimationFrame(tick);
 
 		return () => cancelAnimationFrame(rafId);
-	}, [layout]);
+	}, [layout, panMinutes, zoom]);
+
+	const clampZoom = useCallback((value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)), []);
+	const clampPan = useCallback((value: number) => Math.min(PAN_LIMIT_MINUTES, Math.max(-PAN_LIMIT_MINUTES, value)), []);
+
+	const handleZoomChange = useCallback((value: number) => {
+		setZoom((prev) => {
+			const next = clampZoom(value);
+			return Math.abs(prev - next) < 0.001 ? prev : next;
+		});
+	}, [clampZoom]);
+
+	const stepZoom = useCallback((delta: number) => {
+		handleZoomChange(zoom + delta);
+	}, [handleZoomChange, zoom]);
+
+	const stepPan = useCallback((deltaMinutes: number) => {
+		setPanMinutes((prev) => clampPan(prev + deltaMinutes));
+	}, [clampPan]);
+
+	const resetPan = useCallback(() => setPanMinutes(0), []);
 
 	const viewClassName = 'timeline-view' + (compact ? ' compact' : '');
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+		const wheelHandler = (event: WheelEvent) => {
+			event.preventDefault();
+			setPanMinutes((prev) => clampPan(prev + event.deltaY / (zoom * 4)));
+		};
+		container.addEventListener('wheel', wheelHandler, { passive: false });
+		return () => {
+			container.removeEventListener('wheel', wheelHandler);
+		};
+	}, [clampPan, zoom]);
 
 	if (events.length === 0) {
 		return (
@@ -118,36 +162,46 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 
 	return (
 		<div className={viewClassName}>
-			<div className='timeline-body' ref={containerRef}>
-				<div className='timeline-rail' />
-				<div className='timeline-track' ref={trackRef} style={{ height: layout.totalHeightPx }}>
-					<div className='timeline-now-marker' ref={nowRef} aria-hidden='true'>
-						<span>Now</span>
-					</div>
-					{dayMarkers.map((marker) => (
-						<div key={marker.dayKey} className='timeline-day-marker' style={{ top: marker.topPx }}>
-							<div className='timeline-day-chip'>{marker.label}</div>
+			<div className='timeline-main'>
+				<TimelineControls
+					zoom={zoom}
+					onZoomChange={handleZoomChange}
+					onZoomStep={stepZoom}
+					onPanStep={stepPan}
+					onPanReset={resetPan}
+					panMinutes={panMinutes}
+				/>
+				<div className='timeline-body' ref={containerRef}>
+					<div className='timeline-rail' />
+					<div className='timeline-track' ref={trackRef} style={{ height: layout.totalHeightPx }}>
+						<div className='timeline-now-marker' ref={nowRef} aria-hidden='true'>
+							<span>Now</span>
 						</div>
-					))}
-					{layout.events.map((item) => {
-						const { event } = item;
-						const isActive = activeEvent?.id === event.id;
-						const isSelected = selectedEventId === event.id;
-						const isPrevious = previousEvent?.id === event.id;
-						const isUpcoming = upcomingHighlight?.id === event.id;
-						return (
-							<ArticleButton
-								key={event.id}
-								event={event}
-								layout={item}
-								onToggle={() => setSelectedEventId((current) => current === event.id ? null : event.id)}
-								isActive={isActive}
-								isSelected={isSelected || isActive}
-								isPrevious={isPrevious}
-								isUpcoming={isUpcoming}
-							/>
-						);
-					})}
+						{dayMarkers.map((marker) => (
+							<div key={marker.dayKey} className='timeline-day-marker' style={{ top: marker.topPx }}>
+								<div className='timeline-day-chip'>{marker.label}</div>
+							</div>
+						))}
+						{layout.events.map((item) => {
+							const { event } = item;
+							const isActive = activeEvent?.id === event.id;
+							const isSelected = selectedEventId === event.id;
+							const isPrevious = previousEvent?.id === event.id;
+							const isUpcoming = upcomingHighlight?.id === event.id;
+							return (
+								<ArticleButton
+									key={event.id}
+									event={event}
+									layout={item}
+									onToggle={() => setSelectedEventId((current) => current === event.id ? null : event.id)}
+									isActive={isActive}
+									isSelected={isSelected || isActive}
+									isPrevious={isPrevious}
+									isUpcoming={isUpcoming}
+								/>
+							);
+						})}
+					</div>
 				</div>
 			</div>
 			{!compact && (
@@ -257,6 +311,65 @@ function EventSummary({ active, upcoming, bounds, now }: EventSummaryProps) {
 						))}
 					</ul>
 				)}
+			</div>
+		</div>
+	);
+}
+
+interface TimelineControlsProps {
+	zoom: number;
+	onZoomChange: (value: number) => void;
+	onZoomStep: (delta: number) => void;
+	onPanStep: (delta: number) => void;
+	onPanReset: () => void;
+	panMinutes: number;
+}
+
+function TimelineControls({ zoom, onZoomChange, onZoomStep, onPanStep, onPanReset, panMinutes }: TimelineControlsProps) {
+	const zoomLabel = `${zoom.toFixed(1)}×`;
+	const isPanNeutral = Math.abs(panMinutes) < 0.1;
+	const panLabel = `${panMinutes > 0 ? '+' : ''}${Math.round(panMinutes)} min`;
+	return (
+		<div className='timeline-controls'>
+			<div className='timeline-controls-group'>
+				<span className='timeline-controls-label'>Zoom</span>
+				<div className='timeline-zoom-controls'>
+					<button
+						type='button'
+						onClick={() => onZoomStep(-ZOOM_STEP)}
+						disabled={zoom <= MIN_ZOOM}
+						aria-label='Zoom out'
+					>
+						−
+					</button>
+					<input
+						type='range'
+						min={MIN_ZOOM}
+						max={MAX_ZOOM}
+						step={ZOOM_STEP}
+						value={zoom}
+						onChange={(event) => onZoomChange(Number(event.currentTarget.value))}
+						aria-label='Adjust timeline zoom'
+					/>
+					<button
+						type='button'
+						onClick={() => onZoomStep(ZOOM_STEP)}
+						disabled={zoom >= MAX_ZOOM}
+						aria-label='Zoom in'
+					>
+						+
+					</button>
+					<span className='timeline-zoom-value'>{zoomLabel}</span>
+				</div>
+			</div>
+			<div className='timeline-controls-group'>
+				<span className='timeline-controls-label'>Pan</span>
+				<div className='timeline-pan-controls'>
+					<button type='button' onClick={() => onPanStep(-PAN_STEP_MINUTES)} aria-label='Shift earlier'>←</button>
+					<button type='button' onClick={onPanReset} disabled={isPanNeutral} aria-label='Reset pan'>Reset</button>
+					<button type='button' onClick={() => onPanStep(PAN_STEP_MINUTES)} aria-label='Shift later'>→</button>
+					<span className='timeline-pan-value'>{panLabel}</span>
+				</div>
 			</div>
 		</div>
 	);

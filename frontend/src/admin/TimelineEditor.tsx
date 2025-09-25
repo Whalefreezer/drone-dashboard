@@ -71,39 +71,16 @@ export default function TimelineEditor() {
 
 	const hasSelection = selectedIds.length > 0;
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+	const dirtyCount = rows.reduce((count, row) => count + (row.dirty ? 1 : 0), 0);
+	const hasDirty = dirtyCount > 0;
 
 	function updateDraft(id: string, patch: Partial<TimelineEventDraft>) {
-		setDrafts((prev) => ({ ...prev, [id]: { ...(prev[id] ?? createDraft(sortedRecords.find((r) => r.id === id)!)), ...patch } }));
-	}
-
-	async function handleSave(id: string) {
-		const row = rows.find((r) => r.record.id === id);
-		if (!row || !row.dirty) return;
-		setSaving((prev) => ({ ...prev, [id]: true }));
-		setErrors((prev) => ({ ...prev, [id]: null }));
-		try {
-			await pb.collection('timeline_events').update(id, buildUpdatePayload(row));
-			setStatusMessage(`Saved “${row.draft.title || 'Untitled'}”.`);
-		} catch (error: unknown) {
-			setErrors((prev) => ({ ...prev, [id]: extractErrorMessage(error) }));
-		} finally {
-			setSaving((prev) => {
-				const next = { ...prev };
-				delete next[id];
-				return next;
-			});
-		}
-	}
-
-	function handleReset(id: string) {
 		const record = sortedRecords.find((r) => r.id === id);
 		if (!record) return;
-		setDrafts((prev) => ({ ...prev, [id]: createDraft(record) }));
-		setErrors((prev) => {
-			const next = { ...prev };
-			delete next[id];
-			return next;
-		});
+		setDrafts((prev) => ({
+			...prev,
+			[id]: { ...(prev[id] ?? createDraft(record)), ...patch },
+		}));
 	}
 
 	async function handleDelete(id: string) {
@@ -148,25 +125,27 @@ export default function TimelineEditor() {
 		}
 	}
 
-	async function handleShift(id: string, delta: number) {
+	function handleShiftDraft(id: string, delta: number) {
 		const index = sortedRecords.findIndex((record) => record.id === id);
 		if (index === -1) return;
 		const targets = cascadeShift ? sortedRecords.slice(index) : [sortedRecords[index]];
-		setBulkWorking(true);
-		try {
+		setDrafts((prev) => {
+			const next = { ...prev } as Record<string, TimelineEventDraft>;
 			for (const record of targets) {
-				const payload: Record<string, unknown> = {
-					startAt: shiftIso(record.startAt, delta),
+				const existing = next[record.id] ?? createDraft(record);
+				const baseStart = existing.startAt || isoToLocalInput(record.startAt);
+				const baseEnd = existing.endAt || isoToLocalInput(record.endAt);
+				next[record.id] = {
+					...existing,
+					startAt: baseStart ? shiftLocalInput(baseStart, delta) : '',
+					endAt: baseEnd ? shiftLocalInput(baseEnd, delta) : '',
 				};
-				if (record.endAt) payload.endAt = shiftIso(record.endAt, delta);
-				await pb.collection('timeline_events').update(record.id, payload);
 			}
-			setStatusMessage(`Shifted ${targets.length} event(s) by ${delta} min.`);
-		} catch (error: unknown) {
-			setStatusMessage(extractErrorMessage(error));
-		} finally {
-			setBulkWorking(false);
-		}
+			return next;
+		});
+		setStatusMessage(
+			`Adjusted ${targets.length} draft${targets.length === 1 ? '' : 's'} by ${delta > 0 ? '+' : ''}${delta} min. Save to apply.`,
+		);
 	}
 
 	async function handleAdd(event: FormEvent<HTMLButtonElement>) {
@@ -223,6 +202,61 @@ export default function TimelineEditor() {
 		setStatusMessage(null);
 	}
 
+	async function handleSaveAll() {
+		const currentDirtyRows = rows.filter((row) => row.dirty);
+		if (currentDirtyRows.length === 0) return;
+		setBulkWorking(true);
+		setStatusMessage(null);
+		setSaving((prev) => {
+			const next = { ...prev };
+			for (const row of currentDirtyRows) next[row.record.id] = true;
+			return next;
+		});
+		const results = await Promise.allSettled(currentDirtyRows.map(async (row) => {
+			try {
+				await pb.collection('timeline_events').update(row.record.id, buildUpdatePayload(row));
+				setErrors((prev) => {
+					if (!prev[row.record.id]) return prev;
+					const next = { ...prev };
+					delete next[row.record.id];
+					return next;
+				});
+			} catch (error: unknown) {
+				const message = extractErrorMessage(error);
+				setErrors((prev) => ({ ...prev, [row.record.id]: message }));
+				throw error;
+			}
+		}));
+		setSaving((prev) => {
+			const next = { ...prev };
+			for (const row of currentDirtyRows) delete next[row.record.id];
+			return next;
+		});
+		const failures = results.filter((result) => result.status === 'rejected').length;
+		if (failures === 0) {
+			setStatusMessage(`Saved ${currentDirtyRows.length} event${currentDirtyRows.length === 1 ? '' : 's'}.`);
+		} else {
+			setStatusMessage(`Saved with ${failures} error${failures === 1 ? '' : 's'}. Check highlighted rows.`);
+		}
+		setBulkWorking(false);
+	}
+
+	function handleResetAll() {
+		const currentDirtyRows = rows.filter((row) => row.dirty);
+		if (currentDirtyRows.length === 0) return;
+		const nextDrafts: Record<string, TimelineEventDraft> = {};
+		for (const record of sortedRecords) {
+			nextDrafts[record.id] = createDraft(record);
+		}
+		setDrafts(nextDrafts);
+		setErrors((prev) => {
+			const next = { ...prev };
+			for (const row of currentDirtyRows) delete next[row.record.id];
+			return next;
+		});
+		setStatusMessage('Draft changes reset.');
+	}
+
 	async function handleDragEnd(event: DragEndEvent) {
 		const { active, over } = event;
 		if (!over || active.id === over.id) return;
@@ -250,12 +284,17 @@ export default function TimelineEditor() {
 					<p className='muted'>Manage public timeline entries; changes sync instantly to the pits display.</p>
 				</div>
 				<div className='timeline-editor-actions'>
+					<button type='button' onClick={handleSaveAll} disabled={!hasDirty || bulkWorking}>Save changes</button>
+					<button type='button' onClick={handleResetAll} disabled={!hasDirty || bulkWorking}>Reset drafts</button>
 					<button type='button' onClick={handleAdd} disabled={bulkWorking || !currentEvent}>Add event</button>
 					<button type='button' onClick={handleDeleteSelected} disabled={!hasSelection || bulkWorking}>Delete selected</button>
 					<label className='toggle'>
 						<input type='checkbox' checked={cascadeShift} onChange={(e) => setCascadeShift(e.currentTarget.checked)} />
 						<span>Cascade shifts</span>
 					</label>
+					<span className='timeline-dirty-indicator muted'>
+						{hasDirty ? `${dirtyCount} draft change${dirtyCount === 1 ? '' : 's'}` : 'No draft changes'}
+					</span>
 				</div>
 			</header>
 
@@ -274,34 +313,34 @@ export default function TimelineEditor() {
 
 			<section className='timeline-editor-grid'>
 				<div className='timeline-editor-table section-card'>
-					<DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleDragEnd}>
-						<SortableContext items={rows.map((row) => row.record.id)} strategy={verticalListSortingStrategy}>
-							<div className='timeline-table-head'>
-								<div />
-								<div>Title</div>
-								<div>Timing</div>
-								<div>Category</div>
-								<div>Flags</div>
-								<div>Actions</div>
-							</div>
-							{rows.map((row) => (
-								<TimelineSortableRow
-									key={row.record.id}
-									row={row}
-									toggleSelection={toggleSelection}
-									selected={selectedIds.includes(row.record.id)}
-									onDraftChange={updateDraft}
-									onSave={handleSave}
-									onReset={handleReset}
-									onDelete={handleDelete}
-									onDuplicate={handleDuplicate}
-									onShift={handleShift}
-									reordering={reordering}
-									busy={bulkWorking}
-								/>
-							))}
-						</SortableContext>
-					</DndContext>
+					<div className='timeline-table-scroll'>
+						<DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleDragEnd}>
+							<SortableContext items={rows.map((row) => row.record.id)} strategy={verticalListSortingStrategy}>
+								<div className='timeline-table-head'>
+									<div />
+									<div>Title</div>
+									<div>Timing</div>
+									<div>Category</div>
+									<div>Flags</div>
+									<div>Actions</div>
+								</div>
+								{rows.map((row) => (
+									<TimelineSortableRow
+										key={row.record.id}
+										row={row}
+										toggleSelection={toggleSelection}
+										selected={selectedIds.includes(row.record.id)}
+										onDraftChange={updateDraft}
+										onDelete={handleDelete}
+										onDuplicate={handleDuplicate}
+										onShiftDraft={handleShiftDraft}
+										reordering={reordering}
+										busy={bulkWorking}
+									/>
+								))}
+							</SortableContext>
+						</DndContext>
+					</div>
 				</div>
 
 				<aside className='timeline-editor-preview section-card'>
@@ -321,11 +360,9 @@ function TimelineSortableRow({
 	toggleSelection,
 	selected,
 	onDraftChange,
-	onSave,
-	onReset,
 	onDelete,
 	onDuplicate,
-	onShift,
+	onShiftDraft,
 	reordering,
 	busy,
 }: {
@@ -333,11 +370,9 @@ function TimelineSortableRow({
 	toggleSelection: (id: string) => void;
 	selected: boolean;
 	onDraftChange: (id: string, patch: Partial<TimelineEventDraft>) => void;
-	onSave: (id: string) => void;
-	onReset: (id: string) => void;
 	onDelete: (id: string) => void;
 	onDuplicate: (id: string) => void;
-	onShift: (id: string, delta: number) => void;
+	onShiftDraft: (id: string, delta: number) => void;
 	reordering: boolean;
 	busy: boolean;
 }) {
@@ -370,23 +405,28 @@ function TimelineSortableRow({
 				/>
 			</div>
 			<div className='timeline-row-col timeline-row-main'>
-				<input
-					type='text'
-					value={row.draft.title}
-					onChange={(e) => onDraftChange(row.record.id, { title: e.currentTarget.value })}
-					placeholder='Event title'
-					disabled={disabled}
-				/>
-				<textarea
-					value={row.draft.description}
-					onChange={(e) => onDraftChange(row.record.id, { description: e.currentTarget.value })}
-					placeholder='Optional description'
-					rows={2}
-					disabled={disabled}
-				/>
+				<label className='timeline-field'>
+					<span>Title</span>
+					<input
+						type='text'
+						value={row.draft.title}
+						onChange={(e) => onDraftChange(row.record.id, { title: e.currentTarget.value })}
+						placeholder='Event title'
+						disabled={disabled}
+					/>
+				</label>
+				<label className='timeline-field'>
+					<span>Description</span>
+					<textarea
+						value={row.draft.description}
+						onChange={(e) => onDraftChange(row.record.id, { description: e.currentTarget.value })}
+						placeholder='Optional description'
+						disabled={disabled}
+					/>
+				</label>
 			</div>
 			<div className='timeline-row-col timeline-row-time'>
-				<label>
+				<label className='timeline-field'>
 					<span>Start</span>
 					<input
 						type='datetime-local'
@@ -395,7 +435,7 @@ function TimelineSortableRow({
 						disabled={disabled}
 					/>
 				</label>
-				<label>
+				<label className='timeline-field'>
 					<span>End</span>
 					<input
 						type='datetime-local'
@@ -407,14 +447,17 @@ function TimelineSortableRow({
 				</label>
 			</div>
 			<div className='timeline-row-col timeline-row-category'>
-				<select
-					value={row.draft.category}
-					onChange={(e) => onDraftChange(row.record.id, { category: e.currentTarget.value })}
-					disabled={disabled}
-				>
-					<option value=''>Uncategorized</option>
-					{TIMELINE_EVENT_CATEGORIES.map((category) => <option key={category} value={category}>{formatCategory(category)}</option>)}
-				</select>
+				<label className='timeline-field'>
+					<span>Category</span>
+					<select
+						value={row.draft.category}
+						onChange={(e) => onDraftChange(row.record.id, { category: e.currentTarget.value })}
+						disabled={disabled}
+					>
+						<option value=''>Uncategorized</option>
+						{TIMELINE_EVENT_CATEGORIES.map((category) => <option key={category} value={category}>{formatCategory(category)}</option>)}
+					</select>
+				</label>
 				<label className='checkbox-inline'>
 					<input
 						type='checkbox'
@@ -426,7 +469,7 @@ function TimelineSortableRow({
 				</label>
 			</div>
 			<div className='timeline-row-col timeline-row-flags'>
-				<label>
+				<label className='timeline-field'>
 					<span>Sort key</span>
 					<input
 						type='number'
@@ -435,21 +478,19 @@ function TimelineSortableRow({
 						disabled={disabled}
 					/>
 				</label>
-				{row.error && <span className='error'>{row.error}</span>}
-				{row.saving && <span className='muted'>Saving…</span>}
+				<div className='timeline-row-messages'>
+					{row.error && <span className='error'>{row.error}</span>}
+					{row.saving && <span className='muted'>Saving…</span>}
+				</div>
 			</div>
 			<div className='timeline-row-col timeline-row-actions'>
 				<div className='button-group'>
-					<button type='button' onClick={() => onShift(row.record.id, -SHIFT_DELTA_MINUTES)} disabled={disabled} title='Shift earlier'>
+					<button type='button' onClick={() => onShiftDraft(row.record.id, -SHIFT_DELTA_MINUTES)} disabled={disabled} title='Shift earlier'>
 						−5m
 					</button>
-					<button type='button' onClick={() => onShift(row.record.id, SHIFT_DELTA_MINUTES)} disabled={disabled} title='Shift later'>
+					<button type='button' onClick={() => onShiftDraft(row.record.id, SHIFT_DELTA_MINUTES)} disabled={disabled} title='Shift later'>
 						+5m
 					</button>
-				</div>
-				<div className='button-group'>
-					<button type='button' onClick={() => onSave(row.record.id)} disabled={!row.dirty || disabled}>Save</button>
-					<button type='button' onClick={() => onReset(row.record.id)} disabled={!row.dirty || disabled}>Reset</button>
 				</div>
 				<div className='button-group'>
 					<button type='button' onClick={() => onDuplicate(row.record.id)} disabled={disabled}>Duplicate</button>
@@ -537,6 +578,14 @@ function isoToLocalInput(iso?: string | null): string {
 	const off = date.getTimezoneOffset();
 	const local = new Date(date.getTime() - off * 60_000);
 	return local.toISOString().slice(0, 16);
+}
+
+function shiftLocalInput(value: string, deltaMinutes: number): string {
+	if (!value) return '';
+	const date = new Date(value);
+	if (!Number.isFinite(date.getTime())) return value;
+	date.setMinutes(date.getMinutes() + deltaMinutes);
+	return date.toISOString().slice(0, 16);
 }
 
 function localInputToIso(value: string): string | null {
