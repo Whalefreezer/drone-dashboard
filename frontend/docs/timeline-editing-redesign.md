@@ -16,6 +16,8 @@
   inspector split.
 - Zoom revolves around the pointer or focused event, scaling the vertical axis while keeping horizontal spacing stable. Support scroll,
   pinch, and +/- controls with velocity-based smoothing to avoid jump cuts.
+- Layer unobtrusive hour/day ticks alongside the rail, adapting density as zoom changes so labels never collide while retaining legible
+  anchors for quick scrubbing.
 - Zoom levels snap to sensible presets (e.g., 5, 10, 15, 30, 60 minute vertical spacing) so tick marks and labels stay legible.
 - A mini-map or overview stripe can re-center quickly when users get lost after aggressive zooming and should depict the current viewport
   window along the vertical stack.
@@ -66,7 +68,8 @@
 - Provide inline undo/redo for at least the last few boundary drags to recover from accidental bumps.
 - When zoomed out enough that cards would compress into narrow bands, collapse them into labelled strips while preserving hit targets for
   selection.
-- Use subtle animations when boundaries move to reinforce the causal relationship between the drag and the downstream bumps.
+- Use subtle animations when boundaries move to reinforce the causal relationship between the drag and the downstream bumps, leaning on
+  spring-based transforms so the canvas never snaps abruptly.
 
 ## Confirmed Decisions
 

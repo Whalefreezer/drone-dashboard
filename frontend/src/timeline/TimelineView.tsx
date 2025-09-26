@@ -1,7 +1,7 @@
 import './TimelineView.css';
 
 import { useAtomValue } from 'jotai';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
 	activeTimelineEventAtom,
 	groupedTimelineDaysAtom,
@@ -12,16 +12,17 @@ import {
 	timelineNowAtom,
 	upcomingTimelineEventsAtom,
 } from '../state/timelineAtoms.ts';
+import TimelineCanvas, { TimelineCanvasDayMarker, TimelineCanvasLayout, TimelineCanvasRenderContext } from './TimelineCanvas.tsx';
 import { computeTimelineLayout } from './timeline-layout.ts';
 import type { TimelineLayoutEvent } from './timeline-layout.ts';
 import type { TimelineEventCategory } from '../api/pbTypes.ts';
 
-const MS_PER_MINUTE = 60_000;
 const MIN_ZOOM = 2;
 const MAX_ZOOM = 12;
 const ZOOM_STEP = 0.5;
 const PAN_STEP_MINUTES = 15;
 const PAN_LIMIT_MINUTES = 360;
+const NOW_LABEL = 'Now';
 
 interface TimelineViewProps {
 	compact?: boolean;
@@ -51,64 +52,42 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 		return new Map<string, TimelineLayoutEvent>(layout.events.map((item) => [item.event.id, item]));
 	}, [layout.events]);
 
-	const dayMarkers = useMemo(() => {
+	const canvasLayout = useMemo<TimelineCanvasLayout<TimelineLayoutEvent>>(() => ({
+		items: layout.events.map((item) => ({
+			id: item.event.id,
+			topPx: item.topPx,
+			heightPx: item.heightPx,
+			startMs: item.event.startMs,
+			endMs: item.event.endMs,
+			data: item,
+		})),
+		totalMinutes: layout.totalMinutes,
+		totalHeightPx: layout.totalHeightPx,
+		startMs: layout.startMs,
+		endMs: layout.endMs,
+	}), [layout]);
+
+	const canvasDayMarkers = useMemo<TimelineCanvasDayMarker[]>(() => {
 		return groupedDays.map((group) => {
 			const firstEvent = group.events[0];
 			const layoutEvent = firstEvent ? layoutMap.get(firstEvent.id) : undefined;
 			return {
-				dayKey: group.dayKey,
-				date: group.date,
-				label: formatDayLabel(group.date),
+				id: group.dayKey,
 				topPx: layoutEvent?.topPx ?? 0,
+				label: formatDayLabel(group.date),
 			};
 		});
 	}, [groupedDays, layoutMap]);
 
-	const trackRef = useRef<HTMLDivElement>(null);
-	const containerRef = useRef<HTMLDivElement>(null);
-	const nowRef = useRef<HTMLDivElement>(null);
 	const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
 	useEffect(() => {
-		setSelectedEventId((current) => (current && events.find((event) => event.id === current) ? current : null));
+		setSelectedEventId((current) => (current && events.some((event) => event.id === current) ? current : null));
 	}, [events]);
 
 	useEffect(() => {
 		setPanMinutes(0);
 	}, [events.length]);
-
-	useEffect(() => {
-		const track = trackRef.current;
-		const container = containerRef.current;
-		const nowEl = nowRef.current;
-		if (!track || !container || !nowEl || layout.totalHeightPx === 0) return;
-
-		let rafId = 0;
-		const pixelsPerMinute = zoom;
-
-		const tick = () => {
-			const now = Date.now();
-			const clampedNow = clampNow(now, layout.startMs, layout.endMs);
-			const minutesFromStart = (clampedNow - layout.startMs) / MS_PER_MINUTE;
-			const nowPx = minutesFromStart * pixelsPerMinute;
-
-			nowEl.style.transform = `translateY(${nowPx}px)`;
-
-			const viewportHeight = container.clientHeight;
-			const targetPosition = viewportHeight * 0.33;
-			const desiredTranslation = targetPosition - nowPx - panMinutes * pixelsPerMinute;
-			const minTranslation = Math.min(0, viewportHeight - layout.totalHeightPx);
-			const maxTranslation = 0;
-			const translation = Math.max(minTranslation, Math.min(desiredTranslation, maxTranslation));
-			track.style.transform = `translateY(${translation}px)`;
-
-			rafId = requestAnimationFrame(tick);
-		};
-
-		rafId = requestAnimationFrame(tick);
-
-		return () => cancelAnimationFrame(rafId);
-	}, [layout, panMinutes, zoom]);
 
 	const clampZoom = useCallback((value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)), []);
 	const clampPan = useCallback((value: number) => Math.min(PAN_LIMIT_MINUTES, Math.max(-PAN_LIMIT_MINUTES, value)), []);
@@ -132,18 +111,30 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 
 	const viewClassName = 'timeline-view' + (compact ? ' compact' : '');
 
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
-		const wheelHandler = (event: WheelEvent) => {
-			event.preventDefault();
-			setPanMinutes((prev) => clampPan(prev + event.deltaY / (zoom * 4)));
-		};
-		container.addEventListener('wheel', wheelHandler, { passive: false });
-		return () => {
-			container.removeEventListener('wheel', wheelHandler);
-		};
-	}, [clampPan, zoom]);
+	const upcomingHighlight = upcomingEvents.find((event) => event.id !== activeEvent?.id);
+
+	const renderCanvasContent = useCallback((context: TimelineCanvasRenderContext<TimelineLayoutEvent>) => {
+		return context.layout.items.map((item) => {
+			const layoutEvent = item.data;
+			const event = layoutEvent.event;
+			const isActive = activeEvent?.id === event.id;
+			const isSelected = selectedEventId === event.id;
+			const isPrevious = previousEvent?.id === event.id;
+			const isUpcoming = upcomingHighlight?.id === event.id;
+			return (
+				<ArticleButton
+					key={event.id}
+					event={event}
+					layout={layoutEvent}
+					onToggle={() => setSelectedEventId((current) => current === event.id ? null : event.id)}
+					isActive={isActive}
+					isSelected={isSelected || isActive}
+					isPrevious={isPrevious}
+					isUpcoming={isUpcoming}
+				/>
+			);
+		});
+	}, [activeEvent, previousEvent, selectedEventId, upcomingHighlight]);
 
 	if (events.length === 0) {
 		return (
@@ -158,8 +149,6 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 		);
 	}
 
-	const upcomingHighlight = upcomingEvents.find((event) => event.id !== activeEvent?.id);
-
 	return (
 		<div className={viewClassName}>
 			<div className='timeline-main'>
@@ -171,37 +160,31 @@ export default function TimelineView({ compact = false }: TimelineViewProps = {}
 					onPanReset={resetPan}
 					panMinutes={panMinutes}
 				/>
-				<div className='timeline-body' ref={containerRef}>
+				<div className='timeline-body'>
 					<div className='timeline-rail' />
-					<div className='timeline-track' ref={trackRef} style={{ height: layout.totalHeightPx }}>
-						<div className='timeline-now-marker' ref={nowRef} aria-hidden='true'>
-							<span>Now</span>
-						</div>
-						{dayMarkers.map((marker) => (
-							<div key={marker.dayKey} className='timeline-day-marker' style={{ top: marker.topPx }}>
-								<div className='timeline-day-chip'>{marker.label}</div>
-							</div>
-						))}
-						{layout.events.map((item) => {
-							const { event } = item;
-							const isActive = activeEvent?.id === event.id;
-							const isSelected = selectedEventId === event.id;
-							const isPrevious = previousEvent?.id === event.id;
-							const isUpcoming = upcomingHighlight?.id === event.id;
-							return (
-								<ArticleButton
-									key={event.id}
-									event={event}
-									layout={item}
-									onToggle={() => setSelectedEventId((current) => current === event.id ? null : event.id)}
-									isActive={isActive}
-									isSelected={isSelected || isActive}
-									isPrevious={isPrevious}
-									isUpcoming={isUpcoming}
-								/>
-							);
-						})}
-					</div>
+					<TimelineCanvas
+						layout={canvasLayout}
+						zoom={zoom}
+						minZoom={MIN_ZOOM}
+						maxZoom={MAX_ZOOM}
+						zoomStep={ZOOM_STEP}
+						panMinutes={panMinutes}
+						onPanChange={(value) => setPanMinutes(clampPan(value))}
+						onZoomChange={handleZoomChange}
+						clampPan={clampPan}
+						clampZoom={clampZoom}
+						autoCenter={{ enabled: true, focusMs: baseNow, targetRatio: 0.33 }}
+						showNowMarker
+						nowLabel={NOW_LABEL}
+						nowMs={baseNow}
+						showTicks
+						tickMinSpacingPx={88}
+						dayMarkers={canvasDayMarkers}
+						trackClassName='timeline-track'
+						renderContent={renderCanvasContent}
+						wheelBehavior='zoom'
+						trackPaddingBottom={120}
+					/>
 				</div>
 			</div>
 			{!compact && (
@@ -403,10 +386,6 @@ function formatCategory(category?: TimelineEventCategory): string {
 
 function sanitizeCategory(category?: TimelineEventCategory | string): string {
 	return (category ?? 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-}
-
-function clampNow(now: number, start: number, end: number): number {
-	return Math.min(Math.max(now, start), end);
 }
 
 function toDateSafe(value: Date | null | undefined): Date | null {

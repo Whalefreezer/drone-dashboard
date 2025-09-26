@@ -74,6 +74,52 @@
 	font-weight: 700;
 }
 
+.timeline-tick {
+	position: absolute;
+	left: 90px;
+	right: 28px;
+	height: 1px;
+	background: rgba(148, 163, 184, 0.25);
+	transform: translateY(-0.5px);
+	z-index: 1;
+	pointer-events: none;
+}
+
+.timeline-tick span {
+	position: absolute;
+	right: calc(100% + 12px);
+	top: -10px;
+	font-size: 0.65rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	background: rgba(15, 23, 42, 0.85);
+	color: rgba(148, 163, 184, 0.85);
+	padding: 2px 7px;
+	border-radius: 999px;
+	white-space: nowrap;
+	box-shadow: 0 6px 16px rgba(15, 23, 42, 0.4);
+}
+
+.timeline-tick-hour {
+	background: rgba(148, 163, 184, 0.28);
+}
+
+.timeline-tick-hour span {
+	color: rgba(191, 219, 254, 0.8);
+}
+
+.timeline-tick-day {
+	height: 2px;
+	background: rgba(59, 130, 246, 0.7);
+	box-shadow: 0 10px 18px rgba(59, 130, 246, 0.25);
+}
+
+.timeline-tick-day span {
+	color: #bfdbfe;
+	background: rgba(37, 99, 235, 0.65);
+}
+
 .timeline-day-marker {
 	position: absolute;
 	left: 24px;
