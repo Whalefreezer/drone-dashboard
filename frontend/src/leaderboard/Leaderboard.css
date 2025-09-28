@@ -104,6 +104,23 @@
 	background: #333;
 }
 
+/* Override sticky column backgrounds for favorite rows */
+.leaderboard-table .gt-row.favorite-row [data-col='position'] {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
+}
+
+.leaderboard-table .gt-row.favorite-row [data-col='pilot'] {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
+}
+
+.leaderboard-table .gt-row.favorite-row:hover [data-col='position'] {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
+}
+
+.leaderboard-table .gt-row.favorite-row:hover [data-col='pilot'] {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
+}
+
 /* Divider for split index (applies to the row below the split) */
 .leaderboard-table .gt-row.split-after .gt-cell {
 	border-top: 2px solid #6b7280; /* slate-500 */
