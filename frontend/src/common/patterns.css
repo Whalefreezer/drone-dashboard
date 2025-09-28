@@ -34,7 +34,6 @@
 /* Favorite highlight for rows */
 .favorite-row {
 	background: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
-	border-left: 3px solid #9ba3ff;
 }
 
 .favorite-row:hover {

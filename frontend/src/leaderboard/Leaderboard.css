@@ -134,48 +134,6 @@
 	text-decoration: underline;
 }
 
-/* Compact favorite toggle for leaderboard rows */
-.leaderboard-table .compact-favorite-cell {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	height: 100%;
-}
-
-.leaderboard-table .compact-favorite-toggle {
-	height: 20px;
-	width: 20px;
-	padding: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.1);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: #ffffff;
-	transition: all 0.2s ease;
-}
-
-.leaderboard-table .compact-favorite-toggle:hover:not(:disabled) {
-	background: rgba(255, 255, 255, 0.2);
-	border-color: rgba(255, 255, 255, 0.3);
-	transform: scale(1.05);
-}
-
-.leaderboard-table .compact-favorite-toggle:focus-visible {
-	outline: 2px solid #9ba3ff;
-	outline-offset: 2px;
-}
-
-.leaderboard-table .compact-favorite-toggle:active:not(:disabled) {
-	transform: scale(0.95);
-}
-
-.leaderboard-table .compact-favorite-toggle .favorite-icon {
-	font-size: 12px;
-	line-height: 1;
-}
-
 /* --- Position Display & Animation --- */
 .position-container {
 	display: flex;

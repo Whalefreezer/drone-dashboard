@@ -111,8 +111,3 @@ export const clearFavoritesAtom = atom(
 export const favoriteCountAtom = eagerAtom((get) => {
 	return get(favoritePilotIdsAtom).length;
 });
-
-/**
- * Atom to control whether the favorite column should be visible in passive desktop mode
- */
-export const showFavoriteColumnAtom = atom(true);

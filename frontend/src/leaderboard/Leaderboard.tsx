@@ -12,26 +12,12 @@ import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
 import { useAtom } from 'jotai';
 import useBreakpoint from '../responsive/useBreakpoint.ts';
 import { FavoritesFilter } from '../common/FavoritesFilter.tsx';
-import { favoritePilotIdsSetAtom, isPilotFavoriteAtom, showFavoriteColumnAtom } from '../state/favorites-atoms.ts';
-import { useUserActivity } from '../common/useUserActivity.ts';
+import { favoritePilotIdsSetAtom, isPilotFavoriteAtom } from '../state/favorites-atoms.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
-	const setShowFavoriteColumn = useSetAtom(showFavoriteColumnAtom);
-	const isUserActive = useUserActivity();
-
-	// Handle passive desktop mode - hide favorite column when user is inactive on desktop
 	const { isMobile, isTablet, breakpoint } = useBreakpoint();
-	useEffect(() => {
-		// On desktop (not mobile/tablet), hide favorite column when user is inactive
-		if (!isMobile && !isTablet) {
-			setShowFavoriteColumn(isUserActive);
-		} else {
-			// On mobile/tablet, always show favorite column
-			setShowFavoriteColumn(true);
-		}
-	}, [isUserActive, isMobile, isTablet, setShowFavoriteColumn]);
 
 	const ctx = useMemo(() => ({ consecutiveLaps }), [consecutiveLaps]);
 	const columns = useMemo(
@@ -50,9 +36,9 @@ export function Leaderboard() {
 	const defaultKeys = useMemo(() => {
 		const all = columns.map((c) => c.key);
 		if (!isMobile && !isTablet) return all; // desktop -> all
-		const base: string[] = ['position', 'pilot', 'favorite', 'laps', 'top-lap', 'next'];
+		const base: string[] = ['position', 'pilot', 'laps', 'top-lap', 'next'];
 		if (isTablet) {
-			base.splice(3, 0, 'channel'); // after favorite
+			base.splice(2, 0, 'channel'); // after pilot
 			base.splice(base.indexOf('top-lap') + 1, 0, 'holeshot');
 			if (columns.some((c) => c.key === 'consec')) base.splice(base.indexOf('top-lap') + 2, 0, 'consec');
 		}
@@ -94,15 +80,6 @@ function VisibleTable(
 	const defaults = useMemo(() => defaultKeys.filter((key) => allKeys.includes(key)), [allKeys, defaultKeys]);
 	const prefsAtom = useMemo(() => getColumnPrefsAtom(prefsKey, allKeys, defaults), [prefsKey, allKeys, defaults]);
 	const [visible] = useAtom(prefsAtom);
-	const showFavoriteColumn = useAtomValue(showFavoriteColumnAtom);
-
-	// Filter visible columns to exclude favorite column when it should be hidden
-	const filteredVisibleColumns = useMemo(() => {
-		if (!showFavoriteColumn) {
-			return visible.filter((key) => key !== 'favorite');
-		}
-		return visible;
-	}, [visible, showFavoriteColumn]);
 
 	// Get favorite pilot IDs for row styling
 	const favoritePilotIdsSet = useAtomValue(favoritePilotIdsSetAtom);
@@ -130,7 +107,7 @@ function VisibleTable(
 			getRowKey={(row) => row.pilotId}
 			getRowClassName={getRowClassName}
 			estimatedRowHeight={32}
-			visibleColumns={filteredVisibleColumns}
+			visibleColumns={visible}
 			scrollX
 		/>
 	);

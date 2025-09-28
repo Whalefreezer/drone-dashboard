@@ -12,8 +12,6 @@ import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { pilotBestLapAtom, pilotConsecAtom, pilotFastestTotalRaceAtom, pilotHoleshotAtom, pilotTotalLapsAtom } from './metric-factory.ts';
 import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
-import { FavoriteToggle } from '../common/FavoriteToggle.tsx';
-import { showFavoriteColumnAtom } from '../state/favorites-atoms.ts';
 
 export type TableContext = { consecutiveLaps: number };
 export interface LeaderboardRowProps {
@@ -170,19 +168,6 @@ export function getLeaderboardColumns(
 							{pilot.name}
 						</Link>
 					</OverflowFadeCell>
-				);
-			},
-		},
-		{
-			key: 'favorite',
-			header: '',
-			label: 'Favorite',
-			width: 40,
-			cell: function FavoriteCellInline({ item: { pilotId } }) {
-				return (
-					<div className='compact-favorite-cell'>
-						<FavoriteToggle pilotId={pilotId} showTooltip className='compact-favorite-toggle' />
-					</div>
 				);
 			},
 		},
