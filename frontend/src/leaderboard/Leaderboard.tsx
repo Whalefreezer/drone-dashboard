@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Column } from '../common/GenericTable.tsx';
 import { GenericTable } from '../common/GenericTable.tsx';
 import './Leaderboard.css';
 import { consecutiveLapsAtom } from '../state/atoms.ts';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { filteredLeaderboardPilotIdsAtom } from './leaderboard-atoms.ts';
 import { getLeaderboardColumns, type LeaderboardRowProps, type TableContext } from './leaderboard-columns.tsx';
 import { leaderboardSplitAtom } from '../state/pbAtoms.ts';
@@ -12,14 +12,28 @@ import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
 import { useAtom } from 'jotai';
 import useBreakpoint from '../responsive/useBreakpoint.ts';
 import { FavoritesFilter } from '../common/FavoritesFilter.tsx';
-import { favoritePilotIdsSetAtom, isPilotFavoriteAtom } from '../state/favorites-atoms.ts';
+import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
 	const { isMobile, isTablet, breakpoint } = useBreakpoint();
+	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-	const ctx = useMemo(() => ({ consecutiveLaps }), [consecutiveLaps]);
+	const toggleRowExpansion = useCallback((pilotId: string) => {
+		setExpandedRows((prev) => {
+			const next = new Set(prev);
+			if (next.has(pilotId)) next.delete(pilotId);
+			else next.add(pilotId);
+			return next;
+		});
+	}, []);
+
+	const ctx = useMemo(() => ({ consecutiveLaps, expandedRows, onToggleRow: toggleRowExpansion }), [
+		consecutiveLaps,
+		expandedRows,
+		toggleRowExpansion,
+	]);
 	const columns = useMemo(
 		(): Array<Column<TableContext, LeaderboardRowProps>> => getLeaderboardColumns(ctx),
 		[ctx],

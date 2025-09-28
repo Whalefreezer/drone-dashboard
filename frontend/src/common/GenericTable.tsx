@@ -105,6 +105,7 @@ function useRowMeasurements<RowCtx extends object>(
 ): RowMeasurements {
 	const [heightMap, setHeightMap] = useState<Map<string, number>>(() => new Map());
 	const observersRef = useRef<ResizeObserverMap>(new Map());
+	const measuredKeysRef = useRef<Set<string>>(new Set());
 	const baseHeight = Math.max(1, Math.round(estimatedRowHeight));
 
 	useEffect(() => () => {
@@ -122,6 +123,7 @@ function useRowMeasurements<RowCtx extends object>(
 			for (const key of prev.keys()) {
 				if (!keys.has(key)) {
 					next.delete(key);
+					measuredKeysRef.current.delete(key);
 					changed = true;
 				}
 			}
@@ -138,18 +140,30 @@ function useRowMeasurements<RowCtx extends object>(
 				observers.delete(key);
 			}
 
-			if (!node || !isDynamic || typeof ResizeObserver === 'undefined') return;
+			if (!node || !isDynamic) return;
+
+			const ensureHeight = (nextHeight: number, markMeasured = false) => {
+				setHeightMap((prev) => {
+					const currentHeight = prev.get(key);
+					if (currentHeight !== undefined && Math.abs(currentHeight - nextHeight) < 0.5) return prev;
+					const updated = new Map(prev);
+					updated.set(key, nextHeight);
+					return updated;
+				});
+				if (markMeasured) measuredKeysRef.current.add(key);
+			};
+
+			if (!measuredKeysRef.current.has(key)) {
+				const initialHeight = Math.max(1, Math.round(node.getBoundingClientRect().height));
+				if (initialHeight > 0) ensureHeight(initialHeight, true);
+			}
+
+			if (typeof ResizeObserver === 'undefined') return;
 
 			const observer = new ResizeObserver((entries) => {
 				for (const entry of entries) {
 					const nextHeight = Math.max(1, Math.round(entry.contentRect.height));
-					setHeightMap((prev) => {
-						const currentHeight = prev.get(key);
-						if (currentHeight !== undefined && Math.abs(currentHeight - nextHeight) < 0.5) return prev;
-						const updated = new Map(prev);
-						updated.set(key, nextHeight);
-						return updated;
-					});
+					ensureHeight(nextHeight);
 				}
 			});
 
@@ -208,6 +222,11 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		isDynamic,
 	});
 
+	const initialRenderRef = useRef(true);
+	useEffect(() => {
+		initialRenderRef.current = false;
+	}, []);
+
 	const transitions = useTransition<RowItem<RowCtx>, TransitionValues>(items, {
 		keys: (item) => item.key,
 		from: (item) => {
@@ -225,6 +244,12 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 			const height = resolveHeight(key);
 			return { y: offsetsByKey.get(key) ?? 0, height };
 		},
+		initial: (item) => {
+			const key = item.key;
+			const height = resolveHeight(key);
+			return { y: offsetsByKey.get(key) ?? 0, height };
+		},
+		immediate: initialRenderRef.current,
 		config: { tension: 300, friction: 30 },
 	});
 
