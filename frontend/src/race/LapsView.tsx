@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
+import { Link } from '@tanstack/react-router';
 import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
 import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
@@ -139,9 +140,18 @@ function useLapsTableColumns(
 			cell: function NameCell({ item: { pilotChannel } }) {
 				const pilots = useAtomValue(pilotsAtom);
 				const pilot = pilots.find((p) => p.id === pilotChannel.pilotId);
+				if (!pilot) return <OverflowFadeCell title='-'>-</OverflowFadeCell>;
 				return (
-					<OverflowFadeCell title={pilot?.name}>
-						{pilot?.name ?? '-'}
+					<OverflowFadeCell title={pilot.name}>
+						{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
+						<Link
+							to='/pilots/$pilotId'
+							/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
+							params={{ pilotId: pilotChannel.pilotId }}
+							className='leaderboard-pilot-link'
+						>
+							{pilot.name}
+						</Link>
 					</OverflowFadeCell>
 				);
 			},
