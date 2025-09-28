@@ -109,7 +109,7 @@ function VisibleTable(
 			context={ctx}
 			getRowKey={(row) => row.pilotId}
 			getRowClassName={getRowClassName}
-			estimatedRowHeight={32}
+			estimatedRowHeight={30}
 			visibleColumns={visible}
 			scrollX
 		/>

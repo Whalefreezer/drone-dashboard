@@ -224,7 +224,9 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 
 	const initialRenderRef = useRef(true);
 	useEffect(() => {
-		initialRenderRef.current = false;
+		setTimeout(() => {
+			initialRenderRef.current = false;
+		}, 0);
 	}, []);
 
 	const bufferToPreventFlickeringOfScrollbar = 10;
