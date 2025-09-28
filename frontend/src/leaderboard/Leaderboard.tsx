@@ -50,7 +50,9 @@ export function Leaderboard() {
 	return (
 		<div className='leaderboard-container'>
 			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, overflow: 'visible' }}>
-				<FavoritesFilter />
+				<div style={{ display: 'flex', alignItems: 'center' }}>
+					<FavoritesFilter />
+				</div>
 				<ColumnChooser tableId={prefsKey} columns={columns} compact label='Columns' defaultVisible={defaultKeys} />
 			</div>
 			<VisibleTable columns={columns} rows={rows} ctx={ctx} splitIndex={splitIndex} prefsKey={prefsKey} defaultKeys={defaultKeys} />

@@ -12,6 +12,11 @@ export function FavoritesFilter({ className = '' }: FavoritesFilterProps) {
 	const [showFavoritesOnly, setShowFavoritesOnly] = useAtom(showFavoritesOnlyAtom);
 	const favoriteCount = useAtomValue(favoriteCountAtom);
 
+	// Don't render the filter if there are no favorites
+	if (favoriteCount === 0) {
+		return null;
+	}
+
 	const baseClasses = [
 		'favorites-filter',
 		'display: inline-flex',
