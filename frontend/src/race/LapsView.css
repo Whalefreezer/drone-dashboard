@@ -86,6 +86,40 @@
 	pointer-events: none;
 }
 
+/* Sticky first columns to mirror the leaderboard UX
+
+	Keep these offsets in sync with the Position column width defined in
+	`LapsView.tsx` (currently 56px). If the width changes, update both the
+	body and header selectors below so the Name column remains aligned.
+*/
+.laps-table .gt-cell[data-col='pos'] {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
+.laps-table .gt-cell[data-col='name'] {
+	position: sticky;
+	left: 56px; /* Align with Position column width */
+	z-index: 2;
+	background: var(--row-bg, var(--table-bg-odd));
+}
+
+.laps-table .gt-header [data-col='pos'] {
+	position: sticky;
+	left: 0;
+	z-index: 4;
+	background: #333;
+}
+
+.laps-table .gt-header [data-col='name'] {
+	position: sticky;
+	left: 56px; /* Align with Position column width */
+	z-index: 4;
+	background: #333;
+}
+
 /* Make lap highlight backgrounds fill the whole cell area without losing padding for other cells */
 .laps-table .gt-cell > .lap-fastest-overall,
 .laps-table .gt-cell > .lap-personal-best,
@@ -132,4 +166,16 @@
 
 .laps-table .gt-row.favorite-row:hover {
 	background: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
+}
+
+.laps-table .gt-row.favorite-row [data-col='pos'],
+.laps-table .gt-row.favorite-row [data-col='name'] {
+	background-color: var(--row-bg, var(--table-bg-odd));
+	background-image: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
+}
+
+.laps-table .gt-row.favorite-row:hover [data-col='pos'],
+.laps-table .gt-row.favorite-row:hover [data-col='name'] {
+	background-color: var(--row-bg, var(--table-bg-odd));
+	background-image: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
 }
