@@ -1,9 +1,11 @@
+import { atom } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
 import { pilotsAtom } from '../state/pbAtoms.ts';
+import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 
 export const leaderboardPilotIdsAtom = eagerAtom((get): string[] => {
 	const pilots = get(pilotsAtom);
@@ -37,4 +39,20 @@ export const positionChangesAtom = eagerAtom((get): Map<string, number> => {
 		}
 	});
 	return changes;
+});
+
+// Atom for controlling favorites filter state
+export const showFavoritesOnlyAtom = atom(false);
+
+// Filtered leaderboard pilot IDs based on favorites filter
+export const filteredLeaderboardPilotIdsAtom = eagerAtom((get): string[] => {
+	const showFavoritesOnly = get(showFavoritesOnlyAtom);
+	const allPilotIds = get(leaderboardPilotIdsAtom);
+
+	if (!showFavoritesOnly) {
+		return allPilotIds;
+	}
+
+	const favorites = get(favoritePilotIdsSetAtom);
+	return allPilotIds.filter((pilotId) => favorites.has(pilotId));
 });

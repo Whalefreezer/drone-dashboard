@@ -7,3 +7,53 @@
 		transparent 4px
 	);
 }
+
+/* Favorite Toggle Styles */
+.favorite-toggle {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(8px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: #ffffff;
+}
+
+.favorite-toggle:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.2);
+	border-color: rgba(255, 255, 255, 0.3);
+	transform: scale(1.05);
+}
+
+.favorite-toggle:focus-visible {
+	outline: 2px solid #9ba3ff;
+	outline-offset: 2px;
+}
+
+.favorite-toggle:active:not(:disabled) {
+	transform: scale(0.95);
+}
+
+/* Favorite highlight for rows */
+.favorite-row {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
+	border-left: 3px solid #9ba3ff;
+}
+
+.favorite-row:hover {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
+}
+
+/* Animation for favorite state changes */
+@keyframes favoritePulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.2);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.favorite-icon.animate {
+	animation: favoritePulse 0.3s ease-in-out;
+}

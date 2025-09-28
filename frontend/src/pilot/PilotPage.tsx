@@ -1,6 +1,7 @@
 import { type ComponentProps, type ComponentType, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
+import { FavoriteToggle } from '../common/FavoriteToggle.tsx';
 import {
 	usePilotBestLapTime,
 	usePilotLapGroups,
@@ -62,6 +63,13 @@ export function PilotPage({ pilotId }: { pilotId: string }) {
 					{givenName && <span className='pilot-given-name'>{givenName}</span>}
 				</div>
 				<div className='pilot-header-meta'>
+					<FavoriteToggle
+						pilotId={pilotId}
+						size='lg'
+						className='pilot-favorite-toggle'
+						favoritedTooltip='Remove from favorites'
+						notFavoritedTooltip='Add to favorites'
+					/>
 					{overview.preferredChannel && (
 						<div className='pilot-meta-chip'>
 							<ChannelSquare channelID={overview.preferredChannel.id} />
