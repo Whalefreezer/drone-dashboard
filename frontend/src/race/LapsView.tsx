@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
 import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
 import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
+import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 // Using PB-native race record + per-race atoms
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
@@ -287,12 +288,20 @@ function LapsTable(
 ) {
 	const rows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
 	const maxLaps = useAtomValue(raceMaxLapNumberAtom(race.id));
+	const favoritePilotIdsSet = useAtomValue(favoritePilotIdsSetAtom);
 
 	const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
 
 	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
 	const prefsAtom = useMemo(() => getColumnPrefsAtom('laps', allKeys, allKeys), [allKeys]);
 	const [visible] = useAtom(prefsAtom);
+
+	const getRowClassName = (row: LapsRow) => {
+		if (favoritePilotIdsSet.has(row.pilotChannel.pilotId)) {
+			return 'favorite-row';
+		}
+		return undefined;
+	};
 
 	return (
 		<GenericTable<LapsTableContext, LapsRow>
@@ -301,6 +310,7 @@ function LapsTable(
 			data={rows}
 			context={ctx}
 			getRowKey={(row) => row.pilotChannel.id}
+			getRowClassName={getRowClassName}
 			estimatedRowHeight={30}
 			rowMode='fixed'
 			visibleColumns={visible}

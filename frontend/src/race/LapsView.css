@@ -124,3 +124,12 @@
 	align-items: center;
 	gap: 4px;
 }
+
+/* Favorite row highlighting for laps table */
+.laps-table .gt-row.favorite-row {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.1) 0%, rgba(155, 163, 255, 0.05) 100%);
+}
+
+.laps-table .gt-row.favorite-row:hover {
+	background: linear-gradient(90deg, rgba(155, 163, 255, 0.15) 0%, rgba(155, 163, 255, 0.08) 100%);
+}
