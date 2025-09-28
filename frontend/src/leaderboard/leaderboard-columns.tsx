@@ -13,7 +13,7 @@ import { pilotBestLapAtom, pilotConsecAtom, pilotFastestTotalRaceAtom, pilotHole
 import { currentRaceIndexAtom } from '../race/race-atoms.ts';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 
-export type TableContext = { consecutiveLaps: number; expandedRows: Set<string>; onToggleRow: (pilotId: string) => void };
+export type TableContext = { consecutiveLaps: number };
 export interface LeaderboardRowProps {
 	pilotId: string;
 }
@@ -179,29 +179,6 @@ export function getLeaderboardColumns(
 			cell: function ChannelCellInline({ item: { pilotId } }) {
 				const channel = useAtomValue(pilotPreferredChannelAtom(pilotId));
 				return <ChannelDisplayCell channel={channel} />;
-			},
-		},
-		{
-			key: 'details-demo',
-			header: 'Details',
-			label: 'Details Demo',
-			minWidth: 140,
-			cell: function DetailsDemoCell({ item: { pilotId } }) {
-				const isExpanded = ctx.expandedRows.has(pilotId);
-				const handleClick = () => ctx.onToggleRow(pilotId);
-				return (
-					<div className='leaderboard-details-cell'>
-						<button type='button' onClick={handleClick} className='leaderboard-details-toggle'>
-							{isExpanded ? 'Hide Notes' : 'Show Notes'}
-						</button>
-						{isExpanded && (
-							<div className='leaderboard-details-card'>
-								<p>Recent laps show variable content here.</p>
-								<p>Toggle this cell to demo height animations.</p>
-							</div>
-						)}
-					</div>
-				);
 			},
 		},
 		{

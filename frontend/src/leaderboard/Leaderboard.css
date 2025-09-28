@@ -155,36 +155,6 @@
 	text-decoration: underline;
 }
 
-.leaderboard-details-cell {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.leaderboard-details-toggle {
-	padding: 2px 6px;
-	border: 1px solid #555;
-	border-radius: 4px;
-	background: #1f2933;
-	color: inherit;
-	cursor: pointer;
-	text-align: left;
-}
-
-.leaderboard-details-toggle:hover,
-.leaderboard-details-toggle:focus-visible {
-	background: #2a3642;
-}
-
-.leaderboard-details-card {
-	padding: 6px;
-	border: 1px solid #374151;
-	border-radius: 4px;
-	background: #111827;
-	font-size: 0.85em;
-	line-height: 1.4;
-}
-
 /* --- Position Display & Animation --- */
 .position-container {
 	display: flex;

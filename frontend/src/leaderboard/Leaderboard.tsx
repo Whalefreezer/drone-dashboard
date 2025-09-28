@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Column } from '../common/GenericTable.tsx';
 import { GenericTable } from '../common/GenericTable.tsx';
 import './Leaderboard.css';
@@ -18,21 +18,8 @@ export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
 	const { isMobile, isTablet, breakpoint } = useBreakpoint();
-	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-
-	const toggleRowExpansion = useCallback((pilotId: string) => {
-		setExpandedRows((prev) => {
-			const next = new Set(prev);
-			if (next.has(pilotId)) next.delete(pilotId);
-			else next.add(pilotId);
-			return next;
-		});
-	}, []);
-
-	const ctx = useMemo(() => ({ consecutiveLaps, expandedRows, onToggleRow: toggleRowExpansion }), [
+	const ctx = useMemo(() => ({ consecutiveLaps }), [
 		consecutiveLaps,
-		expandedRows,
-		toggleRowExpansion,
 	]);
 	const columns = useMemo(
 		(): Array<Column<TableContext, LeaderboardRowProps>> => getLeaderboardColumns(ctx),
