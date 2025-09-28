@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { animated, SpringValue, useTransition } from '@react-spring/web';
+import { animated, SpringValue, useSpring, useTransition } from '@react-spring/web';
 
 export type Column<TableCtx, RowCtx> = {
 	key: string;
@@ -227,6 +227,14 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		initialRenderRef.current = false;
 	}, []);
 
+	const bufferToPreventFlickeringOfScrollbar = 10;
+
+	const bodySpring = useSpring({
+		height: totalHeight + bufferToPreventFlickeringOfScrollbar,
+		config: { tension: 300, friction: 30 },
+		immediate: initialRenderRef.current,
+	});
+
 	const transitions = useTransition<RowItem<RowCtx>, TransitionValues>(items, {
 		keys: (item) => item.key,
 		from: (item) => {
@@ -268,7 +276,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 							);
 						})}
 					</div>
-					<div className='gt-body' style={{ position: 'relative', height: `${totalHeight}px` }}>
+					<animated.div className='gt-body' style={{ ...bodySpring, position: 'relative' }}>
 						{transitions((animatedStyle, item) => {
 							const row = item.row as RowCtx;
 							const idx = indexByKey.get(item.key) ?? 0;
@@ -312,7 +320,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 								</animated.div>
 							);
 						})}
-					</div>
+					</animated.div>
 				</div>
 			</div>
 		</div>
