@@ -148,15 +148,6 @@ export function getLeaderboardColumns(
 			},
 		},
 		{
-			key: 'favorite',
-			header: '',
-			label: 'Favorite',
-			width: 40,
-			cell: function FavoriteCellInline({ item: { pilotId } }) {
-				return <FavoriteToggle pilotId={pilotId} size='sm' showTooltip />;
-			},
-		},
-		{
 			key: 'pilot',
 			header: 'Pilot',
 			label: 'Pilot',
@@ -179,6 +170,19 @@ export function getLeaderboardColumns(
 							{pilot.name}
 						</Link>
 					</OverflowFadeCell>
+				);
+			},
+		},
+		{
+			key: 'favorite',
+			header: '',
+			label: 'Favorite',
+			width: 40,
+			cell: function FavoriteCellInline({ item: { pilotId } }) {
+				return (
+					<div className='compact-favorite-cell'>
+						<FavoriteToggle pilotId={pilotId} showTooltip className='compact-favorite-toggle' />
+					</div>
 				);
 			},
 		},

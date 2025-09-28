@@ -50,7 +50,7 @@ export function Leaderboard() {
 	const defaultKeys = useMemo(() => {
 		const all = columns.map((c) => c.key);
 		if (!isMobile && !isTablet) return all; // desktop -> all
-		const base: string[] = ['position', 'favorite', 'pilot', 'laps', 'top-lap', 'next'];
+		const base: string[] = ['position', 'pilot', 'favorite', 'laps', 'top-lap', 'next'];
 		if (isTablet) {
 			base.splice(3, 0, 'channel'); // after favorite
 			base.splice(base.indexOf('top-lap') + 1, 0, 'holeshot');
