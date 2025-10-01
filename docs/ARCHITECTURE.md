@@ -11,6 +11,44 @@ This page gives a quick map of the moving pieces that come up most often when tr
 | **Migrations** | `backend/migrations/*.go` | Declarative PocketBase collection definitions; useful for seeing which tables exist and what fields they expose. |
 | **Docs & Scripts** | `docs/`, `scripts/`, `e2e/` | Reference material, build helpers, and end-to-end/preflight harnesses. |
 
+## Frontend Theme System
+
+The application uses a dual-theme system with CSS variables and Tailwind CSS:
+
+### Theme State Management
+- **State**: Jotai atom for theme preference (`src/stores/themeStore.ts`)
+- **Persistence**: localStorage for user preference
+- **System Preference**: Respects OS-level dark mode setting
+
+### CSS Variables Structure
+```css
+:root {
+  /* Light theme defaults */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --accent: #3b82f6;
+  --border: #e5e7eb;
+}
+
+[data-theme="dark"] {
+  /* Dark theme overrides */
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --accent: #60a5fa;
+  --border: #374151;
+}
+```
+
+### Implementation Pattern
+1. **Theme Toggle Component**: Use ViewSelector pattern for toggle switch
+2. **Theme Provider**: Wrap app to apply theme classes
+3. **Component Migration**: Convert hardcoded colors to CSS variables
+4. **Tailwind Config**: Use class strategy for dark mode
+
 ## PocketBase Collections
 
 Most ingest-related features read and write the collections declared in `backend/migrations/1700000000_init_collections.go`. The table below separates FPVTrackside–derived data from admin/local state so you can quickly tell what should or should not be purged.
