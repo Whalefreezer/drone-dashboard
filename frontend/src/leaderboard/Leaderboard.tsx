@@ -13,6 +13,7 @@ import { useAtom } from 'jotai';
 import useBreakpoint from '../responsive/useBreakpoint.ts';
 import { FavoritesFilter } from '../common/FavoritesFilter.tsx';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
+import { useLeaderboardAutoScroll } from './useLeaderboardAutoScroll.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
@@ -48,15 +49,25 @@ export function Leaderboard() {
 
 	const prefsKey = useMemo(() => `leaderboard:${breakpoint}`, [breakpoint]);
 
+	const allowAutoScroll = !isMobile;
+
 	return (
 		<div className='leaderboard-container'>
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, overflow: 'visible' }}>
-				<div style={{ display: 'flex', alignItems: 'center' }}>
+			<div className='leaderboard-toolbar'>
+				<div className='leaderboard-toolbar-left'>
 					<FavoritesFilter />
 				</div>
 				<ColumnChooser tableId={prefsKey} columns={columns} compact label='Columns' defaultVisible={defaultKeys} />
 			</div>
-			<VisibleTable columns={columns} rows={rows} ctx={ctx} splitIndex={splitIndex} prefsKey={prefsKey} defaultKeys={defaultKeys} />
+			<VisibleTable
+				columns={columns}
+				rows={rows}
+				ctx={ctx}
+				splitIndex={splitIndex}
+				prefsKey={prefsKey}
+				defaultKeys={defaultKeys}
+				allowAutoScroll={allowAutoScroll}
+			/>
 		</div>
 	);
 }
@@ -69,6 +80,7 @@ function VisibleTable(
 		splitIndex,
 		prefsKey,
 		defaultKeys,
+		allowAutoScroll,
 	}: {
 		columns: Array<Column<TableContext, LeaderboardRowProps>>;
 		rows: LeaderboardRowProps[];
@@ -76,6 +88,7 @@ function VisibleTable(
 		splitIndex: number | null;
 		prefsKey: string;
 		defaultKeys: string[];
+		allowAutoScroll: boolean;
 	},
 ) {
 	// Use per-breakpoint storage key and defaults
@@ -87,7 +100,7 @@ function VisibleTable(
 	// Get favorite pilot IDs for row styling
 	const favoritePilotIdsSet = useAtomValue(favoritePilotIdsSetAtom);
 
-	const getRowClassName = useCallback((row: LeaderboardRowProps, idx: number) => {
+	const computeRowClassName = useCallback((row: LeaderboardRowProps, idx: number) => {
 		const classes: string[] = [];
 
 		if (favoritePilotIdsSet.has(row.pilotId)) {
@@ -101,17 +114,34 @@ function VisibleTable(
 		return classes.length > 0 ? classes.join(' ') : undefined;
 	}, [splitIndex, favoritePilotIdsSet]);
 
+	const getBaseRowKey = useCallback((row: LeaderboardRowProps) => row.pilotId, []);
+
+	const { rowsForRender, containerRef, getRowKey, getRowClassName, isAutoScrolling } = useLeaderboardAutoScroll<LeaderboardRowProps>({
+		rows,
+		allowAutoScroll,
+		baseGetRowKey: getBaseRowKey,
+		baseGetRowClassName: computeRowClassName,
+	});
+
 	return (
-		<GenericTable<TableContext, LeaderboardRowProps>
-			className='leaderboard-table'
-			columns={columns}
-			data={rows}
-			context={ctx}
-			getRowKey={(row) => row.pilotId}
-			getRowClassName={getRowClassName}
-			estimatedRowHeight={30}
-			visibleColumns={visible}
-			scrollX
-		/>
+		<div
+			ref={containerRef}
+			className={['leaderboard-table-viewport', isAutoScrolling ? 'autoscrolling' : undefined].filter(Boolean).join(' ')}
+			data-autoscrolling={isAutoScrolling ? 'true' : undefined}
+			role='region'
+			aria-label='Leaderboard results'
+		>
+			<GenericTable<TableContext, LeaderboardRowProps>
+				className='leaderboard-table'
+				columns={columns}
+				data={rowsForRender}
+				context={ctx}
+				getRowKey={getRowKey}
+				getRowClassName={getRowClassName}
+				estimatedRowHeight={30}
+				visibleColumns={visible}
+				scrollX
+			/>
+		</div>
 	);
 }

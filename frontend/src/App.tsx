@@ -18,7 +18,7 @@ function App() {
 	const activePane = useAtomValue(activePaneAtom);
 
 	return (
-		<>
+		<div className='app-shell'>
 			<GenericSuspense id='snapshot-control'>
 				<SnapshotControl />
 			</GenericSuspense>
@@ -71,11 +71,10 @@ function App() {
 						</>
 					)}
 			</div>
-
 			<div className='app-legend'>
 				<Legend />
 			</div>
-		</>
+		</div>
 	);
 }
 

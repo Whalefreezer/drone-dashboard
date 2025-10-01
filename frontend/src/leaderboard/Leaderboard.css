@@ -9,7 +9,43 @@
 	border-radius: 8px;
 	background-color: #1a1a1a;
 	border: 1px solid #333;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-height: 0;
+	max-height: 100%;
+	overflow: hidden;
+}
+
+.leaderboard-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	overflow: visible;
+}
+
+.leaderboard-toolbar-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.leaderboard-table-viewport {
+	flex: 1;
+	min-height: 0;
+	position: relative;
+	overflow-y: auto;
 	overflow-x: hidden;
+	scrollbar-gutter: stable both-edges;
+	overscroll-behavior: contain;
+	touch-action: pan-y;
+	padding-right: 4px;
+	padding-bottom: 16px;
+}
+
+.leaderboard-table-viewport.autoscrolling {
+	cursor: default;
 }
 
 /* --- Table Styles --- */

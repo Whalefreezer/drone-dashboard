@@ -8,6 +8,7 @@
 #root {
 	padding: 0;
 	width: 100vw;
+	height: 100%;
 	text-align: left;
 	/* overflow-x: hidden; */
 }
@@ -27,6 +28,14 @@
 	flex: 1;
 	min-width: 300px;
 	margin-right: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-gutter: stable both-edges;
+	overscroll-behavior: contain;
+	padding-right: 4px;
 }
 
 .schedule-container {
@@ -45,6 +54,10 @@
 	flex: 1;
 	min-width: 300px;
 	margin-left: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
 }
 
 /* Race Box Styles */
@@ -243,6 +256,15 @@
 	background-color: #1a1a1a;
 }
 
+.app-shell {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	min-height: 0;
+	background-color: #242424;
+	overflow: hidden;
+}
+
 .app-main-content {
 	/* Combine existing app-container styles with the margin-top from App.tsx */
 	display: flex;
@@ -252,15 +274,20 @@
 	gap: 4px;
 	padding: 0 16px;
 	margin-top: 12px; /* Small gap between header and content */
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .app-main-content.mobile {
 	flex-direction: column;
 	margin-top: 0;
+	overflow-y: auto;
 }
 
 .app-legend {
 	display: flex;
 	justify-content: center;
 	padding: 8px 16px 16px;
+	flex-shrink: 0;
 }
