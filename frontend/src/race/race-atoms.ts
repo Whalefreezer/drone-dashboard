@@ -400,33 +400,24 @@ export const currentRaceIndexAtom = eagerAtom((get): number => {
 });
 
 /**
- * Last completed race - finds the most recently completed race in the sorted races array
+ * Last race - finds the race with order = kv.order - 1
+ * Consistent with currentRaceAtom logic, relies totally on kv.order
  */
-export const lastCompletedRaceAtom = eagerAtom((get): PBRaceRecord | null => {
+export const lastRaceAtom = eagerAtom((get): PBRaceRecord | null => {
 	const races = get(allRacesAtom);
+	const kv = get(currentOrderKVAtom);
 
-	if (!races || races.length === 0) {
+	if (!races || races.length === 0 || !kv?.order) {
 		return null;
 	}
 
-	// Find last completed race by searching backwards through the sorted races array
-	const lastCompletedIndex = races.map((race, index) => ({ race, index }))
-		.reverse()
-		.find(({ race }) => {
-			if (!race.valid) {
-				return false;
-			}
+	const lastOrder = kv.order - 1;
+	if (lastOrder < 1) {
+		return null;
+	}
 
-			if (
-				race.start && !race.start.startsWith('0') &&
-				race.end && !race.end.startsWith('0')
-			) {
-				return true; // Both started and ended = completed
-			}
-			return false;
-		})?.index ?? -1;
-
-	return lastCompletedIndex !== -1 ? races[lastCompletedIndex] : null;
+	// Find race with raceOrder = kv.order - 1
+	return races.find((r) => r.raceOrder === lastOrder) ?? null;
 });
 
 /**

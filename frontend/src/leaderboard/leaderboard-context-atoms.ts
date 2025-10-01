@@ -1,7 +1,7 @@
 import { Atom } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
-import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
+import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { bracketsDataAtom, channelsDataAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
@@ -15,8 +15,8 @@ export const currentRaceIdsAtom = eagerAtom((get): string[] => {
 export const previousRaceIdsAtom = eagerAtom((get): string[] => {
 	const ids = get(currentRaceIdsAtom);
 	const current = get(currentRaceAtom)?.id;
-	const lastCompleted = get(lastCompletedRaceAtom)?.id;
-	return ids.filter((id) => id !== current && id !== lastCompleted);
+	const lastRace = get(lastRaceAtom)?.id;
+	return ids.filter((id) => id !== current && id !== lastRace);
 });
 
 // Scheduling/context atoms

@@ -2,28 +2,27 @@ import { useAtomValue } from 'jotai';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
 import { BracketsView } from '../bracket/index.ts';
-import { allRacesAtom, currentRaceAtom, lastCompletedRaceAtom, nextRacesAtom } from './race-atoms.ts';
+import { currentRaceAtom, lastRaceAtom, nextRacesAtom } from './race-atoms.ts';
 import { NextRaceCompact } from './NextRaceCompact.tsx';
 
 export function RacesContainer() {
-	const races = useAtomValue(allRacesAtom);
 	const currentRace = useAtomValue(currentRaceAtom);
-	const lastCompletedRace = useAtomValue(lastCompletedRaceAtom);
+	const lastRace = useAtomValue(lastRaceAtom);
 	const nextRaces = useAtomValue(nextRacesAtom);
 
-	// Hide current race when there's only one race and it matches the last completed race
-	const showCurrentRace = !!currentRace && !(lastCompletedRace && currentRace.id === lastCompletedRace.id);
+	// Hide current race when there's only one race and it matches the last race
+	const showCurrentRace = !!currentRace && !(lastRace && currentRace.id === lastRace.id);
 
 	return (
 		<div className='races-container'>
-			{lastCompletedRace && (
+			{lastRace && (
 				<div className='race-box last-race'>
 					<div className='race-header'>
 						<h3>Last Race</h3>
 					</div>
 					<LapsView
-						key={lastCompletedRace.id}
-						raceId={lastCompletedRace.id}
+						key={lastRace.id}
+						raceId={lastRace.id}
 					/>
 				</div>
 			)}

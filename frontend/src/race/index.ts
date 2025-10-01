@@ -5,7 +5,7 @@ export { RacesContainer } from './RacesContainer.tsx';
 export { default as RaceTime } from './RaceTime.tsx';
 
 // PB-native race data and atoms
-export { allRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastCompletedRaceAtom, raceDataAtom, raceStatusAtom } from './race-atoms.ts';
+export { allRacesAtom, currentRaceAtom, currentRaceIndexAtom, lastRaceAtom, raceDataAtom, raceStatusAtom } from './race-atoms.ts';
 
 export type { PilotChannelAssociation, ProcessedLap, RaceStatus } from './race-types.ts';
 
