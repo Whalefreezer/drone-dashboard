@@ -85,6 +85,15 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
 export const pilotsAtom = eagerAtom((get) => get(pilotsRecordsAtom));
 
+export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
+	eagerAtom((get): string | null => {
+		if (!pilotSourceId) return null;
+		const pilots = get(pilotsAtom);
+		const match = pilots.find((pilot) => pilot.sourceId === pilotSourceId || pilot.id === pilotSourceId);
+		return match?.id ?? null;
+	})
+);
+
 // Re-export from common
 export { useCachedAtom };
 

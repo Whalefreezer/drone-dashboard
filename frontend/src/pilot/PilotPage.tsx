@@ -1,4 +1,5 @@
 import { type ComponentProps, type ComponentType, useMemo, useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { FavoriteToggle } from '../common/FavoriteToggle.tsx';
@@ -14,6 +15,7 @@ import { PilotAnalyticsTab } from './PilotAnalyticsTab.tsx';
 import { PilotLapTableTab } from './PilotLapTableTab.tsx';
 import { PilotUpcomingRacesTab } from './PilotUpcomingRacesTab.tsx';
 import './PilotPage.css';
+import { pilotIdBySourceIdAtom } from '../state/pbAtoms.ts';
 
 const tabs = [
 	{ key: 'analytics', label: 'Analytics' },
@@ -28,16 +30,18 @@ const formatSeconds = (time: number | null | undefined): string => {
 	return `${time.toFixed(3)}s`;
 };
 
-export function PilotPage({ pilotId }: { pilotId: string }) {
-	const overview = usePilotOverviewMeta(pilotId);
-	const metrics = usePilotMetricSummary(pilotId);
-	const timeline = usePilotTimeline(pilotId);
-	const lapGroups = usePilotLapGroups(pilotId);
-	const upcoming = usePilotUpcomingRaces(pilotId);
-	const bestLapSeconds = usePilotBestLapTime(pilotId);
+export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
+	const canonicalPilotId = useAtomValue(pilotIdBySourceIdAtom(pilotSourceId));
+	const lookupPilotId = canonicalPilotId ?? pilotSourceId;
+	const overview = usePilotOverviewMeta(lookupPilotId);
+	const metrics = usePilotMetricSummary(lookupPilotId);
+	const timeline = usePilotTimeline(lookupPilotId);
+	const lapGroups = usePilotLapGroups(lookupPilotId);
+	const upcoming = usePilotUpcomingRaces(lookupPilotId);
+	const bestLapSeconds = usePilotBestLapTime(lookupPilotId);
 	const [activeTab, setActiveTab] = useState<TabKey>('analytics');
 
-	if (!overview.record) {
+	if (!canonicalPilotId || !overview.record) {
 		return <PilotNotFound />;
 	}
 
@@ -64,7 +68,7 @@ export function PilotPage({ pilotId }: { pilotId: string }) {
 				</div>
 				<div className='pilot-header-meta'>
 					<FavoriteToggle
-						pilotId={pilotId}
+						pilotSourceId={record.sourceId}
 						size='lg'
 						className='pilot-favorite-toggle'
 						favoritedTooltip='Remove from favorites'
@@ -149,7 +153,7 @@ export function PilotPage({ pilotId }: { pilotId: string }) {
 					>
 						{isActive && tab.key === 'analytics' && (
 							<PilotAnalyticsTab
-								pilotId={pilotId}
+								pilotId={canonicalPilotId}
 								timeline={timeline}
 								lapGroups={lapGroups}
 								metrics={metrics}
@@ -157,7 +161,7 @@ export function PilotPage({ pilotId }: { pilotId: string }) {
 						)}
 						{isActive && tab.key === 'laps' && (
 							<PilotLapTableTab
-								pilotId={pilotId}
+								pilotId={canonicalPilotId}
 								lapGroups={lapGroups}
 								bestLapSeconds={bestLapSeconds}
 							/>

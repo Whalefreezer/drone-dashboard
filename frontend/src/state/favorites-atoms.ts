@@ -1,113 +1,95 @@
 import { atom } from 'jotai';
-import { atomFamily } from 'jotai/utils';
-import { atomWithStorage } from 'jotai/utils';
+import { atomFamily, atomWithStorage } from 'jotai/utils';
 import { eagerAtom } from 'jotai-eager';
 import { pilotsAtom } from './pbAtoms.ts';
 import type { PBPilotRecord } from '../api/pbTypes.ts';
 
-// Storage key for favorites
 const STORAGE_KEY = 'drone-dashboard:favorites';
 
-/**
- * Raw favorites atom - stores array of pilot IDs in localStorage
- */
+type PilotCollection = PBPilotRecord[] | Promise<PBPilotRecord[]>;
+
+const asPilotArray = (value: PilotCollection): PBPilotRecord[] => (Array.isArray(value) ? value : []);
+
 export const favoritePilotIdsAtom = atomWithStorage<string[]>(
 	STORAGE_KEY,
 	[],
 	undefined,
-	{
-		getOnInit: true,
-	},
+	{ getOnInit: true },
 );
 
-/**
- * Derived atom that returns favorite pilots as a Set for O(1) lookups
- */
+export const favoritePilotSourceIdsSetAtom = eagerAtom((get) => {
+	const stored = get(favoritePilotIdsAtom);
+	return new Set(stored);
+});
+
 export const favoritePilotIdsSetAtom = eagerAtom((get) => {
-	return new Set(get(favoritePilotIdsAtom));
+	const sourceIds = get(favoritePilotSourceIdsSetAtom);
+	const pilots = asPilotArray(get(pilotsAtom) as PilotCollection);
+	const pocketbaseIds = new Set<string>();
+	for (const pilot of pilots) {
+		if (sourceIds.has(pilot.sourceId)) {
+			pocketbaseIds.add(pilot.id);
+		}
+	}
+	return pocketbaseIds;
 });
 
-/**
- * Family atom to check if a specific pilot is favorited
- */
-export const isPilotFavoriteAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get) => {
-		const favorites = get(favoritePilotIdsSetAtom);
-		return favorites.has(pilotId);
-	})
+export const isPilotFavoriteAtom = atomFamily((pilotSourceId: string) =>
+	eagerAtom((get) => get(favoritePilotSourceIdsSetAtom).has(pilotSourceId))
 );
 
-/**
- * Derived atom that returns only favorited pilots from the current pilots list
- */
 export const favoritePilotsAtom = eagerAtom((get) => {
-	const pilots = get(pilotsAtom);
-	const favorites = get(favoritePilotIdsSetAtom);
-
-	return pilots.filter((pilot) => favorites.has(pilot.id));
+	const sourceIds = get(favoritePilotSourceIdsSetAtom);
+	const pilots = asPilotArray(get(pilotsAtom) as PilotCollection);
+	return pilots.filter((pilot) => sourceIds.has(pilot.sourceId));
 });
 
-/**
- * Action atom to toggle a pilot's favorite status
- */
+const commitFavorites = (
+	set: (atom: typeof favoritePilotIdsAtom, value: string[]) => void,
+	favorites: Set<string>,
+) => {
+	set(favoritePilotIdsAtom, Array.from(favorites).sort());
+};
+
 export const togglePilotFavoriteAtom = atom(
 	null,
-	(get, set, pilotId: string) => {
-		const currentFavorites = get(favoritePilotIdsAtom);
-		const favoritesSet = new Set(currentFavorites);
-
-		if (favoritesSet.has(pilotId)) {
-			favoritesSet.delete(pilotId);
+	(get, set, pilotSourceId: string) => {
+		const favorites = new Set(get(favoritePilotIdsAtom));
+		if (favorites.has(pilotSourceId)) {
+			favorites.delete(pilotSourceId);
 		} else {
-			favoritesSet.add(pilotId);
+			favorites.add(pilotSourceId);
 		}
-
-		const newFavorites = Array.from(favoritesSet).sort();
-		set(favoritePilotIdsAtom, newFavorites);
+		commitFavorites(set, favorites);
 	},
 );
 
-/**
- * Action atom to add a pilot to favorites
- */
 export const addPilotFavoriteAtom = atom(
 	null,
-	(get, set, pilotId: string) => {
-		const currentFavorites = get(favoritePilotIdsAtom);
-		if (!currentFavorites.includes(pilotId)) {
-			const newFavorites = [...currentFavorites, pilotId].sort();
-			set(favoritePilotIdsAtom, newFavorites);
+	(get, set, pilotSourceId: string) => {
+		const favorites = new Set(get(favoritePilotIdsAtom));
+		if (!favorites.has(pilotSourceId)) {
+			favorites.add(pilotSourceId);
+			commitFavorites(set, favorites);
 		}
 	},
 );
 
-/**
- * Action atom to remove a pilot from favorites
- */
 export const removePilotFavoriteAtom = atom(
 	null,
-	(get, set, pilotId: string) => {
-		const currentFavorites = get(favoritePilotIdsAtom);
-		if (currentFavorites.includes(pilotId)) {
-			const newFavorites = currentFavorites.filter((id: string) => id !== pilotId);
-			set(favoritePilotIdsAtom, newFavorites);
+	(get, set, pilotSourceId: string) => {
+		const favorites = new Set(get(favoritePilotIdsAtom));
+		if (favorites.delete(pilotSourceId)) {
+			commitFavorites(set, favorites);
 		}
 	},
 );
 
-/**
- * Action atom to clear all favorites
- */
 export const clearFavoritesAtom = atom(
 	null,
-	(get, set) => {
+	(_get, set) => {
 		set(favoritePilotIdsAtom, []);
 	},
 );
 
-/**
- * Atom for the count of favorited pilots
- */
-export const favoriteCountAtom = eagerAtom((get) => {
-	return get(favoritePilotIdsAtom).length;
-});
+export const favoriteCountAtom = eagerAtom((get) => get(favoritePilotSourceIdsSetAtom).size);

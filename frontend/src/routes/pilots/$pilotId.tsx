@@ -13,7 +13,7 @@ function PilotRouteComponent() {
 	const { pilotId } = Route.useParams();
 	return (
 		<GenericSuspense id='pilot'>
-			<PilotPage pilotId={pilotId} />
+			<PilotPage pilotSourceId={pilotId} />
 		</GenericSuspense>
 	);
 }

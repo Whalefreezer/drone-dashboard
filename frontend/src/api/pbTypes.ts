@@ -50,6 +50,7 @@ export enum EventType {
 
 // pilots
 export interface PBPilotRecord extends PBBaseRecord {
+	sourceId: string;
 	name: string;
 	firstName?: string;
 	lastName?: string;

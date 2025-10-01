@@ -3,8 +3,8 @@ import { useAtom, useSetAtom } from 'jotai';
 import { isPilotFavoriteAtom, togglePilotFavoriteAtom } from '../state/favorites-atoms.ts';
 
 interface FavoriteToggleProps {
-	/** The pilot ID to toggle favorite status for */
-	pilotId: string;
+	/** The pilot sourceId to toggle */
+	pilotSourceId: string;
 	/** Additional CSS class names */
 	className?: string;
 	/** Whether to show the tooltip */
@@ -20,7 +20,7 @@ interface FavoriteToggleProps {
 }
 
 export function FavoriteToggle({
-	pilotId,
+	pilotSourceId,
 	className = '',
 	showTooltip = true,
 	favoritedTooltip = 'Remove from favorites',
@@ -28,7 +28,7 @@ export function FavoriteToggle({
 	disabled = false,
 	size = 'md',
 }: FavoriteToggleProps) {
-	const [isFavorite] = useAtom(isPilotFavoriteAtom(pilotId));
+	const [isFavorite] = useAtom(isPilotFavoriteAtom(pilotSourceId));
 	const toggleFavorite = useSetAtom(togglePilotFavoriteAtom);
 
 	// Size classes
@@ -55,7 +55,7 @@ export function FavoriteToggle({
 		e.preventDefault();
 		e.stopPropagation();
 		if (!disabled) {
-			toggleFavorite(pilotId);
+			toggleFavorite(pilotSourceId);
 		}
 	};
 
@@ -64,7 +64,7 @@ export function FavoriteToggle({
 			e.preventDefault();
 			e.stopPropagation();
 			if (!disabled) {
-				toggleFavorite(pilotId);
+				toggleFavorite(pilotSourceId);
 			}
 		}
 	};
