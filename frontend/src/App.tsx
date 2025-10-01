@@ -59,21 +59,27 @@ function App() {
 					)
 					: (
 						<>
-							<GenericSuspense id='races-container'>
-								<RacesContainer />
-							</GenericSuspense>
-							<GenericSuspense id='leaderboard'>
-								<Leaderboard />
-							</GenericSuspense>
-							<GenericSuspense id='eliminated-pilots-view'>
-								<EliminatedPilotsView />
-							</GenericSuspense>
+							<div className='app-main-left'>
+								<GenericSuspense id='races-container'>
+									<RacesContainer />
+								</GenericSuspense>
+								<div className='app-legend-inline'>
+									<Legend />
+								</div>
+							</div>
+							<div className='app-main-right'>
+								<GenericSuspense id='leaderboard'>
+									<Leaderboard />
+								</GenericSuspense>
+							</div>
 						</>
 					)}
 			</div>
-			<div className='app-legend'>
-				<Legend />
-			</div>
+			{isMobile && (
+				<div className='app-legend'>
+					<Legend />
+				</div>
+			)}
 		</div>
 	);
 }

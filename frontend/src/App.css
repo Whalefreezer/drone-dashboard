@@ -285,6 +285,52 @@
 	overflow-y: auto;
 }
 
+.app-main-left,
+.app-main-center,
+.app-main-right {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.app-main-left {
+	flex: 1;
+	gap: 12px;
+	min-width: 320px;
+}
+
+.app-main-center {
+	flex: 1.2;
+	min-width: 340px;
+}
+
+.app-main-center .leaderboard-container {
+	flex: 1;
+}
+
+.app-main-right {
+	flex: 0.9;
+	min-width: 280px;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-gutter: stable both-edges;
+	padding-right: 4px;
+}
+
+.app-legend-inline {
+	flex-shrink: 0;
+	padding: 8px 12px 12px;
+	border-radius: 8px;
+	background-color: #1a1a1a;
+	border: 1px solid #333;
+}
+
+.app-main-content.mobile .app-legend-inline {
+	display: none;
+}
+
 .app-legend {
 	display: flex;
 	justify-content: center;

@@ -41,11 +41,16 @@
 	overscroll-behavior: contain;
 	touch-action: pan-y;
 	padding-right: 4px;
-	padding-bottom: 16px;
 }
 
 .leaderboard-table-viewport.autoscrolling {
 	cursor: default;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+
+.leaderboard-table-viewport.autoscrolling::-webkit-scrollbar {
+	display: none;
 }
 
 /* --- Table Styles --- */
