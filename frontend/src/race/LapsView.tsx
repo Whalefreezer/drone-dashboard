@@ -19,12 +19,7 @@ import { ColumnChooser } from '../common/ColumnChooser.tsx';
 import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
 import { useAtom } from 'jotai';
 
-const POSITION_POINTS: Record<number, number> = {
-	1: 10,
-	2: 7,
-	3: 4,
-	4: 3,
-};
+const POSITION_POINTS: Record<number, number> = {};
 
 interface LapsViewProps {
 	raceId: string;

@@ -1,7 +1,7 @@
 import './App.css';
 
 import { Legend, TimeDisplay, ViewSelector } from './common/index.ts';
-import { CurrentRaceView, NextRacesView, RacesContainer } from './race/index.ts';
+import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
