@@ -37,21 +37,11 @@
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	overflow-y: auto;
-	overflow-x: auto;
-	scrollbar-gutter: stable both-edges;
-	overscroll-behavior: contain;
-	touch-action: pan-y;
-	padding-right: 4px;
+	overflow: hidden;
 }
 
 .leaderboard-table-viewport.autoscrolling {
 	cursor: default;
-	scrollbar-width: none;
-}
-
-.leaderboard-table-viewport.autoscrolling::-webkit-scrollbar {
-	display: none;
 }
 
 .leaderboard-table-viewport .leaderboard-table {
@@ -64,7 +54,15 @@
 .leaderboard-table-viewport .leaderboard-table .gt-scroll {
 	flex: 1;
 	min-height: 0;
-	overflow-x: auto;
+	overflow: auto;
+	scrollbar-gutter: stable;
+	overscroll-behavior: contain;
+	touch-action: pan-y;
+	padding-right: 4px;
+}
+
+.leaderboard-table-viewport.autoscrolling .gt-scroll {
+	overflow: hidden !important;
 }
 
 /* --- Table Styles --- */

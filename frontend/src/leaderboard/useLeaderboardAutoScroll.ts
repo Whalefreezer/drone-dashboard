@@ -38,6 +38,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 ): UseLeaderboardAutoScrollResult<Row> {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const bodyRef = useRef<HTMLElement | null>(null);
+	const scrollTargetRef = useRef<HTMLElement | null>(null);
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -75,7 +76,6 @@ export function useLeaderboardAutoScroll<Row extends object>(
 	const framesSinceMoveRef = useRef(0);
 	const residualPixelsRef = useRef(0);
 	const virtualOffsetRef = useRef(0);
-	const suppressScrollEventRef = useRef(false);
 
 	const recomputeOverflow = useCallback(() => {
 		const viewport = containerRef.current;
@@ -83,7 +83,9 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		const body = viewport.querySelector<HTMLElement>('.gt-body');
 		if (!body) return;
 		bodyRef.current = body;
-		const viewportHeight = viewport.clientHeight;
+		const scrollTarget = viewport.querySelector<HTMLElement>('.gt-scroll') ?? viewport;
+		scrollTargetRef.current = scrollTarget;
+		const viewportHeight = scrollTarget.clientHeight;
 		const rawHeight = body.scrollHeight;
 		const baseHeight = duplicationMultiplier > 1 && rawHeight > 0 ? rawHeight / duplicationMultiplier : rawHeight;
 		baseContentHeightRef.current = baseHeight;
@@ -107,11 +109,14 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		const body = viewport.querySelector<HTMLElement>('.gt-body');
 		if (!body) return;
 		bodyRef.current = body;
+		scrollTargetRef.current = viewport.querySelector<HTMLElement>('.gt-scroll') ?? viewport;
+		virtualOffsetRef.current = (scrollTargetRef.current ?? viewport).scrollTop;
 
 		recomputeOverflow();
 
 		const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => recomputeOverflow());
-		resizeObserver?.observe(viewport);
+		const scrollTarget = scrollTargetRef.current ?? viewport;
+		resizeObserver?.observe(scrollTarget);
 		resizeObserver?.observe(body);
 
 		const mutationObserver = typeof MutationObserver === 'undefined' ? null : new MutationObserver(() => recomputeOverflow());
@@ -125,16 +130,16 @@ export function useLeaderboardAutoScroll<Row extends object>(
 
 	const applyOffset = useCallback((offset: number) => {
 		const viewport = containerRef.current;
+		const scrollTarget = scrollTargetRef.current ?? viewport;
 		const cycleHeight = cycleHeightRef.current;
-		if (!viewport || cycleHeight <= 0) return;
+		if (!scrollTarget || cycleHeight <= 0) return;
 
 		const normalized = ((offset % cycleHeight) + cycleHeight) % cycleHeight;
 		const integralOffset = Math.round(normalized);
 		virtualOffsetRef.current = integralOffset;
 
-		if (Math.abs(viewport.scrollTop - integralOffset) > 0.5) {
-			suppressScrollEventRef.current = true;
-			viewport.scrollTop = integralOffset;
+		if (Math.abs(scrollTarget.scrollTop - integralOffset) > 0.5) {
+			scrollTarget.scrollTop = integralOffset;
 		}
 	}, []);
 
@@ -149,8 +154,9 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		disabled: !shouldAutoScroll,
 		onResume: () => {
 			const viewport = containerRef.current;
-			if (!viewport) return;
-			virtualOffsetRef.current = viewport.scrollTop;
+			const scrollTarget = scrollTargetRef.current ?? viewport;
+			if (!scrollTarget) return;
+			virtualOffsetRef.current = scrollTarget.scrollTop;
 			applyOffset(virtualOffsetRef.current);
 			resetCounters();
 		},
@@ -175,7 +181,8 @@ export function useLeaderboardAutoScroll<Row extends object>(
 	useEffect(() => {
 		if (!shouldAutoScroll) return;
 		const viewport = containerRef.current;
-		if (!viewport) return;
+		const scrollTarget = scrollTargetRef.current ?? viewport;
+		if (!viewport || !scrollTarget) return;
 		let frameId = 0;
 
 		const step = (time: number) => {
@@ -242,25 +249,21 @@ export function useLeaderboardAutoScroll<Row extends object>(
 	useEffect(() => {
 		if (!shouldAutoScroll) return;
 		const viewport = containerRef.current;
-		if (!viewport) return;
+		const scrollTarget = scrollTargetRef.current ?? viewport;
+		if (!viewport || !scrollTarget) return;
 
 		let lastPointerTs = 0;
 		const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
 
 		const handleInteraction = (event: Event) => {
 			if (!isAutoScrollAllowedRef.current) return;
-			if (event.type === 'scroll') {
-				if (suppressScrollEventRef.current) {
-					suppressScrollEventRef.current = false;
-					return;
-				}
-				virtualOffsetRef.current = viewport.scrollTop;
-				resetCounters();
-			}
 			if (event.type === 'pointermove') {
 				const currentTs = now();
 				if (currentTs - lastPointerTs < 80) return;
 				lastPointerTs = currentTs;
+			}
+			if (scrollTarget) {
+				virtualOffsetRef.current = scrollTarget.scrollTop;
 			}
 			isActiveRef.current = false;
 			resetCounters();
@@ -268,38 +271,30 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		};
 
 		const passiveOpts: AddEventListenerOptions = { passive: true };
-		viewport.addEventListener('pointermove', handleInteraction, passiveOpts);
-		viewport.addEventListener('pointerdown', handleInteraction, passiveOpts);
-		viewport.addEventListener('wheel', handleInteraction, passiveOpts);
-		viewport.addEventListener('touchstart', handleInteraction, passiveOpts);
-		viewport.addEventListener('touchmove', handleInteraction, passiveOpts);
-		viewport.addEventListener('scroll', handleInteraction, passiveOpts);
-		viewport.addEventListener('focusin', handleInteraction);
-		viewport.addEventListener('keydown', handleInteraction);
+		const targetForEvents = scrollTarget ?? viewport;
+		targetForEvents.addEventListener('pointermove', handleInteraction, passiveOpts);
+		targetForEvents.addEventListener('pointerdown', handleInteraction, passiveOpts);
+		targetForEvents.addEventListener('wheel', handleInteraction, passiveOpts);
+		targetForEvents.addEventListener('touchstart', handleInteraction, passiveOpts);
+		targetForEvents.addEventListener('touchmove', handleInteraction, passiveOpts);
+		targetForEvents.addEventListener('focusin', handleInteraction);
+		targetForEvents.addEventListener('keydown', handleInteraction);
 
 		return () => {
-			viewport.removeEventListener('pointermove', handleInteraction, passiveOpts);
-			viewport.removeEventListener('pointerdown', handleInteraction, passiveOpts);
-			viewport.removeEventListener('wheel', handleInteraction, passiveOpts);
-			viewport.removeEventListener('touchstart', handleInteraction, passiveOpts);
-			viewport.removeEventListener('touchmove', handleInteraction, passiveOpts);
-			viewport.removeEventListener('scroll', handleInteraction, passiveOpts);
-			viewport.removeEventListener('focusin', handleInteraction);
-			viewport.removeEventListener('keydown', handleInteraction);
+			targetForEvents.removeEventListener('pointermove', handleInteraction, passiveOpts);
+			targetForEvents.removeEventListener('pointerdown', handleInteraction, passiveOpts);
+			targetForEvents.removeEventListener('wheel', handleInteraction, passiveOpts);
+			targetForEvents.removeEventListener('touchstart', handleInteraction, passiveOpts);
+			targetForEvents.removeEventListener('touchmove', handleInteraction, passiveOpts);
+			targetForEvents.removeEventListener('focusin', handleInteraction);
+			targetForEvents.removeEventListener('keydown', handleInteraction);
 		};
-	}, [resetCounters, shouldAutoScroll, triggerPause]);
-
-	useEffect(() => {
-		if (!shouldAutoScroll) {
-			const viewport = containerRef.current;
-			if (viewport) suppressScrollEventRef.current = false;
-		}
-	}, [shouldAutoScroll]);
+	}, [resetCounters, rows.length, shouldAutoScroll, triggerPause]);
 
 	useEffect(() => {
 		if (!shouldAutoScroll) return;
 		applyOffset(virtualOffsetRef.current);
-	}, [applyOffset, shouldAutoScroll]);
+	}, [applyOffset, rows.length, shouldAutoScroll]);
 
 	const isAutoScrolling = shouldAutoScroll && !isInteractionPaused;
 
