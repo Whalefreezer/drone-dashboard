@@ -35,8 +35,10 @@
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	display: flex;
+	flex-direction: column;
 	overflow-y: auto;
-	overflow-x: hidden;
+	overflow-x: auto;
 	scrollbar-gutter: stable both-edges;
 	overscroll-behavior: contain;
 	touch-action: pan-y;
@@ -45,12 +47,24 @@
 
 .leaderboard-table-viewport.autoscrolling {
 	cursor: default;
-	overflow-y: hidden;
 	scrollbar-width: none;
 }
 
 .leaderboard-table-viewport.autoscrolling::-webkit-scrollbar {
 	display: none;
+}
+
+.leaderboard-table-viewport .leaderboard-table {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.leaderboard-table-viewport .leaderboard-table .gt-scroll {
+	flex: 1;
+	min-height: 0;
+	overflow-x: auto;
 }
 
 /* --- Table Styles --- */

@@ -24,6 +24,7 @@ interface UseLeaderboardAutoScrollResult<Row> {
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 const LOOP_GAP_PX = 24;
+const INITIAL_FRAME_INTERVAL = 1000 / 60; // Assume 60 Hz until measured
 
 export function useLeaderboardAutoScroll<Row extends object>(
 	{
@@ -62,12 +63,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 
 	const getRowClassName = useCallback((row: Row, index: number) => {
 		const metaItem = meta[index];
-		const originalClass = baseGetRowClassName(rows[metaItem.sourceIndex], metaItem.sourceIndex);
-		if (!originalClass) return metaItem.clone ? 'loop-clone' : undefined;
-		if (!metaItem.clone) return originalClass;
-		const filtered = originalClass.split(' ').filter((cls) => cls && cls !== 'split-after');
-		filtered.push('loop-clone');
-		return filtered.join(' ');
+		return baseGetRowClassName(rows[metaItem.sourceIndex], metaItem.sourceIndex);
 	}, [baseGetRowClassName, meta, rows]);
 
 	const baseContentHeightRef = useRef(0);
@@ -75,9 +71,11 @@ export function useLeaderboardAutoScroll<Row extends object>(
 	const isAutoScrollAllowedRef = useRef(false);
 	const isActiveRef = useRef(false);
 	const lastFrameTimeRef = useRef<number | null>(null);
+	const frameIntervalEstimateRef = useRef(INITIAL_FRAME_INTERVAL);
+	const framesSinceMoveRef = useRef(0);
+	const residualPixelsRef = useRef(0);
 	const virtualOffsetRef = useRef(0);
 	const suppressScrollEventRef = useRef(false);
-	const isFractionalActiveRef = useRef(false);
 
 	const recomputeOverflow = useCallback(() => {
 		const viewport = containerRef.current;
@@ -89,14 +87,16 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		const rawHeight = body.scrollHeight;
 		const baseHeight = duplicationMultiplier > 1 && rawHeight > 0 ? rawHeight / duplicationMultiplier : rawHeight;
 		baseContentHeightRef.current = baseHeight;
-		const cycleHeight = Math.max(0, rawHeight + (duplicationMultiplier > 1 ? LOOP_GAP_PX : 0));
+		const cycleHeight = baseHeight + (duplicationMultiplier > 1 ? LOOP_GAP_PX : 0);
 		cycleHeightRef.current = cycleHeight;
 		if (duplicationMultiplier > 1) body.style.paddingBottom = `${LOOP_GAP_PX}px`;
 		else body.style.paddingBottom = '';
+
 		if (viewportHeight <= 0) {
 			setIsOverflowing(false);
 			return;
 		}
+
 		const needsScroll = allowAutoScroll && baseHeight - viewportHeight > 1;
 		setIsOverflowing(needsScroll);
 	}, [allowAutoScroll, duplicationMultiplier]);
@@ -123,36 +123,25 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		};
 	}, [recomputeOverflow, rows.length]);
 
-	const applyFractionalOffset = useCallback((offset: number) => {
+	const applyOffset = useCallback((offset: number) => {
 		const viewport = containerRef.current;
-		const body = bodyRef.current;
 		const cycleHeight = cycleHeightRef.current;
-		if (!viewport || !body || cycleHeight <= 0) return;
+		if (!viewport || cycleHeight <= 0) return;
+
 		const normalized = ((offset % cycleHeight) + cycleHeight) % cycleHeight;
-		virtualOffsetRef.current = normalized;
-		const integerPart = Math.floor(normalized);
-		const fractional = normalized - integerPart;
-		if (viewport.scrollTop !== integerPart) {
+		const integralOffset = Math.round(normalized);
+		virtualOffsetRef.current = integralOffset;
+
+		if (Math.abs(viewport.scrollTop - integralOffset) > 0.5) {
 			suppressScrollEventRef.current = true;
-			viewport.scrollTop = integerPart;
-		}
-		if (fractional === 0) {
-			body.style.transform = '';
-			isFractionalActiveRef.current = false;
-		} else {
-			body.style.transform = `translate3d(0, ${-fractional}px, 0)`;
-			body.style.willChange = 'transform';
-			isFractionalActiveRef.current = true;
+			viewport.scrollTop = integralOffset;
 		}
 	}, []);
 
-	const clearFractionalOffset = useCallback(() => {
-		const body = bodyRef.current;
-		if (body) {
-			body.style.transform = '';
-			body.style.willChange = '';
-		}
-		isFractionalActiveRef.current = false;
+	const resetCounters = useCallback(() => {
+		framesSinceMoveRef.current = 0;
+		residualPixelsRef.current = 0;
+		lastFrameTimeRef.current = null;
 	}, []);
 
 	const { isPaused: isInteractionPaused, triggerPause, cancel } = useInactivityPause({
@@ -160,34 +149,31 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		disabled: !shouldAutoScroll,
 		onResume: () => {
 			const viewport = containerRef.current;
-			const cycleHeight = cycleHeightRef.current;
-			if (!viewport || cycleHeight <= 0) return;
-			virtualOffsetRef.current = ((viewport.scrollTop % cycleHeight) + cycleHeight) % cycleHeight;
-			applyFractionalOffset(virtualOffsetRef.current);
-			lastFrameTimeRef.current = null;
+			if (!viewport) return;
+			virtualOffsetRef.current = viewport.scrollTop;
+			applyOffset(virtualOffsetRef.current);
+			resetCounters();
 		},
 	});
 
 	useEffect(() => {
 		isAutoScrollAllowedRef.current = shouldAutoScroll;
 		if (!shouldAutoScroll) {
-			lastFrameTimeRef.current = null;
-			baseContentHeightRef.current = 0;
-			virtualOffsetRef.current = 0;
-			clearFractionalOffset();
+			resetCounters();
 			cancel();
 		}
-	}, [cancel, clearFractionalOffset, shouldAutoScroll]);
+	}, [cancel, resetCounters, shouldAutoScroll]);
 
 	useEffect(() => {
 		isActiveRef.current = shouldAutoScroll && !isInteractionPaused;
 		if (!isActiveRef.current) {
-			clearFractionalOffset();
+			resetCounters();
 		}
-		if (isActiveRef.current) lastFrameTimeRef.current = null;
-	}, [clearFractionalOffset, isInteractionPaused, shouldAutoScroll]);
+		if (isActiveRef.current) applyOffset(virtualOffsetRef.current);
+	}, [applyOffset, isInteractionPaused, resetCounters, shouldAutoScroll]);
 
 	useEffect(() => {
+		if (!shouldAutoScroll) return;
 		const viewport = containerRef.current;
 		if (!viewport) return;
 		let frameId = 0;
@@ -204,18 +190,45 @@ export function useLeaderboardAutoScroll<Row extends object>(
 				return;
 			}
 
-			const previous = lastFrameTimeRef.current ?? time;
-			const delta = time - previous;
+			const previousTimestamp = lastFrameTimeRef.current;
 			lastFrameTimeRef.current = time;
 
-			if (delta <= 0) {
+			if (previousTimestamp === null) {
 				frameId = requestAnimationFrame(step);
 				return;
 			}
 
-			const distance = (speedPxPerSec * delta) / 1000;
-			const next = (virtualOffsetRef.current + distance) % cycleHeight;
-			applyFractionalOffset(next);
+			const delta = time - previousTimestamp;
+			if (delta <= 0 || delta > 500) {
+				frameId = requestAnimationFrame(step);
+				return;
+			}
+
+			const smoothedInterval = (frameIntervalEstimateRef.current * 0.8) + (delta * 0.2);
+			frameIntervalEstimateRef.current = Math.max(4, Math.min(100, smoothedInterval));
+
+			const frameInterval = frameIntervalEstimateRef.current;
+			const pixelsPerFrameTarget = (speedPxPerSec * frameInterval) / 1000;
+			let pixelsToAdvance = 0;
+
+			if (pixelsPerFrameTarget < 1) {
+				const framesPerPixel = Math.max(1, Math.round(1 / Math.max(pixelsPerFrameTarget, 0.0001)));
+				framesSinceMoveRef.current += 1;
+				if (framesSinceMoveRef.current >= framesPerPixel) {
+					pixelsToAdvance = 1;
+					framesSinceMoveRef.current = 0;
+				}
+			} else {
+				residualPixelsRef.current += pixelsPerFrameTarget;
+				pixelsToAdvance = Math.floor(residualPixelsRef.current);
+				if (pixelsToAdvance > 0) residualPixelsRef.current -= pixelsToAdvance;
+			}
+
+			if (pixelsToAdvance > 0) {
+				const nextOffset = virtualOffsetRef.current + pixelsToAdvance;
+				applyOffset(nextOffset);
+			}
+
 			frameId = requestAnimationFrame(step);
 		};
 
@@ -224,7 +237,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 			cancelAnimationFrame(frameId);
 			lastFrameTimeRef.current = null;
 		};
-	}, [applyFractionalOffset, rows.length, speedPxPerSec]);
+	}, [applyOffset, resetCounters, rows.length, shouldAutoScroll, speedPxPerSec]);
 
 	useEffect(() => {
 		if (!shouldAutoScroll) return;
@@ -241,10 +254,8 @@ export function useLeaderboardAutoScroll<Row extends object>(
 					suppressScrollEventRef.current = false;
 					return;
 				}
-				const scroller = containerRef.current;
-				if (scroller) {
-					virtualOffsetRef.current = scroller.scrollTop;
-				}
+				virtualOffsetRef.current = viewport.scrollTop;
+				resetCounters();
 			}
 			if (event.type === 'pointermove') {
 				const currentTs = now();
@@ -252,8 +263,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 				lastPointerTs = currentTs;
 			}
 			isActiveRef.current = false;
-			lastFrameTimeRef.current = null;
-			clearFractionalOffset();
+			resetCounters();
 			triggerPause();
 		};
 
@@ -277,7 +287,19 @@ export function useLeaderboardAutoScroll<Row extends object>(
 			viewport.removeEventListener('focusin', handleInteraction);
 			viewport.removeEventListener('keydown', handleInteraction);
 		};
-	}, [clearFractionalOffset, shouldAutoScroll, triggerPause]);
+	}, [resetCounters, shouldAutoScroll, triggerPause]);
+
+	useEffect(() => {
+		if (!shouldAutoScroll) {
+			const viewport = containerRef.current;
+			if (viewport) suppressScrollEventRef.current = false;
+		}
+	}, [shouldAutoScroll]);
+
+	useEffect(() => {
+		if (!shouldAutoScroll) return;
+		applyOffset(virtualOffsetRef.current);
+	}, [applyOffset, shouldAutoScroll]);
 
 	const isAutoScrolling = shouldAutoScroll && !isInteractionPaused;
 

@@ -286,7 +286,6 @@
 }
 
 .app-main-left,
-.app-main-center,
 .app-main-right {
 	display: flex;
 	flex-direction: column;
@@ -294,29 +293,18 @@
 }
 
 .app-main-left {
-	flex: 1;
+	flex: 0.9;
 	gap: 12px;
 	min-width: 320px;
 }
 
-.app-main-center {
-	flex: 1.2;
+.app-main-right {
+	flex: 1.1;
 	min-width: 340px;
 }
 
-.app-main-center .leaderboard-container {
+.app-main-right .leaderboard-container {
 	flex: 1;
-}
-
-.app-main-right {
-	flex: 0.9;
-	min-width: 280px;
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	overflow-y: auto;
-	scrollbar-gutter: stable both-edges;
-	padding-right: 4px;
 }
 
 .app-legend-inline {
