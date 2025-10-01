@@ -17,6 +17,7 @@ export function useInactivityPause(
 ): UseInactivityPauseResult {
 	const [isPaused, setIsPaused] = useState(false);
 	const timeoutRef = useRef<number | null>(null);
+	const firstPauseRef = useRef(false);
 
 	const clearTimer = useCallback(() => {
 		if (timeoutRef.current) {
@@ -40,6 +41,13 @@ export function useInactivityPause(
 			onResume?.();
 		}, delayMs);
 	}, [clearTimer, delayMs, disabled, onResume]);
+
+	// immediately set to paused
+	useEffect(() => {
+		if (disabled || firstPauseRef.current) return;
+		firstPauseRef.current = true;
+		triggerPause();
+	}, [disabled]);
 
 	useEffect(() => cancel, [cancel]);
 

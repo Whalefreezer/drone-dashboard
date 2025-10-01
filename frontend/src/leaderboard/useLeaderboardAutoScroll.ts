@@ -26,6 +26,40 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 const LOOP_GAP_PX = 24;
 const INITIAL_FRAME_INTERVAL = 1000 / 60; // Assume 60 Hz until measured
 
+// Common monitor refresh rates (Hz) -> frame intervals (ms)
+const COMMON_REFRESH_RATES = [
+	{ hz: 240, interval: 1000 / 240 }, // 4.167ms
+	{ hz: 165, interval: 1000 / 165 }, // 6.061ms
+	{ hz: 144, interval: 1000 / 144 }, // 6.944ms
+	{ hz: 120, interval: 1000 / 120 }, // 8.333ms
+	{ hz: 75, interval: 1000 / 75 }, // 13.333ms
+	{ hz: 60, interval: 1000 / 60 }, // 16.667ms
+	{ hz: 30, interval: 1000 / 30 }, // 33.333ms
+];
+
+function snapToCommonRefreshRate(measuredInterval: number): number {
+	// Find the closest common refresh rate
+	let closest = COMMON_REFRESH_RATES[0];
+	let minDiff = Math.abs(measuredInterval - closest.interval);
+
+	for (let i = 1; i < COMMON_REFRESH_RATES.length; i++) {
+		const diff = Math.abs(measuredInterval - COMMON_REFRESH_RATES[i].interval);
+		if (diff < minDiff) {
+			minDiff = diff;
+			closest = COMMON_REFRESH_RATES[i];
+		}
+	}
+
+	// Only snap if we're within 20% of the target refresh rate
+	// This prevents snapping when framerate is actually irregular
+	const tolerance = closest.interval * 0.2;
+	if (minDiff <= tolerance) {
+		return closest.interval;
+	}
+
+	return measuredInterval;
+}
+
 export function useLeaderboardAutoScroll<Row extends object>(
 	{
 		rows,
@@ -33,7 +67,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		baseGetRowKey,
 		baseGetRowClassName,
 		speedPxPerSec = 16,
-		resumeDelayMs = 4500,
+		resumeDelayMs = 10_000,
 	}: UseLeaderboardAutoScrollArgs<Row>,
 ): UseLeaderboardAutoScrollResult<Row> {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -212,9 +246,11 @@ export function useLeaderboardAutoScroll<Row extends object>(
 			}
 
 			const smoothedInterval = (frameIntervalEstimateRef.current * 0.8) + (delta * 0.2);
-			frameIntervalEstimateRef.current = Math.max(4, Math.min(100, smoothedInterval));
+			const clampedInterval = Math.max(4, Math.min(100, smoothedInterval));
+			const snappedInterval = snapToCommonRefreshRate(clampedInterval);
+			frameIntervalEstimateRef.current = clampedInterval;
 
-			const frameInterval = frameIntervalEstimateRef.current;
+			const frameInterval = snappedInterval;
 			const pixelsPerFrameTarget = (speedPxPerSec * frameInterval) / 1000;
 			let pixelsToAdvance = 0;
 
