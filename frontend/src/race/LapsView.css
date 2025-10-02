@@ -104,6 +104,7 @@
 	left: 56px; /* Align with Position column width */
 	z-index: 2;
 	background: var(--row-bg, var(--table-bg-odd));
+	white-space: nowrap; /* Prevent pilot name wrapping */
 }
 
 .laps-table .gt-header [data-col='pos'] {

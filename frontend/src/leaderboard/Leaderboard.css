@@ -209,6 +209,11 @@
 	gap: 6px;
 }
 
+/* Prevent pilot name wrapping in leaderboard */
+.leaderboard-table .gt-cell[data-col='pilot'] {
+	white-space: nowrap;
+}
+
 .leaderboard-pilot-link:hover,
 .leaderboard-pilot-link:focus-visible {
 	text-decoration: underline;
