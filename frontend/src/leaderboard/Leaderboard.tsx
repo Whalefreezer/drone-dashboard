@@ -14,6 +14,8 @@ import useBreakpoint from '../responsive/useBreakpoint.ts';
 import { FavoritesFilter } from '../common/FavoritesFilter.tsx';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import { useLeaderboardAutoScroll } from './useLeaderboardAutoScroll.ts';
+import { leaderboardAutoscrollEnabledAtom } from '../state/autoscroll-atoms.ts';
+import { AutoscrollToggle } from './AutoscrollToggle.tsx';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
@@ -49,7 +51,8 @@ export function Leaderboard() {
 
 	const prefsKey = useMemo(() => `leaderboard:${breakpoint}`, [breakpoint]);
 
-	const allowAutoScroll = !isMobile;
+	const [autoscrollEnabled] = useAtom(leaderboardAutoscrollEnabledAtom);
+	const allowAutoScroll = !isMobile && autoscrollEnabled;
 
 	return (
 		<div className='leaderboard-container'>
@@ -57,7 +60,10 @@ export function Leaderboard() {
 				<div className='leaderboard-toolbar-left'>
 					<FavoritesFilter />
 				</div>
-				<ColumnChooser tableId={prefsKey} columns={columns} compact label='Columns' defaultVisible={defaultKeys} />
+				<div className='leaderboard-toolbar-right'>
+					{!isMobile && <AutoscrollToggle />}
+					<ColumnChooser tableId={prefsKey} columns={columns} compact label='Columns' defaultVisible={defaultKeys} />
+				</div>
 			</div>
 			<VisibleTable
 				columns={columns}

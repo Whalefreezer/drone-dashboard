@@ -66,7 +66,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		baseGetRowKey,
 		baseGetRowClassName,
 		speedPxPerSec = 30,
-		resumeDelayMs = 2_000,
+		resumeDelayMs = 10_000,
 	}: UseLeaderboardAutoScrollArgs<Row>,
 ): UseLeaderboardAutoScrollResult<Row> {
 	const containerRef = useRef<HTMLDivElement>(null);

@@ -31,6 +31,12 @@
 	gap: 8px;
 }
 
+.leaderboard-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
 .leaderboard-table-viewport {
 	flex: 1;
 	min-height: 0;
