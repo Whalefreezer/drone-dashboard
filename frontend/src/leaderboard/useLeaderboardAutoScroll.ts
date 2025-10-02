@@ -23,7 +23,6 @@ interface UseLeaderboardAutoScrollResult<Row> {
 }
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
-const LOOP_GAP_PX = 24;
 const INITIAL_FRAME_INTERVAL = 1000 / 60; // Assume 60 Hz until measured
 
 // Common monitor refresh rates (Hz) -> frame intervals (ms)
@@ -66,8 +65,8 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		allowAutoScroll,
 		baseGetRowKey,
 		baseGetRowClassName,
-		speedPxPerSec = 16,
-		resumeDelayMs = 10_000,
+		speedPxPerSec = 30,
+		resumeDelayMs = 2_000,
 	}: UseLeaderboardAutoScrollArgs<Row>,
 ): UseLeaderboardAutoScrollResult<Row> {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -123,10 +122,8 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		const rawHeight = body.scrollHeight;
 		const baseHeight = duplicationMultiplier > 1 && rawHeight > 0 ? rawHeight / duplicationMultiplier : rawHeight;
 		baseContentHeightRef.current = baseHeight;
-		const cycleHeight = baseHeight + (duplicationMultiplier > 1 ? LOOP_GAP_PX : 0);
+		const cycleHeight = baseHeight;
 		cycleHeightRef.current = cycleHeight;
-		if (duplicationMultiplier > 1) body.style.paddingBottom = `${LOOP_GAP_PX}px`;
-		else body.style.paddingBottom = '';
 
 		if (viewportHeight <= 0) {
 			setIsOverflowing(false);

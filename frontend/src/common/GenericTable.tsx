@@ -229,7 +229,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		}, 0);
 	}, []);
 
-	const bufferToPreventFlickeringOfScrollbar = 10;
+	const bufferToPreventFlickeringOfScrollbar = 0;
 
 	const bodySpring = useSpring({
 		height: totalHeight + bufferToPreventFlickeringOfScrollbar,
@@ -267,7 +267,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		<div className={[className, 'gt'].filter(Boolean).join(' ')} role='grid'>
 			<div className={scrollX ? 'gt-scroll' : undefined} style={scrollX ? { overflowX: 'auto' } : undefined}>
 				<div style={{ display: 'inline-block', minWidth: '100%' }}>
-					<div className='gt-header' role='row' style={{ display: 'inline-grid', minWidth: '100%', gridTemplateColumns }}>
+					<div className='gt-header' role='row' style={{ minWidth: '100%', gridTemplateColumns }}>
 						{effectiveColumns.map((col) => {
 							const style: React.CSSProperties = {};
 							if (col.headerAlign) style.textAlign = col.headerAlign;
