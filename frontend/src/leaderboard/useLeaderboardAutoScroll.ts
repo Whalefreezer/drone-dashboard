@@ -125,13 +125,9 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		const cycleHeight = baseHeight;
 		cycleHeightRef.current = cycleHeight;
 
-		if (viewportHeight <= 0) {
-			setIsOverflowing(false);
-			return;
-		}
-
-		const needsScroll = allowAutoScroll && baseHeight - viewportHeight > 1;
-		setIsOverflowing(needsScroll);
+		const needsScroll = viewportHeight > 0 && allowAutoScroll && baseHeight - viewportHeight > 1;
+		// Defer state update to avoid infinite loop during layout phase
+		queueMicrotask(() => setIsOverflowing(needsScroll));
 	}, [allowAutoScroll, duplicationMultiplier]);
 
 	useIsomorphicLayoutEffect(() => {

@@ -155,7 +155,10 @@ function useRowMeasurements<RowCtx extends object>(
 
 			if (!measuredKeysRef.current.has(key)) {
 				const initialHeight = Math.max(1, Math.round(node.getBoundingClientRect().height));
-				if (initialHeight > 0) ensureHeight(initialHeight, true);
+				if (initialHeight > 0) {
+					// Defer state update to avoid infinite loop during ref attachment
+					queueMicrotask(() => ensureHeight(initialHeight, true));
+				}
 			}
 
 			if (typeof ResizeObserver === 'undefined') return;
