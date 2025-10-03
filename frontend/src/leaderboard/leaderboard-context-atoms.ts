@@ -2,7 +2,7 @@ import { Atom } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
-import { bracketsDataAtom, channelsDataAtom, pilotsAtom } from '../state/pbAtoms.ts';
+import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 
@@ -20,24 +20,63 @@ export const previousRaceIdsAtom = eagerAtom((get): string[] => {
 });
 
 // Scheduling/context atoms
-export const pilotRacesUntilNextAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): number => {
+export interface PilotNextRaceInfo {
+	racesAway: number;
+	raceId: string | null;
+	raceSourceId: string | null;
+	raceIndex: number;
+}
+
+export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
+	eagerAtom((get): PilotNextRaceInfo => {
 		const races = get(allRacesAtom);
-		// Find current race index
 		const current = get(currentRaceAtom);
 		const currentIndex = current ? races.findIndex((r) => r.id === current.id) : -1;
-		if (currentIndex === -1) return -1;
-		// In current?
-		const inCurrent = get(racePilotChannelsAtom(races[currentIndex].id)).some((pc) => pc.pilotId === pilotId);
-		if (inCurrent) return -2;
-		// Search forward
+		if (currentIndex === -1) {
+			return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1 };
+		}
+		const currentRace = races[currentIndex];
+		const currentAssignments = get(racePilotChannelsAtom(currentRace.id));
+		if (currentAssignments.some((pc) => pc.pilotId === pilotId)) {
+			return {
+				racesAway: -2,
+				raceId: currentRace.id,
+				raceSourceId: (currentRace.sourceId ?? '').trim() || null,
+				raceIndex: currentIndex,
+			};
+		}
 		let count = 0;
-		for (let i = currentIndex + 1; i < races.length; i++) {
-			const pcs = get(racePilotChannelsAtom(races[i].id));
-			if (pcs.some((pc) => pc.pilotId === pilotId)) return count;
+		for (let idx = currentIndex + 1; idx < races.length; idx++) {
+			const race = races[idx];
+			const pilots = get(racePilotChannelsAtom(race.id));
+			if (pilots.some((pc) => pc.pilotId === pilotId)) {
+				return {
+					racesAway: count,
+					raceId: race.id,
+					raceSourceId: (race.sourceId ?? '').trim() || null,
+					raceIndex: idx,
+				};
+			}
 			count++;
 		}
-		return -1;
+		return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1 };
+	})
+);
+
+export const pilotRacesUntilNextAtom = atomFamily((pilotId: string) =>
+	eagerAtom((get): number => get(pilotNextRaceInfoAtom(pilotId)).racesAway)
+);
+
+export const pilotNextRaceOverrideLabelAtom = atomFamily((pilotId: string) =>
+	eagerAtom((get): string | null => {
+		const info = get(pilotNextRaceInfoAtom(pilotId));
+		if (info.racesAway <= 0 || info.raceIndex < 0) return null;
+		const overrides = get(leaderboardNextRaceOverridesAtom);
+		for (const override of overrides) {
+			if (info.raceIndex < override.startIndex) continue;
+			if (info.raceIndex <= override.endIndex) return override.label;
+		}
+		return null;
 	})
 );
 

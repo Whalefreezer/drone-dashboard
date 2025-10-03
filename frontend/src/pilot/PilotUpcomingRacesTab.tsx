@@ -21,7 +21,7 @@ export function PilotUpcomingRacesTab(
 					<header>
 						<h2>Next race</h2>
 						<p>{nextRace.raceLabel}</p>
-						<span className='pilot-next-countdown'>{formatCountdown(nextRace.racesUntil)}</span>
+						<span className='pilot-next-countdown'>{formatCountdown(nextRace.racesUntil, nextRace.overrideLabel)}</span>
 					</header>
 					<RaceMeta race={nextRace} />
 				</section>
@@ -32,7 +32,7 @@ export function PilotUpcomingRacesTab(
 						<article key={race.raceId} className='pilot-upcoming-card'>
 							<header>
 								<h3>{race.raceLabel}</h3>
-								<p>{formatCountdown(race.racesUntil)}</p>
+								<p>{formatCountdown(race.racesUntil, race.overrideLabel)}</p>
 							</header>
 							<RaceMeta race={race} />
 						</article>
@@ -76,8 +76,9 @@ function RaceMeta({ race }: { race: PilotUpcomingRace }) {
 	);
 }
 
-const formatCountdown = (value: number): string => {
+const formatCountdown = (value: number, overrideLabel: string | null): string => {
 	if (value <= 0) return 'Staging';
+	if (overrideLabel) return overrideLabel;
 	if (value === 1) return 'In 1 race';
 	return `In ${value} races`;
 };

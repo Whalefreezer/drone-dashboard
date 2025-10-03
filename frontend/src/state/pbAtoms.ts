@@ -222,6 +222,75 @@ export const leaderboardSplitAtom = eagerAtom((get) => {
 	}
 });
 
+export interface NextRaceOverrideRecord {
+	startSourceId: string;
+	endSourceId: string | null;
+	label: string;
+}
+
+export interface ResolvedNextRaceOverride extends NextRaceOverrideRecord {
+	startIndex: number;
+	endIndex: number;
+}
+
+export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRaceOverride[] => {
+	const ev = get(currentEventAtom);
+	if (!ev) return [];
+	const races = get(allRacesAtom);
+	if (races.length === 0) return [];
+	const kv = get(clientKVRecordsAtom);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides' && r.event === ev.id);
+	if (!rec?.value) return [];
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(rec.value);
+	} catch {
+		return [];
+	}
+	if (!Array.isArray(parsed)) return [];
+	const raceIndexBySource = new Map<string, number>();
+	races.forEach((race, idx) => {
+		const sourceId = (race.sourceId ?? '').trim();
+		if (sourceId) {
+			raceIndexBySource.set(sourceId, idx);
+		}
+	});
+	const lastIndex = races.length - 1;
+	const cleaned: ResolvedNextRaceOverride[] = [];
+	for (const entry of parsed) {
+		if (!entry || typeof entry !== 'object') continue;
+		const start = typeof (entry as { startSourceId?: unknown }).startSourceId === 'string'
+			? (entry as { startSourceId: string }).startSourceId.trim()
+			: '';
+		if (!start) continue;
+		const labelRaw = typeof (entry as { label?: unknown }).label === 'string' ? (entry as { label: string }).label.trim() : '';
+		if (!labelRaw) continue;
+		const endRaw = typeof (entry as { endSourceId?: unknown }).endSourceId === 'string'
+			? (entry as { endSourceId: string }).endSourceId.trim()
+			: '';
+		const startIndex = raceIndexBySource.get(start);
+		if (startIndex == null) continue;
+		let endIndex: number;
+		if (endRaw) {
+			const resolvedEnd = raceIndexBySource.get(endRaw);
+			if (resolvedEnd == null) continue;
+			endIndex = resolvedEnd;
+		} else {
+			endIndex = lastIndex;
+		}
+		const normalizedStart = Math.min(startIndex, endIndex);
+		const normalizedEnd = Math.max(startIndex, endIndex);
+		cleaned.push({
+			startSourceId: start,
+			endSourceId: endRaw || null,
+			label: labelRaw,
+			startIndex: normalizedStart,
+			endIndex: normalizedEnd,
+		});
+	}
+	return cleaned.sort((a, b) => a.startIndex - b.startIndex);
+});
+
 /**
  * Processed laps for a specific race - computed from PB records
  */

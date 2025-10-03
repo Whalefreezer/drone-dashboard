@@ -4,7 +4,12 @@ import type { Column } from '../common/GenericTable.tsx';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
 import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
-import { pilotEliminatedInfoAtom, pilotPreferredChannelAtom, pilotRacesUntilNextAtom } from './leaderboard-context-atoms.ts';
+import {
+	pilotEliminatedInfoAtom,
+	pilotNextRaceOverrideLabelAtom,
+	pilotPreferredChannelAtom,
+	pilotRacesUntilNextAtom,
+} from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import { pilotsAtom } from '../state/pbAtoms.ts';
 import type { PBChannelRecord } from '../api/pbTypes.ts';
@@ -108,13 +113,18 @@ function formatTimeDifference(newTime: number, oldTime: number): string {
 }
 
 function NextRaceCell(
-	{ racesUntilNext, isEliminated }: { racesUntilNext: number; isEliminated: boolean },
+	{
+		racesUntilNext,
+		isEliminated,
+		overrideLabel,
+	}: { racesUntilNext: number; isEliminated: boolean; overrideLabel?: string | null },
 ) {
 	let content: React.ReactNode;
 	if (racesUntilNext === -1 && isEliminated) content = <span className='done-text'>Done</span>;
 	else if (racesUntilNext === -1) content = '-';
 	else if (racesUntilNext === 0) content = <span className='next-text'>Staging</span>;
 	else if (racesUntilNext === -2) content = <span className='racing-text'>Racing</span>;
+	else if (overrideLabel) content = overrideLabel;
 	else content = `${racesUntilNext}`;
 	return <div>{content}</div>;
 }
@@ -239,12 +249,14 @@ export function getLeaderboardColumns(
 			cell: function NextRaceStatusCellInline({ item }) {
 				const { pilotId } = item;
 				const racesUntilNext = useAtomValue(pilotRacesUntilNextAtom(pilotId));
+				const overrideLabel = useAtomValue(pilotNextRaceOverrideLabelAtom(pilotId));
 				const elimInfo = useAtomValue(pilotEliminatedInfoAtom(pilotId));
 				const isEliminated = !!elimInfo;
 				return (
 					<NextRaceCell
 						racesUntilNext={racesUntilNext}
 						isEliminated={isEliminated}
+						overrideLabel={overrideLabel}
 					/>
 				);
 			},

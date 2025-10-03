@@ -2,7 +2,14 @@ import { atomFamily } from 'jotai/utils';
 import { eagerAtom } from 'jotai-eager';
 import type { PBChannelRecord, PBPilotRecord, PBRaceRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import type { ProcessedLap } from '../state/atoms.ts';
-import { bracketsDataAtom, channelsDataAtom, pilotsAtom, raceProcessedLapsAtom, roundsDataAtom } from '../state/pbAtoms.ts';
+import {
+	bracketsDataAtom,
+	channelsDataAtom,
+	leaderboardNextRaceOverridesAtom,
+	pilotsAtom,
+	raceProcessedLapsAtom,
+	roundsDataAtom,
+} from '../state/pbAtoms.ts';
 import { allRacesAtom, currentRaceIndexAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import { pilotPreferredChannelAtom } from '../leaderboard/leaderboard-context-atoms.ts';
@@ -115,6 +122,7 @@ export interface PilotUpcomingRace {
 	isNext: boolean;
 	channel: ChannelSummary | null;
 	competitors: PilotUpcomingCompetitor[];
+	overrideLabel: string | null;
 }
 
 export const pilotRecordAtom = atomFamily((pilotId: string) =>
@@ -237,6 +245,7 @@ export const pilotUpcomingRacesAtom = atomFamily((pilotId: string) =>
 		const rounds = get(roundsDataAtom);
 		const channels = get(channelsDataAtom);
 		const pilots = get(pilotsAtom);
+		const overrides = get(leaderboardNextRaceOverridesAtom);
 
 		const results: PilotUpcomingRace[] = [];
 		for (let idx = startIndex; idx < races.length; idx++) {
@@ -262,6 +271,7 @@ export const pilotUpcomingRacesAtom = atomFamily((pilotId: string) =>
 				});
 
 			const racesUntil = idx - startIndex;
+			const override = overrides.find((range) => idx >= range.startIndex && idx <= range.endIndex) ?? null;
 			results.push({
 				raceId: race.id,
 				raceOrder: race.raceOrder,
@@ -275,6 +285,7 @@ export const pilotUpcomingRacesAtom = atomFamily((pilotId: string) =>
 				isNext: results.length === 0,
 				channel,
 				competitors,
+				overrideLabel: override?.label ?? null,
 			});
 		}
 
