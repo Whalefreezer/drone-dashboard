@@ -233,6 +233,10 @@ export interface ResolvedNextRaceOverride extends NextRaceOverrideRecord {
 	endIndex: number;
 }
 
+export interface NoRacesOverride {
+	label: string;
+}
+
 export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRaceOverride[] => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
@@ -262,9 +266,12 @@ export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRac
 		const start = typeof (entry as { startSourceId?: unknown }).startSourceId === 'string'
 			? (entry as { startSourceId: string }).startSourceId.trim()
 			: '';
-		if (!start) continue;
 		const labelRaw = typeof (entry as { label?: unknown }).label === 'string' ? (entry as { label: string }).label.trim() : '';
 		if (!labelRaw) continue;
+
+		// Skip entries without a startSourceId (they're handled by noRacesOverrideAtom)
+		if (!start) continue;
+
 		const endRaw = typeof (entry as { endSourceId?: unknown }).endSourceId === 'string'
 			? (entry as { endSourceId: string }).endSourceId.trim()
 			: '';
@@ -289,6 +296,36 @@ export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRac
 		});
 	}
 	return cleaned.sort((a, b) => a.startIndex - b.startIndex);
+});
+
+export const noRacesOverrideAtom = eagerAtom((get): NoRacesOverride | null => {
+	const ev = get(currentEventAtom);
+	if (!ev) return null;
+	const kv = get(clientKVRecordsAtom);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides' && r.event === ev.id);
+	if (!rec?.value) return null;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(rec.value);
+	} catch {
+		return null;
+	}
+	if (!Array.isArray(parsed)) return null;
+
+	// Find entry without startSourceId
+	for (const entry of parsed) {
+		if (!entry || typeof entry !== 'object') continue;
+		const start = typeof (entry as { startSourceId?: unknown }).startSourceId === 'string'
+			? (entry as { startSourceId: string }).startSourceId.trim()
+			: '';
+		if (start) continue; // Skip entries with a startSourceId
+
+		const labelRaw = typeof (entry as { label?: unknown }).label === 'string' ? (entry as { label: string }).label.trim() : '';
+		if (labelRaw) {
+			return { label: labelRaw };
+		}
+	}
+	return null;
 });
 
 /**

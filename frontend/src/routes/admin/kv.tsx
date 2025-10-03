@@ -37,7 +37,7 @@ function KVPage() {
 export const Route = createFileRoute('/admin/kv')({ component: KVPage });
 
 interface OverrideDraft {
-	startSourceId: string;
+	startSourceId: string; // Empty string means "no more races"
 	endSourceId: string;
 	label: string;
 }
@@ -103,21 +103,29 @@ const validateDrafts = (
 ): string[] => {
 	const messages: string[] = [];
 	const ranges: Array<{ start: number; end: number; row: number }> = [];
+	let hasNoRacesOverride = false;
 	drafts.forEach((draft, idx) => {
 		const row = idx + 1;
 		const startId = draft.startSourceId.trim();
 		const label = draft.label.trim();
+
+		if (!label) {
+			messages.push(`Row ${row}: label is required.`);
+		}
+
+		// Handle "no races" override (empty startSourceId)
 		if (!startId) {
-			messages.push(`Row ${row}: select a start race.`);
+			if (hasNoRacesOverride) {
+				messages.push(`Row ${row}: only one "No more races" override is allowed.`);
+			}
+			hasNoRacesOverride = true;
 			return;
 		}
+
 		const startIndex = raceIndexBySource.get(startId);
 		if (startIndex == null) {
 			messages.push(`Row ${row}: start race is not in the current schedule.`);
 			return;
-		}
-		if (!label) {
-			messages.push(`Row ${row}: label is required.`);
 		}
 		let endIndex = lastIndex;
 		const endId = draft.endSourceId.trim();
@@ -228,16 +236,26 @@ function NextRaceOverrideEditor(
 			return;
 		}
 		try {
+			const payload: Array<Record<string, string>> = [];
+
+			// Handle regular race-based overrides
 			const sorted = canonicalizeDrafts(drafts, raceIndexBySource, lastIndex)
 				.filter((item) => item.startIndex >= 0 && item.label);
-			const payload = sorted.map((item) => {
+			payload.push(...sorted.map((item) => {
 				const base: Record<string, string> = {
 					startSourceId: item.start,
 					label: item.label,
 				};
 				if (item.end) base.endSourceId = item.end;
 				return base;
-			});
+			}));
+
+			// Handle "no more races" override
+			const noRacesOverride = drafts.find((d) => !d.startSourceId.trim() && d.label.trim());
+			if (noRacesOverride) {
+				payload.push({ label: noRacesOverride.label.trim() });
+			}
+
 			const col = pb.collection('client_kv');
 			if (existingRecord) {
 				if (payload.length > 0) {
@@ -262,6 +280,9 @@ function NextRaceOverrideEditor(
 
 	async function clearOverrides() {
 		if (!eventId) return;
+		if (!confirm('Are you sure you want to clear all overrides? This cannot be undone.')) {
+			return;
+		}
 		setBusy(true);
 		setErr(null);
 		setOk(null);
@@ -297,24 +318,24 @@ function NextRaceOverrideEditor(
 				{drafts.map((draft, idx) => (
 					<div key={`override-${idx}`} className='override-row' style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
 						<label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-							<span className='muted'>Start race</span>
+							<span className='muted'>Start race (optional)</span>
 							<select
 								value={draft.startSourceId}
 								onChange={(e) =>
 									updateDraft(idx, { startSourceId: e.currentTarget.value })}
 								disabled={disabled || raceOptions.length === 0}
 							>
-								<option value=''>Select…</option>
+								<option value=''>No more races</option>
 								{raceOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
 							</select>
 						</label>
 						<label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-							<span className='muted'>End race (optional)</span>
+							<span className='muted'>End race</span>
 							<select
 								value={draft.endSourceId}
 								onChange={(e) =>
 									updateDraft(idx, { endSourceId: e.currentTarget.value })}
-								disabled={disabled || raceOptions.length === 0}
+								disabled={disabled || raceOptions.length === 0 || !draft.startSourceId}
 							>
 								<option value=''>Runs through final race</option>
 								{raceOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}

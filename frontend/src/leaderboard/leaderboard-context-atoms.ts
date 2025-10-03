@@ -2,7 +2,7 @@ import { Atom } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
-import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, pilotsAtom } from '../state/pbAtoms.ts';
+import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, noRacesOverrideAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 
@@ -70,12 +70,28 @@ export const pilotRacesUntilNextAtom = atomFamily((pilotId: string) =>
 export const pilotNextRaceOverrideLabelAtom = atomFamily((pilotId: string) =>
 	eagerAtom((get): string | null => {
 		const info = get(pilotNextRaceInfoAtom(pilotId));
-		if (info.racesAway <= 0 || info.raceIndex < 0) return null;
 		const overrides = get(leaderboardNextRaceOverridesAtom);
-		for (const override of overrides) {
-			if (info.raceIndex < override.startIndex) continue;
-			if (info.raceIndex <= override.endIndex) return override.label;
+
+		// For Racing (-2) or Staging (0), don't apply overrides (they have higher priority)
+		if (info.racesAway === -2 || info.racesAway === 0) return null;
+
+		// For pilots with a next race (racesAway > 0), check if their next race falls in an override range
+		if (info.racesAway > 0 && info.raceIndex >= 0) {
+			for (const override of overrides) {
+				if (info.raceIndex < override.startIndex) continue;
+				if (info.raceIndex <= override.endIndex) return override.label;
+			}
+			return null;
 		}
+
+		// For pilots without a next race (racesAway === -1), check the special "no races" override
+		if (info.racesAway === -1) {
+			const noRacesOverride = get(noRacesOverrideAtom);
+			if (noRacesOverride) {
+				return noRacesOverride.label;
+			}
+		}
+
 		return null;
 	})
 );

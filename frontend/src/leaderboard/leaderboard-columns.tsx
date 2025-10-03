@@ -120,11 +120,15 @@ function NextRaceCell(
 	}: { racesUntilNext: number; isEliminated: boolean; overrideLabel?: string | null },
 ) {
 	let content: React.ReactNode;
-	if (racesUntilNext === -1 && isEliminated) content = <span className='done-text'>Done</span>;
-	else if (racesUntilNext === -1) content = '-';
+	// Racing and Staging have highest priority (never show overrides for these)
+	if (racesUntilNext === -2) content = <span className='racing-text'>Racing</span>;
 	else if (racesUntilNext === 0) content = <span className='next-text'>Staging</span>;
-	else if (racesUntilNext === -2) content = <span className='racing-text'>Racing</span>;
+	// Override labels take precedence over default displays
 	else if (overrideLabel) content = overrideLabel;
+	// Default displays for no next race
+	else if (racesUntilNext === -1 && isEliminated) content = <span className='done-text'>Done</span>;
+	else if (racesUntilNext === -1) content = '-';
+	// Show numeric count for upcoming races
 	else content = `${racesUntilNext}`;
 	return <div>{content}</div>;
 }
