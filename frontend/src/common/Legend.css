@@ -1,13 +1,9 @@
 /* Legend Container Styles */
 .legend-container {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 	gap: 8px;
-	padding: 8px;
-	background-color: #222;
-	border-radius: 4px;
-	margin-bottom: 16px;
-	width: fit-content;
+	width: 100%;
 }
 
 /* Legend Item Container Styles */
@@ -22,33 +18,28 @@
 .legend-square {
 	width: 16px;
 	height: 16px;
-	border: 1px solid #666;
 }
 
 .legend-square-fastest-overall {
 	width: 16px;
 	height: 16px;
-	border: 1px solid #666;
 	background-color: var(--fastest-lap-color);
 }
 
 .legend-square-personal-best {
 	width: 16px;
 	height: 16px;
-	border: 1px solid #666;
 	background-color: var(--personal-best-color);
 }
 
 .legend-square-overall-fastest {
 	width: 16px;
 	height: 16px;
-	border: 1px solid #666;
 	background-color: var(--overall-fastest-color);
 }
 
 .legend-square-overall-personal-best {
 	width: 16px;
 	height: 16px;
-	border: 1px solid #666;
 	background-color: var(--overall-personal-best-color);
 }
