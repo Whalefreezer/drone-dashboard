@@ -328,6 +328,80 @@ export const noRacesOverrideAtom = eagerAtom((get): NoRacesOverride | null => {
 	return null;
 });
 
+export interface StreamVideoRange {
+	id: string;
+	label: string;
+	url: string;
+	startMs: number;
+	endMs: number | null;
+}
+
+const toEpochMs = (value: unknown): number | null => {
+	if (value == null) return null;
+	if (typeof value === 'number') {
+		return Number.isFinite(value) ? value : null;
+	}
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+		const numeric = Number(trimmed);
+		if (Number.isFinite(numeric)) return numeric;
+		const parsed = Date.parse(trimmed);
+		return Number.isNaN(parsed) ? null : parsed;
+	}
+	return null;
+};
+
+export const streamVideoRangesAtom = eagerAtom((get): StreamVideoRange[] => {
+	const ev = get(currentEventAtom);
+	if (!ev) return [];
+	const kv = get(clientKVRecordsAtom);
+	const record = kv.find((r) => r.namespace === 'stream' && r.key === 'videos' && r.event === ev.id);
+	if (!record?.value) return [];
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(record.value);
+	} catch {
+		return [];
+	}
+	if (!Array.isArray(parsed)) return [];
+	const ranges: StreamVideoRange[] = [];
+	for (const entry of parsed) {
+		if (!entry || typeof entry !== 'object') continue;
+		const idRaw = (entry as { id?: unknown }).id;
+		const labelRaw = (entry as { label?: unknown }).label;
+		const urlRaw = (entry as { url?: unknown }).url;
+		const startRaw = (entry as { startMs?: unknown }).startMs;
+		const endRaw = (entry as { endMs?: unknown }).endMs;
+		const id = typeof idRaw === 'string' ? idRaw.trim() : '';
+		const label = typeof labelRaw === 'string' ? labelRaw.trim() : '';
+		const url = typeof urlRaw === 'string' ? urlRaw.trim() : '';
+		if (!id || !label || !url) continue;
+		const startMs = toEpochMs(startRaw);
+		if (startMs == null) continue;
+		let endMs: number | null;
+		if (endRaw == null || (typeof endRaw === 'string' && !endRaw.trim())) {
+			endMs = null;
+		} else {
+			const parsedEnd = toEpochMs(endRaw);
+			if (parsedEnd == null) continue;
+			endMs = parsedEnd;
+		}
+		if (endMs != null && endMs < startMs) continue;
+		try {
+			// Validate the URL shape early to avoid rendering invalid anchors
+			// Note: allowing both full YouTube and youtu.be hosts
+			const parsedUrl = new URL(url);
+			const host = parsedUrl.hostname.toLowerCase();
+			if (!host.includes('youtube.com') && host !== 'youtu.be') continue;
+		} catch {
+			continue;
+		}
+		ranges.push({ id, label, url, startMs, endMs });
+	}
+	return ranges.sort((a, b) => a.startMs - b.startMs);
+});
+
 /**
  * Processed laps for a specific race - computed from PB records
  */

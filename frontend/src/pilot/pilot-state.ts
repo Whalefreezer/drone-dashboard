@@ -13,19 +13,7 @@ import {
 import { allRacesAtom, currentRaceIndexAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
 import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
 import { pilotPreferredChannelAtom } from '../leaderboard/leaderboard-context-atoms.ts';
-
-const parseTimestampMs = (value?: string | number | null): number | null => {
-	if (value == null) return null;
-	if (typeof value === 'number') {
-		return Number.isFinite(value) ? value : null;
-	}
-	const trimmed = String(value).trim();
-	if (!trimmed) return null;
-	const numeric = Number(trimmed);
-	if (Number.isFinite(numeric)) return numeric;
-	const parsed = Date.parse(trimmed);
-	return Number.isNaN(parsed) ? null : parsed;
-};
+import { parseTimestampMs } from '../common/time.ts';
 
 const buildRaceLabel = (race: PBRaceRecord, round?: PBRoundRecord): string => {
 	const roundNum = round?.roundNumber ?? 1;

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
-import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
+import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom, streamVideoRangesAtom } from '../state/index.ts';
 import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
@@ -18,6 +18,8 @@ import { EventType } from '../api/pbTypes.ts';
 import { ColumnChooser } from '../common/ColumnChooser.tsx';
 import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
 import { useAtom } from 'jotai';
+import { buildStreamLinkForTimestamp } from '../stream/stream-utils.ts';
+import { parseTimestampMs } from '../common/time.ts';
 
 const POSITION_POINTS: Record<number, number> = {};
 
@@ -30,10 +32,16 @@ export function LapsView({ raceId }: LapsViewProps) {
 	const race = useAtomValue(raceDataAtom(raceId));
 	const pilots = useAtomValue(pilotsAtom);
 	const pilotChannels = useAtomValue(racePilotChannelsAtom(raceId));
+	const streamRanges = useAtomValue(streamVideoRangesAtom);
 
 	if (!race) return null;
 
 	const round = roundData.find((r) => r.id === (race.round ?? ''));
+	const raceStartMs = useMemo(() => parseTimestampMs(race.start ?? null), [race.start]);
+	const raceStreamLink = useMemo(
+		() => buildStreamLinkForTimestamp(streamRanges, raceStartMs),
+		[streamRanges, raceStartMs],
+	);
 
 	const getBracketData = (): Bracket | null => {
 		const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
@@ -54,7 +62,18 @@ export function LapsView({ raceId }: LapsViewProps) {
 		<div className='laps-view'>
 			<div className='race-info'>
 				<div className='race-number'>
-					{round?.roundNumber}-{race.raceNumber}
+					{raceStreamLink
+						? (
+							<a
+								href={raceStreamLink.href}
+								target='_blank'
+								rel='noreferrer'
+								title={`Watch ${raceStreamLink.label}${raceStreamLink.offsetSeconds > 0 ? ` (+${raceStreamLink.offsetSeconds}s)` : ''}`}
+							>
+								{`${round?.roundNumber ?? '?'}-${race.raceNumber}`}
+							</a>
+						)
+						: `${round?.roundNumber ?? '?'}-${race.raceNumber}`}
 					{matchingBracket && (
 						<span style={{ marginLeft: '8px', color: '#888' }}>
 							({matchingBracket.name})

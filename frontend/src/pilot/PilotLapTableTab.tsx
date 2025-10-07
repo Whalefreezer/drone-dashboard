@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { type Column, GenericTable } from '../common/GenericTable.tsx';
 import type { PilotRaceLapGroup } from './pilot-state.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
+import { streamVideoRangesAtom } from '../state/pbAtoms.ts';
+import { buildStreamLinkForTimestamp } from '../stream/stream-utils.ts';
 
 type SortMode = 'time' | 'chronological';
 
@@ -130,7 +133,7 @@ const buildColumns = (): Array<Column<TableContext, PilotLapRow>> => [
 		key: 'timestamp',
 		header: 'Timestamp',
 		minWidth: 160,
-		cell: ({ item }: { item: PilotLapRow }) => <div>{item.timestampDisplay}</div>,
+		cell: ({ item }: { item: PilotLapRow }) => <TimestampCell timestampMs={item.timestampMs} display={item.timestampDisplay} />,
 	},
 ];
 
@@ -193,3 +196,18 @@ const formatTimestamp = (ms: number | null): string => {
 	const date = new Date(ms);
 	return `${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
 };
+
+function TimestampCell({ timestampMs, display }: { timestampMs: number | null; display: string }) {
+	const ranges = useAtomValue(streamVideoRangesAtom);
+	const link = useMemo(() => buildStreamLinkForTimestamp(ranges, timestampMs), [ranges, timestampMs]);
+	if (!timestampMs || !Number.isFinite(timestampMs) || !link) {
+		return <div>{display}</div>;
+	}
+	return (
+		<div>
+			<a href={link.href} target='_blank' rel='noreferrer' title={`Watch ${link.label}`}>
+				{display}
+			</a>
+		</div>
+	);
+}

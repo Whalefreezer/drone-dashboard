@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAtomValue } from 'jotai';
 import type { EChartsOption, EChartsType, SeriesOption } from 'echarts';
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { CallbackDataParams } from 'echarts/types/dist/shared';
 import { EChart } from './EChart.tsx';
 import type { PilotMetricSummary } from './pilot-hooks.ts';
 import type { PilotRaceLapGroup, PilotTimelineLap } from './pilot-state.ts';
+import { streamVideoRangesAtom } from '../state/pbAtoms.ts';
+import { buildStreamLinkForTimestamp, type StreamLink } from '../stream/stream-utils.ts';
 
 const overlayColors = {
 	bestLap: '#9ba3ff',
@@ -98,6 +101,11 @@ export function PilotAnalyticsTab(
 		markLines: true,
 	});
 	const chartInstanceRef = useRef<EChartsType | null>(null);
+	const streamRanges = useAtomValue(streamVideoRangesAtom);
+	const getStreamLink = useMemo(
+		() => (timestamp: number | null) => buildStreamLinkForTimestamp(streamRanges, timestamp),
+		[streamRanges],
+	);
 
 	useEffect(() => () => {
 		chartInstanceRef.current = null;
@@ -243,6 +251,7 @@ export function PilotAnalyticsTab(
 				overlays,
 				yDomain,
 				timeline,
+				getStreamLink,
 			}),
 		[
 			chartStructure,
@@ -255,6 +264,7 @@ export function PilotAnalyticsTab(
 			yDomain.min,
 			yDomain.max,
 			timeline,
+			getStreamLink,
 		],
 	);
 
@@ -334,6 +344,7 @@ interface ChartOptionParams {
 	overlays: OverlayToggleState;
 	yDomain: { min: number; max: number };
 	timeline: PilotTimelineLap[];
+	getStreamLink: (timestamp: number | null) => StreamLink | null;
 }
 
 function buildChartStructure(
@@ -380,7 +391,7 @@ function buildChartStructure(
 }
 
 function buildChartOption(
-	{ structure, raceColorMap, overlays, yDomain, timeline }: ChartOptionParams,
+	{ structure, raceColorMap, overlays, yDomain, timeline, getStreamLink }: ChartOptionParams,
 ): EChartsOption {
 	const categories = structure.slots.map((slot) => slot.key);
 	// Calculate which laps were new best times as they happened
@@ -477,6 +488,11 @@ function buildChartOption(
 		const originalLap = timeline.find((lap) => lap.id === datum.id);
 		const timestamp = originalLap?.detectionTimestampMs;
 		const dateTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown time';
+		const streamLink = getStreamLink(timestamp ?? null);
+		const offsetLabel = streamLink && streamLink.offsetSeconds > 0 ? ` (+${streamLink.offsetSeconds}s)` : '';
+		const timeLine = streamLink
+			? `<div>${dateTime} — <a href="${streamLink.href}" target="_blank" rel="noreferrer">Watch ${streamLink.label}${offsetLabel}</a></div>`
+			: `<div>${dateTime}</div>`;
 
 		// Check if this lap was a new best time when it happened
 		const isNewBestLap = newBestLapIndices.has(primary.dataIndex);
@@ -501,7 +517,7 @@ function buildChartOption(
 			`<div>Lap ${datum.lapNumber}</div>`,
 			`<div>${formatSeconds(datum.lapTime)}</div>`,
 			`<div>Δ best: ${formatDelta(datum.deltaBest)}</div>`,
-			`<div>${dateTime}</div>`,
+			timeLine,
 			...statusMessages,
 			'</div>',
 		].join('');
@@ -592,6 +608,7 @@ function buildChartOption(
 			appendToBody: false,
 			axisPointer: { type: 'shadow' },
 			formatter: tooltipFormatter,
+			enterable: true,
 			extraCssText: 'box-shadow: none;',
 		},
 		xAxis: {

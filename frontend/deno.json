@@ -24,7 +24,8 @@
 		"jsxImportSource": "react",
 		"jsxImportSourceTypes": "@types/react",
 		"types": [
-			"@types/react"
+			"@types/react",
+			"vite/client"
 		]
 	},
 	"imports": {
