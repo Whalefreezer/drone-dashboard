@@ -18,7 +18,6 @@ export type AuthKind = 'user' | 'admin';
 
 export function isAuthenticated(): boolean {
 	return pb.authStore?.isValid ?? false;
-	pb;
 }
 
 type PBModelMeta = { collectionName?: string; id?: string } | null | undefined;

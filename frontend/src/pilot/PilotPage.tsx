@@ -17,8 +17,6 @@ import { PilotUpcomingRacesTab } from './PilotUpcomingRacesTab.tsx';
 import './PilotPage.css';
 import { pilotIdBySourceIdAtom } from '../state/pbAtoms.ts';
 import { StreamTimestampLink } from '../stream/StreamTimestampLink.tsx';
-import { parseTimestampMs } from '../common/time.ts';
-import type { PilotRaceLapGroup } from './pilot-state.ts';
 
 const tabs = [
 	{ key: 'analytics', label: 'Analytics' },
@@ -44,50 +42,6 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 	const bestLapSeconds = usePilotBestLapTime(lookupPilotId);
 	const [activeTab, setActiveTab] = useState<TabKey>('analytics');
 
-	const lapGroupByRaceId = useMemo(() => {
-		const map = new Map<string, PilotRaceLapGroup>();
-		for (const group of lapGroups) {
-			map.set(group.race.id, group);
-		}
-		return map;
-	}, [lapGroups]);
-
-	const bestLapTimestamp = useMemo(() => {
-		const bestLap = metrics.bestLap;
-		if (!bestLap) return null;
-		const group = lapGroupByRaceId.get(bestLap.raceId);
-		if (!group) return null;
-		const lap = group.laps.find((entry) => entry.lapNumber === bestLap.lapNumber);
-		return lap?.detectionTimestampMs ?? null;
-	}, [metrics.bestLap, lapGroupByRaceId]);
-
-	const fastestConsecutiveTimestamp = useMemo(() => {
-		const consecutive = metrics.fastestConsecutive;
-		if (!consecutive) return null;
-		const group = lapGroupByRaceId.get(consecutive.raceId);
-		if (!group) return null;
-		const lap = group.laps.find((entry) => entry.lapNumber === consecutive.startLap);
-		return lap?.detectionTimestampMs ?? null;
-	}, [metrics.fastestConsecutive, lapGroupByRaceId]);
-
-	const fastestRaceTimestamp = useMemo(() => {
-		const fastestRace = metrics.fastestRace;
-		if (!fastestRace) return null;
-		const group = lapGroupByRaceId.get(fastestRace.raceId);
-		if (!group) return null;
-		const raceStart = parseTimestampMs(group.race.startTime ?? null);
-		if (raceStart != null) return raceStart;
-		const firstLap = group.laps.find((entry) => entry.lapNumber === 1) ?? group.laps[0];
-		return firstLap?.detectionTimestampMs ?? null;
-	}, [metrics.fastestRace, lapGroupByRaceId]);
-
-	const holeshotTimestamp = useMemo(() => {
-		const holeshot = metrics.holeshot;
-		if (!holeshot) return null;
-		const group = lapGroupByRaceId.get(holeshot.raceId);
-		return group?.holeshot?.detectionTimestampMs ?? null;
-	}, [metrics.holeshot, lapGroupByRaceId]);
-
 	if (!canonicalPilotId || !overview.record) {
 		return <PilotNotFound />;
 	}
@@ -105,7 +59,7 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 	const hasLaps = timeline.length > 0;
 	const bestLapSubtitle: ReactNode = metrics.bestLap
 		? (
-			<StreamTimestampLink timestampMs={bestLapTimestamp}>
+			<StreamTimestampLink timestampMs={metrics.bestLap.timestampMs}>
 				{`Lap ${metrics.bestLap.lapNumber} · ${metrics.bestLap.raceLabel}`}
 			</StreamTimestampLink>
 		)
@@ -113,7 +67,7 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 
 	const fastestConsecutiveSubtitle: ReactNode = metrics.fastestConsecutive
 		? (
-			<StreamTimestampLink timestampMs={fastestConsecutiveTimestamp}>
+			<StreamTimestampLink timestampMs={metrics.fastestConsecutive.timestampMs}>
 				{`${metrics.fastestConsecutive.lapWindow} laps · ${metrics.fastestConsecutive.raceLabel}`}
 			</StreamTimestampLink>
 		)
@@ -121,7 +75,7 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 
 	const fastestRaceSubtitle: ReactNode = metrics.fastestRace
 		? (
-			<StreamTimestampLink timestampMs={fastestRaceTimestamp}>
+			<StreamTimestampLink timestampMs={metrics.fastestRace.timestampMs}>
 				{`${metrics.fastestRace.lapCount} laps · ${metrics.fastestRace.raceLabel}`}
 			</StreamTimestampLink>
 		)
@@ -129,7 +83,7 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 
 	const holeshotSubtitle: ReactNode = metrics.holeshot
 		? (
-			<StreamTimestampLink timestampMs={holeshotTimestamp}>
+			<StreamTimestampLink timestampMs={metrics.holeshot.timestampMs}>
 				{metrics.holeshot.raceLabel}
 			</StreamTimestampLink>
 		)
