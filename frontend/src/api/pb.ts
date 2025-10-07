@@ -10,7 +10,7 @@ export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '')
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 
 // Singleton PocketBase client used across the app
-export const pb = new PocketBase(import.meta.env.VITE_API_URL || '');
+export const pb = new PocketBase(import.meta.env.VITE_API_URL || '/');
 pb.autoCancellation(false);
 
 // --- Auth helpers ---------------------------------------------------------
@@ -18,6 +18,7 @@ export type AuthKind = 'user' | 'admin';
 
 export function isAuthenticated(): boolean {
 	return pb.authStore?.isValid ?? false;
+	pb;
 }
 
 type PBModelMeta = { collectionName?: string; id?: string } | null | undefined;
