@@ -48,7 +48,7 @@ type VirtualizationMetrics = {
 	totalHeight: number;
 	estimatedRowHeight: number;
 	overscanPx?: number;
-	overscanRows?: number;
+	overscanRows: number;
 };
 
 type UseRowMeasurementsArgs<RowCtx extends object> = {
@@ -290,6 +290,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 	const isDynamic = rowMode === 'dynamic';
 	const virtualizationConfig = useMemo(() => virtualization ?? {}, [virtualization]);
 	const virtualizationEnabled = virtualizationConfig.enabled ?? true;
+	const resolvedOverscanRows = virtualizationConfig.overscanRows ?? 5;
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const scrollWrapperRef = useRef<HTMLDivElement | null>(null);
 	const scrollElementRef = useRef<HTMLElement | null>(null);
@@ -300,7 +301,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		totalHeight: 0,
 		estimatedRowHeight,
 		overscanPx: virtualizationConfig.overscanPx,
-		overscanRows: virtualizationConfig.overscanRows,
+		overscanRows: resolvedOverscanRows,
 	});
 	const virtualizationEnabledRef = useRef(virtualizationEnabled);
 
@@ -329,7 +330,7 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 		totalHeight,
 		estimatedRowHeight,
 		overscanPx: virtualizationConfig.overscanPx,
-		overscanRows: virtualizationConfig.overscanRows,
+		overscanRows: resolvedOverscanRows,
 	};
 	virtualizationEnabledRef.current = virtualizationEnabled;
 	const approximateViewportPx = 600;
@@ -379,8 +380,8 @@ export function GenericTable<TableCtx, RowCtx extends object>(
 
 		const viewportHeight = container.clientHeight;
 		const scrollTop = container.scrollTop;
-		const fallbackOverscan = overscanPx ?? (viewportHeight > 0 ? viewportHeight : estimate * 6);
-		const buffer = fallbackOverscan + (overscanRows ?? 0) * estimate;
+		const fallbackOverscan = overscanPx ?? (estimate * overscanRows);
+		const buffer = Math.max(estimate, fallbackOverscan);
 		const maxScrollTop = Math.max(0, totalMeasuredHeight - viewportHeight);
 		const clampedScrollTop = Math.max(0, Math.min(scrollTop, maxScrollTop));
 		const startTarget = Math.max(0, clampedScrollTop - buffer);
