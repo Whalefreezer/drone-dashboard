@@ -1,5 +1,7 @@
 import type { PilotUpcomingRace } from './pilot-state.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
+import { StreamTimestampLink } from '../stream/StreamTimestampLink.tsx';
+import { parseTimestampMs } from '../common/time.ts';
 
 interface PilotUpcomingRacesTabProps {
 	upcoming: PilotUpcomingRace[];
@@ -14,13 +16,22 @@ export function PilotUpcomingRacesTab(
 
 	const [nextRace, ...later] = upcoming;
 
+	const renderRaceLabel = (race: PilotUpcomingRace) => {
+		const timestampMs = parseTimestampMs(race.startTime ?? null);
+		return (
+			<StreamTimestampLink timestampMs={timestampMs}>
+				{race.raceLabel}
+			</StreamTimestampLink>
+		);
+	};
+
 	return (
 		<div className='pilot-upcoming-tab'>
 			{nextRace && (
 				<section className='pilot-next-card'>
 					<header>
 						<h2>Next race</h2>
-						<p>{nextRace.raceLabel}</p>
+						<p>{renderRaceLabel(nextRace)}</p>
 						<span className='pilot-next-countdown'>{formatCountdown(nextRace.racesUntil, nextRace.overrideLabel)}</span>
 					</header>
 					<RaceMeta race={nextRace} />
@@ -31,7 +42,7 @@ export function PilotUpcomingRacesTab(
 					{later.map((race) => (
 						<article key={race.raceId} className='pilot-upcoming-card'>
 							<header>
-								<h3>{race.raceLabel}</h3>
+								<h3>{renderRaceLabel(race)}</h3>
 								<p>{formatCountdown(race.racesUntil, race.overrideLabel)}</p>
 							</header>
 							<RaceMeta race={race} />

@@ -1,4 +1,4 @@
-import { type ComponentProps, type ComponentType, useMemo, useState } from 'react';
+import { type ComponentProps, type ComponentType, type ReactNode, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
@@ -16,6 +16,9 @@ import { PilotLapTableTab } from './PilotLapTableTab.tsx';
 import { PilotUpcomingRacesTab } from './PilotUpcomingRacesTab.tsx';
 import './PilotPage.css';
 import { pilotIdBySourceIdAtom } from '../state/pbAtoms.ts';
+import { StreamTimestampLink } from '../stream/StreamTimestampLink.tsx';
+import { parseTimestampMs } from '../common/time.ts';
+import type { PilotRaceLapGroup } from './pilot-state.ts';
 
 const tabs = [
 	{ key: 'analytics', label: 'Analytics' },
@@ -41,6 +44,50 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 	const bestLapSeconds = usePilotBestLapTime(lookupPilotId);
 	const [activeTab, setActiveTab] = useState<TabKey>('analytics');
 
+	const lapGroupByRaceId = useMemo(() => {
+		const map = new Map<string, PilotRaceLapGroup>();
+		for (const group of lapGroups) {
+			map.set(group.race.id, group);
+		}
+		return map;
+	}, [lapGroups]);
+
+	const bestLapTimestamp = useMemo(() => {
+		const bestLap = metrics.bestLap;
+		if (!bestLap) return null;
+		const group = lapGroupByRaceId.get(bestLap.raceId);
+		if (!group) return null;
+		const lap = group.laps.find((entry) => entry.lapNumber === bestLap.lapNumber);
+		return lap?.detectionTimestampMs ?? null;
+	}, [metrics.bestLap, lapGroupByRaceId]);
+
+	const fastestConsecutiveTimestamp = useMemo(() => {
+		const consecutive = metrics.fastestConsecutive;
+		if (!consecutive) return null;
+		const group = lapGroupByRaceId.get(consecutive.raceId);
+		if (!group) return null;
+		const lap = group.laps.find((entry) => entry.lapNumber === consecutive.startLap);
+		return lap?.detectionTimestampMs ?? null;
+	}, [metrics.fastestConsecutive, lapGroupByRaceId]);
+
+	const fastestRaceTimestamp = useMemo(() => {
+		const fastestRace = metrics.fastestRace;
+		if (!fastestRace) return null;
+		const group = lapGroupByRaceId.get(fastestRace.raceId);
+		if (!group) return null;
+		const raceStart = parseTimestampMs(group.race.startTime ?? null);
+		if (raceStart != null) return raceStart;
+		const firstLap = group.laps.find((entry) => entry.lapNumber === 1) ?? group.laps[0];
+		return firstLap?.detectionTimestampMs ?? null;
+	}, [metrics.fastestRace, lapGroupByRaceId]);
+
+	const holeshotTimestamp = useMemo(() => {
+		const holeshot = metrics.holeshot;
+		if (!holeshot) return null;
+		const group = lapGroupByRaceId.get(holeshot.raceId);
+		return group?.holeshot?.detectionTimestampMs ?? null;
+	}, [metrics.holeshot, lapGroupByRaceId]);
+
 	if (!canonicalPilotId || !overview.record) {
 		return <PilotNotFound />;
 	}
@@ -56,6 +103,37 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 	}, [record]);
 
 	const hasLaps = timeline.length > 0;
+	const bestLapSubtitle: ReactNode = metrics.bestLap
+		? (
+			<StreamTimestampLink timestampMs={bestLapTimestamp}>
+				{`Lap ${metrics.bestLap.lapNumber} · ${metrics.bestLap.raceLabel}`}
+			</StreamTimestampLink>
+		)
+		: '—';
+
+	const fastestConsecutiveSubtitle: ReactNode = metrics.fastestConsecutive
+		? (
+			<StreamTimestampLink timestampMs={fastestConsecutiveTimestamp}>
+				{`${metrics.fastestConsecutive.lapWindow} laps · ${metrics.fastestConsecutive.raceLabel}`}
+			</StreamTimestampLink>
+		)
+		: '—';
+
+	const fastestRaceSubtitle: ReactNode = metrics.fastestRace
+		? (
+			<StreamTimestampLink timestampMs={fastestRaceTimestamp}>
+				{`${metrics.fastestRace.lapCount} laps · ${metrics.fastestRace.raceLabel}`}
+			</StreamTimestampLink>
+		)
+		: '—';
+
+	const holeshotSubtitle: ReactNode = metrics.holeshot
+		? (
+			<StreamTimestampLink timestampMs={holeshotTimestamp}>
+				{metrics.holeshot.raceLabel}
+			</StreamTimestampLink>
+		)
+		: '—';
 
 	return (
 		<div className='pilot-page'>
@@ -93,24 +171,22 @@ export function PilotPage({ pilotSourceId }: { pilotSourceId: string }) {
 				<PilotStatCard
 					label='Best Lap'
 					value={formatSeconds(metrics.bestLap?.time)}
-					subtitle={metrics.bestLap ? `Lap ${metrics.bestLap.lapNumber} · ${metrics.bestLap.raceLabel}` : '—'}
+					subtitle={bestLapSubtitle}
 				/>
 				<PilotStatCard
 					label='Fastest Consecutive'
 					value={formatSeconds(metrics.fastestConsecutive?.time)}
-					subtitle={metrics.fastestConsecutive
-						? `${metrics.fastestConsecutive.lapWindow} laps · ${metrics.fastestConsecutive.raceLabel}`
-						: '—'}
+					subtitle={fastestConsecutiveSubtitle}
 				/>
 				<PilotStatCard
 					label='Fastest Total Race'
 					value={formatSeconds(metrics.fastestRace?.time)}
-					subtitle={metrics.fastestRace ? `${metrics.fastestRace.lapCount} laps · ${metrics.fastestRace.raceLabel}` : '—'}
+					subtitle={fastestRaceSubtitle}
 				/>
 				<PilotStatCard
 					label='Holeshot'
 					value={formatSeconds(metrics.holeshot?.time)}
-					subtitle={metrics.holeshot ? metrics.holeshot.raceLabel : '—'}
+					subtitle={holeshotSubtitle}
 				/>
 				<PilotStatCard
 					label='Total Laps'
@@ -185,7 +261,7 @@ function PilotNotFound() {
 	);
 }
 
-function PilotStatCard({ label, value, subtitle }: { label: string; value: string; subtitle?: string }) {
+function PilotStatCard({ label, value, subtitle }: { label: string; value: string; subtitle?: ReactNode }) {
 	const isEmpty = value === '—';
 	return (
 		<div className={`pilot-stat-card${isEmpty ? ' pilot-stat-card--empty' : ''}`}>
