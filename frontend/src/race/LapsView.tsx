@@ -9,7 +9,7 @@ import type { PBRaceRecord } from '../api/pbTypes.ts';
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import type { Bracket, BracketPilot } from '../bracket/bracket-types.ts';
+import type { Bracket } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/GenericTable.tsx';
@@ -77,7 +77,7 @@ export function LapsView({ raceId }: LapsViewProps) {
 						</span>
 					)}
 				</div>
-				<LapsTable race={race} matchingBracket={matchingBracket} />
+				<LapsTable race={race} />
 			</div>
 		</div>
 	);
@@ -85,7 +85,6 @@ export function LapsView({ raceId }: LapsViewProps) {
 
 type LapsTableContext = {
 	raceId: string;
-	matchingBracket: Bracket | null;
 	maxLaps: number;
 };
 
@@ -93,7 +92,6 @@ type LapsRow = {
 	raceId: string;
 	pilotChannel: { id: string; pilotId: string; channelId: string };
 	position: number;
-	bracketPilot?: BracketPilot | null;
 };
 
 type LapsCellProps = { item: LapsRow };
@@ -157,46 +155,6 @@ function ChannelCell({ item }: LapsCellProps) {
 	);
 }
 
-function BracketPointsCell({ item }: LapsCellProps) {
-	const bracketPilot = item.bracketPilot ?? null;
-	return (
-		<div style={{ color: '#00ff00' }}>
-			{bracketPilot ? bracketPilot.points ?? '-' : '-'}
-		</div>
-	);
-}
-
-const bracketRoundCellCache = new Map<number, React.ComponentType<LapsCellProps>>();
-
-function getBracketRoundCell(roundIndex: number): React.ComponentType<LapsCellProps> {
-	const cached = bracketRoundCellCache.get(roundIndex);
-	if (cached) return cached;
-
-	const BracketRoundCell: React.FC<LapsCellProps> = ({ item }) => {
-		const bracketPilot = item.bracketPilot ?? null;
-		const roundValue = bracketPilot?.rounds?.[roundIndex] ?? null;
-		if (!roundValue) return <div>-</div>;
-
-		const isRaceRound = useIsRaceRound(item.raceId);
-
-		return (
-			<div>
-				<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-					{roundValue}
-					{isRaceRound && POSITION_POINTS[roundValue] && (
-						<span style={{ fontSize: '0.8em', color: '#888' }}>
-							+{POSITION_POINTS[roundValue]}
-						</span>
-					)}
-				</div>
-			</div>
-		);
-	};
-
-	bracketRoundCellCache.set(roundIndex, BracketRoundCell);
-	return BracketRoundCell;
-}
-
 const lapCellCache = new Map<string, React.ComponentType<LapsCellProps>>();
 
 function getLapCellComponent(lapNumber: number, isHoleshot: boolean): React.ComponentType<LapsCellProps> {
@@ -233,12 +191,11 @@ function getLapCellComponent(lapNumber: number, isHoleshot: boolean): React.Comp
 
 function useLapsTableColumns(
 	raceId: string,
-	matchingBracket: Bracket | null,
 	maxLaps: number,
 ): { columns: Array<Column<LapsTableContext, LapsRow>>; ctx: LapsTableContext } {
 	const processedLapsForRace = useAtomValue(raceProcessedLapsAtom(raceId));
 
-	const ctx = useMemo(() => ({ raceId, matchingBracket, maxLaps }), [raceId, matchingBracket, maxLaps]);
+	const ctx = useMemo(() => ({ raceId, maxLaps }), [raceId, maxLaps]);
 
 	// Values that determine the column structure
 	const hasHoleshot = processedLapsForRace.some((lap) => lap.isHoleshot);
@@ -268,30 +225,6 @@ function useLapsTableColumns(
 			},
 		];
 
-		// Points + Bracket rounds (if any)
-		if (matchingBracket) {
-			// Points
-			cols.push({
-				key: 'points',
-				header: 'Points',
-				label: 'Bracket Points',
-				width: 64,
-				cell: BracketPointsCell,
-			});
-
-			const roundsCount = matchingBracket.pilots?.[0]?.rounds?.length ?? 0;
-			for (let r = 0; r < roundsCount; r++) {
-				const key = `br${r + 1}`;
-				cols.push({
-					key,
-					header: `R${r + 1}`,
-					label: `Bracket R${r + 1}`,
-					width: 48,
-					cell: getBracketRoundCell(r),
-				});
-			}
-		}
-
 		// Lap cells: HS + L1..Lmax (show HS only if any holeshot exists)
 		for (let i = hasHoleshot ? 0 : 1; i <= maxLaps; i++) {
 			const isHS = i === 0;
@@ -307,32 +240,19 @@ function useLapsTableColumns(
 		}
 
 		return cols;
-	}, [hasHoleshot, matchingBracket, maxLaps]);
+	}, [hasHoleshot, maxLaps]);
 
 	return { columns, ctx };
 }
 
 function LapsTable(
-	{ race, matchingBracket }: { race: PBRaceRecord; matchingBracket: Bracket | null },
+	{ race }: { race: PBRaceRecord },
 ) {
-	const baseRows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
-	const pilots = useAtomValue(pilotsAtom);
+	const rows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
 	const maxLaps = useAtomValue(raceMaxLapNumberAtom(race.id));
 	const favoritePilotIdsSet = useAtomValue(favoritePilotIdsSetAtom);
 
-	const rows = useMemo(() => {
-		if (!matchingBracket) return baseRows;
-		const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, '');
-		return baseRows.map((row) => {
-			const pilot = pilots.find((p) => p.id === row.pilotChannel.pilotId);
-			if (!pilot) return row;
-			const bracketPilot = matchingBracket.pilots.find((bp: BracketPilot) => normalize(bp.name) === normalize(pilot.name));
-			if (!bracketPilot) return row;
-			return { ...row, bracketPilot };
-		});
-	}, [baseRows, matchingBracket, pilots]);
-
-	const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
+	const { columns, ctx } = useLapsTableColumns(race.id, maxLaps);
 
 	const getRowClassName = (row: LapsRow) => {
 		if (favoritePilotIdsSet.has(row.pilotChannel.pilotId)) {
