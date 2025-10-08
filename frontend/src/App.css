@@ -251,9 +251,18 @@
 
 /* Styles moved from App.tsx */
 .app-header {
-	text-align: center;
+	display: flex;
+	align-items: center;
+	gap: 12px;
 	border-bottom: 1px solid #333;
 	background-color: #1a1a1a;
+	padding: 4px 12px;
+}
+
+.app-header-time {
+	flex: 1;
+	display: flex;
+	justify-content: center;
 }
 
 .app-shell {
@@ -321,20 +330,16 @@
 }
 
 .app-settings-button {
-	position: absolute;
-	top: 12px;
-	right: 16px;
-	width: 40px;
-	height: 40px;
-	border-radius: 999px;
-	background: rgba(32, 32, 32, 0.9);
-	border: 1px solid #444;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	padding: 6px;
+	border-radius: 8px;
+	border: 1px solid #444;
+	background: rgba(32, 32, 32, 0.9);
 	color: #e0e0e0;
 	text-decoration: none;
-	transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+	transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .app-settings-button:hover,
@@ -349,12 +354,44 @@
 	box-shadow: 0 0 0 3px rgba(123, 196, 255, 0.25);
 }
 
+.app-header .app-settings-button {
+	margin-left: 16px;
+	flex-shrink: 0;
+}
+
+.app-mobile-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background-color: #1a1a1a;
+	border-bottom: 1px solid #333;
+	padding: 8px 12px;
+}
+
+.app-mobile-header .view-selector {
+	flex: 1;
+	display: flex;
+	justify-content: space-around;
+	background-color: transparent;
+	border-bottom: none;
+	min-width: 0;
+}
+
+.app-mobile-header .view-selector button {
+	border-bottom: 2px solid transparent;
+}
+
+.app-mobile-header .view-selector button.active {
+	border-bottom: 2px solid #fff;
+}
+
+.app-mobile-header .app-settings-button {
+	flex-shrink: 0;
+}
+
 @media (max-width: 640px) {
 	.app-settings-button {
-		top: 8px;
-		right: 12px;
-		width: 36px;
-		height: 36px;
+		padding: 5px;
 	}
 }
 
