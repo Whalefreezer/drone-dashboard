@@ -67,7 +67,7 @@ export const eventRaceIdsAtom = eagerAtom((get) => {
 
 export const consecutiveLapsAtom = eagerAtom((get) => {
 	const ev = get(currentEventAtom);
-	return Number(ev?.pbLaps ?? 3);
+	return Number(ev?.laps ?? 3);
 });
 
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({

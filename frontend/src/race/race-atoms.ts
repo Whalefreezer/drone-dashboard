@@ -270,7 +270,7 @@ const racePilotChannelOrderAtom = atomFamily((raceId: string) =>
 /**
  * Sorted pilot rows for LapsView based on event type:
  * - Race: first to complete targetLaps, then by most laps
- * - Others: fastest N consecutive (N = pbLaps), then by most laps
+ * - Others: fastest N consecutive (N = laps), then by most laps
  */
 export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 	eagerAtom((get): { pilotChannel: { id: string; pilotId: string; channelId: string }; position: number }[] => {
