@@ -57,18 +57,15 @@ function EventSelectionSection() {
 
 	const renderEventLabel = (event: PBEventRecord): string => {
 		const prefix = event.name.trim() || 'Untitled event';
-		if (event.isCurrent) return `${prefix} (PocketBase current)`;
 		return prefix;
 	};
-
-	const currentOptionLabel = pbCurrentEvent ? `Current (auto) — ${renderEventLabel(pbCurrentEvent)}` : 'Current (auto)';
 
 	return (
 		<section className='settings-card' aria-labelledby='settings-event-heading'>
 			<h2 id='settings-event-heading'>Active Event</h2>
 			<p className='settings-help-text'>
-				Choose which event the dashboard should use. Selecting a specific event overrides the PocketBase “current” event flag until you
-				switch back to <strong>Current (auto)</strong>.
+				Choose which event the dashboard should use. Selecting a specific event overrides auto-detection until you switch back to{' '}
+				<strong>Current (auto)</strong>.
 			</p>
 			<label htmlFor='settings-event-select' className='settings-label'>
 				Event source
@@ -79,7 +76,7 @@ function EventSelectionSection() {
 				value={selectedEventId}
 				onChange={handleSelectChange}
 			>
-				<option value={EVENT_SELECTION_CURRENT}>{currentOptionLabel}</option>
+				<option value={EVENT_SELECTION_CURRENT}>Current (auto)</option>
 				{sortedEvents.map((event) => (
 					<option key={event.id} value={event.id}>
 						{renderEventLabel(event)}
@@ -92,7 +89,7 @@ function EventSelectionSection() {
 						<div className='settings-active-name'>{activeEvent.name}</div>
 						<div className='settings-active-meta'>
 							{formatDateRange(activeEvent.start, activeEvent.end)}
-							{activeEvent.isCurrent && selectedEventId !== EVENT_SELECTION_CURRENT && <span className='settings-chip'>PB current</span>}
+							{activeEvent.isCurrent && selectedEventId !== EVENT_SELECTION_CURRENT && <span className='settings-chip'>Auto-detected</span>}
 							{selectedEventId === EVENT_SELECTION_CURRENT && <span className='settings-chip'>Auto</span>}
 						</div>
 					</div>
