@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { leaderboardNextRaceOverridesAtom, racesAtom, roundsDataAtom } from '../../../state/pbAtoms.ts';
-import { pb } from '../../../api/pb.ts';
-import type { PBClientKVRecord, PBRaceRecord, PBRoundRecord } from '../../../api/pbTypes.ts';
+import { leaderboardNextRaceOverridesAtom, racesAtom, roundsDataAtom } from '../../state/pbAtoms.ts';
+import { pb } from '../../api/pb.ts';
+import type { PBClientKVRecord, PBRaceRecord, PBRoundRecord } from '../../api/pbTypes.ts';
 
 interface OverrideDraft {
 	startSourceId: string;

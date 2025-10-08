@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { streamVideoRangesAtom } from '../../../state/pbAtoms.ts';
-import { pb } from '../../../api/pb.ts';
-import type { PBClientKVRecord } from '../../../api/pbTypes.ts';
-import { fromLocalDateTimeInputValue, toLocalDateTimeInputValue } from '../../../common/time.ts';
+import { streamVideoRangesAtom } from '../../state/pbAtoms.ts';
+import { pb } from '../../api/pb.ts';
+import type { PBClientKVRecord } from '../../api/pbTypes.ts';
+import { fromLocalDateTimeInputValue, toLocalDateTimeInputValue } from '../../common/time.ts';
 
 interface StreamDraft {
 	id: string;

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { clientKVRecordsAtom, currentEventAtom } from '../../../state/pbAtoms.ts';
-import { pb } from '../../../api/pb.ts';
+import { clientKVRecordsAtom, currentEventAtom } from '../../state/pbAtoms.ts';
+import { pb } from '../../api/pb.ts';
 
 export function LeaderboardSplitSection() {
 	const ev = useAtomValue(currentEventAtom);

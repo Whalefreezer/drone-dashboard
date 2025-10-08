@@ -2,9 +2,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { ClientKVTable } from '../../admin/ClientKVTable.tsx';
 import { clientKVRecordsAtom, currentEventAtom } from '../../state/pbAtoms.ts';
-import { LeaderboardSplitSection } from './kv/LeaderboardSplitSection.tsx';
-import { NextRaceOverrideSection } from './kv/NextRaceOverrideSection.tsx';
-import { LiveStreamLinksSection } from './kv/LiveStreamLinksSection.tsx';
+import { LeaderboardSplitSection } from '../../admin/kv/LeaderboardSplitSection.tsx';
+import { NextRaceOverrideSection } from '../../admin/kv/NextRaceOverrideSection.tsx';
+import { LiveStreamLinksSection } from '../../admin/kv/LiveStreamLinksSection.tsx';
 
 function KVPage() {
 	const kv = useAtomValue(clientKVRecordsAtom);
