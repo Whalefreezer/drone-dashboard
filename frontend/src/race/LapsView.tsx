@@ -15,9 +15,6 @@ import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/GenericTable.tsx';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
-import { ColumnChooser } from '../common/ColumnChooser.tsx';
-import { getColumnPrefsAtom } from '../common/columnPrefs.ts';
-import { useAtom } from 'jotai';
 import { buildStreamLinkForTimestamp } from '../stream/stream-utils.ts';
 import { parseTimestampMs } from '../common/time.ts';
 
@@ -79,9 +76,6 @@ export function LapsView({ raceId }: LapsViewProps) {
 							({matchingBracket.name})
 						</span>
 					)}
-				</div>
-				<div style={{ display: 'flex', justifyContent: 'flex-end', overflow: 'visible' }}>
-					<LapsColumns raceId={race.id} matchingBracket={matchingBracket} />
 				</div>
 				<LapsTable race={race} matchingBracket={matchingBracket} />
 			</div>
@@ -306,10 +300,6 @@ function LapsTable(
 
 	const { columns, ctx } = useLapsTableColumns(race.id, matchingBracket, maxLaps);
 
-	const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
-	const prefsAtom = useMemo(() => getColumnPrefsAtom('laps', allKeys, allKeys), [allKeys]);
-	const [visible] = useAtom(prefsAtom);
-
 	const getRowClassName = (row: LapsRow) => {
 		if (favoritePilotIdsSet.has(row.pilotChannel.pilotId)) {
 			return 'favorite-row';
@@ -327,16 +317,8 @@ function LapsTable(
 			getRowClassName={getRowClassName}
 			estimatedRowHeight={30}
 			rowMode='fixed'
-			visibleColumns={visible}
 			scrollX
 		/>
 	);
 }
 
-function LapsColumns(
-	{ raceId, matchingBracket }: { raceId: string; matchingBracket: Bracket | null },
-) {
-	const maxLaps = useAtomValue(raceMaxLapNumberAtom(raceId));
-	const { columns } = useLapsTableColumns(raceId, matchingBracket, maxLaps);
-	return <ColumnChooser tableId='laps' columns={columns} compact label='Columns' />;
-}
