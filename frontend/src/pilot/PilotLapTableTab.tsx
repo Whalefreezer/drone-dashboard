@@ -143,6 +143,9 @@ function flattenLapRows(groups: PilotRaceLapGroup[], bestLapSeconds: number | nu
 		for (const lap of group.laps) {
 			const deltaBest = bestLapSeconds != null ? lap.lengthSeconds - bestLapSeconds : null;
 			const isBest = bestLapSeconds != null && Math.abs(lap.lengthSeconds - bestLapSeconds) < 1e-3;
+			const startTimestampMs = lap.detectionTimestampMs != null && Number.isFinite(lap.detectionTimestampMs)
+				? lap.detectionTimestampMs - lap.lengthSeconds * 1_000
+				: null;
 			rows.push({
 				id: lap.id,
 				raceLabel: group.race.label,
@@ -152,8 +155,8 @@ function flattenLapRows(groups: PilotRaceLapGroup[], bestLapSeconds: number | nu
 				deltaBest,
 				channelLabel: lap.channel?.label ?? group.channel?.label ?? '',
 				channelId: lap.channel?.id ?? group.channel?.id ?? null,
-				timestampMs: lap.detectionTimestampMs,
-				timestampDisplay: formatTimestamp(lap.detectionTimestampMs),
+				timestampMs: startTimestampMs,
+				timestampDisplay: formatTimestamp(startTimestampMs),
 				isBest,
 			});
 		}

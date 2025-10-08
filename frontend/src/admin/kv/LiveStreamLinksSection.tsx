@@ -301,6 +301,7 @@ export function LiveStreamLinksSection(
 								value={draft.start}
 								onChange={(e) => updateDraft(draft.id, { start: e.currentTarget.value })}
 								disabled={disabled}
+								step={1}
 							/>
 						</label>
 						<label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -310,6 +311,7 @@ export function LiveStreamLinksSection(
 								value={draft.end}
 								onChange={(e) => updateDraft(draft.id, { end: e.currentTarget.value })}
 								disabled={disabled}
+								step={1}
 							/>
 						</label>
 						<button type='button' onClick={() => removeDraft(draft.id)} disabled={disabled}>
