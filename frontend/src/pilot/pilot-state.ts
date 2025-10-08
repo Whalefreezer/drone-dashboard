@@ -60,11 +60,13 @@ export interface PilotLap extends ProcessedLap {
 	roundId: string;
 	roundName: string;
 	roundNumber?: number;
+	startTimestampMs: number | null;
 	detectionTimestampMs: number | null;
 	channel: ChannelSummary | null;
 }
 
 export interface PilotHoleshot extends ProcessedLap {
+	startTimestampMs: number | null;
 	detectionTimestampMs: number | null;
 	channel: ChannelSummary | null;
 }
@@ -160,28 +162,41 @@ export const pilotLapGroupsAtom = atomFamily((pilotId: string) =>
 			const channelRecord = pilotChannel ? channels.find((ch) => ch.id === pilotChannel.channelId) ?? null : null;
 			const channel = toChannelSummary(channelRecord);
 			const holeshotRecord = pilotLaps.find((lap) => lap.isHoleshot) ?? null;
+			const holeshotDetectionMs = holeshotRecord ? parseTimestampMs(holeshotRecord.detectionTime) : null;
+			const holeshotStartMs = holeshotDetectionMs != null && Number.isFinite(holeshotDetectionMs) && holeshotRecord &&
+					Number.isFinite(holeshotRecord.lengthSeconds)
+				? holeshotDetectionMs - holeshotRecord.lengthSeconds * 1_000
+				: null;
 			const holeshot = holeshotRecord
 				? {
 					...holeshotRecord,
-					detectionTimestampMs: parseTimestampMs(holeshotRecord.detectionTime),
+					startTimestampMs: holeshotStartMs,
+					detectionTimestampMs: holeshotDetectionMs,
 					channel,
 				}
 				: null;
 
 			const laps = pilotLaps
 				.filter((lap) => !lap.isHoleshot)
-				.map((lap) => ({
-					...lap,
-					raceId: race.id,
-					raceOrder: race.raceOrder,
-					raceNumber: race.raceNumber ?? race.raceOrder,
-					raceLabel: buildRaceLabel(race, round),
-					roundId: race.round ?? '',
-					roundName: round?.name ?? `Round ${round?.roundNumber ?? '?'}`,
-					roundNumber: round?.roundNumber,
-					detectionTimestampMs: parseTimestampMs(lap.detectionTime),
-					channel,
-				}))
+				.map((lap) => {
+					const detectionMs = parseTimestampMs(lap.detectionTime);
+					const startMs = detectionMs != null && Number.isFinite(detectionMs) && Number.isFinite(lap.lengthSeconds)
+						? detectionMs - lap.lengthSeconds * 1_000
+						: null;
+					return {
+						...lap,
+						raceId: race.id,
+						raceOrder: race.raceOrder,
+						raceNumber: race.raceNumber ?? race.raceOrder,
+						raceLabel: buildRaceLabel(race, round),
+						roundId: race.round ?? '',
+						roundName: round?.name ?? `Round ${round?.roundNumber ?? '?'}`,
+						roundNumber: round?.roundNumber,
+						startTimestampMs: startMs,
+						detectionTimestampMs: detectionMs,
+						channel,
+					};
+				})
 				.sort((a, b) => a.lapNumber - b.lapNumber);
 
 			if (laps.length === 0) continue;

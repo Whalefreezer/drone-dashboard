@@ -143,9 +143,7 @@ function flattenLapRows(groups: PilotRaceLapGroup[], bestLapSeconds: number | nu
 		for (const lap of group.laps) {
 			const deltaBest = bestLapSeconds != null ? lap.lengthSeconds - bestLapSeconds : null;
 			const isBest = bestLapSeconds != null && Math.abs(lap.lengthSeconds - bestLapSeconds) < 1e-3;
-			const startTimestampMs = lap.detectionTimestampMs != null && Number.isFinite(lap.detectionTimestampMs)
-				? lap.detectionTimestampMs - lap.lengthSeconds * 1_000
-				: null;
+			const startTimestampMs = lap.startTimestampMs ?? lap.detectionTimestampMs ?? null;
 			rows.push({
 				id: lap.id,
 				raceLabel: group.race.label,

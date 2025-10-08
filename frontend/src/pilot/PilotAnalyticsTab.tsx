@@ -113,7 +113,7 @@ export function PilotAnalyticsTab(
 
 	const lapPoints = useMemo<LapPoint[]>(() => {
 		if (timeline.length === 0) return [];
-		const firstTimestamp = timeline.find((lap) => lap.detectionTimestampMs != null)?.detectionTimestampMs ?? null;
+		const firstTimestamp = timeline.find((lap) => lap.startTimestampMs != null)?.startTimestampMs ?? null;
 		const raceOffsets = new Map<string, number>();
 		let cumulativeOffset = 0;
 		for (const group of lapGroups) {
@@ -121,9 +121,7 @@ export function PilotAnalyticsTab(
 			cumulativeOffset += 1.0;
 		}
 		return timeline.map((lap) => {
-			const timeSeconds = lap.detectionTimestampMs != null && firstTimestamp != null
-				? (lap.detectionTimestampMs - firstTimestamp) / 1000
-				: null;
+			const timeSeconds = lap.startTimestampMs != null && firstTimestamp != null ? (lap.startTimestampMs - firstTimestamp) / 1000 : null;
 			const raceOffset = raceOffsets.get(lap.raceId) ?? 0;
 			return {
 				id: lap.id,
@@ -486,9 +484,9 @@ function buildChartOption(
 
 		// Find the original lap data to get the timestamp
 		const originalLap = timeline.find((lap) => lap.id === datum.id);
-		const timestamp = originalLap?.detectionTimestampMs;
+		const timestamp = originalLap?.startTimestampMs ?? originalLap?.detectionTimestampMs ?? null;
 		const dateTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown time';
-		const streamLink = getStreamLink(timestamp ?? null);
+		const streamLink = getStreamLink(timestamp);
 		const offsetLabel = streamLink && streamLink.offsetSeconds > 0 ? ` (+${streamLink.offsetSeconds}s)` : '';
 		const timeLine = streamLink
 			? `<div>${dateTime} — <a href="${streamLink.href}" target="_blank" rel="noreferrer">Watch ${streamLink.label}${offsetLabel}</a></div>`

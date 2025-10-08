@@ -86,7 +86,7 @@ export function usePilotMetricSummary(pilotId: string): PilotMetricSummary {
 		const group = lapGroupMap.get(raceId);
 		if (!group) return null;
 		const lap = group.laps.find((entry) => entry.lapNumber === lapNumber);
-		return lap?.detectionTimestampMs ?? null;
+		return lap?.startTimestampMs ?? lap?.detectionTimestampMs ?? null;
 	};
 
 	const findRaceTimestamp = (raceId: string): number | null => {
@@ -95,12 +95,15 @@ export function usePilotMetricSummary(pilotId: string): PilotMetricSummary {
 		const fromRaceStart = parseTimestampMs(group.race.startTime ?? null);
 		if (fromRaceStart != null) return fromRaceStart;
 		const firstLap = group.laps.find((entry) => entry.lapNumber === 1) ?? group.laps[0];
-		return firstLap?.detectionTimestampMs ?? null;
+		if (!firstLap) return null;
+		return firstLap.startTimestampMs ?? firstLap.detectionTimestampMs ?? null;
 	};
 
 	const findHoleshotTimestamp = (raceId: string): number | null => {
 		const group = lapGroupMap.get(raceId);
-		return group?.holeshot?.detectionTimestampMs ?? null;
+		const holeshot = group?.holeshot;
+		if (!holeshot) return null;
+		return holeshot.startTimestampMs ?? holeshot.detectionTimestampMs ?? null;
 	};
 
 	const bestLapPair = useAtomValue(pilotBestLapAtom(pilotId));
