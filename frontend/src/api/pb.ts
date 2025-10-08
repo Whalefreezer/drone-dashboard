@@ -94,13 +94,36 @@ export function pbSubscribeCollection<T extends PBBaseRecord>(
 	collection: string,
 ): Atom<Promise<T[]> | T[]> {
 	const overrideAtom = atom<T[] | null>(null);
+	const fetchAllPages = async (): Promise<T[]> => {
+		const perPage = 1_000;
+		let page = 1;
+		let totalPages = 1;
+		const allItems: T[] = [];
+
+		while (true) {
+			const response = await pb.collection<T>(collection).getList(page, perPage);
+			totalPages = Math.max(response.totalPages, 1);
+			allItems.push(...response.items);
+			if (page >= totalPages || response.items.length === 0) break;
+			page += 1;
+		}
+
+		return allItems;
+	};
+
 	const anAtom = atom<Promise<T[]> | T[], [(prev: T[] | null) => T[]], void>(
 		(get, { setSelf }) => {
 			const override = get(overrideAtom);
 			if (override) return override;
-			return pb.collection<T>(collection).getList(1, 10_000).then((r) => {
-				setSelf(() => r.items);
-				return r.items;
+			return fetchAllPages().then((items) => {
+				setSelf((prev) => {
+					if (!prev || prev.length === 0) return items;
+					const merged = new Map<string, T>();
+					for (const item of items) merged.set(item.id, item);
+					for (const item of prev) merged.set(item.id, item);
+					return Array.from(merged.values());
+				});
+				return items;
 			});
 		},
 		(get, set, update) => {
