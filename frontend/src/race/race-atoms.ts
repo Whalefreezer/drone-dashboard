@@ -273,7 +273,11 @@ const racePilotChannelOrderAtom = atomFamily((raceId: string) =>
  * - Others: fastest N consecutive (N = laps), then by most laps
  */
 export const raceSortedRowsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): { pilotChannel: { id: string; pilotId: string; channelId: string }; position: number }[] => {
+	eagerAtom((get): {
+		raceId: string;
+		pilotChannel: { id: string; pilotId: string; channelId: string };
+		position: number;
+	}[] => {
 		const race = get(raceDataAtom(raceId));
 		if (!race) return [];
 		const rounds = get(roundsDataAtom);
@@ -287,6 +291,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
 		const pilotChannelMap = new Map<string, { id: string; pilotId: string; channelId: string }>();
 		pilotChannels.forEach((pc) => pilotChannelMap.set(pc.pilotId, pc));
 		return sortedIds.map((pilotId, idx) => ({
+			raceId,
 			pilotChannel: pilotChannelMap.get(pilotId) ?? { id: pilotId, pilotId, channelId: '' },
 			position: idx + 1,
 		}));
