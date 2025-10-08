@@ -13,6 +13,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root.tsx'
+import { Route as SettingsRouteImport } from './routes/settings.tsx'
 import { Route as LoginRouteImport } from './routes/login.tsx'
 import { Route as AdminRouteImport } from './routes/admin.tsx'
 import { Route as IndexRouteImport } from './routes/index.tsx'
@@ -25,6 +26,11 @@ import { Route as AdminIngestRouteImport } from './routes/admin/ingest.tsx'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard.tsx'
 import { Route as AdminControlRouteImport } from './routes/admin/control.tsx'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/admin/control': typeof AdminControlRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/ingest': typeof AdminIngestRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/settings'
     | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/settings'
     | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/settings'
     | '/admin/control'
     | '/admin/dashboard'
     | '/admin/ingest'
@@ -165,11 +177,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
   PilotsPilotIdRoute: typeof PilotsPilotIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -276,6 +296,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
   PilotsPilotIdRoute: PilotsPilotIdRoute,
 }
 export const routeTree = rootRouteImport

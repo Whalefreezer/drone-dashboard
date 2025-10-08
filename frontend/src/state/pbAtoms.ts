@@ -1,5 +1,5 @@
 import { atom } from 'jotai';
-import { atomFamily } from 'jotai/utils';
+import { atomFamily, atomWithStorage } from 'jotai/utils';
 // Legacy RaceEvent removed; we expose PBEventRecord and small derived atoms instead
 import { Bracket } from '../bracket/bracket-types.ts';
 import { atomWithSuspenseQuery } from 'jotai-tanstack-query';
@@ -51,10 +51,24 @@ export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 //     }
 // });
 
-export const currentEventAtom = eagerAtom((get) => {
+export const pbCurrentEventAtom = eagerAtom((get) => {
 	const events = get(eventsAtom);
 	const currentEvent = events.find((event) => event.isCurrent);
 	return currentEvent || null;
+});
+
+const EVENT_SELECTION_STORAGE_KEY = 'selected-event-id';
+export const EVENT_SELECTION_CURRENT = 'current';
+
+export const selectedEventIdAtom = atomWithStorage<string>(EVENT_SELECTION_STORAGE_KEY, EVENT_SELECTION_CURRENT);
+
+export const currentEventAtom = eagerAtom((get) => {
+	const selection = get(selectedEventIdAtom);
+	if (selection === EVENT_SELECTION_CURRENT) return get(pbCurrentEventAtom);
+	const events = get(eventsAtom);
+	const match = events.find((event) => event.id === selection);
+	if (match) return match;
+	return get(pbCurrentEventAtom);
 });
 
 // Derived: race ids for the current event (prefer PB id)
