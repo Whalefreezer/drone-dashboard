@@ -95,6 +95,23 @@
             "internalConsoleOptions": "neverOpen"
         },
         {
+            "name": "Deno Dev (Remote)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "env": {
+                "VITE_API_URL": "https://race.aufpv.org.au",
+            },
+            "runtimeExecutable": "deno",
+            "args": [
+                "--node-modules-dir",
+                "npm:vite"
+            ],
+            "runtimeArgs": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
             "request": "launch",
             "name": "Launch Program",
             "type": "node",
@@ -174,6 +191,19 @@
                 "Launch Chrome",
                 "Go (Cloud)",
                 "Go (Pits)"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "fullstack",
+                "order": 1
+            }
+        },
+        {
+            "name": "🚀 Client (Remote)",
+            "configurations": [
+                "Deno Dev (Remote)",
+                "Launch Chrome",
             ],
             "stopAll": true,
             "presentation": {

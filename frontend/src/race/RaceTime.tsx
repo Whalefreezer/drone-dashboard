@@ -14,7 +14,7 @@ function RaceTime() {
 	useEffect(() => {
 		// Only start countdown if race has started
 		if (currentRace?.start && !currentRace.start.startsWith('0')) {
-			const currentRaceStart = new Date(currentRace.start + 'Z').valueOf() / 1000;
+			const currentRaceStart = new Date(currentRace.start).valueOf() / 1000;
 			const currentRaceEnd = currentRaceStart + raceLength;
 			console.log('currentRaceStart', currentRaceStart, Date.now() / 1000, Date.now() / 1000 - currentRaceStart);
 
