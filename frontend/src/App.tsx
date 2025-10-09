@@ -35,9 +35,11 @@ function App() {
 
 	return (
 		<div className='app-shell'>
-			<GenericSuspense id='snapshot-control'>
+			{
+				/* <GenericSuspense id='snapshot-control'>
 				<SnapshotControl />
-			</GenericSuspense>
+			</GenericSuspense> */
+			}
 
 			{!isMobile
 				? (
