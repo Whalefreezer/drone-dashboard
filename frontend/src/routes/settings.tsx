@@ -97,7 +97,7 @@ function EventSelectionSection() {
 				: (
 					<div className='settings-active-event'>
 						<div className='settings-active-name'>No event selected</div>
-						<div className='settings-active-meta'>The dashboard will fall back to PocketBase defaults.</div>
+						<div className='settings-active-meta'>The dashboard will fall back to defaults.</div>
 					</div>
 				)}
 		</section>

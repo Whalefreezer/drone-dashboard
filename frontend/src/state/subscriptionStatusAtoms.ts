@@ -67,3 +67,18 @@ function statusPriority(status: SubscriptionStatus): number {
 			return 0;
 	}
 }
+
+/**
+ * Atom that checks if leaderboard-critical collections (laps and detections) have completed initial load.
+ * Returns true once both collections move past 'idle' and 'initializing' status.
+ * Will remain true during backfilling/reconnecting to avoid hiding data unnecessarily.
+ */
+export const leaderboardDataReadyAtom = atom<boolean>((get) => {
+	const lapsStatus = get(pbCollectionStatusAtom('laps'));
+	const detectionsStatus = get(pbCollectionStatusAtom('detections'));
+
+	const lapsReady = lapsStatus.status !== 'idle' && lapsStatus.status !== 'initializing';
+	const detectionsReady = detectionsStatus.status !== 'idle' && detectionsStatus.status !== 'initializing';
+
+	return lapsReady && detectionsReady;
+});

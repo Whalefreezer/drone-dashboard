@@ -16,10 +16,12 @@ import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import { useLeaderboardAutoScroll } from './useLeaderboardAutoScroll.ts';
 import { leaderboardAutoscrollEnabledAtom } from '../state/autoscroll-atoms.ts';
 import { AutoscrollToggle } from './AutoscrollToggle.tsx';
+import { leaderboardDataReadyAtom } from '../state/subscriptionStatusAtoms.ts';
 
 export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
+	const dataReady = useAtomValue(leaderboardDataReadyAtom);
 	const { isMobile, isTablet, breakpoint } = useBreakpoint();
 	const ctx = useMemo(() => ({ consecutiveLaps }), [
 		consecutiveLaps,
@@ -30,8 +32,8 @@ export function Leaderboard() {
 	);
 
 	const rows: LeaderboardRowProps[] = useMemo(
-		() => (pilotIds.map((pilotId) => ({ pilotId }))),
-		[pilotIds],
+		() => (dataReady ? pilotIds.map((pilotId) => ({ pilotId })) : []),
+		[pilotIds, dataReady],
 	);
 
 	const splitIndex = useAtomValue(leaderboardSplitAtom); // 1-based position or null

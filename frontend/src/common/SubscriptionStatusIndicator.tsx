@@ -27,7 +27,7 @@ export function SubscriptionStatusIndicator() {
 		let statusMessage = '';
 		switch (worst.payload.status) {
 			case 'initializing':
-				statusMessage = 'Loading PocketBase data…';
+				statusMessage = 'Loading data…';
 				break;
 			case 'reconnecting':
 				statusMessage = 'Realtime connection lost. Attempting to reconnect…';
@@ -36,7 +36,7 @@ export function SubscriptionStatusIndicator() {
 				statusMessage = 'Replaying missed updates after reconnect…';
 				break;
 			case 'error':
-				statusMessage = 'PocketBase realtime error. Some data may be stale.';
+				statusMessage = 'Realtime error. Some data may be stale.';
 				break;
 			default:
 				statusMessage = '';
