@@ -1,5 +1,5 @@
+import { atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
-import { eagerAtom } from 'jotai-eager';
 import type { PBChannelRecord, PBPilotRecord, PBRaceRecord, PBRoundRecord } from '../api/pbTypes.ts';
 import type { ProcessedLap } from '../state/atoms.ts';
 import {
@@ -116,21 +116,22 @@ export interface PilotUpcomingRace {
 }
 
 export const pilotRecordAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PBPilotRecord | null => {
+	atom((get): PBPilotRecord | null => {
 		const pilots = get(pilotsAtom);
 		return pilots.find((p) => p.id === pilotId) ?? null;
 	})
 );
 
 export const pilotOverviewMetaAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PilotOverviewMeta => {
+	atom((get): PilotOverviewMeta => {
 		const record = get(pilotRecordAtom(pilotId));
 		const preferredChannel = toChannelSummary(get(pilotPreferredChannelAtom(pilotId)));
 
 		let bracket: { name: string; points: number } | null = null;
 		if (record) {
 			const bracketsResult = get(bracketsDataAtom);
-			const brackets = Array.isArray(bracketsResult) ? bracketsResult : [];
+			if (bracketsResult instanceof Promise) throw bracketsResult;
+			const brackets = Array.isArray(bracketsResult.data) ? bracketsResult.data : [];
 			for (const entry of brackets) {
 				const match = entry.pilots.find((bp: BracketPilot) => norm(bp.name) === norm(record.name));
 				if (match) {
@@ -145,7 +146,7 @@ export const pilotOverviewMetaAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotLapGroupsAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PilotRaceLapGroup[] => {
+	atom((get): PilotRaceLapGroup[] => {
 		const races = get(allRacesAtom);
 		const rounds = get(roundsDataAtom);
 		const channels = get(channelsDataAtom);
@@ -224,7 +225,7 @@ export const pilotLapGroupsAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotTimelineLapsAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PilotTimelineLap[] => {
+	atom((get): PilotTimelineLap[] => {
 		const groups = get(pilotLapGroupsAtom(pilotId));
 		const timeline: PilotTimelineLap[] = [];
 		let overallIndex = 0;
@@ -239,7 +240,7 @@ export const pilotTimelineLapsAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotUpcomingRacesAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PilotUpcomingRace[] => {
+	atom((get): PilotUpcomingRace[] => {
 		const races = get(allRacesAtom);
 		if (races.length === 0) return [];
 

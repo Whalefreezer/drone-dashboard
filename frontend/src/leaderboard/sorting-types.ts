@@ -1,4 +1,4 @@
-import type { Atom } from 'jotai';
+import type { Atom, Getter } from 'jotai';
 
 // Sorting primitives for atom-based leaderboard ordering
 
@@ -12,7 +12,7 @@ export enum NullHandling {
 	Last = 'last',
 }
 
-export type EagerGetter = <Value>(anAtom: Atom<Value>) => Awaited<Value>;
+export type EagerGetter = Getter;
 
 export type ValueGetter<TContext = void> = (get: EagerGetter, pilotId: string, context: TContext) => number | null;
 export type Condition<TContext = void> = (get: EagerGetter, pilotId: string, context: TContext) => boolean;

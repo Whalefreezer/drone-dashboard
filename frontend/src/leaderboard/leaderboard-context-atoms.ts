@@ -1,5 +1,4 @@
-import { Atom } from 'jotai';
-import { eagerAtom } from 'jotai-eager';
+import { Atom, atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
 import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, noRacesOverrideAtom, pilotsAtom } from '../state/pbAtoms.ts';
@@ -7,12 +6,12 @@ import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 
 // Race ID sets shared across leaderboard and metric selectors
-export const currentRaceIdsAtom = eagerAtom((get): string[] => {
+export const currentRaceIdsAtom = atom((get): string[] => {
 	const races = get(allRacesAtom);
 	return races.map((r) => r.id);
 });
 
-export const previousRaceIdsAtom = eagerAtom((get): string[] => {
+export const previousRaceIdsAtom = atom((get): string[] => {
 	const ids = get(currentRaceIdsAtom);
 	const current = get(currentRaceAtom)?.id;
 	const lastRace = get(lastRaceAtom)?.id;
@@ -28,7 +27,7 @@ export interface PilotNextRaceInfo {
 }
 
 export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PilotNextRaceInfo => {
+	atom((get): PilotNextRaceInfo => {
 		const races = get(allRacesAtom);
 		const current = get(currentRaceAtom);
 		const currentIndex = current ? races.findIndex((r) => r.id === current.id) : -1;
@@ -64,11 +63,11 @@ export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotRacesUntilNextAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): number => get(pilotNextRaceInfoAtom(pilotId)).racesAway)
+	atom((get): number => get(pilotNextRaceInfoAtom(pilotId)).racesAway)
 );
 
 export const pilotNextRaceOverrideLabelAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): string | null => {
+	atom((get): string | null => {
 		const info = get(pilotNextRaceInfoAtom(pilotId));
 		const overrides = get(leaderboardNextRaceOverridesAtom);
 
@@ -97,7 +96,7 @@ export const pilotNextRaceOverrideLabelAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotPreferredChannelAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get): PBChannelRecord | null => {
+	atom((get): PBChannelRecord | null => {
 		const races = get(allRacesAtom);
 		const channels = get(channelsDataAtom);
 		const current = get(currentRaceAtom);
@@ -118,8 +117,10 @@ export const pilotPreferredChannelAtom = atomFamily((pilotId: string) =>
 );
 
 export const pilotEliminatedInfoAtom = atomFamily((pilotId: string) =>
-	eagerAtom((get) => {
-		const brackets = get(bracketsDataAtom)?.data ?? [];
+	atom((get) => {
+		const bracketsResult = get(bracketsDataAtom);
+		if (bracketsResult instanceof Promise) throw bracketsResult;
+		const brackets = bracketsResult.data ?? [];
 		const pilots = get(pilotsAtom);
 		const pilot = pilots.find((p) => p.id === pilotId);
 		if (!pilot) return null;

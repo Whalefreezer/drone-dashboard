@@ -27,7 +27,6 @@ import {
 } from '../api/pbTypes.ts';
 import { PBControlStatsRecord, PBIngestTargetRecord, PBServerSettingRecord } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
-import { eagerAtom } from 'jotai-eager';
 
 // Live events collection; we filter locally for the current event
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
@@ -48,7 +47,7 @@ export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 //     }
 // });
 
-export const pbCurrentEventAtom = eagerAtom((get) => {
+export const pbCurrentEventAtom = atom((get) => {
 	const events = get(eventsAtom);
 	const currentEvent = events.find((event) => event.isCurrent);
 	return currentEvent || null;
@@ -59,7 +58,7 @@ export const EVENT_SELECTION_CURRENT = 'current';
 
 export const selectedEventIdAtom = atomWithStorage<string>(EVENT_SELECTION_STORAGE_KEY, EVENT_SELECTION_CURRENT);
 
-export const currentEventAtom = eagerAtom((get) => {
+export const currentEventAtom = atom((get) => {
 	const selection = get(selectedEventIdAtom);
 	if (selection === EVENT_SELECTION_CURRENT) return get(pbCurrentEventAtom);
 	const events = get(eventsAtom);
@@ -69,14 +68,14 @@ export const currentEventAtom = eagerAtom((get) => {
 });
 
 // Derived: race ids for the current event (prefer PB id)
-export const eventRaceIdsAtom = eagerAtom((get) => {
+export const eventRaceIdsAtom = atom((get) => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
 	const races = get(raceRecordsAtom);
 	return races.filter((r) => r.event === ev.id).map((r) => r.id);
 });
 
-export const consecutiveLapsAtom = eagerAtom((get) => {
+export const consecutiveLapsAtom = atom((get) => {
 	const ev = get(currentEventAtom);
 	return Number(ev?.laps ?? 3);
 });
@@ -94,10 +93,10 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 
 // Pilots as PB records
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = eagerAtom((get) => get(pilotsRecordsAtom));
+export const pilotsAtom = atom((get) => get(pilotsRecordsAtom));
 
 export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
-	eagerAtom((get): string | null => {
+	atom((get): string | null => {
 		if (!pilotSourceId) return null;
 		const pilots = get(pilotsAtom);
 		const match = pilots.find((pilot) => pilot.sourceId === pilotSourceId || pilot.id === pilotSourceId);
@@ -107,12 +106,12 @@ export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
 
 // Channels as PB records
 export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
-export const channelsDataAtom = eagerAtom((get) => get(channelRecordsAtom));
+export const channelsDataAtom = atom((get) => get(channelRecordsAtom));
 
 export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels');
 
 export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
-export const roundsDataAtom = eagerAtom((get) => {
+export const roundsDataAtom = atom((get) => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
 	const rounds = get(roundRecordsAtom);
@@ -134,14 +133,14 @@ export const controlStatsRecordsAtom = pbSubscribeCollection<PBControlStatsRecor
 export const DEFAULT_APP_TITLE = 'Drone Dashboard';
 
 export const serverSettingRecordAtom = atomFamily((key: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const settings = get(serverSettingsRecordsAtom);
 		const record = settings.find((setting) => setting.key === key);
 		return record ?? null;
 	})
 );
 
-export const appTitleAtom = eagerAtom((get) => {
+export const appTitleAtom = atom((get) => {
 	const record = get(serverSettingRecordAtom('ui.title'));
 	const raw = record?.value;
 	const text = raw == null ? '' : String(raw);
@@ -154,7 +153,7 @@ export const racesAtom = allRacesAtom;
 export const currentRaceAtom = newCurrentRaceAtom;
 
 // Current order from client_kv for the current event
-export const currentOrderKVAtom = eagerAtom((get) => {
+export const currentOrderKVAtom = atom((get) => {
 	const ev = get(currentEventAtom);
 	if (!ev) return null as null | { order?: number; sourceId?: string };
 	const kv = get(clientKVRecordsAtom);
@@ -200,7 +199,7 @@ function toPTSL(v: unknown): PrimaryTimingSystemLocation {
 // Re-export from common
 export { findEliminatedPilots };
 
-export const overallBestTimesAtom = eagerAtom((get) => {
+export const overallBestTimesAtom = atom((get) => {
 	const raceIds = get(eventRaceIdsAtom);
 	// Flatten all processed laps from all races using per-race atom
 	const allProcessedLaps = raceIds.flatMap((raceId) => get(raceProcessedLapsAtom(raceId)));
@@ -213,7 +212,7 @@ export const overallBestTimesAtom = eagerAtom((get) => {
  * Leaderboard split index (1-based position) from client_kv
  * namespace: 'leaderboard', key: 'splitIndex', value: JSON number
  */
-export const leaderboardSplitAtom = eagerAtom((get) => {
+export const leaderboardSplitAtom = atom((get) => {
 	const ev = get(currentEventAtom);
 	if (!ev) return null as number | null;
 	const kv = get(clientKVRecordsAtom);
@@ -245,7 +244,7 @@ export interface NoRacesOverride {
 	label: string;
 }
 
-export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRaceOverride[] => {
+export const leaderboardNextRaceOverridesAtom = atom((get): ResolvedNextRaceOverride[] => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
 	const races = get(allRacesAtom);
@@ -306,7 +305,7 @@ export const leaderboardNextRaceOverridesAtom = eagerAtom((get): ResolvedNextRac
 	return cleaned.sort((a, b) => a.startIndex - b.startIndex);
 });
 
-export const noRacesOverrideAtom = eagerAtom((get): NoRacesOverride | null => {
+export const noRacesOverrideAtom = atom((get): NoRacesOverride | null => {
 	const ev = get(currentEventAtom);
 	if (!ev) return null;
 	const kv = get(clientKVRecordsAtom);
@@ -360,7 +359,7 @@ const toEpochMs = (value: unknown): number | null => {
 	return null;
 };
 
-export const streamVideoRangesAtom = eagerAtom((get): StreamVideoRange[] => {
+export const streamVideoRangesAtom = atom((get): StreamVideoRange[] => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
 	const kv = get(clientKVRecordsAtom);
@@ -414,7 +413,7 @@ export const streamVideoRangesAtom = eagerAtom((get): StreamVideoRange[] => {
  * Processed laps for a specific race - computed from PB records
  */
 export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const lapRecords = get(lapRecordsAtom);
 		const detectionRecords = get(detectionRecordsAtom);
 
@@ -448,7 +447,7 @@ export const raceProcessedLapsAtom = atomFamily((raceId: string) =>
  * Pilot-channel associations for a specific race
  */
 export const racePilotChannelsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const pilotChannelRecords = get(pilotChannelRecordsAtom);
 		return pilotChannelRecords
 			.filter((pc) => pc.race === raceId)
@@ -464,7 +463,7 @@ export const racePilotChannelsAtom = atomFamily((raceId: string) =>
  * Race status (active/completed/started) for a specific race
  */
 export const raceStatusAtom = atomFamily((raceId: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const raceRecords = get(raceRecordsAtom);
 		const race = raceRecords.find((r) => r.id === raceId);
 		if (!race) return { isActive: false, isCompleted: false, hasStarted: false };
@@ -484,7 +483,7 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
  * All detections for a specific race
  */
 export const raceDetectionsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const detectionRecords = get(detectionRecordsAtom);
 		return detectionRecords.filter((d) => d.race === raceId);
 	})
@@ -494,7 +493,7 @@ export const raceDetectionsAtom = atomFamily((raceId: string) =>
  * All game points for a specific race
  */
 export const raceGamePointsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get) => {
+	atom((get) => {
 		const gamePointRecords = get(gamePointRecordsAtom);
 		return gamePointRecords.filter((g) => g.race === raceId);
 	})

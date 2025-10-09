@@ -59,7 +59,7 @@ type TimeMetric = { time: number; raceId: string };
 type TimeMetricPair = { current: TimeMetric | null; previous: TimeMetric | null };
 
 function RenderTimeCell(
-	{ metricAtom }: { metricAtom: Atom<TimeMetricPair | Promise<TimeMetricPair>> }, // eagerAtom may yield value or Promise
+	{ metricAtom }: { metricAtom: Atom<TimeMetricPair | Promise<TimeMetricPair>> }, // metric atom may yield pending promise during initial load
 ) {
 	const currentRaceIndex = useAtomValue(currentRaceIndexAtom);
 	const roundDataValue = useAtomValue(roundsDataAtom);

@@ -1,5 +1,4 @@
 import { atom } from 'jotai';
-import { eagerAtom } from 'jotai-eager';
 import { racePilotChannelsAtom } from '../race/race-atoms.ts';
 import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { sortPilotIds } from './leaderboard-sorter.ts';
@@ -7,13 +6,13 @@ import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-h
 import { pilotsAtom } from '../state/pbAtoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 
-export const leaderboardPilotIdsAtom = eagerAtom((get): string[] => {
+export const leaderboardPilotIdsAtom = atom((get): string[] => {
 	const pilots = get(pilotsAtom);
 	const ids = pilots.map((pilot) => pilot.id);
 	return sortPilotIds(ids, get, defaultSortConfigCurrent);
 });
 
-export const previousLeaderboardPilotIdsAtom = eagerAtom((get): string[] => {
+export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
 	const raceIds = get(previousRaceIdsAtom);
 	const idSet = new Set<string>();
 	raceIds.forEach((raceId) => {
@@ -25,7 +24,7 @@ export const previousLeaderboardPilotIdsAtom = eagerAtom((get): string[] => {
 });
 
 // Position changes map based on previous vs current ordered IDs
-export const positionChangesAtom = eagerAtom((get): Map<string, number> => {
+export const positionChangesAtom = atom((get): Map<string, number> => {
 	const prev = get(previousLeaderboardPilotIdsAtom);
 	const cur = get(leaderboardPilotIdsAtom);
 	const prevIndex = new Map<string, number>();
@@ -45,7 +44,7 @@ export const positionChangesAtom = eagerAtom((get): Map<string, number> => {
 export const showFavoritesOnlyAtom = atom(false);
 
 // Filtered leaderboard pilot IDs based on favorites filter
-export const filteredLeaderboardPilotIdsAtom = eagerAtom((get): string[] => {
+export const filteredLeaderboardPilotIdsAtom = atom((get): string[] => {
 	const showFavoritesOnly = get(showFavoritesOnlyAtom);
 	const allPilotIds = get(leaderboardPilotIdsAtom);
 

@@ -1,5 +1,5 @@
+import { type Atom, atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
-import type { Atom } from 'jotai';
 import {
 	consecutiveLapsAtom,
 	currentEventAtom,
@@ -12,7 +12,6 @@ import {
 import { deepEqualAtomFamily } from '../state/jotai-utils.ts';
 import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
-import { eagerAtom } from 'jotai-eager';
 import { EventType } from '../api/pbTypes.ts';
 import { sortPilotIds } from '../leaderboard/leaderboard-sorter.ts';
 import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from '../leaderboard/sorting-types.ts';
@@ -39,14 +38,14 @@ const createValueGetter = (
 	get(atomFamily([context.raceId, pilotId])) as number | null;
 
 export const racePilotCompletedLapsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number => {
+	atom((get): number => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		return processedLaps.filter((lap) => lap.pilotId === pilotId && !lap.isHoleshot).length;
 	})
 );
 
 export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const n = get(consecutiveLapsAtom);
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const racingLaps = processedLaps.filter((lap) => lap.pilotId === pilotId && !lap.isHoleshot);
@@ -63,7 +62,7 @@ export const racePilotConsecutiveTimeAtom = deepEqualAtomFamily(([raceId, pilotI
 );
 
 export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const racingLaps = processedLaps.filter((lap) => lap.pilotId === pilotId && !lap.isHoleshot);
 		if (racingLaps.length === 0) return null;
@@ -72,7 +71,7 @@ export const racePilotBestLapAtom = deepEqualAtomFamily(([raceId, pilotId]: [str
 );
 
 export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
@@ -96,7 +95,7 @@ export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotI
 );
 
 export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
@@ -119,7 +118,7 @@ export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilo
  * Completion time for a pilot in a specific race (holeshot + first N laps)
  */
 export const racePilotCompletionTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const race = get(raceDataAtom(raceId));
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const target = race?.targetLaps ?? 0;
@@ -142,7 +141,7 @@ export const racePilotCompletionTimeAtom = deepEqualAtomFamily(([raceId, pilotId
  * Total race time for a pilot (holeshot + all completed laps) - used for sorting incomplete pilots
  */
 export const racePilotTotalTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const holeshot = pilotLaps.find((lap) => lap.isHoleshot);
@@ -157,7 +156,7 @@ export const racePilotTotalTimeAtom = deepEqualAtomFamily(([raceId, pilotId]: [s
 );
 
 export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilotId]: [string, string]) =>
-	eagerAtom((get): number | null => {
+	atom((get): number | null => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const detectionTimes = pilotLaps
@@ -257,7 +256,7 @@ export const createRaceSortConfig = (
 };
 
 const racePilotChannelOrderAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): Map<string, number> => {
+	atom((get): Map<string, number> => {
 		const pilotChannels = get(baseRacePilotChannelsAtom(raceId));
 		const order = new Map<string, number>();
 		pilotChannels.forEach((channel, index) => {
@@ -273,7 +272,7 @@ const racePilotChannelOrderAtom = atomFamily((raceId: string) =>
  * - Others: fastest N consecutive (N = laps), then by most laps
  */
 export const raceSortedRowsAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): {
+	atom((get): {
 		raceId: string;
 		pilotChannel: { id: string; pilotId: string; channelId: string };
 		position: number;
@@ -302,7 +301,7 @@ export const raceSortedRowsAtom = atomFamily((raceId: string) =>
  * Max lap number present in a race (for column count)
  */
 export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): number => {
+	atom((get): number => {
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		return Math.max(0, ...processedLaps.map((lap) => lap.lapNumber));
 	})
@@ -312,7 +311,7 @@ export const raceMaxLapNumberAtom = atomFamily((raceId: string) =>
 export { baseRacePilotChannelsAtom as racePilotChannelsAtom, baseRaceProcessedLapsAtom as raceProcessedLapsAtom };
 
 export const raceDataAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): PBRaceRecord | null => {
+	atom((get): PBRaceRecord | null => {
 		const currentEvent = get(currentEventAtom);
 		if (!currentEvent) return null;
 
@@ -330,7 +329,7 @@ export const raceDataAtom = atomFamily((raceId: string) =>
  * Race status atom family for checking if a race is active/completed
  */
 export const raceStatusAtom = atomFamily((raceId: string) =>
-	eagerAtom((get): RaceStatus | null => {
+	atom((get): RaceStatus | null => {
 		const currentEvent = get(currentEventAtom);
 		if (!currentEvent) return null;
 
@@ -347,7 +346,7 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
 /**
  * All races for the current event - PB native
  */
-export const allRacesAtom = eagerAtom((get): PBRaceRecord[] => {
+export const allRacesAtom = atom((get): PBRaceRecord[] => {
 	const currentEvent = get(currentEventAtom);
 	if (!currentEvent) return [];
 
@@ -369,7 +368,7 @@ export const allRacesAtom = eagerAtom((get): PBRaceRecord[] => {
  * 2. Fallback to raceOrder matching
  * 3. Default to first race if no matches
  */
-export const currentRaceAtom = eagerAtom((get): PBRaceRecord | null => {
+export const currentRaceAtom = atom((get): PBRaceRecord | null => {
 	const races = get(allRacesAtom);
 	if (!races || races.length === 0) return null;
 
@@ -393,7 +392,7 @@ export const currentRaceAtom = eagerAtom((get): PBRaceRecord | null => {
 /**
  * Helper to find current race index - uses currentRaceAtom to find position in allRacesAtom
  */
-export const currentRaceIndexAtom = eagerAtom((get): number => {
+export const currentRaceIndexAtom = atom((get): number => {
 	const races = get(allRacesAtom);
 	const currentRace = get(currentRaceAtom);
 
@@ -408,7 +407,7 @@ export const currentRaceIndexAtom = eagerAtom((get): number => {
  * Last race - finds the race with order = kv.order - 1
  * Consistent with currentRaceAtom logic, relies totally on kv.order
  */
-export const lastRaceAtom = eagerAtom((get): PBRaceRecord | null => {
+export const lastRaceAtom = atom((get): PBRaceRecord | null => {
 	const races = get(allRacesAtom);
 	const kv = get(currentOrderKVAtom);
 
@@ -429,7 +428,7 @@ export const lastRaceAtom = eagerAtom((get): PBRaceRecord | null => {
  * Next races atom - returns the next 8 races based on current order from KV store
  * Uses the order field from currentOrderKVAtom to find races with higher raceOrder values
  */
-export const nextRacesAtom = eagerAtom((get): PBRaceRecord[] => {
+export const nextRacesAtom = atom((get): PBRaceRecord[] => {
 	const races = get(allRacesAtom);
 	const currentOrderKV = get(currentOrderKVAtom);
 

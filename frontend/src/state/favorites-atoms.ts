@@ -1,6 +1,5 @@
 import { atom } from 'jotai';
 import { atomFamily, atomWithStorage } from 'jotai/utils';
-import { eagerAtom } from 'jotai-eager';
 import { pilotsAtom } from './pbAtoms.ts';
 import type { PBPilotRecord } from '../api/pbTypes.ts';
 
@@ -17,12 +16,12 @@ export const favoritePilotIdsAtom = atomWithStorage<string[]>(
 	{ getOnInit: true },
 );
 
-export const favoritePilotSourceIdsSetAtom = eagerAtom((get) => {
+export const favoritePilotSourceIdsSetAtom = atom((get) => {
 	const stored = get(favoritePilotIdsAtom);
 	return new Set(stored);
 });
 
-export const favoritePilotIdsSetAtom = eagerAtom((get) => {
+export const favoritePilotIdsSetAtom = atom((get) => {
 	const sourceIds = get(favoritePilotSourceIdsSetAtom);
 	const pilots = asPilotArray(get(pilotsAtom) as PilotCollection);
 	const pocketbaseIds = new Set<string>();
@@ -35,10 +34,10 @@ export const favoritePilotIdsSetAtom = eagerAtom((get) => {
 });
 
 export const isPilotFavoriteAtom = atomFamily((pilotSourceId: string) =>
-	eagerAtom((get) => get(favoritePilotSourceIdsSetAtom).has(pilotSourceId))
+	atom((get) => get(favoritePilotSourceIdsSetAtom).has(pilotSourceId))
 );
 
-export const favoritePilotsAtom = eagerAtom((get) => {
+export const favoritePilotsAtom = atom((get) => {
 	const sourceIds = get(favoritePilotSourceIdsSetAtom);
 	const pilots = asPilotArray(get(pilotsAtom) as PilotCollection);
 	return pilots.filter((pilot) => sourceIds.has(pilot.sourceId));
@@ -92,4 +91,4 @@ export const clearFavoritesAtom = atom(
 	},
 );
 
-export const favoriteCountAtom = eagerAtom((get) => get(favoritePilotSourceIdsSetAtom).size);
+export const favoriteCountAtom = atom((get) => get(favoritePilotSourceIdsSetAtom).size);

@@ -1,10 +1,10 @@
-import { eagerAtom } from 'jotai-eager';
 import { atomFamily } from 'jotai/utils';
 import { consecutiveLapsAtom, raceProcessedLapsAtom } from '../state/pbAtoms.ts';
 import { currentRaceIdsAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { raceDataAtom } from '../race/race-atoms.ts';
 import type { ProcessedLap } from '../state/atoms.ts';
-import { Atom } from 'jotai';
+import { atom } from 'jotai';
+import type { Atom, Getter } from 'jotai';
 
 // Reduce a stream of T to a single T (e.g., pick best by time, or accumulate a sum)
 export type Fold<T> = (acc: T | null, value: T) => T; // acc=null for first
@@ -32,7 +32,7 @@ export interface MakePilotMetricOptions<T, R = T> {
 	fold: Fold<T>; // how to combine per-race values into one
 	finalize?: Finalize<T, R>; // optional post-processing
 }
-type EagerGetter = <Value>(atom: Atom<Value>) => Awaited<Value>;
+type EagerGetter = Getter;
 
 // Returns: atomFamily(pilotId) => { current: R | null; previous: R | null }
 export function makePilotMetricAtom<T, R = T>({ key, selectPerRace, fold, finalize }: MakePilotMetricOptions<T, R>) {
@@ -48,7 +48,7 @@ export function makePilotMetricAtom<T, R = T>({ key, selectPerRace, fold, finali
 	}
 
 	return atomFamily((pilotId: string) =>
-		eagerAtom((get) => ({
+		atom((get) => ({
 			current: foldForIds(get, pilotId, get(currentRaceIdsAtom)),
 			previous: foldForIds(get, pilotId, get(previousRaceIdsAtom)),
 		}))
