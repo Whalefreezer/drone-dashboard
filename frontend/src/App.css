@@ -33,7 +33,6 @@
 	min-height: 0;
 	overflow-y: auto;
 	overflow-x: hidden;
-	scrollbar-gutter: stable both-edges;
 	overscroll-behavior: contain;
 	padding-right: 4px;
 }
@@ -323,7 +322,6 @@
 	width: 100vw;
 	box-sizing: border-box;
 	gap: 4px;
-	padding: 0 16px;
 	margin-top: 12px; /* Small gap between header and content */
 	flex: 1;
 	min-height: 0;
