@@ -370,7 +370,8 @@
 	display: none;
 }
 
-.app-settings-button {
+.app-settings-button,
+.app-refresh-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -384,18 +385,40 @@
 }
 
 .app-settings-button:hover,
-.app-settings-button:focus-visible {
+.app-settings-button:focus-visible,
+.app-refresh-button:hover,
+.app-refresh-button:focus-visible {
 	background: rgba(56, 56, 56, 0.95);
 	border-color: #7bc4ff;
 	color: #ffffff;
 	outline: none;
 }
 
-.app-settings-button:focus-visible {
+.app-settings-button:focus-visible,
+.app-refresh-button:focus-visible {
 	box-shadow: 0 0 0 3px rgba(123, 196, 255, 0.25);
 }
 
-.app-header .app-settings-button {
+.app-refresh-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.app-refresh-button[data-refreshing='true'] .app-refresh-icon {
+	animation: app-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes app-refresh-spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.app-header .app-settings-button,
+.app-header .app-refresh-button {
 	margin-left: 16px;
 	flex-shrink: 0;
 }
@@ -426,7 +449,8 @@
 	border-bottom: 2px solid #fff;
 }
 
-.app-mobile-header .app-settings-button {
+.app-mobile-header .app-settings-button,
+.app-mobile-header .app-refresh-button {
 	flex-shrink: 0;
 }
 
@@ -439,7 +463,8 @@
 }
 
 @media (max-width: 640px) {
-	.app-settings-button {
+	.app-settings-button,
+	.app-refresh-button {
 		padding: 5px;
 	}
 }

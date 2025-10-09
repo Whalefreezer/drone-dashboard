@@ -96,6 +96,7 @@ interface CollectionState<TRecord extends AnyRecord> {
 	needsNotify: boolean;
 	awaitingBackfill: boolean;
 	isBackfilling: boolean;
+	invalidatePromise?: Promise<void>;
 }
 
 export class PBCollectionSubscriptionManager {
@@ -224,6 +225,38 @@ export class PBCollectionSubscriptionManager {
 		}
 	}
 
+	async invalidate(collection: string): Promise<void> {
+		const state = this.collectionStates.get(collection);
+		if (!state) return;
+
+		if (state.initialFetchPromise && state.status === 'initializing') {
+			await state.initialFetchPromise;
+		}
+
+		await this.waitForBackfill(state);
+
+		if (state.invalidatePromise) {
+			await state.invalidatePromise;
+			return;
+		}
+
+		debugLog('Manual invalidation requested', { collection });
+
+		const invalidatePromise = this.runInvalidation(collection, state);
+		state.invalidatePromise = invalidatePromise;
+		try {
+			await invalidatePromise;
+		} finally {
+			state.invalidatePromise = undefined;
+		}
+	}
+
+	async invalidateAll(): Promise<void> {
+		const collections = Array.from(this.collectionStates.keys());
+		if (collections.length === 0) return;
+		await Promise.all(collections.map((collection) => this.invalidate(collection)));
+	}
+
 	private async startCollection(collection: string): Promise<void> {
 		const state = this.ensureState(collection);
 
@@ -308,6 +341,49 @@ export class PBCollectionSubscriptionManager {
 		}
 	}
 
+	private async collectRecordsForListeners(
+		collection: string,
+		since?: string,
+	): Promise<{ records: Map<string, AnyRecord>; lastCursor?: string }> {
+		const state = this.ensureState(collection);
+		const listeners = Array.from(state.listeners.values());
+		const filters = listeners.length > 0
+			? listeners.reduce<Map<string, SubscribeOptions<AnyRecord>>>((acc, listener) => {
+				const key = listener.options.filter?.trim() ?? '';
+				if (!acc.has(key)) {
+					acc.set(key, listener.options as SubscribeOptions<AnyRecord>);
+				}
+				return acc;
+			}, new Map())
+			: new Map<string, SubscribeOptions<AnyRecord>>();
+
+		if (filters.size === 0) {
+			filters.set('', {});
+		}
+
+		const nextRecords = new Map<string, AnyRecord>();
+		let nextCursor = since;
+		const cursorFilter = since ? this.cursorFilter(since) : '';
+
+		await Promise.all(
+			Array.from(filters.entries()).map(async ([filter]) => {
+				const finalFilter = this.combineFilters(filter, cursorFilter);
+				debugLog('Collecting records for invalidation', { collection, filter: finalFilter || null });
+				const records = await this.fetchCollectionRecords(collection, finalFilter);
+				for (const record of records) {
+					const anyRecord = record as AnyRecord;
+					nextRecords.set(anyRecord.id, anyRecord);
+					const ts = this.getRecordTimestamp(anyRecord);
+					if (ts && (!nextCursor || ts > nextCursor)) {
+						nextCursor = ts;
+					}
+				}
+			}),
+		);
+
+		return { records: nextRecords, lastCursor: nextCursor };
+	}
+
 	private async fetchCollectionRecords<TRecord extends AnyRecord>(
 		collection: string,
 		filter: string,
@@ -337,13 +413,14 @@ export class PBCollectionSubscriptionManager {
 		}
 	}
 
-	private flushPendingEvents(collection: string) {
+	private flushPendingEvents(collection: string, suppressNotify = false) {
 		const state = this.ensureState(collection);
 		if (state.pendingEvents.length === 0) return;
 
 		const events = state.pendingEvents.splice(0);
 		debugLog('Flushing pending realtime events', { collection, count: events.length });
 		state.suspendNotifications = true;
+		const previousNeedsNotify = state.needsNotify;
 		state.needsNotify = false;
 		try {
 			for (const event of events) {
@@ -351,11 +428,65 @@ export class PBCollectionSubscriptionManager {
 			}
 		} finally {
 			state.suspendNotifications = false;
-			if (state.needsNotify) {
+			if (suppressNotify) {
+				state.needsNotify = state.needsNotify || previousNeedsNotify;
+			} else if (state.needsNotify || previousNeedsNotify) {
 				state.needsNotify = false;
 				this.notifyListeners(collection);
 			}
 		}
+	}
+
+	private async runInvalidation(collection: string, state: CollectionState<AnyRecord>): Promise<void> {
+		state.suspendNotifications = true;
+		state.needsNotify = false;
+		try {
+			this.setStatus(collection, 'initializing');
+
+			const { records: nextRecords, lastCursor } = await this.collectRecordsForListeners(collection);
+
+			state.records.clear();
+			for (const [id, record] of nextRecords.entries()) {
+				state.records.set(id, record);
+			}
+			state.lastCursor = lastCursor;
+			state.lastSyncedAt = new Date().toISOString();
+			state.awaitingBackfill = false;
+			state.error = null;
+
+			if (state.pendingEvents.length > 0) {
+				this.flushPendingEvents(collection, true);
+				state.suspendNotifications = true;
+			}
+
+			state.lastSyncedAt = new Date().toISOString();
+			this.setStatus(collection, 'ready');
+			debugLog('Manual invalidation completed', { collection, recordCount: state.records.size });
+		} catch (error) {
+			const normalized = this.normalizeError(error);
+			state.error = normalized;
+			this.setStatus(collection, 'error');
+			debugLog('Manual invalidation failed', { collection, error: normalized.message });
+			throw normalized;
+		} finally {
+			state.suspendNotifications = false;
+			state.needsNotify = false;
+			this.notifyListeners(collection);
+		}
+	}
+
+	private async waitForBackfill(state: CollectionState<AnyRecord>): Promise<void> {
+		if (!state.isBackfilling) return;
+		await new Promise<void>((resolve) => {
+			const poll = () => {
+				if (!state.isBackfilling) {
+					resolve();
+					return;
+				}
+				setTimeout(poll, 10);
+			};
+			poll();
+		});
 	}
 
 	private handleDisconnect() {

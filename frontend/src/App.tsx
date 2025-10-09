@@ -1,5 +1,6 @@
 import './App.css';
 
+import { useCallback, useState } from 'react';
 import { Legend, TimeDisplay, ViewSelector } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import SnapshotControl from './devTools/SnapshotControl.tsx';
@@ -11,12 +12,56 @@ import { useAtomValue } from 'jotai';
 import useBreakpoint from './responsive/useBreakpoint.ts';
 import { activePaneAtom } from './state/viewAtoms.ts';
 import { SubscriptionStatusIndicator } from './common/SubscriptionStatusIndicator.tsx';
+import { pbInvalidateAll } from './api/pb.ts';
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 import { Link } from '@tanstack/react-router';
 
 type DebugWindow = Window & {
 	__APP_BOOTSTRAP_LOG?: (message: string, extra?: Record<string, unknown>) => void;
 };
+
+function RefreshButton() {
+	const [isRefreshing, setIsRefreshing] = useState(false);
+
+	const handleClick = useCallback(async () => {
+		if (isRefreshing) return;
+		setIsRefreshing(true);
+		try {
+			await pbInvalidateAll();
+		} catch (error) {
+			console.error('[RefreshButton] Failed to invalidate collections', error);
+		} finally {
+			setIsRefreshing(false);
+		}
+	}, [isRefreshing]);
+
+	return (
+		<button
+			type='button'
+			className='app-refresh-button'
+			onClick={handleClick}
+			title='Refresh data'
+			aria-label={isRefreshing ? 'Refreshing data' : 'Refresh data'}
+			aria-busy={isRefreshing}
+			data-refreshing={isRefreshing ? 'true' : 'false'}
+			disabled={isRefreshing}
+		>
+			<svg
+				className='app-refresh-icon'
+				width='20'
+				height='20'
+				viewBox='0 0 24 24'
+				role='presentation'
+				aria-hidden='true'
+			>
+				<path
+					fill='currentColor'
+					d='M17.65 6.35a7.95 7.95 0 0 0-5.65-2.35c-4.41 0-8 3.59-8 8h-2.5l3.5 3.5l3.5-3.5h-2.5c0-3.03 2.47-5.5 5.5-5.5c1.65 0 3.13.73 4.14 1.86l-2.29 2.29h6.15v-6.15l-2.36 2.35Zm1.85 3.65c0 3.03-2.47 5.5-5.5 5.5c-1.65 0-3.13-.73-4.14-1.86l2.29-2.29h-6.15v6.15l2.36-2.35a7.95 7.95 0 0 0 5.65 2.35c4.41 0 8-3.59 8-8h2.5l-3.5-3.5l-3.5 3.5h2.5Z'
+				/>
+			</svg>
+		</button>
+	);
+}
 
 function SettingsButton() {
 	return (
@@ -44,8 +89,8 @@ function App() {
 		<div className='app-shell'>
 			{
 				/* <GenericSuspense id='snapshot-control'>
-				<SnapshotControl />
-			</GenericSuspense> */
+			<SnapshotControl />
+		</GenericSuspense> */
 			}
 
 			{!isMobile
@@ -65,12 +110,14 @@ function App() {
 								/>
 							</GenericSuspense>
 						</div>
+						<RefreshButton />
 						<SettingsButton />
 					</div>
 				)
 				: (
 					<div className='app-mobile-header'>
 						<ViewSelector />
+						<RefreshButton />
 						<SettingsButton />
 					</div>
 				)}
@@ -91,11 +138,6 @@ function App() {
 							{activePane === 'brackets' && (
 								<GenericSuspense id='brackets'>
 									<BracketsView />
-								</GenericSuspense>
-							)}
-							{activePane === 'eliminated' && (
-								<GenericSuspense id='eliminated-pilots-view'>
-									<EliminatedPilotsView />
 								</GenericSuspense>
 							)}
 						</>

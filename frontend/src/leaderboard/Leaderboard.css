@@ -63,7 +63,7 @@
 	overflow: auto;
 	scrollbar-gutter: stable;
 	overscroll-behavior: contain;
-	touch-action: pan-y;
+	touch-action: pan-y pan-x;
 	padding-right: 4px;
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Column } from '../common/GenericTable.tsx';
 import { GenericTable } from '../common/GenericTable.tsx';
 import './Leaderboard.css';
@@ -22,6 +22,15 @@ export function Leaderboard() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
 	const dataReady = useAtomValue(leaderboardDataReadyAtom);
+	const [bootstrapComplete, setBootstrapComplete] = useState(false);
+
+	useEffect(() => {
+		if (dataReady) {
+			setBootstrapComplete(true);
+		}
+	}, [dataReady]);
+
+	const shouldShowRows = dataReady || bootstrapComplete;
 	const { isMobile, isTablet, breakpoint } = useBreakpoint();
 	const ctx = useMemo(() => ({ consecutiveLaps }), [
 		consecutiveLaps,
@@ -32,8 +41,8 @@ export function Leaderboard() {
 	);
 
 	const rows: LeaderboardRowProps[] = useMemo(
-		() => (dataReady ? pilotIds.map((pilotId) => ({ pilotId })) : []),
-		[pilotIds, dataReady],
+		() => (shouldShowRows ? pilotIds.map((pilotId) => ({ pilotId })) : []),
+		[pilotIds, shouldShowRows],
 	);
 
 	const splitIndex = useAtomValue(leaderboardSplitAtom); // 1-based position or null
@@ -57,7 +66,10 @@ export function Leaderboard() {
 	const allowAutoScroll = !isMobile && autoscrollEnabled;
 
 	return (
-		<div className='leaderboard-container'>
+		<div
+			className='leaderboard-container'
+			data-bootstrapping={!bootstrapComplete ? 'true' : undefined}
+		>
 			<div className='leaderboard-toolbar'>
 				<div className='leaderboard-toolbar-left'>
 					<FavoritesFilter />

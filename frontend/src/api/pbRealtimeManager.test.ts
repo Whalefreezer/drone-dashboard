@@ -200,3 +200,68 @@ Deno.test('subscription manager backfills after reconnect using lastUpdated curs
 	assert(receivedFilter);
 	assert(receivedFilter?.includes('lastUpdated >= "2025-10-09T01:00:00Z"'));
 });
+
+Deno.test('invalidate refreshes collection and removes stale records', async () => {
+	const mock = new MockPocketBase();
+	const manager = new PBCollectionSubscriptionManager(mock as unknown as PocketBase);
+
+	const collection = mock.collection('pilots');
+	const initialRecords: MockRecord[] = [
+		{ id: 'pilot-1', name: 'Pilot One', lastUpdated: '2025-10-09T00:00:00Z' },
+		{ id: 'pilot-2', name: 'Pilot Two', lastUpdated: '2025-10-09T00:01:00Z' },
+	];
+	collection.setRecords(initialRecords);
+
+	await manager.subscribe<MockRecord>('pilots', {}, () => {}).initialSnapshotPromise;
+
+	const refreshedRecords: MockRecord[] = [
+		{ id: 'pilot-1', name: 'Pilot One Updated', lastUpdated: '2025-10-09T00:10:00Z' },
+		{ id: 'pilot-3', name: 'Pilot Three', lastUpdated: '2025-10-09T00:11:00Z' },
+	];
+	collection.setRecords(refreshedRecords);
+
+	await manager.invalidate('pilots');
+
+	const snapshot = manager.getCachedSnapshot('pilots', {}) as CollectionSubscriptionSnapshot<MockRecord> | undefined;
+	assert(snapshot);
+	assertEquals(snapshot.records.map((record) => record.id).sort(), ['pilot-1', 'pilot-3']);
+	assertEquals(snapshot.records.find((record) => record.id === 'pilot-1')?.name, 'Pilot One Updated');
+	assertEquals(snapshot.status, 'ready');
+	assertEquals(snapshot.error, null);
+	assert(snapshot.lastSyncedAt);
+});
+
+Deno.test('invalidate deduplicates concurrent refreshes', async () => {
+	const mock = new MockPocketBase();
+	const manager = new PBCollectionSubscriptionManager(mock as unknown as PocketBase);
+
+	const collection = mock.collection('heats');
+	const initialRecords: MockRecord[] = [
+		{ id: 'heat-1', name: 'Heat 1', lastUpdated: '2025-10-09T00:00:00Z' },
+	];
+	collection.setRecords(initialRecords);
+
+	await manager.subscribe<MockRecord>('heats', {}, () => {}).initialSnapshotPromise;
+
+	let refreshCalls = 0;
+	collection.setFullListHandler(() => {
+		refreshCalls++;
+		const nextRecords: MockRecord[] = [
+			{ id: 'heat-1', name: 'Heat 1', lastUpdated: '2025-10-09T00:00:00Z' },
+			{ id: 'heat-2', name: 'Heat 2', lastUpdated: '2025-10-09T00:05:00Z' },
+		];
+		collection.setRecords(nextRecords);
+		return Promise.resolve(nextRecords);
+	});
+
+	await Promise.all([
+		manager.invalidate('heats'),
+		manager.invalidate('heats'),
+		manager.invalidate('heats'),
+	]);
+
+	assertEquals(refreshCalls, 1);
+	const snapshot = manager.getCachedSnapshot('heats', {}) as CollectionSubscriptionSnapshot<MockRecord> | undefined;
+	assert(snapshot);
+	assertEquals(snapshot.records.length, 2);
+});

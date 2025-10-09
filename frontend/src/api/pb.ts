@@ -107,6 +107,14 @@ export function pbCollectionStatusAtom(
 	return getStatusAtom(collection);
 }
 
+export function pbInvalidateCollection(collection: string): Promise<void> {
+	return subscriptionManager.invalidate(collection);
+}
+
+export function pbInvalidateAll(): Promise<void> {
+	return subscriptionManager.invalidateAll();
+}
+
 export { type SubscriptionStatus };
 export type { CollectionSubscriptionSnapshot, SubscribeOptions, SubscriptionStatusPayload };
 
