@@ -21,10 +21,10 @@ pb.autoCancellation(false);
 
 const subscriptionManager = new PBCollectionSubscriptionManager(pb);
 const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).env;
-const isDevBuild = Boolean(envMeta?.DEV);
+// const isDevBuild = Boolean(envMeta?.DEV);
 type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
 const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
-const PB_DEBUG_LOG = true || isDevBuild || Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+const PB_DEBUG_LOG = Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
 
 function debugSnapshot(message: string, payload: Record<string, unknown>) {
 	if (!PB_DEBUG_LOG) return;

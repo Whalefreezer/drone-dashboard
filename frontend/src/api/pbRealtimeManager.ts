@@ -4,10 +4,10 @@ import { batchDebounce } from '../common/utils.ts';
 import type { PBBaseRecord } from './pbTypes.ts';
 
 const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).env;
-const DEV_MODE = Boolean(envMeta?.DEV);
+// const DEV_MODE = Boolean(envMeta?.DEV);
 type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
 const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
-const SHOULD_LOG = true || DEV_MODE || Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+const SHOULD_LOG = Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
 const LOG_PREFIX = '[pbRealtimeManager]';
 
 function debugLog(...args: unknown[]) {
@@ -180,8 +180,10 @@ export class PBCollectionSubscriptionManager {
 		const initialStatus = this.buildStatusPayload(state);
 		callback(initialStatus);
 
-		// Ensure realtime/fetch is initiated so the status can progress.
-		void this.startCollection(collection);
+		// // Only kick off realtime if snapshot listeners exist or a subscription is already active.
+		// if (state.listeners.size > 0 || state.subscribePromise || state.initialFetchPromise) {
+		// 	void this.startCollection(collection);
+		// }
 
 		return {
 			unsubscribe: () => {
