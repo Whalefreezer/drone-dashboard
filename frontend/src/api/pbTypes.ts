@@ -23,6 +23,7 @@ export interface PBEventRecord extends PBBaseRecord {
 	minLapTime?: string;
 	lastOpened?: string;
 	isCurrent?: boolean;
+	lastUpdated?: string;
 }
 
 // rounds
@@ -34,6 +35,7 @@ export interface PBRoundRecord extends PBBaseRecord {
 	valid?: boolean;
 	order?: number;
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 export enum EventType {
@@ -57,6 +59,7 @@ export interface PBPilotRecord extends PBBaseRecord {
 	discordId?: string;
 	practicePilot?: boolean;
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // channels
@@ -70,6 +73,7 @@ export interface PBChannelRecord extends PBBaseRecord {
 	channelColor?: string;
 	channelDisplayName?: string;
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // tracks
@@ -78,6 +82,7 @@ export interface PBTrackRecord extends PBBaseRecord {
 	length?: number;
 	gridSize?: number;
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // races
@@ -95,6 +100,7 @@ export interface PBRaceRecord extends PBBaseRecord {
 	raceOrder: number;
 	event: string; // relation → events.id
 	round: string; // relation → rounds.id
+	lastUpdated?: string;
 }
 
 // client_kv (generic client-facing state)
@@ -104,6 +110,7 @@ export interface PBClientKVRecord extends PBBaseRecord {
 	value?: string; // JSON payload
 	event?: string; // relation → events.id
 	expiresAt?: number;
+	lastUpdated?: string;
 }
 
 // pilotChannels
@@ -112,6 +119,7 @@ export interface PBPilotChannelRecord extends PBBaseRecord {
 	channel?: string; // relation → channels.id
 	race?: string; // relation → races.id
 	event?: string; // relation → events.id (context)
+	lastUpdated?: string;
 }
 
 // detections
@@ -130,6 +138,7 @@ export interface PBDetectionRecord extends PBBaseRecord {
 	race?: string; // relation → races.id
 	channel?: string; // relation → channels.id
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // laps
@@ -141,6 +150,7 @@ export interface PBLapRecord extends PBBaseRecord {
 	detection: string; // relation → detections.id
 	race?: string; // relation → races.id
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // gamePoints
@@ -151,6 +161,7 @@ export interface PBGamePointRecord extends PBBaseRecord {
 	race?: string; // relation → races.id
 	channel?: string; // relation → channels.id
 	event?: string; // relation → events.id
+	lastUpdated?: string;
 }
 
 // results
@@ -163,12 +174,14 @@ export interface PBResultRecord extends PBBaseRecord {
 	event?: string; // relation → events.id
 	race?: string; // relation → races.id
 	pilot?: string; // relation → pilots.id
+	lastUpdated?: string;
 }
 
 // server_settings (generic key/value)
 export interface PBServerSettingRecord extends PBBaseRecord {
 	key: string;
 	value?: string;
+	lastUpdated?: string;
 }
 
 // control_stats (control channel telemetry)
@@ -178,6 +191,7 @@ export interface PBControlStatsRecord extends PBBaseRecord {
 	fullResponses?: number;
 	etagHits?: number;
 	errors?: number;
+	lastUpdated?: string;
 }
 
 // Convenience union for any PB record our API deals with
@@ -206,4 +220,5 @@ export interface PBIngestTargetRecord extends PBBaseRecord {
 	enabled?: boolean; // whether scheduler should run this target
 	lastFetchedAt?: number; // epoch millis of last successful fetch
 	lastStatus?: string; // short status message from last run
+	lastUpdated?: string;
 }
