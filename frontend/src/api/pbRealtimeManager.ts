@@ -104,6 +104,7 @@ export class PBCollectionSubscriptionManager {
 	private statusSeq = 0;
 	private readonly defaultBatchMs = 25;
 	private readonly fetchBatchSize = 1_000;
+	private isOnline = true;
 
 	constructor(private readonly pb: PocketBase) {
 		const previousDisconnect = this.pb.realtime.onDisconnect;
@@ -114,6 +115,37 @@ export class PBCollectionSubscriptionManager {
 				previousDisconnect(activeSubscriptions);
 			}
 		};
+
+		// Set up browser online/offline event listeners
+		if (typeof globalThis !== 'undefined') {
+			this.isOnline = navigator.onLine;
+
+			const handleOnline = () => {
+				debugLog('Browser online event detected');
+				this.isOnline = true;
+				this.handleReconnect();
+			};
+
+			const handleOffline = () => {
+				debugLog('Browser offline event detected');
+				this.isOnline = false;
+				this.handleDisconnect();
+			};
+
+			const handleVisibilityChange = () => {
+				if (document.visibilityState === 'visible') {
+					debugLog('Tab became visible');
+					this.handleReconnect();
+				} else {
+					debugLog('Tab became hidden');
+					this.handleDisconnect();
+				}
+			};
+
+			globalThis.addEventListener('online', handleOnline);
+			globalThis.addEventListener('offline', handleOffline);
+			document.addEventListener('visibilitychange', handleVisibilityChange);
+		}
 	}
 
 	subscribe<TRecord extends PBBaseRecord>(
@@ -254,6 +286,15 @@ export class PBCollectionSubscriptionManager {
 		const state = this.ensureState(collection);
 		debugLog('Initial fetch starting', { collection });
 		this.setStatus(collection, 'initializing');
+
+		if (!this.isOnline) {
+			const offlineError = new Error('Cannot fetch: browser is offline');
+			debugLog('Initial fetch aborted (offline)', { collection });
+			state.error = offlineError;
+			this.setStatus(collection, 'error');
+			throw offlineError;
+		}
+
 		try {
 			await this.fetchForListeners(collection);
 			this.flushPendingEvents(collection);
@@ -363,8 +404,43 @@ export class PBCollectionSubscriptionManager {
 			const state = stateRaw as CollectionState<AnyRecord>;
 			if (state.status === 'initializing') continue;
 			debugLog('Marking collection as reconnecting', { collection, previousStatus: state.status });
+
+			// Unsubscribe from PocketBase realtime
+			if (state.unsubscribe) {
+				try {
+					state.unsubscribe();
+				} catch (error) {
+					debugLog('Error unsubscribing during disconnect', { collection, error });
+				}
+				state.unsubscribe = undefined;
+			}
+			state.subscribePromise = undefined;
+
 			state.awaitingBackfill = true;
 			this.setStatus(collection, 'reconnecting');
+		}
+	}
+
+	private handleReconnect() {
+		debugLog('Handling reconnect, attempting to restore subscriptions');
+		for (const [collection, stateRaw] of this.collectionStates.entries()) {
+			const state = stateRaw as CollectionState<AnyRecord>;
+			if (state.status === 'reconnecting' || state.awaitingBackfill) {
+				debugLog('Reconnecting collection', { collection });
+				// Tear down old subscription and create a new one
+				if (state.unsubscribe) {
+					try {
+						state.unsubscribe();
+					} catch (error) {
+						debugLog('Error unsubscribing during reconnect', { collection, error });
+					}
+					state.unsubscribe = undefined;
+				}
+				state.subscribePromise = undefined;
+
+				// Restart the collection (will create new subscription and fetch)
+				void this.startCollection(collection);
+			}
 		}
 	}
 
@@ -377,6 +453,15 @@ export class PBCollectionSubscriptionManager {
 				state.awaitingBackfill = false;
 				state.isBackfilling = true;
 				this.setStatus(collection, 'backfilling');
+
+				if (!this.isOnline) {
+					debugLog('Backfill aborted: browser is offline', { collection });
+					state.error = new Error('Cannot backfill: browser is offline');
+					state.isBackfilling = false;
+					this.setStatus(collection, 'error');
+					return;
+				}
+
 				try {
 					await this.fetchForListeners(collection, state.lastCursor);
 					this.flushPendingEvents(collection);
