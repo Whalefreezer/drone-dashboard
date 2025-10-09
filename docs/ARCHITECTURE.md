@@ -61,6 +61,19 @@ Most ingest-related features read and write the collections declared in `backend
 | `client_kv` | Backend-published race order + admin KV | `backend/scheduler/race.go`, `frontend/src/routes/admin/kv.tsx` |
 | `control_stats` | Control link telemetry | `backend/control/stats_store.go`, `frontend/src/routes/admin/control.tsx` |
 
+## PocketBase Subscription Manager
+
+Realtime data on the dashboard is coordinated through `frontend/src/api/pbRealtimeManager.ts`. The manager wraps the shared PocketBase client and offers:
+
+- **Collection-level caching** that survives component unmounts so re-subscribing does not trigger a full refetch.
+- **Subscribe-first bootstrapping** that buffers realtime events while the initial REST backfill runs (prevents missed updates).
+- **Automatic reconnect handling**: when the SSE stream drops, the manager marks collections as `reconnecting`, re-establishes the subscription, and fetches deltas using the `lastUpdated` field so no records are skipped.
+- **Listener filters** allowing callers to provide a PocketBase query filter plus an optional predicate to restrict emitted records (e.g., filter by `eventId`).
+- **Batched notifications** to avoid thrashing Jotai atoms when many events arrive in a short window.
+- **Status tracking** surfaced via `SubscriptionStatusIndicator` so the UI can warn operators about loading, reconnecting, or error states.
+
+Helper exports in `frontend/src/api/pb.ts` bridge the manager to Jotai (`pbSubscribeCollection`, `pbCollectionStatusAtom`, etc.). New subscriptions should prefer those helpers instead of wiring PocketBase directly.
+
 ## Fetch & Scheduler Flow
 
 1. **Discovery** (`backend/scheduler/discovery.go`) fetches the live FPVTrackside event, seeds PocketBase targets, and ensures the current event flag.

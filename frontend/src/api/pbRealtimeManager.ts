@@ -1,0 +1,527 @@
+import type PocketBase from 'pocketbase';
+import type { RecordSubscription } from 'pocketbase';
+import { batchDebounce } from '../common/utils.ts';
+import type { PBBaseRecord } from './pbTypes.ts';
+
+export type SubscriptionStatus =
+	| 'idle'
+	| 'initializing'
+	| 'ready'
+	| 'reconnecting'
+	| 'backfilling'
+	| 'error';
+
+export interface SubscribeOptions<TRecord extends PBBaseRecord> {
+	/**
+	 * Optional PocketBase filter string applied during REST fetches.
+	 */
+	filter?: string;
+	/**
+	 * Predicate used to decide whether a record should be emitted to a listener.
+	 * Strongly recommended when `filter` is provided because realtime events are delivered for the entire collection.
+	 */
+	recordFilter?: (record: TRecord) => boolean;
+	/**
+	 * Batch delay (ms) before notifying listeners. Defaults to 25ms.
+	 */
+	batchMs?: number;
+	/**
+	 * Stable key used to cache snapshot atoms when different subscribers share the same collection.
+	 * Required when using inline `recordFilter` functions to avoid collisions.
+	 */
+	key?: string;
+}
+
+export interface CollectionSubscriptionSnapshot<TRecord extends PBBaseRecord> {
+	records: TRecord[];
+	status: SubscriptionStatus;
+	error: Error | null;
+	lastSyncedAt?: string;
+}
+
+export interface SubscriptionStatusPayload {
+	status: SubscriptionStatus;
+	error: Error | null;
+	lastSyncedAt?: string;
+}
+
+type AnyRecord = PBBaseRecord & {
+	lastUpdated?: string;
+	updated?: string;
+	created?: string;
+};
+
+interface CollectionListener<TRecord extends PBBaseRecord> {
+	id: number;
+	options: SubscribeOptions<TRecord>;
+	callback: (snapshot: CollectionSubscriptionSnapshot<TRecord>) => void;
+	debouncedNotify: ReturnType<typeof batchDebounce<[CollectionSubscriptionSnapshot<TRecord>]>>;
+	lastSnapshot?: CollectionSubscriptionSnapshot<TRecord>;
+}
+
+interface StatusListener {
+	id: number;
+	callback: (payload: SubscriptionStatusPayload) => void;
+}
+
+interface CollectionState<TRecord extends AnyRecord> {
+	records: Map<string, TRecord>;
+	status: SubscriptionStatus;
+	error: Error | null;
+	lastCursor?: string;
+	lastSyncedAt?: string;
+	listeners: Map<number, CollectionListener<AnyRecord>>;
+	statusListeners: Map<number, StatusListener>;
+	subscribePromise?: Promise<() => void>;
+	unsubscribe?: () => void;
+	initialFetchPromise?: Promise<void>;
+	pendingEvents: Array<RecordSubscription<AnyRecord>>;
+	suspendNotifications: boolean;
+	needsNotify: boolean;
+	awaitingBackfill: boolean;
+	isBackfilling: boolean;
+}
+
+export class PBCollectionSubscriptionManager {
+	private readonly collectionStates = new Map<string, CollectionState<AnyRecord>>();
+	private listenerSeq = 0;
+	private statusSeq = 0;
+	private readonly defaultBatchMs = 25;
+	private readonly fetchBatchSize = 1_000;
+
+	constructor(private readonly pb: PocketBase) {
+		const previousDisconnect = this.pb.realtime.onDisconnect;
+		this.pb.realtime.onDisconnect = (activeSubscriptions) => {
+			this.handleDisconnect();
+			if (typeof previousDisconnect === 'function') {
+				previousDisconnect(activeSubscriptions);
+			}
+		};
+	}
+
+	subscribe<TRecord extends PBBaseRecord>(
+		collection: string,
+		options: SubscribeOptions<TRecord>,
+		callback: (snapshot: CollectionSubscriptionSnapshot<TRecord>) => void,
+	): { unsubscribe: () => void; initialSnapshotPromise: Promise<CollectionSubscriptionSnapshot<TRecord>> } {
+		const state = this.ensureState<TRecord>(collection);
+
+		const listenerId = ++this.listenerSeq;
+		const debouncedNotify = batchDebounce<[CollectionSubscriptionSnapshot<TRecord>]>((calls) => {
+			const latest = calls[calls.length - 1][0];
+			listener.lastSnapshot = latest;
+			callback(latest);
+		}, options.batchMs ?? this.defaultBatchMs);
+
+		const listener: CollectionListener<TRecord> = {
+			id: listenerId,
+			options,
+			callback,
+			debouncedNotify,
+		};
+
+		state.listeners.set(listenerId, listener as unknown as CollectionListener<AnyRecord>);
+
+		const initialSnapshotPromise = this.startCollection(collection)
+			.then(() => this.buildSnapshot(collection, options))
+			.then((snapshot) => {
+				listener.lastSnapshot = snapshot;
+				return snapshot;
+			});
+
+		initialSnapshotPromise
+			.then((snapshot) => {
+				// Emit once after initial fetch to prime the consumer.
+				listener.debouncedNotify(snapshot);
+			})
+			.catch(() => {
+				// error handling is already dispatched via status updates
+			});
+
+		return {
+			unsubscribe: () => {
+				if (state.listeners.delete(listenerId)) {
+					debouncedNotify.cancel();
+				}
+			},
+			initialSnapshotPromise,
+		};
+	}
+
+	subscribeStatus(
+		collection: string,
+		callback: (payload: SubscriptionStatusPayload) => void,
+	): { unsubscribe: () => void; initialStatus: SubscriptionStatusPayload } {
+		const state = this.ensureState(collection);
+		const listenerId = ++this.statusSeq;
+		const listener: StatusListener = { id: listenerId, callback };
+		state.statusListeners.set(listenerId, listener);
+
+		const initialStatus = this.buildStatusPayload(state);
+		callback(initialStatus);
+
+		// Ensure realtime/fetch is initiated so the status can progress.
+		void this.startCollection(collection);
+
+		return {
+			unsubscribe: () => {
+				state.statusListeners.delete(listenerId);
+			},
+			initialStatus,
+		};
+	}
+
+	getCachedSnapshot<TRecord extends PBBaseRecord>(
+		collection: string,
+		options: SubscribeOptions<TRecord>,
+	): CollectionSubscriptionSnapshot<TRecord> | undefined {
+		const state = this.collectionStates.get(collection);
+		if (!state) return undefined;
+		if (state.status === 'idle' && state.records.size === 0) return undefined;
+		return this.buildSnapshot(collection, options);
+	}
+
+	getCachedStatus(collection: string): SubscriptionStatusPayload | undefined {
+		const state = this.collectionStates.get(collection);
+		if (!state) return undefined;
+		return this.buildStatusPayload(state);
+	}
+
+	clearCache(collection?: string) {
+		if (collection) {
+			const state = this.collectionStates.get(collection);
+			if (state?.unsubscribe) {
+				state.unsubscribe();
+			}
+			this.collectionStates.delete(collection);
+			return;
+		}
+		for (const [key, state] of this.collectionStates.entries()) {
+			state.unsubscribe?.();
+			this.collectionStates.delete(key);
+		}
+	}
+
+	private async startCollection(collection: string): Promise<void> {
+		const state = this.ensureState(collection);
+
+		if (!state.subscribePromise) {
+			state.subscribePromise = this.pb.collection(collection).subscribe('*', (event) => {
+				this.handleEvent(collection, event as RecordSubscription<AnyRecord>);
+			});
+
+			state.subscribePromise
+				.then((unsub) => {
+					state.unsubscribe = unsub;
+				})
+				.catch((error) => {
+					state.error = this.normalizeError(error);
+					this.setStatus(collection, 'error');
+				});
+		}
+
+		if (!state.initialFetchPromise) {
+			state.initialFetchPromise = this.fetchAndInitializeCollection(collection);
+		}
+
+		await state.initialFetchPromise;
+	}
+
+	private async fetchAndInitializeCollection(collection: string): Promise<void> {
+		const state = this.ensureState(collection);
+		this.setStatus(collection, 'initializing');
+		try {
+			await this.fetchForListeners(collection);
+			this.flushPendingEvents(collection);
+			state.error = null;
+			state.lastSyncedAt = new Date().toISOString();
+			this.setStatus(collection, 'ready');
+		} catch (error) {
+			state.error = this.normalizeError(error);
+			this.setStatus(collection, 'error');
+			throw error;
+		}
+	}
+
+	private async fetchForListeners(collection: string, since?: string): Promise<void> {
+		const state = this.ensureState(collection);
+		const listeners = Array.from(state.listeners.values());
+		const filters = listeners.length > 0
+			? listeners.reduce<Map<string, SubscribeOptions<AnyRecord>>>((acc, listener) => {
+				const key = listener.options.filter?.trim() ?? '';
+				if (!acc.has(key)) {
+					acc.set(key, listener.options as SubscribeOptions<AnyRecord>);
+				}
+				return acc;
+			}, new Map())
+			: new Map<string, SubscribeOptions<AnyRecord>>();
+
+		// Always fetch at least once to keep cache warm even without filters/listeners.
+		if (filters.size === 0) {
+			filters.set('', {});
+		}
+
+		state.suspendNotifications = true;
+		state.needsNotify = false;
+
+		try {
+			await Promise.all(
+				Array.from(filters.entries()).map(async ([filter]) => {
+					const finalFilter = this.combineFilters(filter, since ? this.cursorFilter(since) : '');
+					const records = await this.fetchCollectionRecords(collection, finalFilter);
+					this.mergeRecords(collection, records);
+				}),
+			);
+		} finally {
+			state.suspendNotifications = false;
+			if (state.needsNotify) {
+				state.needsNotify = false;
+				this.notifyListeners(collection);
+			}
+		}
+	}
+
+	private async fetchCollectionRecords<TRecord extends AnyRecord>(
+		collection: string,
+		filter: string,
+	): Promise<TRecord[]> {
+		const query = filter.trim().length > 0 ? { filter } : undefined;
+		return await this.pb.collection(collection).getFullList<TRecord>(this.fetchBatchSize, query);
+	}
+
+	private mergeRecords<TRecord extends AnyRecord>(
+		collection: string,
+		records: TRecord[],
+	) {
+		const state = this.ensureState<TRecord>(collection);
+		for (const record of records) {
+			state.records.set(record.id, record);
+			const ts = this.getRecordTimestamp(record);
+			if (ts && (!state.lastCursor || ts > state.lastCursor)) {
+				state.lastCursor = ts;
+			}
+		}
+		state.lastSyncedAt = new Date().toISOString();
+		if (state.suspendNotifications) {
+			state.needsNotify = true;
+		} else {
+			this.notifyListeners(collection);
+		}
+	}
+
+	private flushPendingEvents(collection: string) {
+		const state = this.ensureState(collection);
+		if (state.pendingEvents.length === 0) return;
+
+		const events = state.pendingEvents.splice(0);
+		state.suspendNotifications = true;
+		state.needsNotify = false;
+		try {
+			for (const event of events) {
+				this.applyRealtimeEvent(collection, event);
+			}
+		} finally {
+			state.suspendNotifications = false;
+			if (state.needsNotify) {
+				state.needsNotify = false;
+				this.notifyListeners(collection);
+			}
+		}
+	}
+
+	private handleDisconnect() {
+		for (const [collection, stateRaw] of this.collectionStates.entries()) {
+			const state = stateRaw as CollectionState<AnyRecord>;
+			if (state.status === 'initializing') continue;
+			state.awaitingBackfill = true;
+			this.setStatus(collection, 'reconnecting');
+		}
+	}
+
+	private async handleEvent(collection: string, event: RecordSubscription<AnyRecord>) {
+		const state = this.ensureState(collection);
+
+		if (event.action === 'PB_CONNECT') {
+			if (state.awaitingBackfill && state.lastCursor) {
+				state.awaitingBackfill = false;
+				state.isBackfilling = true;
+				this.setStatus(collection, 'backfilling');
+				try {
+					await this.fetchForListeners(collection, state.lastCursor);
+					this.flushPendingEvents(collection);
+					state.error = null;
+					state.lastSyncedAt = new Date().toISOString();
+					this.setStatus(collection, 'ready');
+				} catch (error) {
+					state.error = this.normalizeError(error);
+					this.setStatus(collection, 'error');
+				} finally {
+					state.isBackfilling = false;
+				}
+			} else if (state.status === 'reconnecting') {
+				state.awaitingBackfill = false;
+				this.setStatus(collection, 'ready');
+			}
+			return;
+		}
+
+		if (event.action === 'PB_ERROR') {
+			const messageSource = event.record as unknown as Record<string, unknown> | undefined;
+			const message = typeof messageSource?.message === 'string' ? String(messageSource.message) : undefined;
+			state.error = this.normalizeError(message ?? 'Realtime error');
+			this.setStatus(collection, 'error');
+			return;
+		}
+
+		if (state.status === 'initializing' || state.isBackfilling) {
+			state.pendingEvents.push(event);
+			return;
+		}
+
+		this.applyRealtimeEvent(collection, event);
+	}
+
+	private applyRealtimeEvent(collection: string, event: RecordSubscription<AnyRecord>) {
+		const state = this.ensureState(collection);
+		switch (event.action) {
+			case 'create':
+			case 'update': {
+				const record = event.record as AnyRecord;
+				state.records.set(record.id, record);
+				const ts = this.getRecordTimestamp(record);
+				if (ts && (!state.lastCursor || ts > state.lastCursor)) {
+					state.lastCursor = ts;
+				}
+				state.lastSyncedAt = new Date().toISOString();
+				break;
+			}
+			case 'delete': {
+				state.records.delete(event.record.id);
+				state.lastSyncedAt = new Date().toISOString();
+				break;
+			}
+			default:
+				return;
+		}
+
+		if (state.suspendNotifications) {
+			state.needsNotify = true;
+		} else {
+			this.notifyListeners(collection);
+		}
+	}
+
+	private notifyListeners(collection: string) {
+		const state = this.ensureState(collection);
+		for (const listener of state.listeners.values()) {
+			const snapshot = this.buildSnapshot(collection, listener.options as SubscribeOptions<AnyRecord>);
+			listener.debouncedNotify(snapshot as CollectionSubscriptionSnapshot<PBBaseRecord>);
+		}
+		this.notifyStatusWatchers(collection);
+	}
+
+	private notifyStatusWatchers(collection: string) {
+		const state = this.ensureState(collection);
+		const payload = this.buildStatusPayload(state);
+		for (const listener of state.statusListeners.values()) {
+			listener.callback(payload);
+		}
+	}
+
+	private buildSnapshot<TRecord extends PBBaseRecord>(
+		collection: string,
+		options: SubscribeOptions<TRecord>,
+	): CollectionSubscriptionSnapshot<TRecord> {
+		const state = this.ensureState(collection);
+		const records = this.recordsForOptions(state, options) as TRecord[];
+		return {
+			records,
+			status: state.status,
+			error: state.error,
+			lastSyncedAt: state.lastSyncedAt,
+		};
+	}
+
+	private buildStatusPayload(state: CollectionState<AnyRecord>): SubscriptionStatusPayload {
+		return {
+			status: state.status,
+			error: state.error,
+			lastSyncedAt: state.lastSyncedAt,
+		};
+	}
+
+	private recordsForOptions<TRecord extends PBBaseRecord>(
+		state: CollectionState<AnyRecord>,
+		options: SubscribeOptions<TRecord>,
+	): TRecord[] {
+		const allRecords = Array.from(state.records.values()) as TRecord[];
+		if (options.recordFilter) {
+			return allRecords.filter((record) => {
+				try {
+					return options.recordFilter?.(record) ?? true;
+				} catch {
+					return false;
+				}
+			});
+		}
+		return allRecords;
+	}
+
+	private ensureState<TRecord extends AnyRecord>(collection: string): CollectionState<TRecord> {
+		const existing = this.collectionStates.get(collection);
+		if (existing) return existing as unknown as CollectionState<TRecord>;
+		const created: CollectionState<AnyRecord> = {
+			records: new Map<string, AnyRecord>(),
+			status: 'idle',
+			error: null,
+			lastCursor: undefined,
+			lastSyncedAt: undefined,
+			listeners: new Map(),
+			statusListeners: new Map(),
+			subscribePromise: undefined,
+			unsubscribe: undefined,
+			initialFetchPromise: undefined,
+			pendingEvents: [],
+			suspendNotifications: false,
+			needsNotify: false,
+			awaitingBackfill: false,
+			isBackfilling: false,
+		};
+		this.collectionStates.set(collection, created);
+		return created as unknown as CollectionState<TRecord>;
+	}
+
+	private setStatus(collection: string, status: SubscriptionStatus) {
+		const state = this.ensureState(collection);
+		if (state.status === status) return;
+		state.status = status;
+		this.notifyStatusWatchers(collection);
+		// propagate status change to data listeners as well
+		if (!state.suspendNotifications) {
+			this.notifyListeners(collection);
+		} else {
+			state.needsNotify = true;
+		}
+	}
+
+	private combineFilters(a: string, b: string): string {
+		const parts = [a?.trim(), b?.trim()].filter((part) => part && part.length > 0) as string[];
+		if (parts.length === 0) return '';
+		if (parts.length === 1) return parts[0]!;
+		return `(${parts.join(') && (')})`;
+	}
+
+	private cursorFilter(since: string): string {
+		const escaped = since.replace(/"/g, '\\"');
+		return `lastUpdated >= "${escaped}"`;
+	}
+
+	private getRecordTimestamp(record: AnyRecord): string | undefined {
+		return record.lastUpdated ?? record.updated ?? record.created ?? undefined;
+	}
+
+	private normalizeError(error: unknown): Error {
+		if (error instanceof Error) return error;
+		return new Error(typeof error === 'string' ? error : 'Unknown PocketBase error');
+	}
+}

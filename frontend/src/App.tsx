@@ -10,6 +10,7 @@ import { GenericSuspense } from './common/GenericSuspense.tsx';
 import { useAtomValue } from 'jotai';
 import useBreakpoint from './responsive/useBreakpoint.ts';
 import { activePaneAtom } from './state/viewAtoms.ts';
+import { SubscriptionStatusIndicator } from './common/SubscriptionStatusIndicator.tsx';
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 import { Link } from '@tanstack/react-router';
 
@@ -44,6 +45,7 @@ function App() {
 			{!isMobile
 				? (
 					<div className='app-header'>
+						<SubscriptionStatusIndicator />
 						<div className='app-header-time'>
 							<GenericSuspense id='time-display'>
 								<TimeDisplay
@@ -110,6 +112,11 @@ function App() {
 						</>
 					)}
 			</div>
+			{isMobile && (
+				<div className='app-mobile-header-status'>
+					<SubscriptionStatusIndicator />
+				</div>
+			)}
 			{isMobile && (
 				<div className='app-legend'>
 					<Legend />

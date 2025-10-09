@@ -265,6 +265,47 @@
 	justify-content: center;
 }
 
+.subscription-status-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 0.85rem;
+	border: 1px solid rgba(59, 130, 246, 0.35);
+	background: rgba(37, 99, 235, 0.15);
+	color: #bfdbfe;
+}
+
+.subscription-status-indicator.initializing {
+	border-color: rgba(59, 130, 246, 0.4);
+	background: rgba(37, 99, 235, 0.18);
+	color: #bfdbfe;
+}
+
+.subscription-status-indicator.reconnecting {
+	border-color: rgba(245, 158, 11, 0.45);
+	background: rgba(180, 83, 9, 0.18);
+	color: #fcd34d;
+}
+
+.subscription-status-indicator.backfilling {
+	border-color: rgba(16, 185, 129, 0.45);
+	background: rgba(4, 120, 87, 0.18);
+	color: #6ee7b7;
+}
+
+.subscription-status-indicator.error {
+	border-color: rgba(239, 68, 68, 0.6);
+	background: rgba(127, 29, 29, 0.24);
+	color: #fca5a5;
+}
+
+.subscription-status-indicator__collections {
+	font-size: 0.75rem;
+	opacity: 0.8;
+}
+
 .app-shell {
 	display: flex;
 	flex-direction: column;
@@ -387,6 +428,14 @@
 
 .app-mobile-header .app-settings-button {
 	flex-shrink: 0;
+}
+
+.app-mobile-header-status {
+	display: flex;
+	justify-content: center;
+	padding: 4px 12px 8px;
+	background-color: #1a1a1a;
+	border-bottom: 1px solid #333;
 }
 
 @media (max-width: 640px) {

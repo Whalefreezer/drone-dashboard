@@ -1,7 +1,13 @@
 import PocketBase, { RecordSubscription } from 'pocketbase';
-import { Atom, atom } from 'jotai';
-import { PBBaseRecord } from './pbTypes.ts';
-import { batchDebounce } from '../common/utils.ts';
+import { Atom, atom, PrimitiveAtom } from 'jotai';
+import type { PBBaseRecord } from './pbTypes.ts';
+import {
+	CollectionSubscriptionSnapshot,
+	PBCollectionSubscriptionManager,
+	type SubscribeOptions,
+	type SubscriptionStatus,
+	type SubscriptionStatusPayload,
+} from './pbRealtimeManager.ts';
 
 export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
 export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '').toLowerCase() === 'true';
@@ -12,6 +18,8 @@ const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
 // Singleton PocketBase client used across the app
 export const pb = new PocketBase(import.meta.env.VITE_API_URL || '/');
 pb.autoCancellation(false);
+
+const subscriptionManager = new PBCollectionSubscriptionManager(pb);
 
 // --- Auth helpers ---------------------------------------------------------
 export type AuthKind = 'user' | 'admin';
@@ -92,75 +100,148 @@ export function pbSubscribeByID<T extends PBBaseRecord>(
 
 export function pbSubscribeCollection<T extends PBBaseRecord>(
 	collection: string,
+	options: SubscribeOptions<T> = {},
 ): Atom<Promise<T[]> | T[]> {
-	const overrideAtom = atom<T[] | null>(null);
-	const fetchAllPages = async (): Promise<T[]> => {
-		const perPage = 1_000;
-		let page = 1;
-		let totalPages = 1;
-		const allItems: T[] = [];
-
-		while (true) {
-			const response = await pb.collection<T>(collection).getList(page, perPage);
-			totalPages = Math.max(response.totalPages, 1);
-			allItems.push(...response.items);
-			if (page >= totalPages || response.items.length === 0) break;
-			page += 1;
+	const snapshotAtom = getSnapshotAtom(collection, options);
+	return atom<Promise<T[]> | T[]>((get) => {
+		const snapshot = get(snapshotAtom);
+		if (snapshot instanceof Promise) {
+			return snapshot.then((snap) => snap.records);
 		}
-
-		return allItems;
-	};
-
-	const anAtom = atom<Promise<T[]> | T[], [(prev: T[] | null) => T[]], void>(
-		(get, { setSelf }) => {
-			const override = get(overrideAtom);
-			if (override) return override;
-			return fetchAllPages().then((items) => {
-				setSelf((prev) => {
-					if (!prev || prev.length === 0) return items;
-					const merged = new Map<string, T>();
-					for (const item of items) merged.set(item.id, item);
-					for (const item of prev) merged.set(item.id, item);
-					return Array.from(merged.values());
-				});
-				return items;
-			});
-		},
-		(get, set, update) => {
-			set(overrideAtom, update(get(overrideAtom)));
-		},
-	);
-
-	anAtom.onMount = (set) => {
-		const debouncedSet = batchDebounce((eventCalls: [RecordSubscription<T>][]) => {
-			set((prev: T[] | null) => {
-				let items = prev ? [...prev] : [];
-
-				// Process all collected events in order
-				for (const [event] of eventCalls) {
-					if (event.action === 'create' || event.action === 'update') {
-						const i = items.findIndex((item) => item.id === event.record.id);
-						if (i !== -1) items[i] = event.record as T;
-						else items.push(event.record as T);
-					} else if (event.action === 'delete') {
-						items = items.filter((item) => item.id !== event.record.id);
-					}
-				}
-
-				return items;
-			});
-		}, 10);
-
-		const unsubscribePromise = pb.collection<T>(collection).subscribe('*', debouncedSet);
-
-		return () => {
-			debouncedSet.cancel();
-			unsubscribePromise.then((unsub) => unsub());
-		};
-	};
-	return anAtom;
+		return snapshot.records;
+	});
 }
 
 export function getEnvEventIdFallback(): string | null {
 	return ENV_EVENT_ID || null;
+}
+
+export function pbCollectionSnapshotAtom<T extends PBBaseRecord>(
+	collection: string,
+	options: SubscribeOptions<T> = {},
+): Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>> {
+	return getSnapshotAtom(collection, options);
+}
+
+export function pbCollectionStatusAtom(
+	collection: string,
+): Atom<SubscriptionStatusPayload> {
+	return getStatusAtom(collection);
+}
+
+export { type SubscriptionStatus };
+export type { CollectionSubscriptionSnapshot, SubscribeOptions, SubscriptionStatusPayload };
+
+function resolveOptionsKey(options?: SubscribeOptions<PBBaseRecord>): string {
+	if (!options) return 'default';
+	if (options.key) return options.key;
+	const filterKey = options.filter ?? 'all';
+	const predicateKey = options.recordFilter ? options.recordFilter.name || options.recordFilter.toString() : 'pred:none';
+	return `${filterKey}::${predicateKey}`;
+}
+
+function buildCacheKey(
+	collection: string,
+	options: SubscribeOptions<PBBaseRecord> | undefined,
+	suffix: string,
+): string {
+	return `${collection}::${resolveOptionsKey(options)}::${suffix}`;
+}
+
+type SnapshotAtom = Atom<Promise<CollectionSubscriptionSnapshot<PBBaseRecord>> | CollectionSubscriptionSnapshot<PBBaseRecord>>;
+type StatusAtom = Atom<SubscriptionStatusPayload>;
+
+const snapshotAtomCache = new Map<string, SnapshotAtom>();
+const statusAtomCache = new Map<string, StatusAtom>();
+
+function getSnapshotAtom<T extends PBBaseRecord>(
+	collection: string,
+	options: SubscribeOptions<T> = {},
+): Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>> {
+	const cacheKey = buildCacheKey(collection, options as SubscribeOptions<PBBaseRecord>, 'snapshot');
+	if (!snapshotAtomCache.has(cacheKey)) {
+		let resolveInitial: ((snapshot: CollectionSubscriptionSnapshot<T>) => void) | null = null;
+		let rejectInitial: ((error: unknown) => void) | null = null;
+		const initialPromise = new Promise<CollectionSubscriptionSnapshot<T>>((resolve, reject) => {
+			resolveInitial = resolve;
+			rejectInitial = reject;
+		});
+
+		const baseAtom = atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>>(() => {
+			const cached = subscriptionManager.getCachedSnapshot(collection, options);
+			if (cached) return cached;
+			return initialPromise;
+		}) as PrimitiveAtom<CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>>;
+
+		baseAtom.onMount = (set) => {
+			const setSnapshot = set as (value: CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>) => void;
+			const { unsubscribe, initialSnapshotPromise } = subscriptionManager.subscribe(
+				collection,
+				options,
+				(snapshot) => setSnapshot(snapshot as CollectionSubscriptionSnapshot<T>),
+			);
+
+			initialSnapshotPromise
+				.then((snapshot) => {
+					if (resolveInitial) {
+						resolveInitial(snapshot);
+						resolveInitial = null;
+						rejectInitial = null;
+					} else {
+						setSnapshot(snapshot);
+					}
+				})
+				.catch((error) => {
+					const normalizedError = error instanceof Error ? error : new Error(String(error));
+					const fallback: CollectionSubscriptionSnapshot<T> = {
+						records: [],
+						status: 'error',
+						error: normalizedError,
+						lastSyncedAt: undefined,
+					};
+					if (rejectInitial) {
+						rejectInitial(normalizedError);
+						resolveInitial = null;
+						rejectInitial = null;
+					} else {
+						setSnapshot(fallback);
+					}
+				});
+
+			return () => {
+				unsubscribe();
+			};
+		};
+
+		snapshotAtomCache.set(cacheKey, baseAtom as SnapshotAtom);
+	}
+
+	return snapshotAtomCache.get(cacheKey)! as Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>>;
+}
+
+function getStatusAtom(collection: string): Atom<SubscriptionStatusPayload> {
+	const cacheKey = `${collection}::status`;
+	if (!statusAtomCache.has(cacheKey)) {
+		const initial = subscriptionManager.getCachedStatus(collection) ?? {
+			status: 'initializing' as SubscriptionStatus,
+			error: null,
+			lastSyncedAt: undefined,
+		};
+
+		const statusAtom = atom<SubscriptionStatusPayload>(initial);
+
+		statusAtom.onMount = (set) => {
+			const { unsubscribe, initialStatus } = subscriptionManager.subscribeStatus(collection, (payload) => {
+				set(payload);
+			});
+			set(initialStatus);
+			return () => {
+				unsubscribe();
+			};
+		};
+
+		statusAtomCache.set(cacheKey, statusAtom);
+	}
+
+	return statusAtomCache.get(cacheKey)!;
 }
