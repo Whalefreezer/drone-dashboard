@@ -3,6 +3,22 @@ import type { RecordSubscription } from 'pocketbase';
 import { batchDebounce } from '../common/utils.ts';
 import type { PBBaseRecord } from './pbTypes.ts';
 
+const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).env;
+const DEV_MODE = Boolean(envMeta?.DEV);
+type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
+const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
+const SHOULD_LOG = true || DEV_MODE || Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+const LOG_PREFIX = '[pbRealtimeManager]';
+
+function debugLog(...args: unknown[]) {
+	if (!SHOULD_LOG) return;
+	try {
+		console.debug(LOG_PREFIX, ...args);
+	} catch {
+		// ignore logging errors (e.g., console not available)
+	}
+}
+
 export type SubscriptionStatus =
 	| 'idle'
 	| 'initializing'
@@ -92,6 +108,7 @@ export class PBCollectionSubscriptionManager {
 	constructor(private readonly pb: PocketBase) {
 		const previousDisconnect = this.pb.realtime.onDisconnect;
 		this.pb.realtime.onDisconnect = (activeSubscriptions) => {
+			debugLog('Realtime disconnect observed', { activeSubscriptionsCount: activeSubscriptions?.length ?? 0 });
 			this.handleDisconnect();
 			if (typeof previousDisconnect === 'function') {
 				previousDisconnect(activeSubscriptions);
@@ -120,6 +137,8 @@ export class PBCollectionSubscriptionManager {
 			debouncedNotify,
 		};
 
+		debugLog('subscribe()', { collection, listenerId, filter: options.filter ?? null });
+
 		state.listeners.set(listenerId, listener as unknown as CollectionListener<AnyRecord>);
 
 		const initialSnapshotPromise = this.startCollection(collection)
@@ -132,6 +151,7 @@ export class PBCollectionSubscriptionManager {
 		initialSnapshotPromise
 			.then((snapshot) => {
 				// Emit once after initial fetch to prime the consumer.
+				debugLog('Initial snapshot resolved', { collection, listenerId, recordCount: snapshot.records.length });
 				listener.debouncedNotify(snapshot);
 			})
 			.catch(() => {
@@ -206,6 +226,7 @@ export class PBCollectionSubscriptionManager {
 		const state = this.ensureState(collection);
 
 		if (!state.subscribePromise) {
+			debugLog('Creating realtime subscription', { collection });
 			state.subscribePromise = this.pb.collection(collection).subscribe('*', (event) => {
 				this.handleEvent(collection, event as RecordSubscription<AnyRecord>);
 			});
@@ -229,14 +250,17 @@ export class PBCollectionSubscriptionManager {
 
 	private async fetchAndInitializeCollection(collection: string): Promise<void> {
 		const state = this.ensureState(collection);
+		debugLog('Initial fetch starting', { collection });
 		this.setStatus(collection, 'initializing');
 		try {
 			await this.fetchForListeners(collection);
 			this.flushPendingEvents(collection);
 			state.error = null;
 			state.lastSyncedAt = new Date().toISOString();
+			debugLog('Initial fetch completed', { collection, recordCount: state.records.size });
 			this.setStatus(collection, 'ready');
 		} catch (error) {
+			debugLog('Initial fetch errored', { collection, error });
 			state.error = this.normalizeError(error);
 			this.setStatus(collection, 'error');
 			throw error;
@@ -268,6 +292,7 @@ export class PBCollectionSubscriptionManager {
 			await Promise.all(
 				Array.from(filters.entries()).map(async ([filter]) => {
 					const finalFilter = this.combineFilters(filter, since ? this.cursorFilter(since) : '');
+					debugLog('Fetching collection records', { collection, filter: finalFilter || null });
 					const records = await this.fetchCollectionRecords(collection, finalFilter);
 					this.mergeRecords(collection, records);
 				}),
@@ -293,6 +318,7 @@ export class PBCollectionSubscriptionManager {
 		collection: string,
 		records: TRecord[],
 	) {
+		debugLog('Merging records', { collection, count: records.length });
 		const state = this.ensureState<TRecord>(collection);
 		for (const record of records) {
 			state.records.set(record.id, record);
@@ -314,6 +340,7 @@ export class PBCollectionSubscriptionManager {
 		if (state.pendingEvents.length === 0) return;
 
 		const events = state.pendingEvents.splice(0);
+		debugLog('Flushing pending realtime events', { collection, count: events.length });
 		state.suspendNotifications = true;
 		state.needsNotify = false;
 		try {
@@ -333,6 +360,7 @@ export class PBCollectionSubscriptionManager {
 		for (const [collection, stateRaw] of this.collectionStates.entries()) {
 			const state = stateRaw as CollectionState<AnyRecord>;
 			if (state.status === 'initializing') continue;
+			debugLog('Marking collection as reconnecting', { collection, previousStatus: state.status });
 			state.awaitingBackfill = true;
 			this.setStatus(collection, 'reconnecting');
 		}
@@ -340,6 +368,7 @@ export class PBCollectionSubscriptionManager {
 
 	private async handleEvent(collection: string, event: RecordSubscription<AnyRecord>) {
 		const state = this.ensureState(collection);
+		debugLog('Realtime event received', { collection, action: event.action });
 
 		if (event.action === 'PB_CONNECT') {
 			if (state.awaitingBackfill && state.lastCursor) {
@@ -386,6 +415,7 @@ export class PBCollectionSubscriptionManager {
 		switch (event.action) {
 			case 'create':
 			case 'update': {
+				debugLog('Applying record upsert', { collection, id: event.record.id, action: event.action });
 				const record = event.record as AnyRecord;
 				state.records.set(record.id, record);
 				const ts = this.getRecordTimestamp(record);
@@ -396,6 +426,7 @@ export class PBCollectionSubscriptionManager {
 				break;
 			}
 			case 'delete': {
+				debugLog('Applying record delete', { collection, id: event.record.id });
 				state.records.delete(event.record.id);
 				state.lastSyncedAt = new Date().toISOString();
 				break;
@@ -423,6 +454,7 @@ export class PBCollectionSubscriptionManager {
 	private notifyStatusWatchers(collection: string) {
 		const state = this.ensureState(collection);
 		const payload = this.buildStatusPayload(state);
+		debugLog('Status updated', { collection, status: payload.status, error: payload.error?.message ?? null });
 		for (const listener of state.statusListeners.values()) {
 			listener.callback(payload);
 		}

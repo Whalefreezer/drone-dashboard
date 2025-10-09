@@ -20,6 +20,20 @@ export const pb = new PocketBase(import.meta.env.VITE_API_URL || '/');
 pb.autoCancellation(false);
 
 const subscriptionManager = new PBCollectionSubscriptionManager(pb);
+const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).env;
+const isDevBuild = Boolean(envMeta?.DEV);
+type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
+const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
+const PB_DEBUG_LOG = true || isDevBuild || Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+
+function debugSnapshot(message: string, payload: Record<string, unknown>) {
+	if (!PB_DEBUG_LOG) return;
+	try {
+		console.debug('[pbSubscribeCollection]', message, payload);
+	} catch {
+		// ignore logging errors
+	}
+}
 
 // --- Auth helpers ---------------------------------------------------------
 export type AuthKind = 'user' | 'admin';
@@ -174,6 +188,7 @@ function getSnapshotAtom<T extends PBBaseRecord>(
 		}) as PrimitiveAtom<CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>>;
 
 		baseAtom.onMount = (set) => {
+			debugSnapshot('atom mounted', { collection, filter: options.filter ?? null });
 			const setSnapshot = set as (value: CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>) => void;
 			const { unsubscribe, initialSnapshotPromise } = subscriptionManager.subscribe(
 				collection,
@@ -190,6 +205,7 @@ function getSnapshotAtom<T extends PBBaseRecord>(
 					} else {
 						setSnapshot(snapshot);
 					}
+					debugSnapshot('initial snapshot delivered', { collection, recordCount: snapshot.records.length });
 				})
 				.catch((error) => {
 					const normalizedError = error instanceof Error ? error : new Error(String(error));
@@ -206,9 +222,11 @@ function getSnapshotAtom<T extends PBBaseRecord>(
 					} else {
 						setSnapshot(fallback);
 					}
+					debugSnapshot('initial snapshot error', { collection, error: normalizedError.message });
 				});
 
 			return () => {
+				debugSnapshot('atom unmounted', { collection, filter: options.filter ?? null });
 				unsubscribe();
 			};
 		};

@@ -9,9 +9,16 @@ import ScenarioSelector from './ScenarioSelector.tsx';
  * Renders the ScenarioSelector UI and starts the MSW worker with the selected scenario.
  * @returns {Promise<void>} A promise that resolves when mocking is enabled (or immediately if not).
  */
+type DebugWindow = Window & {
+	__APP_BOOTSTRAP_LOG?: (message: string, extra?: Record<string, unknown>) => void;
+};
+
 export async function enableMocking(): Promise<void> {
 	const urlParams = new URLSearchParams(globalThis.location.search);
 	const useMocks = urlParams.get('dev') === '1';
+
+	const bootstrapLog = (typeof window !== 'undefined' && (window as DebugWindow).__APP_BOOTSTRAP_LOG) || null;
+	bootstrapLog?.('enableMocking invoked', { useMocks });
 
 	if (useMocks) {
 		const selectedScenario = localStorage.getItem('mswScenario') as
@@ -20,7 +27,7 @@ export async function enableMocking(): Promise<void> {
 		const handlers = await getHandlersByScenarioName(selectedScenario);
 		const actualScenarioName = selectedScenario || DEFAULT_SCENARIO_NAME;
 
-		console.log(`MSW enabled via ?dev=1 flag. Using scenario: "${actualScenarioName}"`);
+		bootstrapLog?.('MSW enabled via ?dev=1', { scenario: actualScenarioName });
 
 		let selectorRootDiv = document.getElementById('scenario-selector-root');
 		if (!selectorRootDiv) {
@@ -42,5 +49,6 @@ export async function enableMocking(): Promise<void> {
 		worker.resetHandlers(...handlers);
 		return; // Return void explicitly after async operation
 	}
+	bootstrapLog?.('enableMocking completed without mocks');
 	return Promise.resolve();
 }

@@ -14,6 +14,10 @@ import { SubscriptionStatusIndicator } from './common/SubscriptionStatusIndicato
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 import { Link } from '@tanstack/react-router';
 
+type DebugWindow = Window & {
+	__APP_BOOTSTRAP_LOG?: (message: string, extra?: Record<string, unknown>) => void;
+};
+
 function SettingsButton() {
 	return (
 		/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
@@ -30,6 +34,8 @@ function SettingsButton() {
 
 function App() {
 	// Use the custom hook to handle cursor visibility
+	const bootstrapLogger = typeof window !== 'undefined' ? (window as DebugWindow).__APP_BOOTSTRAP_LOG : undefined;
+	bootstrapLogger?.('App render start');
 	useIdleCursor();
 	const { isMobile } = useBreakpoint();
 	const activePane = useAtomValue(activePaneAtom);

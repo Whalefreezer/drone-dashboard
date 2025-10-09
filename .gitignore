@@ -42,6 +42,7 @@ tasks/
 
 pb_data/
 run-cloud/
+run-cloud-copy/
 run-pits/
 pocketbase_docs/
 __debug_bin*
