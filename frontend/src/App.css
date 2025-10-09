@@ -404,6 +404,12 @@
 	opacity: 0.6;
 }
 
+.app-refresh-icon {
+	display: inline-block;
+	font-size: 20px;
+	line-height: 1;
+}
+
 .app-refresh-button[data-refreshing='true'] .app-refresh-icon {
 	animation: app-refresh-spin 0.8s linear infinite;
 }
@@ -472,6 +478,6 @@
 .app-legend {
 	display: flex;
 	justify-content: center;
-	padding: 8px 16px 16px;
+	padding: 8px;
 	flex-shrink: 0;
 }

@@ -46,19 +46,7 @@ function RefreshButton() {
 			data-refreshing={isRefreshing ? 'true' : 'false'}
 			disabled={isRefreshing}
 		>
-			<svg
-				className='app-refresh-icon'
-				width='20'
-				height='20'
-				viewBox='0 0 24 24'
-				role='presentation'
-				aria-hidden='true'
-			>
-				<path
-					fill='currentColor'
-					d='M17.65 6.35a7.95 7.95 0 0 0-5.65-2.35c-4.41 0-8 3.59-8 8h-2.5l3.5 3.5l3.5-3.5h-2.5c0-3.03 2.47-5.5 5.5-5.5c1.65 0 3.13.73 4.14 1.86l-2.29 2.29h6.15v-6.15l-2.36 2.35Zm1.85 3.65c0 3.03-2.47 5.5-5.5 5.5c-1.65 0-3.13-.73-4.14-1.86l2.29-2.29h-6.15v6.15l2.36-2.35a7.95 7.95 0 0 0 5.65 2.35c4.41 0 8-3.59 8-8h2.5l-3.5-3.5l-3.5 3.5h2.5Z'
-				/>
-			</svg>
+			<span className='app-refresh-icon'>⟳</span>
 		</button>
 	);
 }
