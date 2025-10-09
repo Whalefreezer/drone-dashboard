@@ -35,6 +35,15 @@ function debugSnapshot(message: string, payload: Record<string, unknown>) {
 	}
 }
 
+function createInitialSnapshot<T extends PBBaseRecord>(): CollectionSubscriptionSnapshot<T> {
+	return {
+		records: [],
+		status: 'initializing',
+		error: null,
+		lastSyncedAt: undefined,
+	};
+}
+
 // --- Auth helpers ---------------------------------------------------------
 export type AuthKind = 'user' | 'admin';
 
@@ -76,54 +85,90 @@ export function logout() {
 export function pbSubscribeByID<T extends PBBaseRecord>(
 	collection: string,
 	id: string,
-): Atom<Promise<T> | T> {
+): Atom<T | null> {
 	const overrideAtom = atom<T | null>(null);
-	const anAtom = atom<Promise<T> | T, [T], void>(
-		(get, { setSelf }) => {
-			const override = get(overrideAtom);
-			if (override) return override;
-			return pb.collection<T>(collection).getOne(id).then((r) => {
-				setSelf(r);
-				return r;
+	const baseAtom = atom<T | null>(null);
+
+	baseAtom.onMount = (set) => {
+		let unsubscribe: (() => void) | null = null;
+		let cancelled = false;
+
+		pb.collection<T>(collection).getOne(id)
+			.then((record) => {
+				if (!cancelled) {
+					set(record);
+				}
+			})
+			.catch((error) => {
+				if (!cancelled) {
+					debugSnapshot('record fetch error', {
+						collection,
+						id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					set(null);
+				}
 			});
-		},
-		(get, set, update) => {
-			set(overrideAtom, update);
-		},
-	);
 
-	anAtom.onMount = (set) => {
-		console.log(`Subscribing to ${collection}:${id}`);
-
-		const unsubscribePromise = pb.collection<T>(collection).subscribe(id, (e) => {
-			console.log(`Subscription event for ${collection}:${id}`, e.action);
-			if (e.action === 'create' || e.action === 'update') {
-				set(e.record as T);
-			} else if (e.action === 'delete') {
-				// setAtom(null);
+		const subscribePromise = pb.collection<T>(collection).subscribe(id, (event) => {
+			if (event.action === 'delete') {
+				set(null);
+				return;
+			}
+			if (event.action === 'create' || event.action === 'update') {
+				set(event.record as T);
 			}
 		});
 
+		subscribePromise
+			.then((unsub) => {
+				if (cancelled) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
+			})
+			.catch((error) => {
+				if (!cancelled) {
+					debugSnapshot('record subscribe error', {
+						collection,
+						id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			});
+
 		return () => {
-			unsubscribePromise.then((unsub) => unsub());
+			cancelled = true;
+			if (unsubscribe) {
+				unsubscribe();
+				return;
+			}
+			subscribePromise
+				.then((unsub) => unsub())
+				.catch(() => {});
 		};
 	};
 
-	return anAtom;
+	return atom(
+		(get) => {
+			const override = get(overrideAtom);
+			if (override !== null) return override;
+			return get(baseAtom);
+		},
+		(get, set, update: T | null | ((prev: T | null) => T | null)) => {
+			const nextValue = typeof update === 'function' ? (update as (prev: T | null) => T | null)(get(overrideAtom)) : update;
+			set(overrideAtom, nextValue);
+		},
+	);
 }
 
 export function pbSubscribeCollection<T extends PBBaseRecord>(
 	collection: string,
 	options: SubscribeOptions<T> = {},
-): Atom<Promise<T[]> | T[]> {
+): Atom<T[]> {
 	const snapshotAtom = getSnapshotAtom(collection, options);
-	return atom<Promise<T[]> | T[]>((get) => {
-		const snapshot = get(snapshotAtom);
-		if (snapshot instanceof Promise) {
-			return snapshot.then((snap) => snap.records);
-		}
-		return snapshot.records;
-	});
+	return atom((get) => get(snapshotAtom).records);
 }
 
 export function getEnvEventIdFallback(): string | null {
@@ -133,7 +178,7 @@ export function getEnvEventIdFallback(): string | null {
 export function pbCollectionSnapshotAtom<T extends PBBaseRecord>(
 	collection: string,
 	options: SubscribeOptions<T> = {},
-): Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>> {
+): Atom<CollectionSubscriptionSnapshot<T>> {
 	return getSnapshotAtom(collection, options);
 }
 
@@ -162,7 +207,7 @@ function buildCacheKey(
 	return `${collection}::${resolveOptionsKey(options)}::${suffix}`;
 }
 
-type SnapshotAtom = Atom<Promise<CollectionSubscriptionSnapshot<PBBaseRecord>> | CollectionSubscriptionSnapshot<PBBaseRecord>>;
+type SnapshotAtom = Atom<CollectionSubscriptionSnapshot<PBBaseRecord>>;
 type StatusAtom = Atom<SubscriptionStatusPayload>;
 
 const snapshotAtomCache = new Map<string, SnapshotAtom>();
@@ -171,62 +216,48 @@ const statusAtomCache = new Map<string, StatusAtom>();
 function getSnapshotAtom<T extends PBBaseRecord>(
 	collection: string,
 	options: SubscribeOptions<T> = {},
-): Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>> {
+): Atom<CollectionSubscriptionSnapshot<T>> {
 	const cacheKey = buildCacheKey(collection, options as SubscribeOptions<PBBaseRecord>, 'snapshot');
 	if (!snapshotAtomCache.has(cacheKey)) {
-		let resolveInitial: ((snapshot: CollectionSubscriptionSnapshot<T>) => void) | null = null;
-		let rejectInitial: ((error: unknown) => void) | null = null;
-		const initialPromise = new Promise<CollectionSubscriptionSnapshot<T>>((resolve, reject) => {
-			resolveInitial = resolve;
-			rejectInitial = reject;
-		});
-
-		const baseAtom = atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>>(() => {
-			const cached = subscriptionManager.getCachedSnapshot(collection, options);
-			if (cached) return cached;
-			return initialPromise;
-		}) as PrimitiveAtom<CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>>;
+		const cached = subscriptionManager.getCachedSnapshot(collection, options);
+		const initial = cached ?? createInitialSnapshot<T>();
+		const baseAtom = atom<CollectionSubscriptionSnapshot<T>>(initial) as PrimitiveAtom<CollectionSubscriptionSnapshot<T>>;
 
 		baseAtom.onMount = (set) => {
 			debugSnapshot('atom mounted', { collection, filter: options.filter ?? null });
-			const setSnapshot = set as (value: CollectionSubscriptionSnapshot<T> | Promise<CollectionSubscriptionSnapshot<T>>) => void;
+			const setSnapshot = set as (value: CollectionSubscriptionSnapshot<T>) => void;
+			let active = true;
+
 			const { unsubscribe, initialSnapshotPromise } = subscriptionManager.subscribe(
 				collection,
 				options,
-				(snapshot) => setSnapshot(snapshot as CollectionSubscriptionSnapshot<T>),
+				(snapshot) => {
+					if (!active) return;
+					setSnapshot(snapshot as CollectionSubscriptionSnapshot<T>);
+				},
 			);
 
 			initialSnapshotPromise
 				.then((snapshot) => {
-					if (resolveInitial) {
-						resolveInitial(snapshot);
-						resolveInitial = null;
-						rejectInitial = null;
-					} else {
-						setSnapshot(snapshot);
-					}
+					if (!active) return;
+					setSnapshot(snapshot);
 					debugSnapshot('initial snapshot delivered', { collection, recordCount: snapshot.records.length });
 				})
 				.catch((error) => {
+					if (!active) return;
 					const normalizedError = error instanceof Error ? error : new Error(String(error));
-					const fallback: CollectionSubscriptionSnapshot<T> = {
+					setSnapshot({
 						records: [],
 						status: 'error',
 						error: normalizedError,
 						lastSyncedAt: undefined,
-					};
-					if (rejectInitial) {
-						rejectInitial(normalizedError);
-						resolveInitial = null;
-						rejectInitial = null;
-					} else {
-						setSnapshot(fallback);
-					}
+					});
 					debugSnapshot('initial snapshot error', { collection, error: normalizedError.message });
 				});
 
 			return () => {
 				debugSnapshot('atom unmounted', { collection, filter: options.filter ?? null });
+				active = false;
 				unsubscribe();
 			};
 		};
@@ -234,7 +265,7 @@ function getSnapshotAtom<T extends PBBaseRecord>(
 		snapshotAtomCache.set(cacheKey, baseAtom as SnapshotAtom);
 	}
 
-	return snapshotAtomCache.get(cacheKey)! as Atom<Promise<CollectionSubscriptionSnapshot<T>> | CollectionSubscriptionSnapshot<T>>;
+	return snapshotAtomCache.get(cacheKey)! as Atom<CollectionSubscriptionSnapshot<T>>;
 }
 
 function getStatusAtom(collection: string): Atom<SubscriptionStatusPayload> {

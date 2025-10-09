@@ -52,11 +52,14 @@ bootLog('main module evaluated');
 const SafeRouter = () => {
 	bootLog('SafeRouter render', {
 		status: router.state.status,
-		matches: router.state.matches?.map((match) => ({
-			routeId: match.routeId,
-			loaderStatus: match.loaderStatus,
-			context: match.context,
-		})) ?? null,
+		matches: router.state.matches?.map((match) => {
+			const loaderStatus = 'loaderStatus' in match ? (match as { loaderStatus?: unknown }).loaderStatus ?? null : null;
+			return {
+				routeId: match.routeId,
+				loaderStatus,
+				context: match.context,
+			};
+		}) ?? null,
 		pendingMatches: router.state.pendingMatches?.map((match) => match.routeId) ?? null,
 	});
 	return <RouterProvider router={router} />;

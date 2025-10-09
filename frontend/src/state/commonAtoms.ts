@@ -1,8 +1,5 @@
-import { Atom, atom, useAtomValue, useSetAtom } from 'jotai';
-import { loadable } from 'jotai/utils';
 import type { PBRoundRecord } from '../api/pbTypes.ts';
 import { Bracket, EliminatedPilot } from '../bracket/bracket-types.ts';
-import { useEffect, useState } from 'react';
 
 // Common types and interfaces
 export interface ProcessedLap {
@@ -21,53 +18,6 @@ export interface ProcessedLap {
 export interface OverallBestTimes {
 	overallFastestLap: number;
 	pilotBestLaps: Map<string, number>;
-}
-
-// Common utility functions
-export function useCachedAtom<T>(anAtom: Atom<T>) {
-	const [cache, setCache] = useState<T | null>(null);
-
-	const value = useAtomValue(loadable(anAtom));
-
-	if (value.state === 'loading') {
-		if (cache === null) {
-			throw new Promise(() => {});
-		} else {
-			return cache;
-		}
-	}
-
-	if (value.state === 'hasError') {
-		throw value.error;
-	}
-
-	if (value.state === 'hasData') {
-		setCache(value.data);
-		return value.data;
-	}
-}
-
-export const updateAtom = atom<
-	(Record<string, { func: () => void; count: number }>)
->({});
-
-export function useUpdater(key: string, updater: () => void) {
-	const setUpdate = useSetAtom(updateAtom);
-	useEffect(() => {
-		setUpdate((update) => {
-			update[key] = { func: updater, count: (update[key]?.count ?? 0) + 1 };
-			return update;
-		});
-		return () => {
-			setUpdate((update) => {
-				update[key].count--;
-				if (update[key].count === 0) {
-					delete update[key];
-				}
-				return update;
-			});
-		};
-	}, [updater]);
 }
 
 /**
