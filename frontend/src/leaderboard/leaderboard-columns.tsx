@@ -25,9 +25,11 @@ export interface LeaderboardRowProps {
 
 // Small table cell that detects overflow and applies a fade class
 // Position cell uses calculated positionChanges from atom
-function PositionCell(
-	{ pilotId, currentPosition }: { pilotId: string; currentPosition: number },
-) {
+function PositionCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
+	const ids = useAtomValue(leaderboardPilotIdsAtom);
+	const idx = ids.findIndex((id) => id === pilotId);
+	const currentPosition = idx >= 0 ? idx + 1 : 0;
+
 	const positionChanges = useAtomValue(positionChangesAtom);
 	const prevPos = positionChanges.get(pilotId);
 	const showChange = prevPos && prevPos !== currentPosition;
@@ -38,6 +40,25 @@ function PositionCell(
 			<div>{currentPosition}</div>
 			{showChange && change > 0 && <span className='position-change'>↑{change}</span>}
 		</div>
+	);
+}
+
+function PilotCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
+	const pilots = useAtomValue(pilotsAtom);
+	const pilot = pilots.find((p) => p.id === pilotId);
+	if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
+	return (
+		<OverflowFadeCell className='pilot-col' title={pilot.name}>
+			{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
+			<Link
+				to='/pilots/$pilotId'
+				/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
+				params={{ pilotId: pilot.sourceId }}
+				className='leaderboard-pilot-link'
+			>
+				{pilot.name}
+			</Link>
+		</OverflowFadeCell>
 	);
 }
 
@@ -152,12 +173,7 @@ export function getLeaderboardColumns(
 			//   .leaderboard-table .gt-cell[data-col='pilot'] { left: <this width>px }
 			//   .leaderboard-table .gt-header [data-col='pilot'] { left: <this width>px }
 			width: 32,
-			cell: function PositionCellInline({ item: { pilotId } }) {
-				const ids = useAtomValue(leaderboardPilotIdsAtom);
-				const idx = ids.findIndex((id) => id === pilotId);
-				const pos = idx >= 0 ? idx + 1 : 0;
-				return <PositionCell pilotId={pilotId} currentPosition={pos} />;
-			},
+			cell: PositionCell,
 		},
 		{
 			key: 'pilot',
@@ -166,24 +182,7 @@ export function getLeaderboardColumns(
 			// Let the Pilot column flex to consume remaining space.
 			// Keep a reasonable minimum so it doesn't collapse.
 			minWidth: 100,
-			cell: function PilotCellInline({ item: { pilotId } }) {
-				const pilots = useAtomValue(pilotsAtom);
-				const pilot = pilots.find((p) => p.id === pilotId);
-				if (!pilot) return <OverflowFadeCell className='pilot-col'>-</OverflowFadeCell>;
-				return (
-					<OverflowFadeCell className='pilot-col' title={pilot.name}>
-						{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
-						<Link
-							to='/pilots/$pilotId'
-							/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */
-							params={{ pilotId: pilot.sourceId }}
-							className='leaderboard-pilot-link'
-						>
-							{pilot.name}
-						</Link>
-					</OverflowFadeCell>
-				);
-			},
+			cell: PilotCell,
 		},
 		{
 			key: 'channel',
