@@ -33,6 +33,7 @@ type RaceEvent struct {
 	ChannelColors               []string `json:"ChannelColors"`
 	ChannelDisplayNames         []string `json:"ChannelDisplayNames"`
 	Flags                       []string `json:"Flags"`
+	RemovedPilots               []Guid   `json:"RemovedPilots"`
 }
 
 type EventFile = []RaceEvent

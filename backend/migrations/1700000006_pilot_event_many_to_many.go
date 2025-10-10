@@ -25,6 +25,7 @@ func init() {
 			eventPilots.Fields.Add(
 				&core.RelationField{Name: "event", CollectionId: events.Id, MaxSelect: 1, Required: true},
 				&core.RelationField{Name: "pilot", CollectionId: pilots.Id, MaxSelect: 1, Required: true},
+				&core.BoolField{Name: "removed"},
 			)
 			eventPilots.AddIndex("ux_event_pilots_relation", true, "event, pilot", "")
 			eventPilots.ListRule = types.Pointer("")

@@ -92,3 +92,77 @@ func (s *Service) SetEventAsCurrent(eventSourceId string) error {
 	slog.Debug("ingest.setEventAsCurrent.done", "eventSourceId", eventSourceId, "changed", changed)
 	return nil
 }
+
+// UpdateRemovedPilots marks pilots as removed in event_pilots based on RemovedPilots list
+func (s *Service) UpdateRemovedPilots(e RaceEvent) error {
+	eventSourceId := string(e.ID)
+	slog.Debug("ingest.updateRemovedPilots.start", "eventSourceId", eventSourceId, "removedCount", len(e.RemovedPilots))
+
+	eventPBID, err := s.Upserter.GetExistingId("events", eventSourceId)
+	if err != nil {
+		return err
+	}
+
+	// Build a set of removed pilot source IDs for quick lookup
+	removedPilotSet := make(map[string]bool)
+	for _, pilotSourceID := range e.RemovedPilots {
+		removedPilotSet[pilotSourceID] = true
+	}
+
+	// Get all pilots to map sourceId -> PBID
+	pilotsRecords, err := s.Upserter.App.FindRecordsByFilter("pilots", "", "", 0, 0)
+	if err != nil {
+		return fmt.Errorf("fetch pilots: %w", err)
+	}
+
+	pilotSourceIDToPBID := make(map[string]string)
+	for _, pilot := range pilotsRecords {
+		sourceID := pilot.GetString("sourceId")
+		if sourceID != "" {
+			pilotSourceIDToPBID[sourceID] = pilot.Id
+		}
+	}
+
+	// Get all event_pilots for this event
+	eventPilots, err := s.Upserter.App.FindRecordsByFilter(
+		"event_pilots",
+		"event = {:event}",
+		"",
+		0,
+		0,
+		map[string]any{"event": eventPBID},
+	)
+	if err != nil {
+		return fmt.Errorf("fetch event_pilots: %w", err)
+	}
+
+	updated := 0
+	for _, ep := range eventPilots {
+		pilotPBID := ep.GetString("pilot")
+
+		// Find the pilot's sourceId
+		pilotSourceID := ""
+		for sourceID, pbID := range pilotSourceIDToPBID {
+			if pbID == pilotPBID {
+				pilotSourceID = sourceID
+				break
+			}
+		}
+
+		// Determine if this pilot should be marked as removed
+		shouldBeRemoved := removedPilotSet[pilotSourceID]
+		currentlyRemoved := ep.GetBool("removed")
+
+		if shouldBeRemoved != currentlyRemoved {
+			ep.Set("removed", shouldBeRemoved)
+			if err := s.Upserter.App.Save(ep); err != nil {
+				slog.Warn("ingest.updateRemovedPilots.save_failed", "id", ep.Id, "error", err)
+			} else {
+				updated++
+			}
+		}
+	}
+
+	slog.Debug("ingest.updateRemovedPilots.done", "eventSourceId", eventSourceId, "updated", updated)
+	return nil
+}

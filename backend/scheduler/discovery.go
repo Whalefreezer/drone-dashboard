@@ -43,6 +43,12 @@ func (m *Manager) runDiscovery() {
 		return
 	}
 
+	// 3b. Update removed pilots based on RemovedPilots list
+	if err := m.Service.UpdateRemovedPilots(eventData); err != nil {
+		slog.Warn("scheduler.discovery.updateRemovedPilots.error", "eventSourceId", eventSourceId, "err", err)
+		// Non-fatal, continue with discovery
+	}
+
 	// 4. Now get the PocketBase event ID (guaranteed to exist after ingestion)
 	eventPBID, err := m.Service.Upserter.GetExistingId("events", eventSourceId)
 	if err != nil {

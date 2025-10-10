@@ -65,6 +65,7 @@ export interface PBPilotRecord extends PBBaseRecord {
 export interface PBEventPilotRecord extends PBBaseRecord {
 	event: string; // relation → events.id
 	pilot: string; // relation → pilots.id
+	removed: boolean;
 	lastUpdated?: string;
 }
 
