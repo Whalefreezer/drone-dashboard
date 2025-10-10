@@ -8,11 +8,13 @@ import { withCompare } from '../state/jotai-utils.ts';
 
 // Race ID sets shared across leaderboard and metric selectors
 export const currentRaceIdsAtom = withCompare(atom((get): string[] => {
+	console.log('currentRaceIdsAtom recalculated');
 	const races = get(allRacesAtom);
 	return races.map((r) => r.id);
 }));
 
 export const previousRaceIdsAtom = withCompare(atom((get): string[] => {
+	console.log('previousRaceIdsAtom recalculated');
 	const ids = get(currentRaceIdsAtom);
 	const current = get(currentRaceAtom)?.id;
 	const lastRace = get(lastRaceAtom)?.id;

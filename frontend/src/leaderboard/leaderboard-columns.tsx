@@ -26,12 +26,14 @@ export interface LeaderboardRowProps {
 // Small table cell that detects overflow and applies a fade class
 // Position cell uses calculated positionChanges from atom
 function PositionCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
-	const ids = useAtomValue(leaderboardPilotIdsAtom);
-	const idx = ids.findIndex((id) => id === pilotId);
-	const currentPosition = idx >= 0 ? idx + 1 : 0;
+	// const ids = useAtomValue(leaderboardPilotIdsAtom);
+	// const idx = ids.findIndex((id) => id === pilotId);
+	// const currentPosition = idx >= 0 ? idx + 1 : 0;
+	const currentPosition = 42;
 
 	const positionChanges = useAtomValue(positionChangesAtom);
 	const prevPos = positionChanges.get(pilotId);
+	// const prevPos = 42;
 	const showChange = prevPos && prevPos !== currentPosition;
 	const change = showChange ? prevPos - currentPosition : 0;
 

@@ -19,27 +19,6 @@ import { AutoscrollToggle } from './AutoscrollToggle.tsx';
 import { leaderboardDataReadyAtom } from '../state/subscriptionStatusAtoms.ts';
 
 export function Leaderboard() {
-	const [mounted, setMounted] = useState(false);
-	const deferredMounted = useDeferredValue(mounted);
-
-	useEffect(() => {
-		setMounted(true);
-	}, []);
-
-	return (
-		<div className='leaderboard-container'>
-			{deferredMounted ? (
-				<LeaderboardContent />
-			) : (
-				<div className='leaderboard-loading' style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
-					Loading leaderboard...
-				</div>
-			)}
-		</div>
-	);
-}
-
-function LeaderboardContent() {
 	const consecutiveLaps = useAtomValue(consecutiveLapsAtom);
 	const pilotIds = useAtomValue(filteredLeaderboardPilotIdsAtom);
 	const dataReady = useAtomValue(leaderboardDataReadyAtom);

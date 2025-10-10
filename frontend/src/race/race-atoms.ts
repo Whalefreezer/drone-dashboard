@@ -338,6 +338,7 @@ export const raceStatusAtom = atomFamily((raceId: string) =>
  * All races for the current event - PB native
  */
 export const allRacesAtom = atom((get): PBRaceRecord[] => {
+	console.log('allRacesAtom recalculated');
 	const currentEvent = get(currentEventAtom);
 	if (!currentEvent) return [];
 
@@ -360,6 +361,7 @@ export const allRacesAtom = atom((get): PBRaceRecord[] => {
  * 3. Default to first race if no matches
  */
 export const currentRaceAtom = atom((get): PBRaceRecord | null => {
+	console.log('currentRaceAtom recalculated');
 	const races = get(allRacesAtom);
 	if (!races || races.length === 0) return null;
 
@@ -399,6 +401,7 @@ export const currentRaceIndexAtom = atom((get): number => {
  * Consistent with currentRaceAtom logic, relies totally on kv.order
  */
 export const lastRaceAtom = atom((get): PBRaceRecord | null => {
+	console.log('lastRaceAtom recalculated');
 	const races = get(allRacesAtom);
 	const kv = get(currentOrderKVAtom);
 

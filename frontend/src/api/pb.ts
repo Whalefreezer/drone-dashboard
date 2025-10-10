@@ -21,7 +21,7 @@ const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).en
 // const isDevBuild = Boolean(envMeta?.DEV);
 type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
 const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
-const PB_DEBUG_LOG = Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+const PB_DEBUG_LOG = true || Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
 const PB_PING_TOPIC = 'pb_ping';
 
 let pingSubscribed = false;
