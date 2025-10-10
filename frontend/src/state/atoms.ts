@@ -1,5 +1,3 @@
-import { usePB } from '../api/pb.ts';
-import * as pbAtoms from './pbAtoms.ts';
 import * as commonAtoms from './commonAtoms.ts';
 
 export * from './pbAtoms.ts';

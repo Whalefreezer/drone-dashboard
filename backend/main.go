@@ -22,6 +22,7 @@ import (
 	"drone-dashboard/ingest"
 	"drone-dashboard/logger"
 	_ "drone-dashboard/migrations"
+	"drone-dashboard/realtime"
 	"drone-dashboard/scheduler"
 
 	"strconv"
@@ -103,17 +104,17 @@ func main() {
 // ----- Structure & helpers -----
 
 type CLIFlags struct {
-	FPVTrackside   string
-	Port           int
-	LogLevel       string
-	IngestEnabled  bool
-	DirectProxy    bool
-	CloudURL       string
-	AuthToken      string
-	PitsID         string
-	DBDir          string
-	ImportSnapshot string
-	UITitle        string
+	FPVTrackside    string
+	Port            int
+	LogLevel        string
+	IngestEnabled   bool
+	DirectProxy     bool
+	CloudURL        string
+	AuthToken       string
+	PitsID          string
+	DBDir           string
+	ImportSnapshot  string
+	UITitle         string
 	UITitleProvided bool
 }
 
@@ -299,6 +300,15 @@ func registerServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		// Start loops
 		ctx := context.Background()
 		manager.StartLoops(ctx)
+
+		// Realtime ping loop keeps SSE connections alive even without collection subscriptions.
+		pingCtx, cancelPing := context.WithCancel(context.Background())
+		if se.Server != nil {
+			se.Server.RegisterOnShutdown(cancelPing)
+		} else {
+			defer cancelPing()
+		}
+		realtime.StartPingLoop(pingCtx, app, 10*time.Second)
 
 		// Routing (register specific first)
 		// Optional direct proxy (only in direct source modes)

@@ -1,4 +1,4 @@
-import PocketBase, { RecordSubscription } from 'pocketbase';
+import PocketBase from 'pocketbase';
 import { Atom, atom, PrimitiveAtom } from 'jotai';
 import type { PBBaseRecord } from './pbTypes.ts';
 import {
@@ -8,9 +8,6 @@ import {
 	type SubscriptionStatus,
 	type SubscriptionStatusPayload,
 } from './pbRealtimeManager.ts';
-
-export const usePB: boolean = String(import.meta.env.VITE_USE_PB || '').toLowerCase() === 'true';
-export const usePBRace: boolean = String(import.meta.env.VITE_USE_PB_RACE || '').toLowerCase() === 'true';
 
 // Optional override to select event without scraping FPVTrackside
 const ENV_EVENT_ID = (import.meta.env.VITE_EVENT_ID || '').trim();
@@ -25,6 +22,57 @@ const envMeta = (import.meta as unknown as { env?: Record<string, unknown> }).en
 type DebugWindow = Window & { __PB_DEBUG_SUBSCRIPTIONS?: boolean };
 const debugWindow = typeof window !== 'undefined' ? (window as DebugWindow) : undefined;
 const PB_DEBUG_LOG = Boolean(debugWindow?.__PB_DEBUG_SUBSCRIPTIONS);
+const PB_PING_TOPIC = 'pb_ping';
+
+let pingSubscribed = false;
+let pingUnsubscribe: (() => void) | undefined;
+let pingUnloadListenerAttached = false;
+
+function ensurePingSubscription() {
+	if (typeof window === 'undefined' || pingSubscribed) {
+		return;
+	}
+
+	pingSubscribed = true;
+	pb.realtime.subscribe(PB_PING_TOPIC, () => {
+		if (PB_DEBUG_LOG) {
+			try {
+				console.debug('[pbPing]', 'heartbeat received');
+			} catch {
+				// ignore logging errors
+			}
+		}
+	})
+		.then((unsubscribe) => {
+			pingUnsubscribe = () => {
+				try {
+					unsubscribe();
+				} catch {
+					// ignore unsubscribe errors (connection may already be closed)
+				}
+				pingUnsubscribe = undefined;
+			};
+		})
+		.catch((error) => {
+			pingSubscribed = false;
+			if (PB_DEBUG_LOG) {
+				try {
+					console.warn('[pbPing]', 'subscription failed', error);
+				} catch {
+					// ignore logging errors
+				}
+			}
+		});
+
+	if (!pingUnloadListenerAttached) {
+		pingUnloadListenerAttached = true;
+		globalThis.addEventListener('beforeunload', () => {
+			pingUnsubscribe?.();
+		});
+	}
+}
+
+ensurePingSubscription();
 
 function debugSnapshot(message: string, payload: Record<string, unknown>) {
 	if (!PB_DEBUG_LOG) return;
