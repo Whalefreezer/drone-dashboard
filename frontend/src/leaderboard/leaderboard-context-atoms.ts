@@ -4,19 +4,20 @@ import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } fr
 import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, noRacesOverrideAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
+import { withCompare } from '../state/jotai-utils.ts';
 
 // Race ID sets shared across leaderboard and metric selectors
-export const currentRaceIdsAtom = atom((get): string[] => {
+export const currentRaceIdsAtom = withCompare(atom((get): string[] => {
 	const races = get(allRacesAtom);
 	return races.map((r) => r.id);
-});
+}));
 
-export const previousRaceIdsAtom = atom((get): string[] => {
+export const previousRaceIdsAtom = withCompare(atom((get): string[] => {
 	const ids = get(currentRaceIdsAtom);
 	const current = get(currentRaceAtom)?.id;
 	const lastRace = get(lastRaceAtom)?.id;
 	return ids.filter((id) => id !== current && id !== lastRace);
-});
+}));
 
 // Scheduling/context atoms
 export interface PilotNextRaceInfo {
