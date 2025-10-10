@@ -58,7 +58,13 @@ export interface PBPilotRecord extends PBBaseRecord {
 	lastName?: string;
 	discordId?: string;
 	practicePilot?: boolean;
-	event?: string; // relation → events.id
+	lastUpdated?: string;
+}
+
+// event_pilots (join table for many-to-many relationship)
+export interface PBEventPilotRecord extends PBBaseRecord {
+	event: string; // relation → events.id
+	pilot: string; // relation → pilots.id
 	lastUpdated?: string;
 }
 

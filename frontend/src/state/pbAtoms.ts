@@ -17,6 +17,7 @@ import {
 	PBChannelRecord,
 	PBClientKVRecord,
 	PBDetectionRecord,
+	PBEventPilotRecord,
 	PBEventRecord,
 	PBGamePointRecord,
 	PBLapRecord,
@@ -74,9 +75,34 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 	// refetchInterval: 10_000,
 }));
 
-// Pilots as PB records
+// Pilots as PB records (no longer filtered by event directly)
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = atom((get) => get(pilotsRecordsAtom));
+
+// Event-pilot join table
+const eventPilotsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBEventPilotRecord>('event_pilots', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `event_pilots-event-${eventId}`,
+	})
+);
+
+export const eventPilotsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(eventPilotsAtomFamily(event.id));
+});
+
+// Pilots filtered by current event (via event_pilots join)
+export const pilotsAtom = atom((get) => {
+	const eventPilots = get(eventPilotsAtom);
+	const allPilots = get(pilotsRecordsAtom);
+
+	if (eventPilots.length === 0) return [];
+
+	const pilotIds = new Set(eventPilots.map((ep) => ep.pilot));
+	return allPilots.filter((p) => pilotIds.has(p.id));
+});
 
 export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
 	atom((get): string | null => {

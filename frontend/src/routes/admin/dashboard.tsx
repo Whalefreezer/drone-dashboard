@@ -19,7 +19,7 @@ function Dashboard() {
 	const controlStats = useAtomValue(controlStatsRecordsAtom);
 	const pilots = useAtomValue(pilotsAtom);
 
-	const totalPilots = currentEvent ? pilots.filter((pilot) => pilot.event === currentEvent.id).length : pilots.length;
+	const totalPilots = pilots.length; // pilotsAtom already filters by current event
 
 	const overviewCards: MetricCardProps[] = [
 		{

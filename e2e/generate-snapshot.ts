@@ -319,7 +319,7 @@ async function generatePilotChannels(
 				pilot: pilot.id,
 				channel: channels[channelIndex].id,
 				race: race.id, // Set raceId to define which race this pilot-channel belongs to
-				event: pilot.event,
+				event: race.event,
 				// PocketBase snapshot fields
 				collectionId: COLLECTION_IDS.pilotChannels,
 				collectionName: 'pilotChannels',
