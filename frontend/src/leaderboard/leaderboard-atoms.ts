@@ -5,17 +5,14 @@ import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
 import { pilotsAtom } from '../state/pbAtoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
-import { withCompare } from '../state/jotai-utils.ts';
 
 export const leaderboardPilotIdsAtom = atom((get): string[] => {
-	console.log('leaderboardPilotIdsAtom recalculated');
 	const pilots = get(pilotsAtom);
 	const ids = pilots.map((pilot) => pilot.id);
 	return sortPilotIds(ids, get, defaultSortConfigCurrent);
 });
 
 export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
-	console.log('previousLeaderboardPilotIdsAtom recalculated');
 	const raceIds = get(previousRaceIdsAtom);
 	const idSet = new Set<string>();
 	raceIds.forEach((raceId) => {
@@ -31,7 +28,6 @@ export const previousLeaderboardPilotIdsStateAtom = atom<string[]>([]);
 
 // Position changes map based on previous vs current ordered IDs
 export const positionChangesAtom = atom((get): Map<string, number> => {
-	console.log('positionChangesAtom recalculated');
 	const prev = get(previousLeaderboardPilotIdsStateAtom);
 	const cur = get(leaderboardPilotIdsStateAtom);
 	const prevIndex = new Map<string, number>();
