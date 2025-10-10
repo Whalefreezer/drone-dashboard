@@ -27,6 +27,7 @@ import {
 } from '../api/pbTypes.ts';
 import { PBControlStatsRecord, PBIngestTargetRecord, PBServerSettingRecord } from '../api/pbTypes.ts';
 import { PrimaryTimingSystemLocation, ValidityType } from '../common/enums.ts';
+import { parseTimestampMs } from '../common/time.ts';
 
 // Live events collection; we filter locally for the current event
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
@@ -343,22 +344,6 @@ export interface StreamVideoRange {
 	endMs: number | null;
 }
 
-const toEpochMs = (value: unknown): number | null => {
-	if (value == null) return null;
-	if (typeof value === 'number') {
-		return Number.isFinite(value) ? value : null;
-	}
-	if (typeof value === 'string') {
-		const trimmed = value.trim();
-		if (!trimmed) return null;
-		const numeric = Number(trimmed);
-		if (Number.isFinite(numeric)) return numeric;
-		const parsed = Date.parse(trimmed);
-		return Number.isNaN(parsed) ? null : parsed;
-	}
-	return null;
-};
-
 export const streamVideoRangesAtom = atom((get): StreamVideoRange[] => {
 	const ev = get(currentEventAtom);
 	if (!ev) return [];
@@ -384,13 +369,13 @@ export const streamVideoRangesAtom = atom((get): StreamVideoRange[] => {
 		const label = typeof labelRaw === 'string' ? labelRaw.trim() : '';
 		const url = typeof urlRaw === 'string' ? urlRaw.trim() : '';
 		if (!id || !label || !url) continue;
-		const startMs = toEpochMs(startRaw);
+		const startMs = parseTimestampMs(startRaw);
 		if (startMs == null) continue;
 		let endMs: number | null;
 		if (endRaw == null || (typeof endRaw === 'string' && !endRaw.trim())) {
 			endMs = null;
 		} else {
-			const parsedEnd = toEpochMs(endRaw);
+			const parsedEnd = parseTimestampMs(endRaw);
 			if (parsedEnd == null) continue;
 			endMs = parsedEnd;
 		}

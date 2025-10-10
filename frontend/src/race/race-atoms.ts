@@ -15,16 +15,7 @@ import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { EventType } from '../api/pbTypes.ts';
 import { sortPilotIds } from '../leaderboard/leaderboard-sorter.ts';
 import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from '../leaderboard/sorting-types.ts';
-
-const parsePbTimestamp = (value?: string | null): number => {
-	if (!value) return Number.POSITIVE_INFINITY;
-	const trimmed = value.trim();
-	if (!trimmed) return Number.POSITIVE_INFINITY;
-	const numeric = Number(trimmed);
-	if (Number.isFinite(numeric)) return numeric;
-	const parsed = Date.parse(trimmed);
-	return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
-};
+import { parseTimestampMsWithDefault } from '../common/time.ts';
 
 const DESCENDING = SortDirection.Descending;
 const ASCENDING = SortDirection.Ascending;
@@ -85,11 +76,11 @@ export const racePilotFinishElapsedMsAtom = deepEqualAtomFamily(([raceId, pilotI
 
 		// Find the target-th racing lap
 		const targetLap = racingLaps[target - 1];
-		const detectionTime = parsePbTimestamp(targetLap.detectionTime);
+		const detectionTime = parseTimestampMsWithDefault(targetLap.detectionTime);
 
 		if (!Number.isFinite(detectionTime)) return null;
 
-		const raceStartTs = parsePbTimestamp(race?.start);
+		const raceStartTs = parseTimestampMsWithDefault(race?.start);
 		return Number.isFinite(raceStartTs) ? detectionTime - raceStartTs : detectionTime;
 	})
 );
@@ -109,7 +100,7 @@ export const racePilotFinishDetectionMsAtom = deepEqualAtomFamily(([raceId, pilo
 
 		// Find the target-th racing lap
 		const targetLap = racingLaps[target - 1];
-		const detectionTime = parsePbTimestamp(targetLap.detectionTime);
+		const detectionTime = parseTimestampMsWithDefault(targetLap.detectionTime);
 		return Number.isFinite(detectionTime) ? detectionTime : null;
 	})
 );
@@ -160,7 +151,7 @@ export const racePilotFirstDetectionMsAtom = deepEqualAtomFamily(([raceId, pilot
 		const processedLaps = get(baseRaceProcessedLapsAtom(raceId));
 		const pilotLaps = processedLaps.filter((lap) => lap.pilotId === pilotId);
 		const detectionTimes = pilotLaps
-			.map((lap) => parsePbTimestamp(lap.detectionTime))
+			.map((lap) => parseTimestampMsWithDefault(lap.detectionTime))
 			.filter((time) => Number.isFinite(time));
 
 		return detectionTimes.length > 0 ? Math.min(...detectionTimes) : null;
