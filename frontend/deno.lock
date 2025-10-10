@@ -45,7 +45,8 @@
     "npm:react-dom@^19.1.0": "19.1.1_react@19.1.1",
     "npm:react@^19.1.0": "19.1.1",
     "npm:vite@*": "6.3.6_picomatch@4.0.3_@types+node@24.2.0",
-    "npm:vite@^6.3.4": "6.3.6_picomatch@4.0.3_@types+node@24.2.0"
+    "npm:vite@^6.3.4": "6.3.6_picomatch@4.0.3_@types+node@24.2.0",
+    "npm:zod@^3.25.7": "3.25.76"
   },
   "jsr": {
     "@b-fuze/deno-dom@0.1.49": {
@@ -2393,7 +2394,8 @@
       "npm:qrcode.react@^4.2.0",
       "npm:react-dom@^19.1.0",
       "npm:react@^19.1.0",
-      "npm:vite@^6.3.4"
+      "npm:vite@^6.3.4",
+      "npm:zod@^3.25.7"
     ]
   }
 }

@@ -58,7 +58,7 @@ Most ingest-related features read and write the collections declared in `backend
 | `events`, `rounds`, `pilots`, `channels`, `tracks` | FPVTrackside ingestion | `backend/ingest/*.go`, `frontend/src/state/pbAtoms.ts` |
 | `races`, `pilotChannels`, `detections`, `laps`, `gamePoints`, `results` | FPVTrackside ingestion | `backend/ingest/race.go`, race-related atoms |
 | `ingest_targets`, `server_settings` | Scheduler + admin tuning | `backend/scheduler/`, `frontend/src/routes/admin/settings.tsx` |
-| `client_kv` | Backend-published race order + admin KV | `backend/scheduler/race.go`, `frontend/src/routes/admin/kv.tsx` |
+| `client_kv` | Backend-published race order + admin KV (leaderboard overrides, double-elim anchors) | `backend/scheduler/race.go`, `frontend/src/routes/admin/kv.tsx`, `frontend/src/bracket/eliminationState.ts` |
 | `control_stats` | Control link telemetry | `backend/control/stats_store.go`, `frontend/src/routes/admin/control.tsx` |
 
 ## PocketBase Subscription Manager

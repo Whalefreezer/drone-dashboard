@@ -1,7 +1,7 @@
 import { useAtomValue } from 'jotai';
 import { LapsView } from './LapsView.tsx';
 import RaceTime from './RaceTime.tsx';
-import { BracketsView } from '../bracket/index.ts';
+import { EliminationDiagram } from '../bracket/index.ts';
 import { currentRaceAtom, lastRaceAtom, nextRacesAtom } from './race-atoms.ts';
 import { NextRaceCompact } from './NextRaceCompact.tsx';
 
@@ -40,7 +40,14 @@ export function RacesContainer() {
 					/>
 				</div>
 			)}
-			<BracketsView />
+			<div className='race-box elimination-diagram'>
+				<div className='race-header'>
+					<h3>Elimination Bracket</h3>
+				</div>
+				<div className='race-body-full'>
+					<EliminationDiagram />
+				</div>
+			</div>
 			<div className='race-box next-races'>
 				<div className='race-header'>
 					<h3>Next Races</h3>

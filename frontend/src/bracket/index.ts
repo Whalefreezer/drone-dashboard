@@ -1,2 +1,1 @@
-export { BracketsView } from './BracketsView.tsx';
-export { EliminatedPilotsView } from './EliminatedPilotsView.tsx';
+export { EliminationDiagram } from './EliminationDiagram.tsx';

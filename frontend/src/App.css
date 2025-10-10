@@ -102,6 +102,30 @@
 	text-align: right;
 }
 
+.race-box.elimination-diagram {
+	padding: 0;
+	overflow: hidden;
+}
+
+.race-box.elimination-diagram .race-header {
+	padding: 8px 12px;
+	margin-bottom: 0;
+}
+
+.race-body-full {
+	height: 420px;
+	position: relative;
+	border-top: 1px solid #333;
+}
+
+.race-body-full > * {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
 /* Status Text */
 .racing-text {
 	color: #00ff00;
@@ -174,78 +198,6 @@
 	animation: fadeIn 0.5s ease-in;
 	font-size: 0.8em;
 	margin-top: 2px;
-}
-
-/* Brackets View Styles */
-.brackets-container {
-	margin-top: 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
-
-.bracket {
-	background-color: #1a1a1a;
-	border: 1px solid #333;
-	border-radius: 8px;
-	padding: 12px;
-}
-
-.bracket h3 {
-	margin: 0 0 12px 0;
-	color: #888;
-	font-size: 1.1em;
-}
-
-.bracket-table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: 0.9em;
-}
-
-.bracket-table th,
-.bracket-table td {
-	padding: 6px 8px;
-	text-align: left;
-	border-bottom: 1px solid #333;
-}
-
-.bracket-table th {
-	font-weight: bold;
-	color: #888;
-	background-color: #222;
-}
-
-.bracket-table tr:last-child td {
-	border-bottom: none;
-}
-
-.bracket-table tbody tr:hover {
-	background-color: #282828;
-}
-
-.bracket-table td:first-child {
-	width: 40%;
-	font-weight: bold;
-}
-
-.bracket-table td:nth-child(3) {
-	text-align: right;
-	font-family: monospace;
-}
-
-/* Eliminated Pilots View */
-.eliminated-pilots {
-	flex: 1;
-}
-
-.eliminated-pilots .bracket-table {
-	font-size: 0.85em;
-}
-
-.eliminated-pilots .bracket-table td:nth-child(4) {
-	font-style: italic;
-	color: #888;
 }
 
 /* Styles moved from App.tsx */
