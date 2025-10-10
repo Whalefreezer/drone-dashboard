@@ -3,7 +3,7 @@ import { useAtomValue } from 'jotai';
 import { currentEventAtom } from '../state/index.ts'; // PB current event
 import { currentRaceAtom } from './race-atoms.ts';
 import { secondsFromString } from '../common/index.ts'; // Adjusted path
-import { parseTimestampMsWithDefault } from '../common/time.ts';
+import { parseTimestampMs } from '../common/time.ts';
 
 function RaceTime() {
 	const currentEvent = useAtomValue(currentEventAtom);
@@ -15,7 +15,22 @@ function RaceTime() {
 	useEffect(() => {
 		// Only start countdown if race has started
 		if (currentRace?.start && !currentRace.start.startsWith('0')) {
-			const currentRaceStart = parseTimestampMsWithDefault(currentRace.start) / 1000;
+			const parsedTimestamp = parseTimestampMs(currentRace.start);
+
+			if (parsedTimestamp === null) {
+				console.error('[RaceTime] Failed to parse timestamp:', {
+					rawValue: currentRace.start,
+					typeOf: typeof currentRace.start,
+					stringValue: String(currentRace.start),
+					trimmedValue: String(currentRace.start).trim(),
+					dateParseResult: Date.parse(String(currentRace.start)),
+					userAgent: navigator.userAgent,
+				});
+				setTimeRemaining(raceLength);
+				return;
+			}
+
+			const currentRaceStart = parsedTimestamp / 1000;
 			const currentRaceEnd = currentRaceStart + raceLength;
 
 			const interval = setInterval(() => {
