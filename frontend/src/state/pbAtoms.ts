@@ -32,22 +32,6 @@ import { parseTimestampMs } from '../common/time.ts';
 // Live events collection; we filter locally for the current event
 export const eventsAtom = pbSubscribeCollection<PBEventRecord>('events');
 
-// // Current event PocketBase record (marked by isCurrent)
-// export const currentEventAtom = atom((get) => {
-//     const eventMaybePromise = get(eventsAtom);
-
-//     if (!(eventMaybePromise instanceof Promise)) {
-//         const events = eventMaybePromise;
-//         const currentEvent = events.find((event) => event.isCurrent);
-//         return currentEvent || null;
-//     } else {
-//         return eventMaybePromise.then((events) => {
-//             const currentEvent = events.find((event) => event.isCurrent);
-//             return currentEvent || null;
-//         });
-//     }
-// });
-
 export const pbCurrentEventAtom = atom((get) => {
 	const events = get(eventsAtom);
 	const currentEvent = events.find((event) => event.isCurrent);
@@ -70,10 +54,8 @@ export const currentEventAtom = atom((get) => {
 
 // Derived: race ids for the current event (prefer PB id)
 export const eventRaceIdsAtom = atom((get) => {
-	const ev = get(currentEventAtom);
-	if (!ev) return [];
 	const races = get(raceRecordsAtom);
-	return races.filter((r) => r.event === ev.id).map((r) => r.id);
+	return races.map((r) => r.id);
 });
 
 export const consecutiveLapsAtom = atom((get) => {
@@ -94,12 +76,7 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 
 // Pilots as PB records
 export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
-export const pilotsAtom = atom((get) => {
-	const pilots = get(pilotsRecordsAtom);
-	const event = get(currentEventAtom);
-	if (!event) return pilots;
-	return pilots.filter((p) => p.event === event.id);
-});
+export const pilotsAtom = atom((get) => get(pilotsRecordsAtom));
 
 export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
 	atom((get): string | null => {
@@ -114,22 +91,105 @@ export const pilotIdBySourceIdAtom = atomFamily((pilotSourceId: string) =>
 export const channelRecordsAtom = pbSubscribeCollection<PBChannelRecord>('channels');
 export const channelsDataAtom = atom((get) => get(channelRecordsAtom));
 
-export const pilotChannelRecordsAtom = pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels');
+const pilotChannelRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBPilotChannelRecord>('pilotChannels', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `pilotChannels-event-${eventId}`,
+	})
+);
 
-export const roundRecordsAtom = pbSubscribeCollection<PBRoundRecord>('rounds');
-export const roundsDataAtom = atom((get) => {
-	const ev = get(currentEventAtom);
-	if (!ev) return [];
-	const rounds = get(roundRecordsAtom);
-	return rounds.filter((r) => r.event === ev.id);
+export const pilotChannelRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(pilotChannelRecordsAtomFamily(event.id));
 });
 
+const roundRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBRoundRecord>('rounds', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `rounds-event-${eventId}`,
+	})
+);
+
+export const roundRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(roundRecordsAtomFamily(event.id));
+});
+
+export const roundsDataAtom = atom((get) => get(roundRecordsAtom));
+
 // Live records for race and nested collections
-export const raceRecordsAtom = pbSubscribeCollection<PBRaceRecord>('races');
-export const clientKVRecordsAtom = pbSubscribeCollection<PBClientKVRecord>('client_kv');
-export const lapRecordsAtom = pbSubscribeCollection<PBLapRecord>('laps');
-export const detectionRecordsAtom = pbSubscribeCollection<PBDetectionRecord>('detections');
-export const gamePointRecordsAtom = pbSubscribeCollection<PBGamePointRecord>('gamePoints');
+const raceRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBRaceRecord>('races', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `races-event-${eventId}`,
+	})
+);
+
+export const raceRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(raceRecordsAtomFamily(event.id));
+});
+
+const clientKVRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBClientKVRecord>('client_kv', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `client_kv-event-${eventId}`,
+	})
+);
+
+export const clientKVRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(clientKVRecordsAtomFamily(event.id));
+});
+const lapRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBLapRecord>('laps', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `laps-event-${eventId}`,
+	})
+);
+
+export const lapRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(lapRecordsAtomFamily(event.id));
+});
+
+const detectionRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBDetectionRecord>('detections', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `detections-event-${eventId}`,
+	})
+);
+
+export const detectionRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(detectionRecordsAtomFamily(event.id));
+});
+
+const gamePointRecordsAtomFamily = atomFamily((eventId: string) =>
+	pbSubscribeCollection<PBGamePointRecord>('gamePoints', {
+		filter: `event = "${eventId}"`,
+		recordFilter: (r) => r.event === eventId,
+		key: `gamePoints-event-${eventId}`,
+	})
+);
+
+export const gamePointRecordsAtom = atom((get) => {
+	const event = get(currentEventAtom);
+	if (!event) return [];
+	return get(gamePointRecordsAtomFamily(event.id));
+});
 
 // Ingest targets (live subscription)
 export const ingestTargetRecordsAtom = pbSubscribeCollection<PBIngestTargetRecord>('ingest_targets');
@@ -160,10 +220,8 @@ export const currentRaceAtom = newCurrentRaceAtom;
 
 // Current order from client_kv for the current event
 export const currentOrderKVAtom = atom((get) => {
-	const ev = get(currentEventAtom);
-	if (!ev) return null as null | { order?: number; sourceId?: string };
 	const kv = get(clientKVRecordsAtom);
-	const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder' && r.event === ev.id);
+	const record = kv.find((r) => r.namespace === 'race' && r.key === 'currentOrder');
 	if (!record || !record.value) return null;
 	try {
 		const parsed = JSON.parse(record.value);
@@ -219,10 +277,8 @@ export const overallBestTimesAtom = atom((get) => {
  * namespace: 'leaderboard', key: 'splitIndex', value: JSON number
  */
 export const leaderboardSplitAtom = atom((get) => {
-	const ev = get(currentEventAtom);
-	if (!ev) return null as number | null;
 	const kv = get(clientKVRecordsAtom);
-	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'splitIndex' && r.event === ev.id);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'splitIndex');
 	if (!rec || !rec.value) return null;
 	try {
 		const raw = JSON.parse(rec.value);
@@ -251,12 +307,10 @@ export interface NoRacesOverride {
 }
 
 export const leaderboardNextRaceOverridesAtom = atom((get): ResolvedNextRaceOverride[] => {
-	const ev = get(currentEventAtom);
-	if (!ev) return [];
 	const races = get(allRacesAtom);
 	if (races.length === 0) return [];
 	const kv = get(clientKVRecordsAtom);
-	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides' && r.event === ev.id);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides');
 	if (!rec?.value) return [];
 	let parsed: unknown;
 	try {
@@ -312,10 +366,8 @@ export const leaderboardNextRaceOverridesAtom = atom((get): ResolvedNextRaceOver
 });
 
 export const noRacesOverrideAtom = atom((get): NoRacesOverride | null => {
-	const ev = get(currentEventAtom);
-	if (!ev) return null;
 	const kv = get(clientKVRecordsAtom);
-	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides' && r.event === ev.id);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'nextRaceOverrides');
 	if (!rec?.value) return null;
 	let parsed: unknown;
 	try {
@@ -350,10 +402,8 @@ export interface StreamVideoRange {
 }
 
 export const streamVideoRangesAtom = atom((get): StreamVideoRange[] => {
-	const ev = get(currentEventAtom);
-	if (!ev) return [];
 	const kv = get(clientKVRecordsAtom);
-	const record = kv.find((r) => r.namespace === 'stream' && r.key === 'videos' && r.event === ev.id);
+	const record = kv.find((r) => r.namespace === 'stream' && r.key === 'videos');
 	if (!record?.value) return [];
 	let parsed: unknown;
 	try {
