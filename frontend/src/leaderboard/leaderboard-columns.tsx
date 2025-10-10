@@ -181,7 +181,7 @@ export function getLeaderboardColumns(
 			label: 'Pilot',
 			// Let the Pilot column flex to consume remaining space.
 			// Keep a reasonable minimum so it doesn't collapse.
-			minWidth: 100,
+			minWidth: 80,
 			cell: PilotCell,
 		},
 		{

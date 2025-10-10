@@ -169,6 +169,10 @@ export class PBCollectionRuntime {
 	}
 
 	handleDisconnect() {
+		if (!this.state.subscribePromise && this.state.listeners.size === 0) {
+			this.config.debugLog('Ignoring disconnect for unsubscribed collection', { collection: this.collection });
+			return;
+		}
 		if (this.state.status === 'initializing') return;
 		this.config.debugLog('Marking collection as reconnecting', {
 			collection: this.collection,
@@ -178,19 +182,10 @@ export class PBCollectionRuntime {
 		this.setStatus('reconnecting');
 	}
 
-	async handleEvent(event: RecordSubscription<AnyRecord>) {
+	handleEvent(event: RecordSubscription<AnyRecord>) {
 		this.config.debugLog('Realtime event received', { collection: this.collection, action: event.action });
 
-		if (event.action === 'PB_CONNECT') {
-			await this.handleConnectEvent();
-			return;
-		}
-
-		if (event.action === 'PB_ERROR') {
-			const messageSource = event.record as unknown as Record<string, unknown> | undefined;
-			const message = typeof messageSource?.message === 'string' ? String(messageSource.message) : undefined;
-			this.state.error = this.normalizeError(message ?? 'Realtime error');
-			this.setStatus('error');
+		if (event.action === 'PB_CONNECT' || event.action === 'PB_ERROR') {
 			return;
 		}
 
@@ -205,11 +200,42 @@ export class PBCollectionRuntime {
 	private async start(): Promise<void> {
 		if (!this.state.subscribePromise) {
 			this.config.debugLog('Creating realtime subscription', { collection: this.collection });
-			this.state.subscribePromise = this.pb.collection(this.collection).subscribe('*', (event) => {
-				this.handleEvent(event as RecordSubscription<AnyRecord>).catch((error) => {
+			const collectionSubscribePromise = this.pb.collection(this.collection).subscribe('*', (event) => {
+				try {
+					this.handleEvent(event as RecordSubscription<AnyRecord>);
+				} catch (error) {
+					this.state.error = this.normalizeError(error);
+					this.setStatus('error');
+				}
+			});
+			const connectSubscribePromise = this.pb.realtime.subscribe('PB_CONNECT', () => {
+				this.config.debugLog('PB_CONNECT event observed', { collection: this.collection });
+				this.handleConnectEvent().catch((error) => {
 					this.state.error = this.normalizeError(error);
 					this.setStatus('error');
 				});
+			});
+			const errorSubscribePromise = this.pb.realtime.subscribe('PB_ERROR', (event) => {
+				this.config.debugLog('PB_ERROR event observed', { collection: this.collection });
+				this.handleRealtimeErrorEvent(event as RecordSubscription<AnyRecord>);
+			});
+
+			this.state.subscribePromise = Promise.all([
+				collectionSubscribePromise,
+				connectSubscribePromise,
+				errorSubscribePromise,
+			]).then(([collectionUnsubscribe, connectUnsubscribe, errorUnsubscribe]) => {
+				return () => {
+					try {
+						errorUnsubscribe();
+					} finally {
+						try {
+							connectUnsubscribe();
+						} finally {
+							collectionUnsubscribe();
+						}
+					}
+				};
 			});
 
 			this.state.subscribePromise
@@ -488,6 +514,13 @@ export class PBCollectionRuntime {
 			this.state.awaitingBackfill = false;
 			this.setStatus('ready');
 		}
+	}
+
+	private handleRealtimeErrorEvent(event: RecordSubscription<AnyRecord>) {
+		const messageSource = event.record as unknown as Record<string, unknown> | undefined;
+		const message = typeof messageSource?.message === 'string' ? String(messageSource.message) : undefined;
+		this.state.error = this.normalizeError(message ?? 'Realtime error');
+		this.setStatus('error');
 	}
 
 	private async runInvalidation(): Promise<void> {
