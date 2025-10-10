@@ -114,20 +114,19 @@ export function EliminationDiagram() {
 	};
 
 	const edgePaths = useMemo(() => {
-		return diagram.edges.map((edge) => {
-			const source = edge.source.definition.position;
-			const target = edge.target.definition.position;
-			const startX = source.x + DIAGRAM_DIMENSIONS.nodeWidth;
-			const startY = source.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
-			const endX = target.x;
-			const endY = target.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
-			const controlX1 = startX + 120;
-			const controlX2 = endX - 120;
-			const path = edge.definition.type === 'advance'
-				? `M ${startX} ${startY} C ${controlX1} ${startY} ${controlX2} ${endY} ${endX} ${endY}`
-				: `M ${startX} ${startY} C ${startX + 80} ${startY} ${endX - 80} ${endY} ${endX} ${endY}`;
-			return { edge, d: path };
-		});
+		return diagram.edges
+			.filter((edge) => edge.definition.type === 'advance')
+			.map((edge) => {
+				const source = edge.source.definition.position;
+				const target = edge.target.definition.position;
+				const startX = source.x + DIAGRAM_DIMENSIONS.nodeWidth;
+				const startY = source.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
+				const endX = target.x;
+				const endY = target.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
+				const midX = startX + (endX - startX) * 0.5;
+				const path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+				return { edge, d: path };
+			});
 	}, [diagram.edges]);
 
 	return (

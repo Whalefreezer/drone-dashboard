@@ -451,8 +451,8 @@ export const DIAGRAM_DIMENSIONS = (() => {
 	return {
 		width: maxX + COLUMN_UNIT + 200,
 		height: maxY + ROW_UNIT + 300,
-		nodeWidth: 220,
-		nodeHeight: 120,
+		nodeWidth: 240,
+		nodeHeight: 220,
 		columnUnit: COLUMN_UNIT,
 		rowUnit: ROW_UNIT,
 	};
