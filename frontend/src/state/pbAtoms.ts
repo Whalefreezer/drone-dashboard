@@ -93,14 +93,14 @@ export const eventPilotsAtom = atom((get) => {
 	return get(eventPilotsAtomFamily(event.id));
 });
 
-// Pilots filtered by current event (via event_pilots join)
+// Pilots filtered by current event (via event_pilots join), excluding removed pilots
 export const pilotsAtom = atom((get) => {
 	const eventPilots = get(eventPilotsAtom);
 	const allPilots = get(pilotsRecordsAtom);
 
 	if (eventPilots.length === 0) return [];
 
-	const pilotIds = new Set(eventPilots.map((ep) => ep.pilot));
+	const pilotIds = new Set(eventPilots.filter((ep) => !ep.removed).map((ep) => ep.pilot));
 	return allPilots.filter((p) => pilotIds.has(p.id));
 });
 
