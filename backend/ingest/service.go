@@ -159,7 +159,9 @@ func (s *Service) Purge() (*PurgeSummary, error) {
 func (s *Service) clearInMemoryCaches() {
 	// Clear RemoteSource ETag cache if applicable
 	if rs, ok := s.Source.(*RemoteSource); ok {
+		rs.cacheMu.Lock()
 		rs.cache = make(map[string]cached)
+		rs.cacheMu.Unlock()
 		// Clear current race provider cache via hub
 		if rs.Hub != nil {
 			rs.Hub.ClearCurrentRaceCache()

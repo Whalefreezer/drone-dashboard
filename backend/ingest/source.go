@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"drone-dashboard/control"
-	"regexp"
-	"strings"
 )
 
 // Source abstracts where we fetch FPVTrackside-like data from.
@@ -49,7 +50,8 @@ type RemoteSource struct {
 	Hub    *control.Hub
 	PitsID string
 	// simple per-path cache of last ETag/body to leverage 304s
-	cache map[string]cached
+	cacheMu sync.RWMutex
+	cache   map[string]cached
 }
 type cached struct {
 	etag string
@@ -70,16 +72,21 @@ func (r *RemoteSource) fetchJSON(path string, out any) error {
 	defer cancel()
 	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
+	r.cacheMu.RLock()
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
+	r.cacheMu.RUnlock()
 	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: pitsHTTPTimeoutMs, TraceID: traceID})
 	if err != nil {
 		return err
 	}
 	status, hdrs, body := control.DecodeResponse(resp)
 	if status == http.StatusNotModified {
-		if c, ok := r.cache[path]; ok {
+		r.cacheMu.RLock()
+		c, ok := r.cache[path]
+		r.cacheMu.RUnlock()
+		if ok {
 			body = c.body
 		} else {
 			return fmt.Errorf("304 but no cache for %s", path)
@@ -91,7 +98,9 @@ func (r *RemoteSource) fetchJSON(path string, out any) error {
 		return err
 	}
 	if etag != "" {
+		r.cacheMu.Lock()
 		r.cache[path] = cached{etag: etag, body: body}
+		r.cacheMu.Unlock()
 	}
 	return nil
 }
@@ -128,16 +137,21 @@ func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 	defer cancel()
 	ctx, traceID := control.EnsureTraceID(ctx)
 	var ifNone string
+	r.cacheMu.RLock()
 	if c, ok := r.cache[path]; ok {
 		ifNone = c.etag
 	}
+	r.cacheMu.RUnlock()
 	resp, err := r.Hub.DoFetch(ctx, r.PitsID, control.Fetch{Method: http.MethodGet, Path: path, IfNoneMatch: ifNone, TimeoutMs: pitsHTTPTimeoutMs, TraceID: traceID})
 	if err != nil {
 		return out, err
 	}
 	status, hdrs, body := control.DecodeResponse(resp)
 	if status == http.StatusNotModified {
-		if c, ok := r.cache[path]; ok {
+		r.cacheMu.RLock()
+		c, ok := r.cache[path]
+		r.cacheMu.RUnlock()
+		if ok {
 			body = c.body
 		} else {
 			return out, fmt.Errorf("304 but no cache for %s", path)
@@ -147,7 +161,9 @@ func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 	// Special-case: Results.json is often 0 bytes; treat as empty results
 	if len(strings.TrimSpace(string(body))) == 0 {
 		if etag != "" {
+			r.cacheMu.Lock()
 			r.cache[path] = cached{etag: etag, body: body}
+			r.cacheMu.Unlock()
 		}
 		return ResultsFile{}, nil
 	}
@@ -155,7 +171,9 @@ func (r *RemoteSource) FetchResults(eventSourceId string) (ResultsFile, error) {
 		return out, err
 	}
 	if etag != "" {
+		r.cacheMu.Lock()
 		r.cache[path] = cached{etag: etag, body: body}
+		r.cacheMu.Unlock()
 	}
 	return out, nil
 }
