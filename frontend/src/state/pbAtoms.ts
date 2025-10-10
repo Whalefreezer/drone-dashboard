@@ -93,7 +93,7 @@ export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 }));
 
 // Pilots as PB records
-const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
+export const pilotsRecordsAtom = pbSubscribeCollection<PBPilotRecord>('pilots');
 export const pilotsAtom = atom((get) => {
 	const pilots = get(pilotsRecordsAtom);
 	const event = get(currentEventAtom);
