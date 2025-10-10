@@ -3,7 +3,7 @@ import type { Atom } from 'jotai';
 import type { Column } from '../common/GenericTable.tsx';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
-import { leaderboardPilotIdsAtom, positionChangesAtom } from './leaderboard-atoms.ts';
+import { leaderboardPilotIdsStateAtom, positionChangesAtom } from './leaderboard-atoms.ts';
 import {
 	pilotEliminatedInfoAtom,
 	pilotNextRaceOverrideLabelAtom,
@@ -26,7 +26,7 @@ export interface LeaderboardRowProps {
 // Small table cell that detects overflow and applies a fade class
 // Position cell uses calculated positionChanges from atom
 function PositionCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
-	const ids = useAtomValue(leaderboardPilotIdsAtom);
+	const ids = useAtomValue(leaderboardPilotIdsStateAtom);
 	const idx = ids.findIndex((id) => id === pilotId);
 	const currentPosition = idx >= 0 ? idx + 1 : 0;
 

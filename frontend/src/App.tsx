@@ -15,6 +15,7 @@ import { SubscriptionStatusIndicator } from './common/SubscriptionStatusIndicato
 import { pbInvalidateAll } from './api/pb.ts';
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 import { Link } from '@tanstack/react-router';
+import { LeaderboardAtomBridge } from './leaderboard/LeaderboardAtomBridge.tsx';
 
 type DebugWindow = Window & {
 	__APP_BOOTSTRAP_LOG?: (message: string, extra?: Record<string, unknown>) => void;
@@ -80,6 +81,7 @@ function App() {
 			<SnapshotControl />
 		</GenericSuspense> */
 			}
+			<LeaderboardAtomBridge />
 
 			{!isMobile
 				? (

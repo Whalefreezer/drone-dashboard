@@ -5,14 +5,17 @@ import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
 import { pilotsAtom } from '../state/pbAtoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
+import { withCompare } from '../state/jotai-utils.ts';
 
 export const leaderboardPilotIdsAtom = atom((get): string[] => {
+	console.log('leaderboardPilotIdsAtom recalculated');
 	const pilots = get(pilotsAtom);
 	const ids = pilots.map((pilot) => pilot.id);
 	return sortPilotIds(ids, get, defaultSortConfigCurrent);
 });
 
 export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
+	console.log('previousLeaderboardPilotIdsAtom recalculated');
 	const raceIds = get(previousRaceIdsAtom);
 	const idSet = new Set<string>();
 	raceIds.forEach((raceId) => {
@@ -23,10 +26,14 @@ export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
 	return sortPilotIds(ids, get, defaultSortConfigPrevious);
 });
 
+export const leaderboardPilotIdsStateAtom = atom<string[]>([]);
+export const previousLeaderboardPilotIdsStateAtom = atom<string[]>([]);
+
 // Position changes map based on previous vs current ordered IDs
 export const positionChangesAtom = atom((get): Map<string, number> => {
-	const prev = get(previousLeaderboardPilotIdsAtom);
-	const cur = get(leaderboardPilotIdsAtom);
+	console.log('positionChangesAtom recalculated');
+	const prev = get(previousLeaderboardPilotIdsStateAtom);
+	const cur = get(leaderboardPilotIdsStateAtom);
 	const prevIndex = new Map<string, number>();
 	prev.forEach((id, idx) => prevIndex.set(id, idx + 1));
 
@@ -46,7 +53,7 @@ export const showFavoritesOnlyAtom = atom(false);
 // Filtered leaderboard pilot IDs based on favorites filter
 export const filteredLeaderboardPilotIdsAtom = atom((get): string[] => {
 	const showFavoritesOnly = get(showFavoritesOnlyAtom);
-	const allPilotIds = get(leaderboardPilotIdsAtom);
+	const allPilotIds = get(leaderboardPilotIdsStateAtom);
 
 	if (!showFavoritesOnly) {
 		return allPilotIds;
