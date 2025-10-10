@@ -85,6 +85,7 @@ function App() {
 	useIdleCursor();
 	const { isMobile } = useBreakpoint();
 	const activePane = useAtomValue(activePaneAtom);
+	const desktopBrackets = !isMobile && activePane === 'brackets';
 
 	return (
 		<div className='app-shell'>
@@ -97,24 +98,29 @@ function App() {
 
 			{!isMobile
 				? (
-					<div className='app-header'>
-						<SubscriptionStatusIndicator />
-						<div className='app-header-time'>
-							<GenericSuspense id='time-display'>
-								<TimeDisplay
-									style={{
-										textAlign: 'center',
-										padding: '0.25rem 0',
-										borderBottom: 'none',
-										backgroundColor: 'transparent',
-										fontSize: '1rem',
-									}}
-								/>
-							</GenericSuspense>
+					<>
+						<div className='app-header'>
+							<SubscriptionStatusIndicator />
+							<div className='app-header-time'>
+								<GenericSuspense id='time-display'>
+									<TimeDisplay
+										style={{
+											textAlign: 'center',
+											padding: '0.25rem 0',
+											borderBottom: 'none',
+											backgroundColor: 'transparent',
+											fontSize: '1rem',
+										}}
+									/>
+								</GenericSuspense>
+							</div>
+							<RefreshButton />
+							<SettingsButton />
 						</div>
-						<RefreshButton />
-						<SettingsButton />
-					</div>
+						<div className='app-desktop-tabs'>
+							<ViewSelector />
+						</div>
+					</>
 				)
 				: (
 					<div className='app-mobile-header'>
@@ -123,7 +129,7 @@ function App() {
 						<SettingsButton />
 					</div>
 				)}
-			<div className={'app-main-content' + (isMobile ? ' mobile' : '')}>
+			<div className={'app-main-content' + (isMobile ? ' mobile' : desktopBrackets ? ' brackets' : '')}>
 				{isMobile
 					? (
 						<>
@@ -143,6 +149,14 @@ function App() {
 								</GenericSuspense>
 							)}
 						</>
+					)
+					: desktopBrackets
+					? (
+						<div className='app-brackets-pane'>
+							<GenericSuspense id='brackets-desktop'>
+								<EliminationDiagram />
+							</GenericSuspense>
+						</div>
 					)
 					: (
 						<>

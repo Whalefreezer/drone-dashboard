@@ -5,6 +5,7 @@ import { clientKVRecordsAtom, currentEventAtom } from '../../state/pbAtoms.ts';
 import { LeaderboardSplitSection } from '../../admin/kv/LeaderboardSplitSection.tsx';
 import { NextRaceOverrideSection } from '../../admin/kv/NextRaceOverrideSection.tsx';
 import { LiveStreamLinksSection } from '../../admin/kv/LiveStreamLinksSection.tsx';
+import { BracketAnchorsSection } from '../../admin/kv/BracketAnchorsSection.tsx';
 
 function KVPage() {
 	const kv = useAtomValue(clientKVRecordsAtom);
@@ -19,6 +20,10 @@ function KVPage() {
 			<div className='section-card'>
 				<h2>Next Race Overrides</h2>
 				<NextRaceOverrideSection kvRecords={kv} eventId={ev?.id ?? null} />
+			</div>
+			<div className='section-card'>
+				<h2>Double-Elim Anchors</h2>
+				<BracketAnchorsSection kvRecords={kv} eventId={ev?.id ?? null} />
 			</div>
 			<div className='section-card'>
 				<h2>Live Stream Links</h2>

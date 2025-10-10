@@ -102,28 +102,30 @@
 	text-align: right;
 }
 
-.race-box.elimination-diagram {
-	padding: 0;
-	overflow: hidden;
+.app-desktop-tabs {
+	display: flex;
+	justify-content: flex-end;
+	padding: 0 12px 8px;
 }
 
-.race-box.elimination-diagram .race-header {
-	padding: 8px 12px;
-	margin-bottom: 0;
+.app-desktop-tabs .view-selector {
+	justify-content: flex-end;
 }
 
-.race-body-full {
-	height: 420px;
-	position: relative;
-	border-top: 1px solid #333;
+.app-main-content.brackets {
+	height: calc(100vh - 120px);
+	min-height: 520px;
 }
 
-.race-body-full > * {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+.app-brackets-pane {
+	flex: 1;
+	min-height: inherit;
+	display: flex;
+}
+
+.app-brackets-pane > * {
+	flex: 1;
+	min-height: inherit;
 }
 
 /* Status Text */
