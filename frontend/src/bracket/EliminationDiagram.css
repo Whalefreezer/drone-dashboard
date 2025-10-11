@@ -214,7 +214,7 @@
 	color: rgba(226, 232, 240, 0.92);
 }
 
-.slot-position {
+.elim-node-slot .slot-position {
 	font-variant-numeric: tabular-nums;
 	color: #e2e8f0;
 }
@@ -231,12 +231,12 @@
 	color: #fecaca;
 }
 
-.slot-channel {
+.elim-node-slot .slot-channel {
 	font-weight: 600;
 	color: #7dd3fc;
 }
 
-.slot-name {
+.elim-node-slot .slot-name {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
