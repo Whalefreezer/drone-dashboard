@@ -193,13 +193,15 @@ export function EliminationDiagram() {
 			<div className='elim-diagram-toolbar'>
 				<div className='elim-diagram-controls'>
 					{!isAtDefault && (
-						<button type='button' className='elim-reset-btn' onClick={handleReset}>
-							Reset view
-						</button>
+						<>
+							<button type='button' className='elim-reset-btn' onClick={handleReset}>
+								Reset view
+							</button>
+							<div className='elim-diagram-zoom'>
+								<span>{Math.round(viewport.scale * 100)}%</span>
+							</div>
+						</>
 					)}
-					<div className='elim-diagram-zoom'>
-						<span>{Math.round(viewport.scale * 100)}%</span>
-					</div>
 				</div>
 			</div>
 			<div className='elim-diagram-stage' style={stageTransform}>
