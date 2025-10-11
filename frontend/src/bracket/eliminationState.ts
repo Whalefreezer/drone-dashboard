@@ -49,6 +49,7 @@ export interface BracketNodeViewModel {
 	headline: string;
 	subline: string;
 	slots: BracketNodeSlot[];
+	dropToLabel: string | null;
 }
 
 export interface BracketEdgeViewModel {
@@ -236,6 +237,8 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 			const raceLabel = definition.name;
 			const headline = raceLabel;
 			const subline = definition.code;
+			const dropToNode = definition.dropTo ? BRACKET_NODES.find((n) => n.order === definition.dropTo) : null;
+			const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 			return {
 				definition,
 				race,
@@ -243,6 +246,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 				headline,
 				subline,
 				slots,
+				dropToLabel,
 			};
 		},
 	);
@@ -276,6 +280,8 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 function createEmptyNode(
 	definition: BracketNodeDefinition,
 ): BracketNodeViewModel {
+	const dropToNode = definition.dropTo ? BRACKET_NODES.find((n) => n.order === definition.dropTo) : null;
+	const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 	return {
 		definition,
 		race: null,
@@ -291,5 +297,6 @@ function createEmptyNode(
 			isWinner: false,
 			isEliminated: false,
 		})),
+		dropToLabel,
 	};
 }

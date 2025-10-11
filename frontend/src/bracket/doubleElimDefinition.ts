@@ -452,7 +452,7 @@ export const DIAGRAM_DIMENSIONS = (() => {
 		width: maxX + COLUMN_UNIT + 200,
 		height: maxY + ROW_UNIT + 300,
 		nodeWidth: 240,
-		nodeHeight: 300,
+		nodeHeight: 330,
 		columnUnit: COLUMN_UNIT,
 		rowUnit: ROW_UNIT,
 	};

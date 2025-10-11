@@ -290,6 +290,11 @@ function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null
 							</li>
 						))}
 					</ul>
+					{node.dropToLabel && (
+						<div className='elim-node-footer'>
+							{node.dropToLabel}
+						</div>
+					)}
 				</div>
 			</foreignObject>
 		</g>
