@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { channelsDataAtom, clientKVRecordsAtom, currentEventAtom, pilotsAtom, racesAtom, roundsDataAtom } from '../state/pbAtoms.ts';
 import { BRACKET_EDGES, BRACKET_NODES, BRACKET_ROUNDS, BracketEdgeDefinition, BracketNodeDefinition } from './doubleElimDefinition.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
-import { racePilotChannelsAtom, raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
+import { racePilotChannelsAtom, racePilotFinishElapsedMsAtom, raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
 import type { PBClientKVRecord } from '../api/pbTypes.ts';
 
 const BRACKET_ID = 'double-elim-6p-v1';
@@ -194,13 +194,16 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					positionByPilot.set(row.pilotChannel.pilotId, row.position);
 				}
 			});
+			const raceCompleted = statusInfo?.isCompleted === true;
 			const slots: BracketNodeSlot[] = pilotChannels.map((pc) => {
 				const pilot = pilots.find((p) => p.id === pc.pilotId);
 				const channel = channels.find((c) => c.id === pc.channelId);
 				const position = pc.pilotId ? positionByPilot.get(pc.pilotId) ?? null : null;
-				const isWinner = position != null && position <= 3;
-				const isEliminated = position != null && position > 3 &&
-					statusInfo?.isCompleted === true;
+				const finishElapsed = pc.pilotId ? get(racePilotFinishElapsedMsAtom([race.id, pc.pilotId])) : null;
+				const finished = finishElapsed != null || raceCompleted;
+				const displayPosition = finished && position != null ? position : null;
+				const isWinner = finished && position != null && position <= 3;
+				const isEliminated = finished && position != null && position > 3;
 				const channelLabel = channel
 					? (() => {
 						const compact = `${channel.shortBand ?? ''}${channel.number ?? ''}`
@@ -214,7 +217,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					pilotId: pc.pilotId,
 					name: pilot?.name ?? '—',
 					channelLabel: channelLabel || '—',
-					position: position ?? null,
+					position: displayPosition,
 					isWinner,
 					isEliminated,
 				};
