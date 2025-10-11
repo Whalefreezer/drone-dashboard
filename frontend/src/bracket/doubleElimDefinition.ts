@@ -11,6 +11,10 @@ export interface BracketNodeDefinition {
 	position: { x: number; y: number };
 	advanceTo?: number;
 	dropTo?: number;
+	progressionRules?: {
+		positions: number[];
+		destination: number | 'out' | 'final';
+	}[];
 }
 
 export type BracketRoundId =
@@ -43,6 +47,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 0),
 		advanceTo: 9,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 9 },
+			{ positions: [4], destination: 13 },
+			{ positions: [5], destination: 14 },
+			{ positions: [6], destination: 15 },
+		],
 	},
 	{
 		order: 2,
@@ -54,6 +64,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 4),
 		advanceTo: 9,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 9 },
+			{ positions: [4], destination: 14 },
+			{ positions: [5], destination: 15 },
+			{ positions: [6], destination: 16 },
+		],
 	},
 	{
 		order: 3,
@@ -65,6 +81,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 8),
 		advanceTo: 10,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 10 },
+			{ positions: [4], destination: 15 },
+			{ positions: [5], destination: 16 },
+			{ positions: [6], destination: 17 },
+		],
 	},
 	{
 		order: 4,
@@ -76,6 +98,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 12),
 		advanceTo: 10,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 10 },
+			{ positions: [4], destination: 16 },
+			{ positions: [5], destination: 13 },
+			{ positions: [6], destination: 14 },
+		],
 	},
 	{
 		order: 5,
@@ -87,6 +115,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 16),
 		advanceTo: 11,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 11 },
+			{ positions: [4], destination: 13 },
+			{ positions: [5], destination: 14 },
+			{ positions: [6], destination: 15 },
+		],
 	},
 	{
 		order: 6,
@@ -98,6 +132,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 20),
 		advanceTo: 11,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 11 },
+			{ positions: [4], destination: 14 },
+			{ positions: [5], destination: 15 },
+			{ positions: [6], destination: 16 },
+		],
 	},
 	{
 		order: 7,
@@ -109,6 +149,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 24),
 		advanceTo: 12,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 12 },
+			{ positions: [4], destination: 15 },
+			{ positions: [5], destination: 16 },
+			{ positions: [6], destination: 13 },
+		],
 	},
 	{
 		order: 8,
@@ -120,6 +166,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 28),
 		advanceTo: 12,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 12 },
+			{ positions: [4], destination: 16 },
+			{ positions: [5], destination: 13 },
+			{ positions: [6], destination: 14 },
+		],
 	},
 	{
 		order: 9,
@@ -131,6 +183,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 2),
 		advanceTo: 23,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 23 },
+			{ positions: [4, 5, 6], destination: 17 },
+		],
 	},
 	{
 		order: 10,
@@ -142,6 +198,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 10),
 		advanceTo: 23,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 23 },
+			{ positions: [4, 5, 6], destination: 17 },
+		],
 	},
 	{
 		order: 11,
@@ -153,6 +213,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 18),
 		advanceTo: 24,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 24 },
+			{ positions: [4, 5, 6], destination: 18 },
+		],
 	},
 	{
 		order: 12,
@@ -164,6 +228,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 26),
 		advanceTo: 24,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 24 },
+			{ positions: [4, 5, 6], destination: 18 },
+		],
 	},
 	{
 		order: 13,
@@ -175,6 +243,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 34),
 		advanceTo: 17,
+		progressionRules: [
+			{ positions: [1], destination: 17 },
+			{ positions: [2], destination: 18 },
+			{ positions: [3], destination: 19 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 14,
@@ -186,6 +260,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 38),
 		advanceTo: 18,
+		progressionRules: [
+			{ positions: [1], destination: 18 },
+			{ positions: [2], destination: 19 },
+			{ positions: [3], destination: 20 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 15,
@@ -197,6 +277,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 42),
 		advanceTo: 19,
+		progressionRules: [
+			{ positions: [1], destination: 19 },
+			{ positions: [2], destination: 20 },
+			{ positions: [3], destination: 17 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 16,
@@ -208,6 +294,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 46),
 		advanceTo: 20,
+		progressionRules: [
+			{ positions: [1], destination: 20 },
+			{ positions: [2], destination: 17 },
+			{ positions: [3], destination: 18 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 17,
@@ -219,6 +311,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption consolidation',
 		position: pos(1, 34),
 		advanceTo: 21,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 21 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 18,
@@ -230,6 +326,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption consolidation',
 		position: pos(1, 38),
 		advanceTo: 21,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 21 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 19,
@@ -241,6 +341,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption consolidation',
 		position: pos(1, 42),
 		advanceTo: 22,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 22 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 20,
@@ -252,6 +356,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption consolidation',
 		position: pos(1, 46),
 		advanceTo: 22,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 22 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 21,
@@ -263,6 +371,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption qualifier final',
 		position: pos(2, 36),
 		advanceTo: 25,
+		progressionRules: [
+			{ positions: [1], destination: 25 },
+			{ positions: [2], destination: 26 },
+			{ positions: [3], destination: 25 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 22,
@@ -274,6 +388,12 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption qualifier final',
 		position: pos(2, 44),
 		advanceTo: 26,
+		progressionRules: [
+			{ positions: [1], destination: 26 },
+			{ positions: [2], destination: 25 },
+			{ positions: [3], destination: 26 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 23,
@@ -285,6 +405,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners semifinal',
 		position: pos(2, 6),
 		advanceTo: 28,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 28 },
+			{ positions: [4, 5, 6], destination: 25 },
+		],
 	},
 	{
 		order: 24,
@@ -296,6 +420,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners semifinal',
 		position: pos(2, 20),
 		advanceTo: 28,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 28 },
+			{ positions: [4, 5, 6], destination: 26 },
+		],
 	},
 	{
 		order: 25,
@@ -307,6 +435,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption semifinal',
 		position: pos(3, 36),
 		advanceTo: 27,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 27 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 26,
@@ -318,6 +450,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption semifinal',
 		position: pos(3, 44),
 		advanceTo: 27,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 27 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 27,
@@ -329,6 +465,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Redemption final qualifier',
 		position: pos(4, 40),
 		advanceTo: 29,
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 29 },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 	{
 		order: 28,
@@ -339,6 +479,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket final — podium lock-in',
 		position: pos(4, 14),
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 'final' },
+			{ positions: [4, 5, 6], destination: 29 },
+		],
 	},
 	{
 		order: 29,
@@ -349,6 +493,10 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption grand final — feeds finals pool',
 		position: pos(5, 40),
+		progressionRules: [
+			{ positions: [1, 2, 3], destination: 'final' },
+			{ positions: [4, 5, 6], destination: 'out' },
+		],
 	},
 ];
 
@@ -386,6 +534,7 @@ export interface BracketEdgeDefinition {
 }
 
 export const BRACKET_EDGES: BracketEdgeDefinition[] = [
+	// Round 1 to Round 2 (winners advance)
 	{ from: 1, to: 9, type: 'advance' },
 	{ from: 2, to: 9, type: 'advance' },
 	{ from: 3, to: 10, type: 'advance' },
@@ -394,39 +543,76 @@ export const BRACKET_EDGES: BracketEdgeDefinition[] = [
 	{ from: 6, to: 11, type: 'advance' },
 	{ from: 7, to: 12, type: 'advance' },
 	{ from: 8, to: 12, type: 'advance' },
+	// Round 1 to Round 3 (losers drop to redemption)
 	{ from: 1, to: 13, type: 'drop' },
-	{ from: 2, to: 13, type: 'drop' },
-	{ from: 3, to: 14, type: 'drop' },
+	{ from: 1, to: 14, type: 'drop' },
+	{ from: 1, to: 15, type: 'drop' },
+	{ from: 2, to: 14, type: 'drop' },
+	{ from: 2, to: 15, type: 'drop' },
+	{ from: 2, to: 16, type: 'drop' },
+	{ from: 3, to: 15, type: 'drop' },
+	{ from: 3, to: 16, type: 'drop' },
+	{ from: 3, to: 17, type: 'drop' },
+	{ from: 4, to: 16, type: 'drop' },
+	{ from: 4, to: 13, type: 'drop' },
 	{ from: 4, to: 14, type: 'drop' },
+	{ from: 5, to: 13, type: 'drop' },
+	{ from: 5, to: 14, type: 'drop' },
 	{ from: 5, to: 15, type: 'drop' },
+	{ from: 6, to: 14, type: 'drop' },
 	{ from: 6, to: 15, type: 'drop' },
+	{ from: 6, to: 16, type: 'drop' },
+	{ from: 7, to: 15, type: 'drop' },
 	{ from: 7, to: 16, type: 'drop' },
+	{ from: 7, to: 13, type: 'drop' },
 	{ from: 8, to: 16, type: 'drop' },
+	{ from: 8, to: 13, type: 'drop' },
+	{ from: 8, to: 14, type: 'drop' },
+	// Round 2 to Round 6 (winners advance)
 	{ from: 9, to: 23, type: 'advance' },
 	{ from: 10, to: 23, type: 'advance' },
 	{ from: 11, to: 24, type: 'advance' },
 	{ from: 12, to: 24, type: 'advance' },
+	// Round 2 to Round 4 (losers drop to redemption)
 	{ from: 9, to: 17, type: 'drop' },
-	{ from: 10, to: 18, type: 'drop' },
-	{ from: 11, to: 19, type: 'drop' },
-	{ from: 12, to: 20, type: 'drop' },
+	{ from: 10, to: 17, type: 'drop' },
+	{ from: 11, to: 18, type: 'drop' },
+	{ from: 12, to: 18, type: 'drop' },
+	// Round 3 to Round 4
 	{ from: 13, to: 17, type: 'advance' },
+	{ from: 13, to: 18, type: 'advance' },
+	{ from: 13, to: 19, type: 'advance' },
 	{ from: 14, to: 18, type: 'advance' },
+	{ from: 14, to: 19, type: 'advance' },
+	{ from: 14, to: 20, type: 'advance' },
 	{ from: 15, to: 19, type: 'advance' },
+	{ from: 15, to: 20, type: 'advance' },
+	{ from: 15, to: 17, type: 'advance' },
 	{ from: 16, to: 20, type: 'advance' },
+	{ from: 16, to: 17, type: 'advance' },
+	{ from: 16, to: 18, type: 'advance' },
+	// Round 4 to Round 5
 	{ from: 17, to: 21, type: 'advance' },
 	{ from: 18, to: 21, type: 'advance' },
 	{ from: 19, to: 22, type: 'advance' },
 	{ from: 20, to: 22, type: 'advance' },
+	// Round 5 to Round 7
+	{ from: 21, to: 25, type: 'advance' },
+	{ from: 21, to: 26, type: 'advance' },
+	{ from: 22, to: 26, type: 'advance' },
+	{ from: 22, to: 25, type: 'advance' },
+	// Round 6 to Round 9 (winners advance)
 	{ from: 23, to: 28, type: 'advance' },
 	{ from: 24, to: 28, type: 'advance' },
-	{ from: 21, to: 25, type: 'advance' },
-	{ from: 22, to: 26, type: 'advance' },
+	// Round 6 to Round 7 (losers drop)
 	{ from: 23, to: 25, type: 'drop' },
 	{ from: 24, to: 26, type: 'drop' },
+	// Round 7 to Round 8
 	{ from: 25, to: 27, type: 'advance' },
 	{ from: 26, to: 27, type: 'advance' },
+	// Round 8 to Round 10
 	{ from: 27, to: 29, type: 'advance' },
+	// Round 9 to Round 10 (losers drop)
 	{ from: 28, to: 29, type: 'drop' },
 ];
 
