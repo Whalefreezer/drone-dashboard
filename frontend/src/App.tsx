@@ -1,6 +1,6 @@
 import './App.css';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Legend, TimeDisplay, ViewSelector } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import { useIdleCursor } from './common/useIdleCursor.ts';
@@ -86,6 +86,16 @@ function App() {
 	const { isMobile } = useBreakpoint();
 	const activePane = useAtomValue(activePaneAtom);
 	const [rightPaneView, setRightPaneView] = useAtom(rightPaneViewAtom);
+
+	// Prevent page scrolling on mobile when viewing brackets
+	useEffect(() => {
+		if (isMobile && activePane === 'brackets') {
+			document.body.style.overflow = 'hidden';
+			return () => {
+				document.body.style.overflow = '';
+			};
+		}
+	}, [isMobile, activePane]);
 
 	return (
 		<div className='app-shell'>
