@@ -250,7 +250,10 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 			const raceLabel = definition.name;
 			const headline = raceLabel;
 			const subline = definition.code;
-			const dropToNode = definition.dropTo ? BRACKET_NODES.find((n) => n.order === definition.dropTo) : null;
+			const dropToDestination = definition.progressionRules
+				.find((rule) => rule.positions.some((p) => p >= 4))
+				?.destination;
+			const dropToNode = typeof dropToDestination === 'number' ? BRACKET_NODES.find((n) => n.order === dropToDestination) : null;
 			const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 			return {
 				definition,
@@ -296,7 +299,10 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 function createEmptyNode(
 	definition: BracketNodeDefinition,
 ): BracketNodeViewModel {
-	const dropToNode = definition.dropTo ? BRACKET_NODES.find((n) => n.order === definition.dropTo) : null;
+	const dropToDestination = definition.progressionRules
+		.find((rule) => rule.positions.some((p) => p >= 4))
+		?.destination;
+	const dropToNode = typeof dropToDestination === 'number' ? BRACKET_NODES.find((n) => n.order === dropToDestination) : null;
 	const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 	return {
 		definition,

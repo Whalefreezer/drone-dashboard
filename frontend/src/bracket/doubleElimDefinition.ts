@@ -9,9 +9,7 @@ export interface BracketNodeDefinition {
 	stage: BracketStage;
 	description: string;
 	position: { x: number; y: number };
-	advanceTo?: number;
-	dropTo?: number;
-	progressionRules?: {
+	progressionRules: {
 		positions: number[];
 		destination: number | 'out' | 'final';
 	}[];
@@ -46,7 +44,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 0),
-		advanceTo: 9,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 9 },
 			{ positions: [4], destination: 13 },
@@ -63,7 +60,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 4),
-		advanceTo: 9,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 9 },
 			{ positions: [4], destination: 14 },
@@ -80,7 +76,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 8),
-		advanceTo: 10,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 10 },
 			{ positions: [4], destination: 15 },
@@ -97,7 +92,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 12),
-		advanceTo: 10,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 10 },
 			{ positions: [4], destination: 16 },
@@ -114,7 +108,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 16),
-		advanceTo: 11,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 11 },
 			{ positions: [4], destination: 13 },
@@ -131,7 +124,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 20),
-		advanceTo: 11,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 11 },
 			{ positions: [4], destination: 14 },
@@ -148,7 +140,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 24),
-		advanceTo: 12,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 12 },
 			{ positions: [4], destination: 15 },
@@ -165,7 +156,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 28),
-		advanceTo: 12,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 12 },
 			{ positions: [4], destination: 16 },
@@ -182,7 +172,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 2),
-		advanceTo: 23,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 23 },
 			{ positions: [4, 5, 6], destination: 17 },
@@ -197,7 +186,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 10),
-		advanceTo: 23,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 23 },
 			{ positions: [4, 5, 6], destination: 17 },
@@ -212,7 +200,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 18),
-		advanceTo: 24,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 24 },
 			{ positions: [4, 5, 6], destination: 18 },
@@ -227,7 +214,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 26),
-		advanceTo: 24,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 24 },
 			{ positions: [4, 5, 6], destination: 18 },
@@ -242,7 +228,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 34),
-		advanceTo: 17,
 		progressionRules: [
 			{ positions: [1], destination: 17 },
 			{ positions: [2], destination: 18 },
@@ -259,7 +244,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 38),
-		advanceTo: 18,
 		progressionRules: [
 			{ positions: [1], destination: 18 },
 			{ positions: [2], destination: 19 },
@@ -276,7 +260,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 42),
-		advanceTo: 19,
 		progressionRules: [
 			{ positions: [1], destination: 19 },
 			{ positions: [2], destination: 20 },
@@ -293,7 +276,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
 		position: pos(0, 46),
-		advanceTo: 20,
 		progressionRules: [
 			{ positions: [1], destination: 20 },
 			{ positions: [2], destination: 17 },
@@ -310,7 +292,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption consolidation',
 		position: pos(1, 34),
-		advanceTo: 21,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 21 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -325,7 +306,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption consolidation',
 		position: pos(1, 38),
-		advanceTo: 21,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 21 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -340,7 +320,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption consolidation',
 		position: pos(1, 42),
-		advanceTo: 22,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 22 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -355,7 +334,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption consolidation',
 		position: pos(1, 46),
-		advanceTo: 22,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 22 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -370,7 +348,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption qualifier final',
 		position: pos(2, 36),
-		advanceTo: 25,
 		progressionRules: [
 			{ positions: [1], destination: 25 },
 			{ positions: [2], destination: 26 },
@@ -387,7 +364,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption qualifier final',
 		position: pos(2, 44),
-		advanceTo: 26,
 		progressionRules: [
 			{ positions: [1], destination: 26 },
 			{ positions: [2], destination: 25 },
@@ -404,7 +380,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners semifinal',
 		position: pos(2, 6),
-		advanceTo: 28,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 28 },
 			{ positions: [4, 5, 6], destination: 25 },
@@ -419,7 +394,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners semifinal',
 		position: pos(2, 20),
-		advanceTo: 28,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 28 },
 			{ positions: [4, 5, 6], destination: 26 },
@@ -434,7 +408,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption semifinal',
 		position: pos(3, 36),
-		advanceTo: 27,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 27 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -449,7 +422,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption semifinal',
 		position: pos(3, 44),
-		advanceTo: 27,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 27 },
 			{ positions: [4, 5, 6], destination: 'out' },
@@ -464,7 +436,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'redemption',
 		description: 'Redemption final qualifier',
 		position: pos(4, 40),
-		advanceTo: 29,
 		progressionRules: [
 			{ positions: [1, 2, 3], destination: 29 },
 			{ positions: [4, 5, 6], destination: 'out' },
