@@ -138,6 +138,11 @@
 	stroke: rgba(134, 239, 172, 0.8);
 }
 
+.elim-node-rect[data-current='true'] {
+	stroke: #00ff00;
+	stroke-width: 3;
+}
+
 .elim-node-card {
 	width: 100%;
 	height: 100%;

@@ -5,6 +5,8 @@ import { useAtomValue } from 'jotai';
 import { bracketDiagramAtom } from './eliminationState.ts';
 import type { BracketNodeViewModel } from './eliminationState.ts';
 import { DIAGRAM_DIMENSIONS } from './doubleElimDefinition.ts';
+import { currentRaceAtom } from '../race/race-atoms.ts';
+import type { PBRaceRecord } from '../api/pbTypes.ts';
 
 interface ViewportState {
 	scale: number;
@@ -14,7 +16,6 @@ interface ViewportState {
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 1.6;
-const INITIAL_VIEWPORT: ViewportState = { scale: 0.85, x: 80, y: 60 };
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -22,6 +23,7 @@ function clamp(value: number, min: number, max: number): number {
 
 export function EliminationDiagram() {
 	const diagram = useAtomValue(bracketDiagramAtom);
+	const currentRace = useAtomValue(currentRaceAtom);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const pointerState = useRef<
 		{
@@ -38,7 +40,32 @@ export function EliminationDiagram() {
 		originX: 0,
 		originY: 0,
 	});
-	const [viewport, setViewport] = useState<ViewportState>(() => ({ ...INITIAL_VIEWPORT }));
+
+	// Calculate initial viewport based on current race
+	const getInitialViewport = (): ViewportState => {
+		// Find the node corresponding to the current race
+		const currentNode = currentRace ? diagram.nodes.find((n) => n.race?.id === currentRace.id) : null;
+
+		// Fallback to first node if no current race
+		const targetNode = currentNode ?? diagram.nodes[0];
+
+		if (!targetNode) {
+			return { scale: 1.0, x: 80, y: 60 };
+		}
+
+		// Center on the target node
+		const nodeX = targetNode.definition.position.x;
+		const nodeY = targetNode.definition.position.y;
+		const scale = 1.0;
+
+		// Position so the node appears centered (accounting for node width/height)
+		const x = -(nodeX * scale) + 200;
+		const y = -(nodeY * scale) + 200;
+
+		return { scale, x, y };
+	};
+
+	const [viewport, setViewport] = useState<ViewportState>(getInitialViewport);
 	const [isDragging, setIsDragging] = useState(false);
 
 	const rounds = diagram.rounds;
@@ -110,15 +137,16 @@ export function EliminationDiagram() {
 	};
 
 	const handleReset = () => {
+		const initialViewport = getInitialViewport();
 		pointerState.current = {
 			id: null,
 			startX: 0,
 			startY: 0,
-			originX: INITIAL_VIEWPORT.x,
-			originY: INITIAL_VIEWPORT.y,
+			originX: initialViewport.x,
+			originY: initialViewport.y,
 		};
 		setIsDragging(false);
-		setViewport({ ...INITIAL_VIEWPORT });
+		setViewport(initialViewport);
 	};
 
 	const stageTransform = {
@@ -211,7 +239,7 @@ export function EliminationDiagram() {
 						))}
 					</g>
 					<g className='elim-nodes'>
-						{diagram.nodes.map((node) => renderNode(node))}
+						{diagram.nodes.map((node) => renderNode(node, currentRace))}
 					</g>
 				</svg>
 			</div>
@@ -219,8 +247,9 @@ export function EliminationDiagram() {
 	);
 }
 
-function renderNode(node: BracketNodeViewModel) {
+function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null) {
 	const { definition } = node;
+	const isCurrentRace = currentRace && node.race?.id === currentRace.id;
 	return (
 		<g
 			key={definition.order}
@@ -236,6 +265,7 @@ function renderNode(node: BracketNodeViewModel) {
 				height={DIAGRAM_DIMENSIONS.nodeHeight}
 				className='elim-node-rect'
 				data-status={node.status}
+				data-current={isCurrentRace ? 'true' : 'false'}
 				filter='url(#shadow)'
 			/>
 			<foreignObject
