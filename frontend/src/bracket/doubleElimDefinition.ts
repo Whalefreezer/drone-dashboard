@@ -27,7 +27,7 @@ export type BracketRoundId =
 	| 'round9'
 	| 'round10';
 
-const COLUMN_UNIT = 300;
+const COLUMN_UNIT = 380;
 const ROW_UNIT = 90;
 
 function pos(column: number, row: number): { x: number; y: number } {
@@ -555,7 +555,7 @@ export const DIAGRAM_DIMENSIONS = (() => {
 	return {
 		width: maxX + COLUMN_UNIT + 200,
 		height: maxY + ROW_UNIT + 300,
-		nodeWidth: 240,
+		nodeWidth: 300,
 		nodeHeight: 330,
 		columnUnit: COLUMN_UNIT,
 		rowUnit: ROW_UNIT,

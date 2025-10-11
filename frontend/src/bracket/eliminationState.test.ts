@@ -109,6 +109,7 @@ Deno.test('applyPredictedAssignments injects winners into downstream nodes', () 
 		isWinner: true,
 		isEliminated: false,
 		isPredicted: false,
+		destinationLabel: null,
 	}));
 	const eliminatedSlots: BracketNodeSlot[] = ['Delta', 'Echo', 'Foxtrot'].map((name, index) => ({
 		id: `slot-elim-${index}`,
@@ -120,6 +121,7 @@ Deno.test('applyPredictedAssignments injects winners into downstream nodes', () 
 		isWinner: false,
 		isEliminated: true,
 		isPredicted: false,
+		destinationLabel: null,
 	}));
 	const sourceNode: BracketNodeViewModel = {
 		definition: sourceDef,
@@ -128,7 +130,6 @@ Deno.test('applyPredictedAssignments injects winners into downstream nodes', () 
 		headline: sourceDef.name,
 		subline: sourceDef.code,
 		slots: [...winnerSlots, ...eliminatedSlots],
-		dropToLabel: null,
 	};
 	const targetNode: BracketNodeViewModel = {
 		definition: targetDef,
@@ -146,8 +147,8 @@ Deno.test('applyPredictedAssignments injects winners into downstream nodes', () 
 			isWinner: false,
 			isEliminated: false,
 			isPredicted: false,
+			destinationLabel: null,
 		})),
-		dropToLabel: null,
 	};
 	const nodeByOrder = new Map<number, BracketNodeViewModel>([
 		[sourceDef.order, sourceNode],

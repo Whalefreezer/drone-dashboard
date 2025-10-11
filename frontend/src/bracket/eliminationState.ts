@@ -41,6 +41,7 @@ export interface BracketNodeSlot {
 	isWinner: boolean;
 	isEliminated: boolean;
 	isPredicted: boolean;
+	destinationLabel: string | null;
 }
 
 export type NodeStatus = 'unassigned' | 'scheduled' | 'active' | 'completed';
@@ -52,7 +53,6 @@ export interface BracketNodeViewModel {
 	headline: string;
 	subline: string;
 	slots: BracketNodeSlot[];
-	dropToLabel: string | null;
 }
 
 export interface BracketEdgeViewModel {
@@ -173,6 +173,16 @@ export function mapRacesToBracket(
 	return mapping;
 }
 
+function getDestinationLabel(definition: BracketNodeDefinition, position: number | null): string | null {
+	if (position == null) return null;
+	const rule = definition.progressionRules.find((r) => r.positions.includes(position));
+	if (!rule) return null;
+	if (rule.destination === 'out') return 'OUT';
+	if (rule.destination === 'final') return 'FINAL';
+	const destNode = BRACKET_NODES.find((n) => n.order === rule.destination);
+	return destNode ? `→ ${destNode.name}` : null;
+}
+
 export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const config = get(bracketAnchorConfigAtom);
 	const isBracketEnabled = get(bracketEnabledAtom);
@@ -222,6 +232,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 						return channel.channelDisplayName ?? '';
 					})()
 					: '';
+				const destinationLabel = getDestinationLabel(definition, displayPosition);
 				return {
 					id: pc.id,
 					pilotId: pc.pilotId,
@@ -232,6 +243,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					isWinner,
 					isEliminated,
 					isPredicted: false,
+					destinationLabel,
 				};
 			});
 			while (slots.length < 6) {
@@ -245,16 +257,12 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					isWinner: false,
 					isEliminated: false,
 					isPredicted: false,
+					destinationLabel: null,
 				});
 			}
 			const raceLabel = definition.name;
 			const headline = raceLabel;
 			const subline = definition.code;
-			const dropToDestination = definition.progressionRules
-				.find((rule) => rule.positions.some((p) => p >= 4))
-				?.destination;
-			const dropToNode = typeof dropToDestination === 'number' ? BRACKET_NODES.find((n) => n.order === dropToDestination) : null;
-			const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 			return {
 				definition,
 				race,
@@ -262,7 +270,6 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 				headline,
 				subline,
 				slots,
-				dropToLabel,
 			};
 		},
 	);
@@ -299,11 +306,6 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 function createEmptyNode(
 	definition: BracketNodeDefinition,
 ): BracketNodeViewModel {
-	const dropToDestination = definition.progressionRules
-		.find((rule) => rule.positions.some((p) => p >= 4))
-		?.destination;
-	const dropToNode = typeof dropToDestination === 'number' ? BRACKET_NODES.find((n) => n.order === dropToDestination) : null;
-	const dropToLabel = dropToNode ? `Redemption: ${dropToNode.name}` : null;
 	return {
 		definition,
 		race: null,
@@ -320,8 +322,8 @@ function createEmptyNode(
 			isWinner: false,
 			isEliminated: false,
 			isPredicted: false,
+			destinationLabel: null,
 		})),
-		dropToLabel,
 	};
 }
 
@@ -351,6 +353,7 @@ export function applyPredictedAssignments(
 				isWinner: false,
 				isEliminated: false,
 				isPredicted: true,
+				destinationLabel: null,
 			});
 		}
 		predictions.set(target.definition.order, bucket);

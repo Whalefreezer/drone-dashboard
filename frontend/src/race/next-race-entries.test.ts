@@ -43,6 +43,7 @@ function createNode(
 		isWinner: false,
 		isEliminated: false,
 		isPredicted: false,
+		destinationLabel: null,
 	};
 	const slots = slotOverrides.length > 0
 		? slotOverrides.map((override, idx) => ({ ...baseSlot, id: `${baseSlot.id}-${idx}`, ...override }))
@@ -54,7 +55,6 @@ function createNode(
 		headline: definition.name,
 		subline: definition.code,
 		slots,
-		dropToLabel: null,
 	};
 }
 

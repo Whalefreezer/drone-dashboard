@@ -288,14 +288,10 @@ function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null
 								<span className='slot-position'>{slot.position ?? '–'}</span>
 								<span className='slot-channel'>{slot.channelLabel}</span>
 								<span className='slot-name' title={slot.name}>{slot.name}</span>
+								{slot.destinationLabel && <span className='slot-destination'>{slot.destinationLabel}</span>}
 							</li>
 						))}
 					</ul>
-					{node.dropToLabel && (
-						<div className='elim-node-footer'>
-							{node.dropToLabel}
-						</div>
-					)}
 				</div>
 			</foreignObject>
 		</g>

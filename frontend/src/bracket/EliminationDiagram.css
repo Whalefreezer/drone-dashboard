@@ -183,7 +183,7 @@
 
 .elim-node-slot {
 	display: grid;
-	grid-template-columns: 1.4rem 2rem 1fr;
+	grid-template-columns: 1.4rem 2rem 1fr auto;
 	gap: 0.35rem;
 	align-items: center;
 	font-size: 0.72rem;
@@ -245,18 +245,23 @@
 	color: #ffffff;
 }
 
+.elim-node-slot .slot-destination {
+	font-size: 0.65rem;
+	font-weight: 600;
+	color: #94a3b8;
+	white-space: nowrap;
+	padding-left: 0.25rem;
+}
+
+.elim-node-slot[data-winner='true'] .slot-destination {
+	color: #a7f3d0;
+}
+
+.elim-node-slot[data-eliminated='true'] .slot-destination {
+	color: #fca5a5;
+}
+
 .elim-diagram-container:focus-visible {
 	outline: 2px solid rgba(59, 130, 246, 0.7);
 	outline-offset: 2px;
-}
-
-.elim-node-footer {
-	background: rgba(239, 68, 68, 0.35);
-	color: #fef2f2;
-	padding: 0.5rem 0.6rem;
-	border-radius: 0.5rem;
-	border: 1px solid rgba(239, 68, 68, 0.5);
-	font-size: 0.85rem;
-	text-align: center;
-	letter-spacing: 0.01em;
 }
