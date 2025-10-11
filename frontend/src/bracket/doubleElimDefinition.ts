@@ -534,7 +534,6 @@ export interface BracketEdgeDefinition {
 }
 
 export const BRACKET_EDGES: BracketEdgeDefinition[] = [
-	// Round 1 to Round 2 (winners advance)
 	{ from: 1, to: 9, type: 'advance' },
 	{ from: 2, to: 9, type: 'advance' },
 	{ from: 3, to: 10, type: 'advance' },
@@ -543,76 +542,39 @@ export const BRACKET_EDGES: BracketEdgeDefinition[] = [
 	{ from: 6, to: 11, type: 'advance' },
 	{ from: 7, to: 12, type: 'advance' },
 	{ from: 8, to: 12, type: 'advance' },
-	// Round 1 to Round 3 (losers drop to redemption)
 	{ from: 1, to: 13, type: 'drop' },
-	{ from: 1, to: 14, type: 'drop' },
-	{ from: 1, to: 15, type: 'drop' },
-	{ from: 2, to: 14, type: 'drop' },
-	{ from: 2, to: 15, type: 'drop' },
-	{ from: 2, to: 16, type: 'drop' },
-	{ from: 3, to: 15, type: 'drop' },
-	{ from: 3, to: 16, type: 'drop' },
-	{ from: 3, to: 17, type: 'drop' },
-	{ from: 4, to: 16, type: 'drop' },
-	{ from: 4, to: 13, type: 'drop' },
+	{ from: 2, to: 13, type: 'drop' },
+	{ from: 3, to: 14, type: 'drop' },
 	{ from: 4, to: 14, type: 'drop' },
-	{ from: 5, to: 13, type: 'drop' },
-	{ from: 5, to: 14, type: 'drop' },
 	{ from: 5, to: 15, type: 'drop' },
-	{ from: 6, to: 14, type: 'drop' },
 	{ from: 6, to: 15, type: 'drop' },
-	{ from: 6, to: 16, type: 'drop' },
-	{ from: 7, to: 15, type: 'drop' },
 	{ from: 7, to: 16, type: 'drop' },
-	{ from: 7, to: 13, type: 'drop' },
 	{ from: 8, to: 16, type: 'drop' },
-	{ from: 8, to: 13, type: 'drop' },
-	{ from: 8, to: 14, type: 'drop' },
-	// Round 2 to Round 6 (winners advance)
 	{ from: 9, to: 23, type: 'advance' },
 	{ from: 10, to: 23, type: 'advance' },
 	{ from: 11, to: 24, type: 'advance' },
 	{ from: 12, to: 24, type: 'advance' },
-	// Round 2 to Round 4 (losers drop to redemption)
 	{ from: 9, to: 17, type: 'drop' },
-	{ from: 10, to: 17, type: 'drop' },
-	{ from: 11, to: 18, type: 'drop' },
-	{ from: 12, to: 18, type: 'drop' },
-	// Round 3 to Round 4
+	{ from: 10, to: 18, type: 'drop' },
+	{ from: 11, to: 19, type: 'drop' },
+	{ from: 12, to: 20, type: 'drop' },
 	{ from: 13, to: 17, type: 'advance' },
-	{ from: 13, to: 18, type: 'advance' },
-	{ from: 13, to: 19, type: 'advance' },
 	{ from: 14, to: 18, type: 'advance' },
-	{ from: 14, to: 19, type: 'advance' },
-	{ from: 14, to: 20, type: 'advance' },
 	{ from: 15, to: 19, type: 'advance' },
-	{ from: 15, to: 20, type: 'advance' },
-	{ from: 15, to: 17, type: 'advance' },
 	{ from: 16, to: 20, type: 'advance' },
-	{ from: 16, to: 17, type: 'advance' },
-	{ from: 16, to: 18, type: 'advance' },
-	// Round 4 to Round 5
 	{ from: 17, to: 21, type: 'advance' },
 	{ from: 18, to: 21, type: 'advance' },
 	{ from: 19, to: 22, type: 'advance' },
 	{ from: 20, to: 22, type: 'advance' },
-	// Round 5 to Round 7
-	{ from: 21, to: 25, type: 'advance' },
-	{ from: 21, to: 26, type: 'advance' },
-	{ from: 22, to: 26, type: 'advance' },
-	{ from: 22, to: 25, type: 'advance' },
-	// Round 6 to Round 9 (winners advance)
 	{ from: 23, to: 28, type: 'advance' },
 	{ from: 24, to: 28, type: 'advance' },
-	// Round 6 to Round 7 (losers drop)
+	{ from: 21, to: 25, type: 'advance' },
+	{ from: 22, to: 26, type: 'advance' },
 	{ from: 23, to: 25, type: 'drop' },
 	{ from: 24, to: 26, type: 'drop' },
-	// Round 7 to Round 8
 	{ from: 25, to: 27, type: 'advance' },
 	{ from: 26, to: 27, type: 'advance' },
-	// Round 8 to Round 10
 	{ from: 27, to: 29, type: 'advance' },
-	// Round 9 to Round 10 (losers drop)
 	{ from: 28, to: 29, type: 'drop' },
 ];
 
