@@ -1,6 +1,6 @@
 import './EliminationDiagram.css';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { bracketDiagramAtom } from './eliminationState.ts';
 import type { BracketNodeViewModel } from './eliminationState.ts';
@@ -67,8 +67,21 @@ export function EliminationDiagram() {
 
 	const [viewport, setViewport] = useState<ViewportState>(getInitialViewport);
 	const [isDragging, setIsDragging] = useState(false);
+	const [isAtDefault, setIsAtDefault] = useState(true);
 
-	const rounds = diagram.rounds;
+	// Track if viewport is at default position
+	const checkIfAtDefault = (vp: ViewportState): boolean => {
+		const initial = getInitialViewport();
+		return vp.scale === initial.scale && vp.x === initial.x && vp.y === initial.y;
+	};
+
+	// Auto-follow current race when at default position
+	useEffect(() => {
+		if (isAtDefault) {
+			const newViewport = getInitialViewport();
+			setViewport(newViewport);
+		}
+	}, [currentRace?.id, isAtDefault]);
 
 	const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (event.button !== 0) return;
@@ -87,17 +100,20 @@ export function EliminationDiagram() {
 			originY: viewport.y,
 		};
 		setIsDragging(true);
+		setIsAtDefault(false);
 	};
 
 	const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (!isDragging || pointerState.current.id !== event.pointerId) return;
 		const deltaX = event.clientX - pointerState.current.startX;
 		const deltaY = event.clientY - pointerState.current.startY;
-		setViewport((prev) => ({
-			...prev,
+		const newViewport = {
+			...viewport,
 			x: pointerState.current.originX + deltaX,
 			y: pointerState.current.originY + deltaY,
-		}));
+		};
+		setViewport(newViewport);
+		setIsAtDefault(checkIfAtDefault(newViewport));
 	};
 
 	const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -122,18 +138,10 @@ export function EliminationDiagram() {
 			const newScale = clamp(prev.scale * scaleDelta, MIN_SCALE, MAX_SCALE);
 			const newX = event.clientX - rect.left - offsetX * newScale;
 			const newY = event.clientY - rect.top - offsetY * newScale;
-			return { scale: newScale, x: newX, y: newY };
+			const newViewport = { scale: newScale, x: newX, y: newY };
+			setIsAtDefault(checkIfAtDefault(newViewport));
+			return newViewport;
 		});
-	};
-
-	const navigateToRound = (roundId: string) => {
-		const round = rounds.find((r) => r.id === roundId);
-		if (!round) return;
-		setViewport((prev) => ({
-			...prev,
-			x: -(round.centerX * prev.scale) + 200,
-			y: prev.y,
-		}));
 	};
 
 	const handleReset = () => {
@@ -147,6 +155,7 @@ export function EliminationDiagram() {
 		};
 		setIsDragging(false);
 		setViewport(initialViewport);
+		setIsAtDefault(true);
 	};
 
 	const stageTransform = {
@@ -182,26 +191,12 @@ export function EliminationDiagram() {
 			role='presentation'
 		>
 			<div className='elim-diagram-toolbar'>
-				<div
-					className='elim-diagram-rounds'
-					role='tablist'
-					aria-label='Bracket rounds'
-				>
-					{rounds.map((round) => (
-						<button
-							key={round.id}
-							type='button'
-							className='elim-round-chip'
-							onClick={() => navigateToRound(round.id)}
-						>
-							{round.label}
-						</button>
-					))}
-				</div>
 				<div className='elim-diagram-controls'>
-					<button type='button' className='elim-reset-btn' onClick={handleReset}>
-						Reset view
-					</button>
+					{!isAtDefault && (
+						<button type='button' className='elim-reset-btn' onClick={handleReset}>
+							Reset view
+						</button>
+					)}
 					<div className='elim-diagram-zoom'>
 						<span>{Math.round(viewport.scale * 100)}%</span>
 					</div>
