@@ -7,9 +7,9 @@ import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
 import { EliminationDiagram } from './bracket/index.ts';
 import { GenericSuspense } from './common/GenericSuspense.tsx';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import useBreakpoint from './responsive/useBreakpoint.ts';
-import { activePaneAtom } from './state/viewAtoms.ts';
+import { activePaneAtom, rightPaneViewAtom } from './state/viewAtoms.ts';
 import { SubscriptionStatusIndicator } from './common/SubscriptionStatusIndicator.tsx';
 import { pbInvalidateAll } from './api/pb.ts';
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
@@ -85,7 +85,7 @@ function App() {
 	useIdleCursor();
 	const { isMobile } = useBreakpoint();
 	const activePane = useAtomValue(activePaneAtom);
-	const desktopBrackets = !isMobile && activePane === 'brackets';
+	const [rightPaneView, setRightPaneView] = useAtom(rightPaneViewAtom);
 
 	return (
 		<div className='app-shell'>
@@ -98,29 +98,24 @@ function App() {
 
 			{!isMobile
 				? (
-					<>
-						<div className='app-header'>
-							<SubscriptionStatusIndicator />
-							<div className='app-header-time'>
-								<GenericSuspense id='time-display'>
-									<TimeDisplay
-										style={{
-											textAlign: 'center',
-											padding: '0.25rem 0',
-											borderBottom: 'none',
-											backgroundColor: 'transparent',
-											fontSize: '1rem',
-										}}
-									/>
-								</GenericSuspense>
-							</div>
-							<RefreshButton />
-							<SettingsButton />
+					<div className='app-header'>
+						<SubscriptionStatusIndicator />
+						<div className='app-header-time'>
+							<GenericSuspense id='time-display'>
+								<TimeDisplay
+									style={{
+										textAlign: 'center',
+										padding: '0.25rem 0',
+										borderBottom: 'none',
+										backgroundColor: 'transparent',
+										fontSize: '1rem',
+									}}
+								/>
+							</GenericSuspense>
 						</div>
-						<div className='app-desktop-tabs'>
-							<ViewSelector />
-						</div>
-					</>
+						<RefreshButton />
+						<SettingsButton />
+					</div>
 				)
 				: (
 					<div className='app-mobile-header'>
@@ -129,7 +124,7 @@ function App() {
 						<SettingsButton />
 					</div>
 				)}
-			<div className={'app-main-content' + (isMobile ? ' mobile' : desktopBrackets ? ' brackets' : '')}>
+			<div className={'app-main-content' + (isMobile ? ' mobile' : '')}>
 				{isMobile
 					? (
 						<>
@@ -150,14 +145,6 @@ function App() {
 							)}
 						</>
 					)
-					: desktopBrackets
-					? (
-						<div className='app-brackets-pane'>
-							<GenericSuspense id='brackets-desktop'>
-								<EliminationDiagram />
-							</GenericSuspense>
-						</div>
-					)
 					: (
 						<>
 							<div className='app-main-left'>
@@ -169,9 +156,33 @@ function App() {
 								</div>
 							</div>
 							<div className='app-main-right'>
-								<GenericSuspense id='leaderboard'>
-									<Leaderboard />
-								</GenericSuspense>
+								<div className='app-right-pane-toggle'>
+									<button
+										type='button'
+										className={rightPaneView === 'leaderboard' ? 'active' : ''}
+										onClick={() => setRightPaneView('leaderboard')}
+									>
+										Leaderboard
+									</button>
+									<button
+										type='button'
+										className={rightPaneView === 'brackets' ? 'active' : ''}
+										onClick={() => setRightPaneView('brackets')}
+									>
+										Brackets
+									</button>
+								</div>
+								{rightPaneView === 'leaderboard'
+									? (
+										<GenericSuspense id='leaderboard'>
+											<Leaderboard />
+										</GenericSuspense>
+									)
+									: (
+										<GenericSuspense id='brackets'>
+											<EliminationDiagram />
+										</GenericSuspense>
+									)}
 							</div>
 						</>
 					)}

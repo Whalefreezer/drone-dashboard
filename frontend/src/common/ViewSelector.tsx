@@ -12,7 +12,6 @@ const mobilePanes: { key: DashboardPane; label: string }[] = [
 const desktopPanes: { key: DashboardPane; label: string }[] = [
 	{ key: 'leaderboard', label: 'Leaderboard' },
 	{ key: 'races', label: 'Races' },
-	{ key: 'brackets', label: 'Brackets' },
 ];
 
 export function ViewSelector() {
