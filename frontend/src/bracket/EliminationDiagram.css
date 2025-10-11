@@ -200,9 +200,27 @@
 	color: #ffffff;
 }
 
+.elim-node-slot[data-predicted='true'] {
+	background: rgba(148, 163, 184, 0.18);
+	color: rgba(226, 232, 240, 0.85);
+	font-style: italic;
+}
+
+.elim-node-slot[data-predicted='true'] .slot-channel {
+	color: rgba(148, 197, 255, 0.85);
+}
+
+.elim-node-slot[data-predicted='true'] .slot-name {
+	color: rgba(226, 232, 240, 0.92);
+}
+
 .slot-position {
 	font-variant-numeric: tabular-nums;
 	color: #e2e8f0;
+}
+
+.elim-node-slot[data-predicted='true'] .slot-position {
+	color: rgba(226, 232, 240, 0.86);
 }
 
 .elim-node-slot[data-winner='true'] .slot-position {

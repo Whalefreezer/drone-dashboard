@@ -1,9 +1,10 @@
 /// <reference lib="deno.ns" />
 
 import { assertEquals } from '@std/assert/equals';
-import { buildAnchorPoints, mapRacesToBracket } from './eliminationState.ts';
-import type { BracketAnchorConfig } from './eliminationState.ts';
+import { applyPredictedAssignments, buildAnchorPoints, mapRacesToBracket } from './eliminationState.ts';
+import type { BracketAnchorConfig, BracketNodeSlot, BracketNodeViewModel } from './eliminationState.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
+import { BRACKET_NODES } from './doubleElimDefinition.ts';
 
 function createRace(
 	index: number,
@@ -93,4 +94,72 @@ Deno.test('mapRacesToBracket ignores anchors that do not match races', () => {
 	};
 	const mapping = mapRacesToBracket(races, config);
 	assertEquals(mapping.get(4)?.id, 'race-3');
+});
+
+Deno.test('applyPredictedAssignments injects winners into downstream nodes', () => {
+	const sourceDef = BRACKET_NODES.find((node) => node.order === 1)!;
+	const targetDef = BRACKET_NODES.find((node) => node.order === 9)!;
+	const winnerSlots: BracketNodeSlot[] = ['Alpha', 'Bravo', 'Charlie'].map((name, index) => ({
+		id: `slot-winner-${index}`,
+		pilotId: `pilot-${index}`,
+		name,
+		channelLabel: `C${index + 1}`,
+		channelId: `chan-${index}`,
+		position: index + 1,
+		isWinner: true,
+		isEliminated: false,
+		isPredicted: false,
+	}));
+	const eliminatedSlots: BracketNodeSlot[] = ['Delta', 'Echo', 'Foxtrot'].map((name, index) => ({
+		id: `slot-elim-${index}`,
+		pilotId: `pilot-e${index}`,
+		name,
+		channelLabel: `E${index + 1}`,
+		channelId: `chan-e${index}`,
+		position: index + 4,
+		isWinner: false,
+		isEliminated: true,
+		isPredicted: false,
+	}));
+	const sourceNode: BracketNodeViewModel = {
+		definition: sourceDef,
+		race: null,
+		status: 'completed',
+		headline: sourceDef.name,
+		subline: sourceDef.code,
+		slots: [...winnerSlots, ...eliminatedSlots],
+		dropToLabel: null,
+	};
+	const targetNode: BracketNodeViewModel = {
+		definition: targetDef,
+		race: null,
+		status: 'scheduled',
+		headline: targetDef.name,
+		subline: targetDef.code,
+		slots: Array.from({ length: 6 }).map((_, idx) => ({
+			id: `placeholder-${idx}`,
+			pilotId: null,
+			name: 'Awaiting assignment',
+			channelLabel: '—',
+			channelId: null,
+			position: null,
+			isWinner: false,
+			isEliminated: false,
+			isPredicted: false,
+		})),
+		dropToLabel: null,
+	};
+	const nodeByOrder = new Map<number, BracketNodeViewModel>([
+		[sourceDef.order, sourceNode],
+		[targetDef.order, targetNode],
+	]);
+
+	applyPredictedAssignments(nodeByOrder);
+
+	const downstreamSlots = nodeByOrder.get(targetDef.order)!.slots;
+	const predictedNames = downstreamSlots
+		.filter((slot) => slot.isPredicted)
+		.map((slot) => slot.name)
+		.sort();
+	assertEquals(predictedNames, ['Alpha', 'Bravo', 'Charlie']);
 });

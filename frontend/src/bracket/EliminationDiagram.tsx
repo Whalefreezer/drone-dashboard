@@ -283,6 +283,7 @@ function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null
 								className='elim-node-slot'
 								data-winner={slot.isWinner ? 'true' : 'false'}
 								data-eliminated={slot.isEliminated ? 'true' : 'false'}
+								data-predicted={slot.isPredicted ? 'true' : 'false'}
 							>
 								<span className='slot-position'>{slot.position ?? '–'}</span>
 								<span className='slot-channel'>{slot.channelLabel}</span>

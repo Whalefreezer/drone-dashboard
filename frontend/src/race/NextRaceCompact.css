@@ -45,6 +45,11 @@
 	background: transparent;
 }
 
+.next-race-slot[data-predicted='true'] {
+	color: rgba(226, 232, 240, 0.84);
+	font-style: italic;
+}
+
 .slot-line {
 	display: flex;
 	align-items: center;
@@ -62,6 +67,11 @@
 	color: #bbb;
 	font-size: 0.86rem;
 }
+
+.next-race-slot[data-predicted='true'] .slot-channel {
+	color: rgba(191, 219, 254, 0.75);
+}
+
 .slot-name {
 	color: #eee;
 	font-weight: 400;
@@ -69,6 +79,10 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.next-race-slot[data-predicted='true'] .slot-name {
+	color: rgba(226, 232, 240, 0.88);
 }
 
 /* Make the color square smaller inside chips */

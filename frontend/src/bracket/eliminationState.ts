@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import { atomFamily } from 'jotai/utils';
 import { z } from 'zod';
 import { channelsDataAtom, clientKVRecordsAtom, currentEventAtom, pilotsAtom, racesAtom, roundsDataAtom } from '../state/pbAtoms.ts';
 import { BRACKET_EDGES, BRACKET_NODES, BRACKET_ROUNDS, BracketEdgeDefinition, BracketNodeDefinition } from './doubleElimDefinition.ts';
@@ -35,9 +36,11 @@ export interface BracketNodeSlot {
 	pilotId: string | null;
 	name: string;
 	channelLabel: string;
+	channelId: string | null;
 	position: number | null;
 	isWinner: boolean;
 	isEliminated: boolean;
+	isPredicted: boolean;
 }
 
 export type NodeStatus = 'unassigned' | 'scheduled' | 'active' | 'completed';
@@ -218,9 +221,11 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					pilotId: pc.pilotId,
 					name: pilot?.name ?? '—',
 					channelLabel: channelLabel || '—',
+					channelId: pc.channelId ?? null,
 					position: displayPosition,
 					isWinner,
 					isEliminated,
+					isPredicted: false,
 				};
 			});
 			while (slots.length < 6) {
@@ -229,9 +234,11 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					pilotId: null,
 					name: 'Awaiting assignment',
 					channelLabel: '—',
+					channelId: null,
 					position: null,
 					isWinner: false,
 					isEliminated: false,
+					isPredicted: false,
 				});
 			}
 			const raceLabel = definition.name;
@@ -253,6 +260,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const nodeByOrder = new Map(
 		nodeViewModels.map((node) => [node.definition.order, node]),
 	);
+	applyPredictedAssignments(nodeByOrder);
 	const edges: BracketEdgeViewModel[] = BRACKET_EDGES.map((edge) => {
 		const source = nodeByOrder.get(edge.from)!;
 		const target = nodeByOrder.get(edge.to)!;
@@ -293,10 +301,70 @@ function createEmptyNode(
 			pilotId: null,
 			name: 'Awaiting assignment',
 			channelLabel: '—',
+			channelId: null,
 			position: null,
 			isWinner: false,
 			isEliminated: false,
+			isPredicted: false,
 		})),
 		dropToLabel,
 	};
 }
+
+export function applyPredictedAssignments(
+	nodeByOrder: Map<number, BracketNodeViewModel>,
+) {
+	const predictions = new Map<number, BracketNodeSlot[]>();
+	for (const edge of BRACKET_EDGES) {
+		const source = nodeByOrder.get(edge.from);
+		const target = nodeByOrder.get(edge.to);
+		if (!source || !target) continue;
+		if (source.status !== 'completed') continue;
+		const candidates = source.slots.filter((slot) => {
+			if (!slot.pilotId) return false;
+			return edge.type === 'advance' ? slot.isWinner : slot.isEliminated;
+		});
+		if (candidates.length === 0) continue;
+		const bucket = predictions.get(target.definition.order) ?? [];
+		for (const slot of candidates) {
+			bucket.push({
+				id: `prediction-${edge.from}-${slot.id}-${edge.to}`,
+				pilotId: slot.pilotId,
+				name: slot.name,
+				channelLabel: '—',
+				channelId: null,
+				position: null,
+				isWinner: false,
+				isEliminated: false,
+				isPredicted: true,
+			});
+		}
+		predictions.set(target.definition.order, bucket);
+	}
+	for (const [order, predictedSlots] of predictions) {
+		const targetNode = nodeByOrder.get(order);
+		if (!targetNode) continue;
+		const existingPilotIds = new Set<string>(
+			targetNode.slots
+				.map((slot) => slot.pilotId)
+				.filter((pilotId): pilotId is string => pilotId != null),
+		);
+		const updatedSlots = targetNode.slots.map((slot) => ({ ...slot }));
+		for (const predicted of predictedSlots) {
+			if (!predicted.pilotId || existingPilotIds.has(predicted.pilotId)) continue;
+			const openIndex = updatedSlots.findIndex((slot) => slot.pilotId == null);
+			if (openIndex === -1) break;
+			updatedSlots[openIndex] = predicted;
+			existingPilotIds.add(predicted.pilotId);
+		}
+		targetNode.slots = updatedSlots;
+	}
+}
+
+export const raceBracketSlotsAtom = atomFamily((raceId: string) =>
+	atom((get): BracketNodeSlot[] => {
+		const diagram = get(bracketDiagramAtom);
+		const node = diagram.nodes.find((n) => n.race?.id === raceId);
+		return node?.slots ?? [];
+	})
+);
