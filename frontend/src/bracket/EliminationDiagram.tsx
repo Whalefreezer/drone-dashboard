@@ -14,6 +14,7 @@ interface ViewportState {
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 1.6;
+const INITIAL_VIEWPORT: ViewportState = { scale: 0.85, x: 80, y: 60 };
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -37,11 +38,7 @@ export function EliminationDiagram() {
 		originX: 0,
 		originY: 0,
 	});
-	const [viewport, setViewport] = useState<ViewportState>({
-		scale: 0.85,
-		x: 80,
-		y: 60,
-	});
+	const [viewport, setViewport] = useState<ViewportState>(() => ({ ...INITIAL_VIEWPORT }));
 	const [isDragging, setIsDragging] = useState(false);
 
 	const rounds = diagram.rounds;
@@ -108,6 +105,18 @@ export function EliminationDiagram() {
 		}));
 	};
 
+	const handleReset = () => {
+		pointerState.current = {
+			id: null,
+			startX: 0,
+			startY: 0,
+			originX: INITIAL_VIEWPORT.x,
+			originY: INITIAL_VIEWPORT.y,
+		};
+		setIsDragging(false);
+		setViewport({ ...INITIAL_VIEWPORT });
+	};
+
 	const stageTransform = {
 		transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`,
 		transformOrigin: '0 0',
@@ -157,8 +166,13 @@ export function EliminationDiagram() {
 						</button>
 					))}
 				</div>
-				<div className='elim-diagram-zoom'>
-					<span>{Math.round(viewport.scale * 100)}%</span>
+				<div className='elim-diagram-controls'>
+					<button type='button' className='elim-reset-btn' onClick={handleReset}>
+						Reset view
+					</button>
+					<div className='elim-diagram-zoom'>
+						<span>{Math.round(viewport.scale * 100)}%</span>
+					</div>
 				</div>
 			</div>
 			<div className='elim-diagram-stage' style={stageTransform}>
@@ -228,7 +242,6 @@ function renderNode(node: BracketNodeViewModel) {
 			>
 				<div className='elim-node-card' data-status={node.status}>
 					<header>
-						<div className='elim-node-code'>{definition.code}</div>
 						<div className='elim-node-title'>{node.headline}</div>
 						<div className='elim-node-sub'>{node.subline}</div>
 					</header>

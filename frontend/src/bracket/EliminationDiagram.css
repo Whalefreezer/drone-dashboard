@@ -57,6 +57,32 @@
 	color: #cbd5f5;
 }
 
+.elim-diagram-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.elim-reset-btn {
+	padding: 0.25rem 0.75rem;
+	border-radius: 999px;
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	background: rgba(30, 41, 59, 0.75);
+	color: #e2e8f0;
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.elim-reset-btn:hover,
+.elim-reset-btn:focus-visible {
+	background: rgba(59, 130, 246, 0.35);
+	border-color: rgba(59, 130, 246, 0.6);
+	outline: none;
+}
+
 .elim-diagram-stage {
 	position: absolute;
 	top: 0;
@@ -125,13 +151,6 @@
 .elim-node-card header {
 	display: grid;
 	gap: 0.1rem;
-}
-
-.elim-node-code {
-	font-size: 0.7rem;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: rgba(148, 163, 184, 0.85);
 }
 
 .elim-node-title {

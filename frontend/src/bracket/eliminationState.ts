@@ -230,10 +230,9 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					isEliminated: false,
 				});
 			}
-			const roundName = round?.name ?? definition.roundLabel;
 			const raceLabel = race.raceNumber != null ? `Race ${race.raceNumber}` : definition.name;
-			const headline = `${definition.code} • ${roundName}`;
-			const subline = `${raceLabel} • ${definition.description}`;
+			const headline = raceLabel;
+			const subline = definition.code;
 			return {
 				definition,
 				race,
@@ -278,8 +277,8 @@ function createEmptyNode(
 		definition,
 		race: null,
 		status: 'unassigned',
-		headline: `${definition.code} • ${definition.roundLabel}`,
-		subline: definition.description,
+		headline: definition.name,
+		subline: definition.code,
 		slots: Array.from({ length: 6 }).map((_, idx) => ({
 			id: `${definition.order}-empty-${idx}`,
 			pilotId: null,
