@@ -161,12 +161,12 @@
 .elim-node-title {
 	font-size: 0.9rem;
 	font-weight: 600;
-	color: #f8fafc;
+	color: #ffffff;
 }
 
 .elim-node-sub {
 	font-size: 0.7rem;
-	color: rgba(148, 163, 184, 0.85);
+	color: #cbd5e1;
 }
 
 .elim-node-card ul {
@@ -187,26 +187,26 @@
 	font-size: 0.72rem;
 	padding: 0.25rem 0.35rem;
 	border-radius: 0.4rem;
-	background: rgba(15, 23, 42, 0.55);
+	background: rgba(15, 23, 42, 0.75);
 }
 
 .elim-node-slot[data-winner='true'] {
-	background: rgba(16, 185, 129, 0.25);
-	color: #f0fdf4;
+	background: rgba(16, 185, 129, 0.35);
+	color: #ffffff;
 }
 
 .elim-node-slot[data-eliminated='true'] {
-	background: rgba(239, 68, 68, 0.2);
-	color: #fee2e2;
+	background: rgba(239, 68, 68, 0.3);
+	color: #ffffff;
 }
 
 .slot-position {
 	font-variant-numeric: tabular-nums;
-	color: rgba(148, 163, 184, 0.9);
+	color: #e2e8f0;
 }
 
 .elim-node-slot[data-winner='true'] .slot-position {
-	color: #bbf7d0;
+	color: #d1fae5;
 }
 
 .elim-node-slot[data-eliminated='true'] .slot-position {
@@ -215,14 +215,14 @@
 
 .slot-channel {
 	font-weight: 600;
-	color: rgba(125, 211, 252, 0.95);
+	color: #7dd3fc;
 }
 
 .slot-name {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	color: #f8fafc;
+	color: #ffffff;
 }
 
 .elim-diagram-container:focus-visible {
