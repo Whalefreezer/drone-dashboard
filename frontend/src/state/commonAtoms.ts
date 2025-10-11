@@ -46,32 +46,12 @@ export function orderRaces(races: { roundId: string; raceNumber: number }[], rou
 
 /**
  * Finds eliminated pilots from completed brackets
+ * @deprecated Legacy function - use locked positions from client_kv instead
  */
-export function findEliminatedPilots(brackets: Bracket[]): EliminatedPilot[] {
-	const eliminatedPilots: EliminatedPilot[] = [];
-
-	brackets.forEach((bracket) => {
-		// Check if bracket is complete by verifying all pilots have all rounds filled
-		const isComplete = bracket.pilots.every((pilot) => pilot.rounds.every((round) => round !== null));
-
-		if (isComplete) {
-			// Sort pilots by points to find bottom two
-			const sortedPilots = [...bracket.pilots].sort((a, b) => a.points - b.points);
-			const bottomTwo = sortedPilots.slice(0, 2);
-
-			// Add bottom two pilots to eliminated list
-			bottomTwo.forEach((pilot, index) => {
-				eliminatedPilots.push({
-					name: pilot.name,
-					bracket: bracket.name,
-					position: sortedPilots.length - 1 - index, // Convert to position from bottom
-					points: pilot.points,
-				});
-			});
-		}
-	});
-
-	return eliminatedPilots;
+export function findEliminatedPilots(_brackets: Bracket[]): EliminatedPilot[] {
+	// This function is deprecated in favor of locked positions
+	// Retained for backward compatibility only
+	return [];
 }
 
 /**

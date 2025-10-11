@@ -64,6 +64,10 @@ export const consecutiveLapsAtom = atom((get) => {
 	return Number(ev?.laps ?? 3);
 });
 
+/**
+ * @deprecated Legacy brackets data atom - bracket elimination logic now uses locked positions
+ * Retained for backward compatibility with existing bracket display components
+ */
 export const bracketsDataAtom = atomWithSuspenseQuery<Bracket[]>(() => ({
 	queryKey: ['bracketsData'],
 	queryFn: () => {
@@ -315,6 +319,39 @@ export const leaderboardSplitAtom = atom((get) => {
 	} catch {
 		return null;
 	}
+});
+
+/**
+ * Locked elimination positions from client_kv
+ * namespace: 'leaderboard', key: 'lockedPositions'
+ * value: JSON array of { pilotId, pilotSourceId, displayName, position, note? }
+ */
+export const leaderboardLockedPositionsAtom = atom((get): Map<string, number> => {
+	const kv = get(clientKVRecordsAtom);
+	const rec = kv.find((r) => r.namespace === 'leaderboard' && r.key === 'lockedPositions');
+	if (!rec?.value) return new Map();
+
+	try {
+		const parsed = JSON.parse(rec.value);
+		if (!Array.isArray(parsed)) return new Map();
+
+		const map = new Map<string, number>();
+		for (const entry of parsed) {
+			if (!entry || typeof entry !== 'object') continue;
+			const pilotId = typeof entry.pilotId === 'string' ? entry.pilotId.trim() : '';
+			const position = typeof entry.position === 'number' ? entry.position : null;
+			if (pilotId && position != null && Number.isFinite(position) && position > 0) {
+				map.set(pilotId, position);
+			}
+		}
+		return map;
+	} catch {
+		return new Map();
+	}
+});
+
+export const leaderboardHasLockedPositionsAtom = atom((get): boolean => {
+	return get(leaderboardLockedPositionsAtom).size > 0;
 });
 
 export interface NextRaceOverrideRecord {

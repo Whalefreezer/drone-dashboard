@@ -229,3 +229,12 @@ export interface PBIngestTargetRecord extends PBBaseRecord {
 	lastStatus?: string; // short status message from last run
 	lastUpdated?: string;
 }
+
+// Locked position entry (stored as JSON array in client_kv)
+export interface LockedPositionEntry {
+	pilotId: string;
+	pilotSourceId: string;
+	displayName: string;
+	position: number;
+	note?: string;
+}

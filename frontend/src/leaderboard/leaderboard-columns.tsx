@@ -11,7 +11,7 @@ import {
 	pilotRacesUntilNextAtom,
 } from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
-import { pilotsAtom } from '../state/pbAtoms.ts';
+import { leaderboardLockedPositionsAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { PBChannelRecord } from '../api/pbTypes.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import { pilotBestLapAtom, pilotConsecAtom, pilotFastestTotalRaceAtom, pilotHoleshotAtom, pilotTotalLapsAtom } from './metric-factory.ts';
@@ -24,20 +24,26 @@ export interface LeaderboardRowProps {
 }
 
 // Small table cell that detects overflow and applies a fade class
-// Position cell uses calculated positionChanges from atom
+// Position cell uses calculated positionChanges from atom, or locked position if present
 function PositionCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
+	const lockedPositions = useAtomValue(leaderboardLockedPositionsAtom);
+	const lockedPosition = lockedPositions.get(pilotId);
+
 	const ids = useAtomValue(leaderboardPilotIdsStateAtom);
 	const idx = ids.findIndex((id) => id === pilotId);
-	const currentPosition = idx >= 0 ? idx + 1 : 0;
+	const computedPosition = idx >= 0 ? idx + 1 : 0;
+
+	// Prefer locked position when present
+	const displayPosition = lockedPosition ?? computedPosition;
 
 	const positionChanges = useAtomValue(positionChangesAtom);
 	const prevPos = positionChanges.get(pilotId);
-	const showChange = prevPos && prevPos !== currentPosition;
-	const change = showChange ? prevPos - currentPosition : 0;
+	const showChange = prevPos && prevPos !== displayPosition;
+	const change = showChange ? prevPos - displayPosition : 0;
 
 	return (
 		<div className='position-container'>
-			<div>{currentPosition}</div>
+			<div>{displayPosition}</div>
 			{showChange && change > 0 && <span className='position-change'>↑{change}</span>}
 		</div>
 	);
@@ -64,7 +70,6 @@ function PilotCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
 
 function ChannelDisplayCell({ channel }: { channel: PBChannelRecord | null }) {
 	if (!channel) return <div>-</div>;
-	const label = `${channel.shortBand}${channel.number}`;
 	return (
 		<div className='channel-display'>
 			{channel.shortBand}
@@ -137,8 +142,9 @@ function NextRaceCell(
 	{
 		racesUntilNext,
 		isEliminated,
+		hasLockedPosition,
 		overrideLabel,
-	}: { racesUntilNext: number; isEliminated: boolean; overrideLabel?: string | null },
+	}: { racesUntilNext: number; isEliminated: boolean; hasLockedPosition: boolean; overrideLabel?: string | null },
 ) {
 	let content: React.ReactNode;
 	// Racing and Staging have highest priority (never show overrides for these)
@@ -147,7 +153,8 @@ function NextRaceCell(
 	// Override labels take precedence over default displays
 	else if (overrideLabel) content = overrideLabel;
 	// Default displays for no next race
-	else if (racesUntilNext === -1 && isEliminated) content = <span className='done-text'>Done</span>;
+	// Show "Done" if eliminated OR has locked position (indicating finals are complete)
+	else if (racesUntilNext === -1 && (isEliminated || hasLockedPosition)) content = <span className='done-text'>Done</span>;
 	else if (racesUntilNext === -1) content = '-';
 	// Show numeric count for upcoming races
 	else content = `${racesUntilNext}`;
@@ -255,10 +262,13 @@ export function getLeaderboardColumns(
 				const overrideLabel = useAtomValue(pilotNextRaceOverrideLabelAtom(pilotId));
 				const elimInfo = useAtomValue(pilotEliminatedInfoAtom(pilotId));
 				const isEliminated = !!elimInfo;
+				const lockedPositions = useAtomValue(leaderboardLockedPositionsAtom);
+				const hasLockedPosition = lockedPositions.has(pilotId);
 				return (
 					<NextRaceCell
 						racesUntilNext={racesUntilNext}
 						isEliminated={isEliminated}
+						hasLockedPosition={hasLockedPosition}
 						overrideLabel={overrideLabel}
 					/>
 				);

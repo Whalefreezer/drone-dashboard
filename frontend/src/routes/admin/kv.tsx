@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { ClientKVTable } from '../../admin/ClientKVTable.tsx';
 import { clientKVRecordsAtom, currentEventAtom } from '../../state/pbAtoms.ts';
 import { LeaderboardSplitSection } from '../../admin/kv/LeaderboardSplitSection.tsx';
+import { LockedEliminationRankingsSection } from '../../admin/kv/LockedEliminationRankingsSection.tsx';
 import { NextRaceOverrideSection } from '../../admin/kv/NextRaceOverrideSection.tsx';
 import { LiveStreamLinksSection } from '../../admin/kv/LiveStreamLinksSection.tsx';
 import { BracketAnchorsSection } from '../../admin/kv/BracketAnchorsSection.tsx';
@@ -16,6 +17,10 @@ function KVPage() {
 			<div className='section-card'>
 				<h2>Leaderboard Split (Client KV)</h2>
 				<LeaderboardSplitSection />
+			</div>
+			<div className='section-card'>
+				<h2>Locked Elimination Rankings</h2>
+				<LockedEliminationRankingsSection kvRecords={kv} eventId={ev?.id ?? null} />
 			</div>
 			<div className='section-card'>
 				<h2>Next Race Overrides</h2>

@@ -117,6 +117,11 @@ export const pilotPreferredChannelAtom = atomFamily((pilotId: string) =>
 	})
 );
 
+/**
+ * Legacy atom for bracket-based elimination info
+ * Note: With locked positions, this is primarily for backward compatibility
+ * The locked position system is the new source of truth for final rankings
+ */
 export const pilotEliminatedInfoAtom = atomFamily((pilotId: string) =>
 	atom((get) => {
 		const bracketsResult = get(bracketsDataAtom);
