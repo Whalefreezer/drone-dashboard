@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
-import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom, streamVideoRangesAtom } from '../state/index.ts';
+import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
 import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
@@ -9,14 +9,11 @@ import type { PBRaceRecord } from '../api/pbTypes.ts';
 // PilotChannel type is inline now - using { ID: string; Pilot: string; Channel: string }
 import { getLapClassName, getPositionWithSuffix } from '../common/index.ts';
 import { ChannelSquare } from '../common/ChannelSquare.tsx';
-import type { Bracket } from '../bracket/bracket-types.ts';
 import './LapsView.css';
 import '../common/patterns.css';
 import { type Column, GenericTable } from '../common/GenericTable.tsx';
 import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
-import { buildStreamLinkForTimestamp } from '../stream/stream-utils.ts';
-import { parseTimestampMs } from '../common/time.ts';
 import { raceBracketSlotsAtom } from '../bracket/eliminationState.ts';
 
 const POSITION_POINTS: Record<number, number> = {};
@@ -26,58 +23,13 @@ interface LapsViewProps {
 }
 
 export function LapsView({ raceId }: LapsViewProps) {
-	const roundData = useAtomValue(roundsDataAtom);
 	const race = useAtomValue(raceDataAtom(raceId));
-	const pilots = useAtomValue(pilotsAtom);
-	const pilotChannels = useAtomValue(racePilotChannelsAtom(raceId));
-	const streamRanges = useAtomValue(streamVideoRangesAtom);
 
 	if (!race) return null;
-
-	const round = roundData.find((r) => r.id === (race.round ?? ''));
-	const raceStartMs = useMemo(() => parseTimestampMs(race.start ?? null), [race.start]);
-	const raceStreamLink = useMemo(
-		() => buildStreamLinkForTimestamp(streamRanges, raceStartMs),
-		[streamRanges, raceStartMs],
-	);
-
-	const getBracketData = (): Bracket | null => {
-		const normalizeString = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-
-		const racePilotNames = new Set(
-			pilotChannels
-				.map((pc: { pilotId: string }) => pilots.find((p) => p.id === pc.pilotId)?.name ?? '')
-				.filter((name: string) => name !== '')
-				.map(normalizeString),
-		);
-
-		return null;
-	};
-
-	const matchingBracket = getBracketData();
 
 	return (
 		<div className='laps-view'>
 			<div className='race-info'>
-				<div className='race-number'>
-					{raceStreamLink
-						? (
-							<a
-								href={raceStreamLink.href}
-								target='_blank'
-								rel='noreferrer'
-								title={`Watch ${raceStreamLink.label}${raceStreamLink.offsetSeconds > 0 ? ` (+${raceStreamLink.offsetSeconds}s)` : ''}`}
-							>
-								{`${round?.roundNumber ?? '?'}-${race.raceNumber}`}
-							</a>
-						)
-						: `${round?.roundNumber ?? '?'}-${race.raceNumber}`}
-					{matchingBracket && (
-						<span style={{ marginLeft: '8px', color: '#888' }}>
-							({matchingBracket.name})
-						</span>
-					)}
-				</div>
 				<LapsTable race={race} />
 			</div>
 		</div>

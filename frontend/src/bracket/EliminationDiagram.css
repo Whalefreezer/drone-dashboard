@@ -154,8 +154,9 @@
 }
 
 .elim-node-card header {
-	display: grid;
-	gap: 0.1rem;
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
 }
 
 .elim-node-title {
@@ -165,8 +166,9 @@
 }
 
 .elim-node-sub {
-	font-size: 0.7rem;
-	color: #cbd5e1;
+	font-size: 0.75rem;
+	color: #94a3b8;
+	font-weight: 500;
 }
 
 .elim-node-card ul {

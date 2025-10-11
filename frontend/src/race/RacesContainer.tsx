@@ -4,6 +4,7 @@ import RaceTime from './RaceTime.tsx';
 import { currentRaceAtom, lastRaceAtom } from './race-atoms.ts';
 import { NextRaceCompact } from './NextRaceCompact.tsx';
 import { nextRaceEntriesAtom } from './next-race-entries.ts';
+import { RaceNumber } from './RaceNumber.tsx';
 
 export function RacesContainer() {
 	const currentRace = useAtomValue(currentRaceAtom);
@@ -19,6 +20,7 @@ export function RacesContainer() {
 				<div className='race-box last-race'>
 					<div className='race-header'>
 						<h3>Last Race</h3>
+						<RaceNumber raceId={lastRace.id} />
 					</div>
 					<LapsView
 						key={lastRace.id}
@@ -30,6 +32,7 @@ export function RacesContainer() {
 				<div className='race-box current-race'>
 					<div className='race-header'>
 						<h3>Current Race</h3>
+						<RaceNumber raceId={currentRace.id} />
 						<div className='race-timer'>
 							<RaceTime />
 						</div>
