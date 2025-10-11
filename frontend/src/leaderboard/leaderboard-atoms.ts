@@ -15,27 +15,20 @@ export const leaderboardPilotIdsAtom = atom((get): string[] => {
 	const lockedPositions = get(leaderboardLockedPositionsAtom);
 	if (lockedPositions.size === 0) return sorted;
 
-	// Separate pilots with locked positions from those without
-	const locked: string[] = [];
-	const unlocked: string[] = [];
-
-	sorted.forEach((id) => {
-		if (lockedPositions.has(id)) {
-			locked.push(id);
-		} else {
-			unlocked.push(id);
+	// Create a map of computed positions for unlocked pilots
+	const computedPositions = new Map<string, number>();
+	sorted.forEach((id, idx) => {
+		if (!lockedPositions.has(id)) {
+			computedPositions.set(id, idx + 1);
 		}
 	});
 
-	// Sort locked pilots by their locked position
-	locked.sort((a, b) => {
-		const posA = lockedPositions.get(a) ?? 0;
-		const posB = lockedPositions.get(b) ?? 0;
+	// Sort all pilots by their effective position (locked or computed)
+	return ids.sort((a, b) => {
+		const posA = lockedPositions.get(a) ?? computedPositions.get(a) ?? 9999;
+		const posB = lockedPositions.get(b) ?? computedPositions.get(b) ?? 9999;
 		return posA - posB;
 	});
-
-	// Return locked pilots first, then unlocked pilots
-	return [...locked, ...unlocked];
 });
 
 export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
