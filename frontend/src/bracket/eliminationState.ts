@@ -233,7 +233,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 					isEliminated: false,
 				});
 			}
-			const raceLabel = race.raceNumber != null ? `Race ${race.raceNumber}` : definition.name;
+			const raceLabel = definition.name;
 			const headline = raceLabel;
 			const subline = definition.code;
 			return {

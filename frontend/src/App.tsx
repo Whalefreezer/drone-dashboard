@@ -192,7 +192,7 @@ function App() {
 					<SubscriptionStatusIndicator />
 				</div>
 			)}
-			{isMobile && (
+			{isMobile && activePane === 'leaderboard' && (
 				<div className='app-legend'>
 					<Legend />
 				</div>
