@@ -45,6 +45,10 @@ export function EliminationDiagram() {
 
 	const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (event.button !== 0) return;
+		// Don't capture pointer if clicking on buttons
+		if (event.target instanceof HTMLElement && event.target.tagName === 'BUTTON') {
+			return;
+		}
 		const container = containerRef.current;
 		if (!container) return;
 		container.setPointerCapture(event.pointerId);
