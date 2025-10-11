@@ -58,8 +58,8 @@ export function EliminationDiagram() {
 		const nodeY = targetNode.definition.position.y;
 		const scale = 1.0;
 
-		// Position so the node appears centered (accounting for node width/height)
-		const x = -(nodeX * scale) + 200;
+		// Position so the node appears centered, biased slightly to the right
+		const x = -(nodeX * scale) + 100;
 		const y = -(nodeY * scale) + 200;
 
 		return { scale, x, y };
