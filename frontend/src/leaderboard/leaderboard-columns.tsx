@@ -38,7 +38,8 @@ function PositionCell({ item: { pilotId } }: { item: LeaderboardRowProps }) {
 
 	const positionChanges = useAtomValue(positionChangesAtom);
 	const prevPos = positionChanges.get(pilotId);
-	const showChange = prevPos && prevPos !== displayPosition;
+	// Don't show position changes for locked positions (they're final rankings)
+	const showChange = prevPos && prevPos !== displayPosition && !lockedPosition;
 	const change = showChange ? prevPos - displayPosition : 0;
 
 	return (
