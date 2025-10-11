@@ -43,7 +43,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 0),
 		advanceTo: 9,
-		dropTo: 13,
 	},
 	{
 		order: 2,
@@ -55,7 +54,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 4),
 		advanceTo: 9,
-		dropTo: 13,
 	},
 	{
 		order: 3,
@@ -67,7 +65,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 8),
 		advanceTo: 10,
-		dropTo: 14,
 	},
 	{
 		order: 4,
@@ -79,7 +76,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 12),
 		advanceTo: 10,
-		dropTo: 14,
 	},
 	{
 		order: 5,
@@ -91,7 +87,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 16),
 		advanceTo: 11,
-		dropTo: 15,
 	},
 	{
 		order: 6,
@@ -103,7 +98,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 20),
 		advanceTo: 11,
-		dropTo: 15,
 	},
 	{
 		order: 7,
@@ -115,7 +109,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 24),
 		advanceTo: 12,
-		dropTo: 16,
 	},
 	{
 		order: 8,
@@ -127,7 +120,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Initial heat — winners bracket',
 		position: pos(0, 28),
 		advanceTo: 12,
-		dropTo: 16,
 	},
 	{
 		order: 9,
@@ -139,7 +131,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 2),
 		advanceTo: 23,
-		dropTo: 17,
 	},
 	{
 		order: 10,
@@ -151,7 +142,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 10),
 		advanceTo: 23,
-		dropTo: 18,
 	},
 	{
 		order: 11,
@@ -163,7 +153,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 18),
 		advanceTo: 24,
-		dropTo: 19,
 	},
 	{
 		order: 12,
@@ -175,7 +164,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners bracket — quarterfinal',
 		position: pos(1, 26),
 		advanceTo: 24,
-		dropTo: 20,
 	},
 	{
 		order: 13,
@@ -297,7 +285,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners semifinal',
 		position: pos(2, 6),
 		advanceTo: 28,
-		dropTo: 25,
 	},
 	{
 		order: 24,
@@ -309,7 +296,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		description: 'Winners semifinal',
 		position: pos(2, 20),
 		advanceTo: 28,
-		dropTo: 26,
 	},
 	{
 		order: 25,
@@ -353,7 +339,6 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		stage: 'winners',
 		description: 'Winners bracket final — podium lock-in',
 		position: pos(4, 14),
-		dropTo: 29,
 	},
 	{
 		order: 29,
