@@ -10,7 +10,7 @@
 	);
 	color: #f1f5f9;
 	overflow: hidden;
-	touch-action: pan-x pan-y;
+	touch-action: none;
 }
 
 .elim-diagram-toolbar {

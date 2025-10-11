@@ -68,6 +68,14 @@ export function EliminationDiagram() {
 	const [viewport, setViewport] = useState<ViewportState>(getInitialViewport);
 	const [isDragging, setIsDragging] = useState(false);
 	const [isAtDefault, setIsAtDefault] = useState(true);
+	const [pinchState, setPinchState] = useState<
+		{
+			initialDistance: number;
+			initialScale: number;
+			centerX: number;
+			centerY: number;
+		} | null
+	>(null);
 
 	// Track if viewport is at default position
 	const checkIfAtDefault = (vp: ViewportState): boolean => {
@@ -158,6 +166,59 @@ export function EliminationDiagram() {
 		setIsAtDefault(true);
 	};
 
+	const getTouchDistance = (touches: React.TouchList): number => {
+		const dx = touches[0].clientX - touches[1].clientX;
+		const dy = touches[0].clientY - touches[1].clientY;
+		return Math.sqrt(dx * dx + dy * dy);
+	};
+
+	const getTouchCenter = (touches: React.TouchList): { x: number; y: number } => {
+		return {
+			x: (touches[0].clientX + touches[1].clientX) / 2,
+			y: (touches[0].clientY + touches[1].clientY) / 2,
+		};
+	};
+
+	const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+		if (event.touches.length === 2) {
+			event.preventDefault();
+			const distance = getTouchDistance(event.touches);
+			const center = getTouchCenter(event.touches);
+			setPinchState({
+				initialDistance: distance,
+				initialScale: viewport.scale,
+				centerX: center.x,
+				centerY: center.y,
+			});
+			setIsAtDefault(false);
+		}
+	};
+
+	const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+		if (event.touches.length === 2 && pinchState) {
+			event.preventDefault();
+			const container = containerRef.current;
+			if (!container) return;
+			const rect = container.getBoundingClientRect();
+			const distance = getTouchDistance(event.touches);
+			const scaleFactor = distance / pinchState.initialDistance;
+			const newScale = clamp(pinchState.initialScale * scaleFactor, MIN_SCALE, MAX_SCALE);
+			const offsetX = (pinchState.centerX - rect.left - viewport.x) / viewport.scale;
+			const offsetY = (pinchState.centerY - rect.top - viewport.y) / viewport.scale;
+			const newX = pinchState.centerX - rect.left - offsetX * newScale;
+			const newY = pinchState.centerY - rect.top - offsetY * newScale;
+			const newViewport = { scale: newScale, x: newX, y: newY };
+			setViewport(newViewport);
+			setIsAtDefault(checkIfAtDefault(newViewport));
+		}
+	};
+
+	const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+		if (event.touches.length < 2) {
+			setPinchState(null);
+		}
+	};
+
 	const stageTransform = {
 		transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`,
 		transformOrigin: '0 0',
@@ -188,6 +249,9 @@ export function EliminationDiagram() {
 			onPointerUp={handlePointerUp}
 			onPointerCancel={handlePointerUp}
 			onWheel={handleWheel}
+			onTouchStart={handleTouchStart}
+			onTouchMove={handleTouchMove}
+			onTouchEnd={handleTouchEnd}
 			role='presentation'
 		>
 			<div className='elim-diagram-toolbar'>
