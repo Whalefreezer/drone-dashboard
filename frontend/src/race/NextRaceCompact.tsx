@@ -4,24 +4,32 @@ import { ChannelSquare } from '../common/ChannelSquare.tsx';
 import './NextRaceCompact.css';
 import { raceBracketSlotsAtom } from '../bracket/eliminationState.ts';
 import { raceDataAtom, racePilotChannelsAtom } from './race-atoms.ts';
+import type { NextRaceEntry } from './next-race-entries.ts';
 
 interface NextRaceCompactProps {
-	raceId: string;
+	entry: NextRaceEntry;
 }
 
-export function NextRaceCompact({ raceId }: NextRaceCompactProps) {
-	const race = useAtomValue(raceDataAtom(raceId));
+export function NextRaceCompact({ entry }: NextRaceCompactProps) {
+	const { raceId, race: entryRace, definition, isPredicted } = entry;
+	const raceData = useAtomValue(raceDataAtom(raceId));
+	const race = raceData ?? entryRace;
 	const pilots = useAtomValue(pilotsAtom);
 	const channels = useAtomValue(channelsDataAtom);
 	const rounds = useAtomValue(roundsDataAtom);
 	const pilotChannels = useAtomValue(racePilotChannelsAtom(raceId));
 	const bracketSlots = useAtomValue(raceBracketSlotsAtom(raceId));
 
-	if (!race) return null;
+	const round = race ? rounds.find((r) => r.id === race.round) : definition ? rounds.find((r) => r.id === definition.roundId) : null;
+	const title = race
+		? (
+			round?.name ? `${round.name} — Race ${race.raceNumber}` : `Round ${round?.roundNumber ?? '?'} — Race ${race.raceNumber}`
+		)
+		: definition
+		? `${definition.roundLabel} — ${definition.name}`
+		: 'Upcoming Race';
 
-	const round = rounds.find((r) => r.id === race.round);
-	const title = round?.name ? `${round.name} — Race ${race.raceNumber}` : `Round ${round?.roundNumber ?? '?'} — Race ${race.raceNumber}`;
-	const filteredBracketSlots = bracketSlots.filter((slot) => slot.pilotId != null);
+	const filteredBracketSlots = bracketSlots.filter((slot) => slot.pilotId != null || slot.isPredicted);
 	const usingBracketSlots = filteredBracketSlots.length > 0;
 
 	const fallbackSlots = pilotChannels.map((pc) => {
@@ -51,10 +59,19 @@ export function NextRaceCompact({ raceId }: NextRaceCompactProps) {
 			channelId: slot.channelId,
 			isPredicted: slot.isPredicted,
 		}))
-		: fallbackSlots;
+		: (fallbackSlots.length > 0 ? fallbackSlots : bracketSlots.map((slot) => ({
+			id: slot.id,
+			name: slot.name,
+			channelLabel: slot.channelLabel || '—',
+			channelId: slot.channelId,
+			isPredicted: slot.isPredicted,
+		})));
 
 	return (
-		<div className='next-race-card next-race-card--dense'>
+		<div
+			className='next-race-card next-race-card--dense'
+			data-predicted-race={isPredicted ? 'true' : 'false'}
+		>
 			<div className='next-race-header'>
 				<div className='next-race-title'>{title}</div>
 			</div>

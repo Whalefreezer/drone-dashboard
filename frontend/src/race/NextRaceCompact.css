@@ -6,6 +6,11 @@
 	margin-bottom: 10px;
 }
 
+.next-race-card[data-predicted-race='true'] {
+	border-style: dashed;
+	opacity: 0.9;
+}
+
 .next-race-card--dense {
 	padding: 6px 8px;
 	margin-bottom: 6px;

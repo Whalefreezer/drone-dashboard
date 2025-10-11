@@ -68,6 +68,17 @@
 	background-color: var(--table-bg-hover);
 }
 
+.laps-table .gt-row.predicted-row {
+	background: rgba(148, 163, 184, 0.18);
+	font-style: italic;
+	color: rgba(226, 232, 240, 0.9);
+}
+
+.laps-table .gt-row.predicted-row [data-col='pos'],
+.laps-table .gt-row.predicted-row [data-col='name'] {
+	background-color: var(--row-bg, rgba(148, 163, 184, 0.18));
+}
+
 .gt-cell {
 	border: 1px solid black;
 	padding: 4px;

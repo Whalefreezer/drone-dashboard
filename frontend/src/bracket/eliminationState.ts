@@ -364,7 +364,9 @@ export function applyPredictedAssignments(
 export const raceBracketSlotsAtom = atomFamily((raceId: string) =>
 	atom((get): BracketNodeSlot[] => {
 		const diagram = get(bracketDiagramAtom);
-		const node = diagram.nodes.find((n) => n.race?.id === raceId);
+		const node = diagram.nodes.find((n) => n.race?.id === raceId) ??
+			diagram.nodes.find((n) => `predicted-race-${n.definition.order}` === raceId) ??
+			null;
 		return node?.slots ?? [];
 	})
 );

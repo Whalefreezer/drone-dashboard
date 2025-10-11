@@ -17,6 +17,7 @@ import { OverflowFadeCell } from '../common/OverflowFadeCell.tsx';
 import { EventType } from '../api/pbTypes.ts';
 import { buildStreamLinkForTimestamp } from '../stream/stream-utils.ts';
 import { parseTimestampMs } from '../common/time.ts';
+import { raceBracketSlotsAtom } from '../bracket/eliminationState.ts';
 
 const POSITION_POINTS: Record<number, number> = {};
 
@@ -92,6 +93,9 @@ type LapsRow = {
 	raceId: string;
 	pilotChannel: { id: string; pilotId: string; channelId: string };
 	position: number;
+	isPredicted?: boolean;
+	displayName?: string;
+	channelLabel?: string;
 };
 
 type LapsCellProps = { item: LapsRow };
@@ -125,9 +129,16 @@ function PositionCell({ item }: LapsCellProps) {
 function PilotNameCell({ item }: LapsCellProps) {
 	const pilots = useAtomValue(pilotsAtom);
 	const pilot = pilots.find((p) => p.id === item.pilotChannel.pilotId);
-	if (!pilot) return <OverflowFadeCell title='-'>-</OverflowFadeCell>;
+	const name = pilot?.name ?? item.displayName ?? '—';
+	if (!pilot) {
+		return (
+			<OverflowFadeCell title={name}>
+				{name}
+			</OverflowFadeCell>
+		);
+	}
 	return (
-		<OverflowFadeCell title={pilot.name}>
+		<OverflowFadeCell title={name}>
 			{/* @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444 */}
 			<Link
 				to='/pilots/$pilotId'
@@ -135,7 +146,7 @@ function PilotNameCell({ item }: LapsCellProps) {
 				params={{ pilotId: pilot.sourceId }}
 				className='leaderboard-pilot-link'
 			>
-				{pilot.name}
+				{name}
 			</Link>
 		</OverflowFadeCell>
 	);
@@ -144,12 +155,12 @@ function PilotNameCell({ item }: LapsCellProps) {
 function ChannelCell({ item }: LapsCellProps) {
 	const channels = useAtomValue(channelsDataAtom);
 	const channel = channels.find((c) => c.id === item.pilotChannel.channelId);
+	const label = channel ? `${channel.shortBand ?? ''}${channel.number ?? ''}` : item.channelLabel ?? '—';
 	return (
 		<div>
 			<div className='flex-row'>
-				{channel?.shortBand}
-				{channel?.number}
-				<ChannelSquare channelID={item.pilotChannel.channelId} />
+				{label}
+				{item.pilotChannel.channelId ? <ChannelSquare channelID={item.pilotChannel.channelId} /> : null}
 			</div>
 		</div>
 	);
@@ -248,13 +259,44 @@ function useLapsTableColumns(
 function LapsTable(
 	{ race }: { race: PBRaceRecord },
 ) {
-	const rows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
+	const baseRows: LapsRow[] = useAtomValue(raceSortedRowsAtom(race.id));
 	const maxLaps = useAtomValue(raceMaxLapNumberAtom(race.id));
 	const favoritePilotIdsSet = useAtomValue(favoritePilotIdsSetAtom);
+	const bracketSlots = useAtomValue(raceBracketSlotsAtom(race.id));
+
+	const existingPilotIds = new Set(
+		baseRows
+			.map((row) => row.pilotChannel.pilotId)
+			.filter((pilotId): pilotId is string => pilotId != null),
+	);
+	const predictedRows: LapsRow[] = bracketSlots
+		.filter((slot) => slot.isPredicted && slot.pilotId && !existingPilotIds.has(slot.pilotId))
+		.map((slot, idx) => ({
+			raceId: race.id,
+			pilotChannel: {
+				id: slot.id,
+				pilotId: slot.pilotId ?? `predicted-${slot.id}`,
+				channelId: slot.channelId ?? '',
+			},
+			position: baseRows.length + idx + 1,
+			isPredicted: true,
+			displayName: slot.name,
+			channelLabel: slot.channelLabel || '—',
+		}));
+	const rows: LapsRow[] = [
+		...baseRows.map((row) => ({
+			...row,
+			isPredicted: false,
+		})),
+		...predictedRows,
+	];
 
 	const { columns, ctx } = useLapsTableColumns(race.id, maxLaps);
 
 	const getRowClassName = (row: LapsRow) => {
+		if (row.isPredicted) {
+			return 'predicted-row';
+		}
 		if (favoritePilotIdsSet.has(row.pilotChannel.pilotId)) {
 			return 'favorite-row';
 		}
