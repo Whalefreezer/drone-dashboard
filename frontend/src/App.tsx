@@ -5,7 +5,7 @@ import { Legend, TimeDisplay, ViewSelector } from './common/index.ts';
 import { RacesContainer } from './race/index.ts';
 import { useIdleCursor } from './common/useIdleCursor.ts';
 import { Leaderboard } from './leaderboard/Leaderboard.tsx';
-import { EliminationDiagram } from './bracket/index.ts';
+import { BracketView } from './bracket/index.ts';
 import { GenericSuspense } from './common/GenericSuspense.tsx';
 import { useAtom, useAtomValue } from 'jotai';
 import useBreakpoint from './responsive/useBreakpoint.ts';
@@ -158,7 +158,7 @@ function App() {
 							)}
 							{bracketEnabled && activePane === 'brackets' && (
 								<GenericSuspense id='brackets'>
-									<EliminationDiagram />
+									<BracketView />
 								</GenericSuspense>
 							)}
 						</>
@@ -203,7 +203,7 @@ function App() {
 									: (bracketEnabled
 										? (
 											<GenericSuspense id='brackets'>
-												<EliminationDiagram />
+												<BracketView />
 											</GenericSuspense>
 										)
 										: null)}

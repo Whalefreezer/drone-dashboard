@@ -5,6 +5,7 @@ import { currentRaceAtom, lastRaceAtom } from './race-atoms.ts';
 import { NextRaceCompact } from './NextRaceCompact.tsx';
 import { nextRaceEntriesAtom } from './next-race-entries.ts';
 import { RaceNumber } from './RaceNumber.tsx';
+import { FinalsRacePanel } from './FinalsRacePanel.tsx';
 
 export function RacesContainer() {
 	const currentRace = useAtomValue(currentRaceAtom);
@@ -16,6 +17,7 @@ export function RacesContainer() {
 
 	return (
 		<div className='races-container'>
+			<FinalsRacePanel />
 			{lastRace && (
 				<div className='race-box last-race'>
 					<div className='race-header'>

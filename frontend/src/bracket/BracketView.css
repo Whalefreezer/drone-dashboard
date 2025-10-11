@@ -1,0 +1,38 @@
+.bracket-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+}
+
+.bracket-view-finals {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	max-height: 50vh;
+	overflow-y: auto;
+	background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.8) 10%, rgba(0, 0, 0, 0.95) 100%);
+	backdrop-filter: blur(8px);
+	padding: 1rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	z-index: 10;
+}
+
+/* Make finals scrollable if needed */
+.bracket-view-finals::-webkit-scrollbar {
+	width: 8px;
+}
+
+.bracket-view-finals::-webkit-scrollbar-track {
+	background: rgba(0, 0, 0, 0.3);
+}
+
+.bracket-view-finals::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+}
+
+.bracket-view-finals::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.4);
+}
