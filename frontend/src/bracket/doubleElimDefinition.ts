@@ -185,7 +185,7 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		roundLabel: 'Round 3',
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
-		position: pos(0, 34),
+		position: pos(0, 32),
 		advanceTo: 17,
 	},
 	{
@@ -196,7 +196,7 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		roundLabel: 'Round 3',
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
-		position: pos(0, 38),
+		position: pos(0, 36),
 		advanceTo: 18,
 	},
 	{
@@ -207,7 +207,7 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		roundLabel: 'Round 3',
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
-		position: pos(0, 42),
+		position: pos(0, 40),
 		advanceTo: 19,
 	},
 	{
@@ -218,7 +218,7 @@ export const BRACKET_NODES: BracketNodeDefinition[] = [
 		roundLabel: 'Round 3',
 		stage: 'redemption',
 		description: 'Redemption entry — top three survive',
-		position: pos(0, 46),
+		position: pos(0, 44),
 		advanceTo: 20,
 	},
 	{
