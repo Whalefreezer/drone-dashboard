@@ -2,7 +2,7 @@ import { atom } from 'jotai';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import type { BracketNodeDefinition } from '../bracket/doubleElimDefinition.ts';
 import type { BracketDiagramViewModel } from '../bracket/eliminationState.ts';
-import { bracketDiagramAtom } from '../bracket/eliminationState.ts';
+import { bracketDiagramAtom, bracketEnabledAtom } from '../bracket/eliminationState.ts';
 import { currentOrderKVAtom } from '../state/pbAtoms.ts';
 import { nextRacesAtom } from './race-atoms.ts';
 
@@ -66,5 +66,13 @@ export const nextRaceEntriesAtom = atom((get): NextRaceEntry[] => {
 	const nextRaces = get(nextRacesAtom);
 	const diagram = get(bracketDiagramAtom);
 	const currentOrder = get(currentOrderKVAtom)?.order ?? 0;
+	if (!get(bracketEnabledAtom)) {
+		return nextRaces.slice(0, MAX_NEXT_RACES).map((race) => ({
+			raceId: race.id,
+			race,
+			definition: null,
+			isPredicted: false,
+		}));
+	}
 	return buildNextRaceEntries(nextRaces, diagram, currentOrder, MAX_NEXT_RACES);
 });

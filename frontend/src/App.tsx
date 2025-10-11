@@ -15,6 +15,7 @@ import { pbInvalidateAll } from './api/pb.ts';
 // @ts-ignore - TanStack Router type issue, see https://github.com/denoland/deno/issues/30444
 import { Link } from '@tanstack/react-router';
 import { LeaderboardAtomBridge } from './leaderboard/LeaderboardAtomBridge.tsx';
+import { bracketEnabledAtom } from './bracket/eliminationState.ts';
 
 type DebugWindow = Window & {
 	__APP_BOOTSTRAP_LOG?: (
@@ -86,16 +87,23 @@ function App() {
 	const { isMobile } = useBreakpoint();
 	const activePane = useAtomValue(activePaneAtom);
 	const [rightPaneView, setRightPaneView] = useAtom(rightPaneViewAtom);
+	const bracketEnabled = useAtomValue(bracketEnabledAtom);
 
 	// Prevent page scrolling on mobile when viewing brackets
 	useEffect(() => {
-		if (isMobile && activePane === 'brackets') {
+		if (isMobile && bracketEnabled && activePane === 'brackets') {
 			document.body.style.overflow = 'hidden';
 			return () => {
 				document.body.style.overflow = '';
 			};
 		}
-	}, [isMobile, activePane]);
+	}, [isMobile, activePane, bracketEnabled]);
+
+	useEffect(() => {
+		if (!bracketEnabled && rightPaneView === 'brackets') {
+			setRightPaneView('leaderboard');
+		}
+	}, [bracketEnabled, rightPaneView, setRightPaneView]);
 
 	return (
 		<div className='app-shell'>
@@ -148,7 +156,7 @@ function App() {
 									<RacesContainer />
 								</GenericSuspense>
 							)}
-							{activePane === 'brackets' && (
+							{bracketEnabled && activePane === 'brackets' && (
 								<GenericSuspense id='brackets'>
 									<EliminationDiagram />
 								</GenericSuspense>
@@ -166,33 +174,39 @@ function App() {
 								</div>
 							</div>
 							<div className='app-main-right'>
-								<div className='app-right-pane-toggle'>
-									<button
-										type='button'
-										className={rightPaneView === 'leaderboard' ? 'active' : ''}
-										onClick={() => setRightPaneView('leaderboard')}
-									>
-										Leaderboard
-									</button>
-									<button
-										type='button'
-										className={rightPaneView === 'brackets' ? 'active' : ''}
-										onClick={() => setRightPaneView('brackets')}
-									>
-										Brackets
-									</button>
-								</div>
+								{bracketEnabled && (
+									<div className='app-right-pane-toggle'>
+										<button
+											type='button'
+											className={rightPaneView === 'leaderboard' ? 'active' : ''}
+											onClick={() => setRightPaneView('leaderboard')}
+										>
+											Leaderboard
+										</button>
+										{bracketEnabled && (
+											<button
+												type='button'
+												className={rightPaneView === 'brackets' ? 'active' : ''}
+												onClick={() => setRightPaneView('brackets')}
+											>
+												Brackets
+											</button>
+										)}
+									</div>
+								)}
 								{rightPaneView === 'leaderboard'
 									? (
 										<GenericSuspense id='leaderboard'>
 											<Leaderboard />
 										</GenericSuspense>
 									)
-									: (
-										<GenericSuspense id='brackets'>
-											<EliminationDiagram />
-										</GenericSuspense>
-									)}
+									: (bracketEnabled
+										? (
+											<GenericSuspense id='brackets'>
+												<EliminationDiagram />
+											</GenericSuspense>
+										)
+										: null)}
 							</div>
 						</>
 					)}

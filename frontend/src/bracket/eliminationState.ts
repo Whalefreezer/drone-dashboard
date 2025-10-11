@@ -69,6 +69,11 @@ export interface BracketDiagramViewModel {
 	anchors: BracketAnchorConfig;
 }
 
+export const bracketEnabledAtom = atom((get): boolean => {
+	const config = get(bracketAnchorConfigAtom);
+	return config.record != null;
+});
+
 function parseAnchorConfig(
 	record: PBClientKVRecord | null,
 ): BracketAnchorConfig {
@@ -170,6 +175,7 @@ export function mapRacesToBracket(
 
 export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const config = get(bracketAnchorConfigAtom);
+	const isBracketEnabled = get(bracketEnabledAtom);
 	const races = get(racesAtom) as PBRaceRecord[];
 	const rounds = get(roundsDataAtom);
 	const pilots = get(pilotsAtom);
@@ -260,7 +266,9 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const nodeByOrder = new Map(
 		nodeViewModels.map((node) => [node.definition.order, node]),
 	);
-	applyPredictedAssignments(nodeByOrder);
+	if (isBracketEnabled) {
+		applyPredictedAssignments(nodeByOrder);
+	}
 	const edges: BracketEdgeViewModel[] = BRACKET_EDGES.map((edge) => {
 		const source = nodeByOrder.get(edge.from)!;
 		const target = nodeByOrder.get(edge.to)!;
@@ -363,6 +371,9 @@ export function applyPredictedAssignments(
 
 export const raceBracketSlotsAtom = atomFamily((raceId: string) =>
 	atom((get): BracketNodeSlot[] => {
+		if (!get(bracketEnabledAtom)) {
+			return [];
+		}
 		const diagram = get(bracketDiagramAtom);
 		const node = diagram.nodes.find((n) => n.race?.id === raceId) ??
 			diagram.nodes.find((n) => `predicted-race-${n.definition.order}` === raceId) ??
