@@ -32,6 +32,11 @@ export function EliminationDiagram() {
 			startY: number;
 			originX: number;
 			originY: number;
+			lastX: number;
+			lastY: number;
+			lastTime: number;
+			velocityX: number;
+			velocityY: number;
 		}
 	>({
 		id: null,
@@ -39,7 +44,13 @@ export function EliminationDiagram() {
 		startY: 0,
 		originX: 0,
 		originY: 0,
+		lastX: 0,
+		lastY: 0,
+		lastTime: 0,
+		velocityX: 0,
+		velocityY: 0,
 	});
+	const momentumAnimation = useRef<number | null>(null);
 
 	// Calculate initial viewport based on current race
 	const getInitialViewport = (): ViewportState => {
@@ -91,6 +102,15 @@ export function EliminationDiagram() {
 		}
 	}, [currentRace?.id, isAtDefault]);
 
+	// Cleanup momentum animation on unmount
+	useEffect(() => {
+		return () => {
+			if (momentumAnimation.current !== null) {
+				cancelAnimationFrame(momentumAnimation.current);
+			}
+		};
+	}, []);
+
 	const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (event.button !== 0) return;
 		// Don't capture pointer if clicking on buttons
@@ -99,13 +119,26 @@ export function EliminationDiagram() {
 		}
 		const container = containerRef.current;
 		if (!container) return;
+
+		// Cancel any ongoing momentum animation
+		if (momentumAnimation.current !== null) {
+			cancelAnimationFrame(momentumAnimation.current);
+			momentumAnimation.current = null;
+		}
+
 		container.setPointerCapture(event.pointerId);
+		const now = performance.now();
 		pointerState.current = {
 			id: event.pointerId,
 			startX: event.clientX,
 			startY: event.clientY,
 			originX: viewport.x,
 			originY: viewport.y,
+			lastX: event.clientX,
+			lastY: event.clientY,
+			lastTime: now,
+			velocityX: 0,
+			velocityY: 0,
 		};
 		setIsDragging(true);
 		setIsAtDefault(false);
@@ -113,6 +146,20 @@ export function EliminationDiagram() {
 
 	const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (!isDragging || pointerState.current.id !== event.pointerId) return;
+		const now = performance.now();
+		const dt = now - pointerState.current.lastTime;
+
+		if (dt > 0) {
+			const dx = event.clientX - pointerState.current.lastX;
+			const dy = event.clientY - pointerState.current.lastY;
+			pointerState.current.velocityX = dx / dt;
+			pointerState.current.velocityY = dy / dt;
+		}
+
+		pointerState.current.lastX = event.clientX;
+		pointerState.current.lastY = event.clientY;
+		pointerState.current.lastTime = now;
+
 		const deltaX = event.clientX - pointerState.current.startX;
 		const deltaY = event.clientY - pointerState.current.startY;
 		const newViewport = {
@@ -130,6 +177,16 @@ export function EliminationDiagram() {
 		if (container?.hasPointerCapture(event.pointerId)) {
 			container.releasePointerCapture(event.pointerId);
 		}
+
+		// Start momentum animation if velocity is significant
+		const velocityX = pointerState.current.velocityX;
+		const velocityY = pointerState.current.velocityY;
+		const speed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+
+		if (speed > 0.1) {
+			startMomentum(velocityX, velocityY);
+		}
+
 		pointerState.current.id = null;
 		setIsDragging(false);
 	};
@@ -138,6 +195,12 @@ export function EliminationDiagram() {
 		event.preventDefault();
 		const container = containerRef.current;
 		if (!container) return;
+
+		// Cancel any ongoing momentum
+		if (momentumAnimation.current !== null) {
+			cancelAnimationFrame(momentumAnimation.current);
+			momentumAnimation.current = null;
+		}
 
 		const rect = container.getBoundingClientRect();
 		const offsetX = (event.clientX - rect.left - viewport.x) / viewport.scale;
@@ -160,6 +223,12 @@ export function EliminationDiagram() {
 	};
 
 	const handleReset = () => {
+		// Cancel any ongoing momentum
+		if (momentumAnimation.current !== null) {
+			cancelAnimationFrame(momentumAnimation.current);
+			momentumAnimation.current = null;
+		}
+
 		const initialViewport = getInitialViewport();
 		pointerState.current = {
 			id: null,
@@ -167,10 +236,51 @@ export function EliminationDiagram() {
 			startY: 0,
 			originX: initialViewport.x,
 			originY: initialViewport.y,
+			lastX: 0,
+			lastY: 0,
+			lastTime: 0,
+			velocityX: 0,
+			velocityY: 0,
 		};
 		setIsDragging(false);
 		setViewport(initialViewport);
 		setIsAtDefault(true);
+	};
+
+	const startMomentum = (initialVelocityX: number, initialVelocityY: number) => {
+		let velocityX = initialVelocityX;
+		let velocityY = initialVelocityY;
+		const friction = 0.95; // Deceleration factor (iOS-like)
+		const minVelocity = 0.1; // Stop when velocity is very small
+
+		const animate = () => {
+			// Apply friction
+			velocityX *= friction;
+			velocityY *= friction;
+
+			// Check if we should stop
+			const speed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+			if (speed < minVelocity) {
+				momentumAnimation.current = null;
+				return;
+			}
+
+			// Update viewport position
+			setViewport((prev) => {
+				const newViewport = {
+					...prev,
+					x: prev.x + velocityX * 16, // Scale by ~16ms per frame
+					y: prev.y + velocityY * 16,
+				};
+				setIsAtDefault(checkIfAtDefault(newViewport));
+				return newViewport;
+			});
+
+			// Continue animation
+			momentumAnimation.current = requestAnimationFrame(animate);
+		};
+
+		momentumAnimation.current = requestAnimationFrame(animate);
 	};
 
 	const getTouchDistance = (touches: React.TouchList): number => {
@@ -189,6 +299,13 @@ export function EliminationDiagram() {
 	const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
 		if (event.touches.length === 2) {
 			event.preventDefault();
+
+			// Cancel any ongoing momentum
+			if (momentumAnimation.current !== null) {
+				cancelAnimationFrame(momentumAnimation.current);
+				momentumAnimation.current = null;
+			}
+
 			const distance = getTouchDistance(event.touches);
 			const center = getTouchCenter(event.touches);
 			setPinchState({
