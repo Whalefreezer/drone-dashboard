@@ -27,6 +27,20 @@ export const finalsStateAtom = atom((get): FinalsState => {
 	const races = get(racesAtom) as PBRaceRecord[];
 	const pilots = get(pilotsAtom);
 
+	// If bracket anchors are not configured, finals are not enabled
+	if (!config.record) {
+		return {
+			enabled: false,
+			finalists: [],
+			heats: [],
+			participants: [],
+			championId: null,
+			isComplete: false,
+			requiresMoreHeats: false,
+			message: null,
+		};
+	}
+
 	// Map bracket nodes to races
 	const mapping = mapRacesToBracket(races, config);
 
