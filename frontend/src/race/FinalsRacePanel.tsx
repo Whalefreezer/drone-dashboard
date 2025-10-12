@@ -44,7 +44,6 @@ export function FinalsRacePanel() {
 							<th>Pos</th>
 							<th>Pilot</th>
 							<th>Wins</th>
-							<th>Pts</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -59,7 +58,6 @@ export function FinalsRacePanel() {
 								</td>
 								<td className='pilot'>{participant.pilotName}</td>
 								<td className='wins'>{participant.wins}</td>
-								<td className='pts'>{participant.totalPoints}</td>
 							</tr>
 						))}
 					</tbody>

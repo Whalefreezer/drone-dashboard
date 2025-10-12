@@ -58,7 +58,6 @@ export function FinalsModule() {
 							<th className='col-position'>Pos</th>
 							<th className='col-pilot'>Pilot</th>
 							<th className='col-wins'>Wins</th>
-							<th className='col-points'>Points</th>
 							<th className='col-heats'>Heats</th>
 						</tr>
 					</thead>
@@ -75,7 +74,6 @@ export function FinalsModule() {
 								</td>
 								<td className='col-pilot'>{participant.pilotName}</td>
 								<td className='col-wins'>{participant.wins}</td>
-								<td className='col-points'>{participant.totalPoints}</td>
 								<td className='col-heats'>{participant.heatResults.length}</td>
 							</tr>
 						))}
@@ -113,7 +111,6 @@ export function FinalsModule() {
 													<li key={result.pilotId} className='heat-result'>
 														<span className='result-position'>{result.position}.</span>
 														<span className='result-pilot'>{result.pilotName}</span>
-														<span className='result-points'>{result.points}pts</span>
 													</li>
 												))}
 										</ul>
