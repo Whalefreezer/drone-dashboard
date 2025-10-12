@@ -11,9 +11,11 @@ export function BracketView() {
 	return (
 		<div className='bracket-view'>
 			<EliminationDiagram />
-			<div className='bracket-view-finals'>
+			{
+				/* <div className='bracket-view-finals'>
 				<FinalsModule />
-			</div>
+			</div> */
+			}
 		</div>
 	);
 }
