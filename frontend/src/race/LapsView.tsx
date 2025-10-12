@@ -2,7 +2,14 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { Link } from '@tanstack/react-router';
 import { channelsDataAtom, overallBestTimesAtom, pilotsAtom, roundsDataAtom } from '../state/index.ts';
-import { raceDataAtom, raceMaxLapNumberAtom, racePilotChannelsAtom, raceProcessedLapsAtom, raceSortedRowsAtom } from './race-atoms.ts';
+import {
+	raceDataAtom,
+	raceMaxLapNumberAtom,
+	racePilotChannelsAtom,
+	racePilotTotalTimeAtom,
+	raceProcessedLapsAtom,
+	raceSortedRowsAtom,
+} from './race-atoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 // Using PB-native race record + per-race atoms
@@ -152,6 +159,12 @@ function getLapCellComponent(lapNumber: number, isHoleshot: boolean): React.Comp
 	return LapCell;
 }
 
+function TotalTimeCell({ item }: LapsCellProps) {
+	const totalTime = useAtomValue(racePilotTotalTimeAtom([item.raceId, item.pilotChannel.pilotId]));
+	if (totalTime == null || item.isPredicted) return <div>-</div>;
+	return <div>{totalTime.toFixed(3)}</div>;
+}
+
 function useLapsTableColumns(
 	raceId: string,
 	maxLaps: number,
@@ -201,6 +214,15 @@ function useLapsTableColumns(
 				cell: getLapCellComponent(i, isHS),
 			});
 		}
+
+		// Total time column
+		cols.push({
+			key: 'total',
+			header: 'Total',
+			label: 'Total Race Time',
+			width: 72,
+			cell: TotalTimeCell,
+		});
 
 		return cols;
 	}, [hasHoleshot, maxLaps]);
