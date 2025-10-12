@@ -83,8 +83,10 @@ export function EliminationDiagram() {
 		{
 			initialDistance: number;
 			initialScale: number;
-			centerX: number;
-			centerY: number;
+			initialCenterX: number;
+			initialCenterY: number;
+			initialViewportX: number;
+			initialViewportY: number;
 		} | null
 	>(null);
 
@@ -311,8 +313,10 @@ export function EliminationDiagram() {
 			setPinchState({
 				initialDistance: distance,
 				initialScale: viewport.scale,
-				centerX: center.x,
-				centerY: center.y,
+				initialCenterX: center.x,
+				initialCenterY: center.y,
+				initialViewportX: viewport.x,
+				initialViewportY: viewport.y,
 			});
 			setIsAtDefault(false);
 		}
@@ -324,13 +328,25 @@ export function EliminationDiagram() {
 			const container = containerRef.current;
 			if (!container) return;
 			const rect = container.getBoundingClientRect();
+
+			// Calculate scale change
 			const distance = getTouchDistance(event.touches);
 			const scaleFactor = distance / pinchState.initialDistance;
 			const newScale = clamp(pinchState.initialScale * scaleFactor, MIN_SCALE, MAX_SCALE);
-			const offsetX = (pinchState.centerX - rect.left - viewport.x) / viewport.scale;
-			const offsetY = (pinchState.centerY - rect.top - viewport.y) / viewport.scale;
-			const newX = pinchState.centerX - rect.left - offsetX * newScale;
-			const newY = pinchState.centerY - rect.top - offsetY * newScale;
+
+			// Get current center point
+			const currentCenter = getTouchCenter(event.touches);
+
+			// Calculate the content point that was under the initial center
+			const contentX = (pinchState.initialCenterX - rect.left - pinchState.initialViewportX) /
+				pinchState.initialScale;
+			const contentY = (pinchState.initialCenterY - rect.top - pinchState.initialViewportY) /
+				pinchState.initialScale;
+
+			// Calculate where that content point should be with the new scale, centered on current touch center
+			const newX = currentCenter.x - rect.left - contentX * newScale;
+			const newY = currentCenter.y - rect.top - contentY * newScale;
+
 			const newViewport = { scale: newScale, x: newX, y: newY };
 			setViewport(newViewport);
 			setIsAtDefault(checkIfAtDefault(newViewport));
