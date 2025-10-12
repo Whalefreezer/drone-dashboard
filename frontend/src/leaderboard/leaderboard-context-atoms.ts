@@ -5,6 +5,7 @@ import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, n
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 import { withCompare } from '../state/jotai-utils.ts';
+import { bracketEnabledAtom, raceBracketSlotsAtom } from '../bracket/eliminationState.ts';
 
 // Race ID sets shared across leaderboard and metric selectors
 export const currentRaceIdsAtom = withCompare(atom((get): string[] => {
@@ -25,6 +26,7 @@ export interface PilotNextRaceInfo {
 	raceId: string | null;
 	raceSourceId: string | null;
 	raceIndex: number;
+	isPredicted: boolean;
 }
 
 export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
@@ -32,9 +34,12 @@ export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
 		const races = get(allRacesAtom);
 		const current = get(currentRaceAtom);
 		const currentIndex = current ? races.findIndex((r) => r.id === current.id) : -1;
+		const isBracketEnabled = get(bracketEnabledAtom);
+
 		if (currentIndex === -1) {
-			return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1 };
+			return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1, isPredicted: false };
 		}
+
 		const currentRace = races[currentIndex];
 		const currentAssignments = get(racePilotChannelsAtom(currentRace.id));
 		if (currentAssignments.some((pc) => pc.pilotId === pilotId)) {
@@ -43,23 +48,59 @@ export const pilotNextRaceInfoAtom = atomFamily((pilotId: string) =>
 				raceId: currentRace.id,
 				raceSourceId: (currentRace.sourceId ?? '').trim() || null,
 				raceIndex: currentIndex,
+				isPredicted: false,
 			};
 		}
+
 		let count = 0;
+		let firstActual: PilotNextRaceInfo | null = null;
+		let firstPredicted: PilotNextRaceInfo | null = null;
+
 		for (let idx = currentIndex + 1; idx < races.length; idx++) {
 			const race = races[idx];
 			const pilots = get(racePilotChannelsAtom(race.id));
-			if (pilots.some((pc) => pc.pilotId === pilotId)) {
-				return {
+
+			// Check actual assignments
+			if (!firstActual && pilots.some((pc) => pc.pilotId === pilotId)) {
+				firstActual = {
 					racesAway: count,
 					raceId: race.id,
 					raceSourceId: (race.sourceId ?? '').trim() || null,
 					raceIndex: idx,
+					isPredicted: false,
 				};
 			}
+
+			// Check bracket predictions if enabled and we haven't found a predicted match yet
+			if (isBracketEnabled && !firstPredicted) {
+				const bracketSlots = get(raceBracketSlotsAtom(race.id));
+				const predictedSlot = bracketSlots.find((slot) => slot.isPredicted && slot.pilotId === pilotId);
+				if (predictedSlot) {
+					firstPredicted = {
+						racesAway: count,
+						raceId: race.id,
+						raceSourceId: (race.sourceId ?? '').trim() || null,
+						raceIndex: idx,
+						isPredicted: true,
+					};
+				}
+			}
+
+			// If we have both actual and predicted, return the sooner one
+			if (firstActual && firstPredicted) {
+				return firstActual.racesAway <= firstPredicted.racesAway ? firstActual : firstPredicted;
+			}
+
 			count++;
 		}
-		return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1 };
+
+		// Return whichever we found, with actual taking priority if at same distance
+		if (firstActual && firstPredicted) {
+			return firstActual.racesAway <= firstPredicted.racesAway ? firstActual : firstPredicted;
+		}
+		if (firstActual) return firstActual;
+		if (firstPredicted) return firstPredicted;
+		return { racesAway: -1, raceId: null, raceSourceId: null, raceIndex: -1, isPredicted: false };
 	})
 );
 

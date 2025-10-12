@@ -6,9 +6,9 @@ import { Link } from '@tanstack/react-router';
 import { leaderboardPilotIdsStateAtom, positionChangesAtom } from './leaderboard-atoms.ts';
 import {
 	pilotEliminatedInfoAtom,
+	pilotNextRaceInfoAtom,
 	pilotNextRaceOverrideLabelAtom,
 	pilotPreferredChannelAtom,
-	pilotRacesUntilNextAtom,
 } from './leaderboard-context-atoms.ts';
 import { racesAtom, roundsDataAtom } from '../state/index.ts';
 import { leaderboardLockedPositionsAtom, pilotsAtom } from '../state/pbAtoms.ts';
@@ -145,7 +145,8 @@ function NextRaceCell(
 		isEliminated,
 		hasLockedPosition,
 		overrideLabel,
-	}: { racesUntilNext: number; isEliminated: boolean; hasLockedPosition: boolean; overrideLabel?: string | null },
+		isPredicted,
+	}: { racesUntilNext: number; isEliminated: boolean; hasLockedPosition: boolean; overrideLabel?: string | null; isPredicted?: boolean },
 ) {
 	let content: React.ReactNode;
 	// Racing and Staging have highest priority (never show overrides for these)
@@ -158,7 +159,7 @@ function NextRaceCell(
 	else if (racesUntilNext === -1 && (isEliminated || hasLockedPosition)) content = <span className='done-text'>Done</span>;
 	else if (racesUntilNext === -1) content = '-';
 	// Show numeric count for upcoming races
-	else content = `${racesUntilNext}`;
+	else content = isPredicted ? <span style={{ fontStyle: 'italic' }}>{racesUntilNext}?</span> : `${racesUntilNext}`;
 	return <div>{content}</div>;
 }
 
@@ -259,7 +260,7 @@ export function getLeaderboardColumns(
 			width: 96,
 			cell: function NextRaceStatusCellInline({ item }) {
 				const { pilotId } = item;
-				const racesUntilNext = useAtomValue(pilotRacesUntilNextAtom(pilotId));
+				const nextRaceInfo = useAtomValue(pilotNextRaceInfoAtom(pilotId));
 				const overrideLabel = useAtomValue(pilotNextRaceOverrideLabelAtom(pilotId));
 				const elimInfo = useAtomValue(pilotEliminatedInfoAtom(pilotId));
 				const isEliminated = !!elimInfo;
@@ -267,10 +268,11 @@ export function getLeaderboardColumns(
 				const hasLockedPosition = lockedPositions.has(pilotId);
 				return (
 					<NextRaceCell
-						racesUntilNext={racesUntilNext}
+						racesUntilNext={nextRaceInfo.racesAway}
 						isEliminated={isEliminated}
 						hasLockedPosition={hasLockedPosition}
 						overrideLabel={overrideLabel}
+						isPredicted={nextRaceInfo.isPredicted}
 					/>
 				);
 			},
