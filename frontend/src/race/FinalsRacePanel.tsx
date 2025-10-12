@@ -65,12 +65,6 @@ export function FinalsRacePanel() {
 					</tbody>
 				</table>
 			</div>
-
-			{finals.championId && (
-				<div className='finals-race-champion'>
-					{finals.participants.find((p) => p.isChampion)?.pilotName} is the champion!
-				</div>
-			)}
 		</div>
 	);
 }
