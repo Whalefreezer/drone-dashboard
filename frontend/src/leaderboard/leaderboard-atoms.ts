@@ -24,10 +24,21 @@ export const leaderboardPilotIdsAtom = atom((get): string[] => {
 	});
 
 	// Sort all pilots by their effective position (locked or computed)
+	// When positions are tied, non-locked pilots rank above locked pilots
 	return ids.sort((a, b) => {
 		const posA = lockedPositions.get(a) ?? computedPositions.get(a) ?? 9999;
 		const posB = lockedPositions.get(b) ?? computedPositions.get(b) ?? 9999;
-		return posA - posB;
+
+		// Primary sort by position
+		if (posA !== posB) return posA - posB;
+
+		// Secondary sort: non-locked before locked (when positions are equal)
+		const aIsLocked = lockedPositions.has(a);
+		const bIsLocked = lockedPositions.has(b);
+		if (aIsLocked && !bIsLocked) return 1; // a locked, b not locked -> b comes first
+		if (!aIsLocked && bIsLocked) return -1; // a not locked, b locked -> a comes first
+
+		return 0;
 	});
 });
 
