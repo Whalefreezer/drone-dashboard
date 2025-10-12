@@ -14,7 +14,7 @@ interface ViewportState {
 	y: number;
 }
 
-const MIN_SCALE = 0.5;
+const MIN_SCALE = 0.1;
 const MAX_SCALE = 1.6;
 
 function clamp(value: number, min: number, max: number): number {
@@ -138,12 +138,19 @@ export function EliminationDiagram() {
 		event.preventDefault();
 		const container = containerRef.current;
 		if (!container) return;
+
 		const rect = container.getBoundingClientRect();
 		const offsetX = (event.clientX - rect.left - viewport.x) / viewport.scale;
 		const offsetY = (event.clientY - rect.top - viewport.y) / viewport.scale;
-		const scaleDelta = event.deltaY > 0 ? 0.9 : 1.1;
+
+		// Calculate zoom based on deltaY magnitude
+		// Smaller deltas (touchpad) will zoom less, larger deltas (mouse wheel) will zoom more
+		const zoomIntensity = 0.002;
+		const delta = -event.deltaY * zoomIntensity;
+		const scaleFactor = Math.exp(delta);
+
 		setViewport((prev) => {
-			const newScale = clamp(prev.scale * scaleDelta, MIN_SCALE, MAX_SCALE);
+			const newScale = clamp(prev.scale * scaleFactor, MIN_SCALE, MAX_SCALE);
 			const newX = event.clientX - rect.left - offsetX * newScale;
 			const newY = event.clientY - rect.top - offsetY * newScale;
 			const newViewport = { scale: newScale, x: newX, y: newY };
