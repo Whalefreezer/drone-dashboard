@@ -335,7 +335,7 @@ export function applyPredictedAssignments(
 		const source = nodeByOrder.get(edge.from);
 		const target = nodeByOrder.get(edge.to);
 		if (!source || !target) continue;
-		if (source.status !== 'completed') continue;
+		if (source.status !== 'completed' && source.status !== 'active') continue;
 		const candidates = source.slots.filter((slot) => {
 			if (!slot.pilotId) return false;
 			return edge.type === 'advance' ? slot.isWinner : slot.isEliminated;
