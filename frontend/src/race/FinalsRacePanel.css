@@ -98,6 +98,17 @@
 	width: 50px;
 }
 
+.finals-race-standings .heat-col {
+	text-align: center;
+	width: 40px;
+}
+
+.finals-race-standings .heat-col[data-winner='true'] {
+	background: rgba(255, 215, 0, 0.2);
+	color: #ffd700;
+	font-weight: 700;
+}
+
 .finals-race-standings .pilot {
 	font-weight: 500;
 }

@@ -72,7 +72,7 @@ export function FinalsRacePanel() {
 								{finals.heats.map((heat) => {
 									const position = getParticipantPosition(participant, heat);
 									return (
-										<td key={heat.heatNumber} className='heat-col'>
+										<td key={heat.heatNumber} className='heat-col' data-winner={position === 1 ? 'true' : 'false'}>
 											{position ?? '-'}
 										</td>
 									);
