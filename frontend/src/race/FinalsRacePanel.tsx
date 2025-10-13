@@ -16,6 +16,12 @@ export function FinalsRacePanel() {
 	const activeHeat = finals.heats.find((h) => h.isActive);
 	const completedHeats = finals.heats.filter((h) => h.isCompleted).length;
 
+	// Get participant's position in a specific heat
+	const getParticipantPosition = (participant: typeof finals.participants[0], heat: typeof finals.heats[0]): number | null => {
+		const result = heat.results.find((r) => r.pilotId === participant.pilotId);
+		return result?.position ?? null;
+	};
+
 	return (
 		<div className='finals-race-panel'>
 			<div className='finals-race-header'>
@@ -44,6 +50,11 @@ export function FinalsRacePanel() {
 							<th>Pos</th>
 							<th>Pilot</th>
 							<th>Wins</th>
+							{finals.heats.map((heat) => (
+								<th key={heat.heatNumber} className='heat-col'>
+									H{heat.heatNumber}
+								</th>
+							))}
 						</tr>
 					</thead>
 					<tbody>
@@ -58,6 +69,14 @@ export function FinalsRacePanel() {
 								</td>
 								<td className='pilot'>{participant.pilotName}</td>
 								<td className='wins'>{participant.wins}</td>
+								{finals.heats.map((heat) => {
+									const position = getParticipantPosition(participant, heat);
+									return (
+										<td key={heat.heatNumber} className='heat-col'>
+											{position ?? '-'}
+										</td>
+									);
+								})}
 							</tr>
 						))}
 					</tbody>
