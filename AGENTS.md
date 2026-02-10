@@ -39,3 +39,7 @@ Quick Agent Rules
 ## Security & Configuration
 - Copy `.env.example` → `.env`. Frontend uses Vite `VITE_*` vars; backend accepts flags `-fpvtrackside-api` and `-port`. Do not commit secrets.
 
+## Documents
+- When asked to make a document, unless otherwise specified, make a .md document under the scratchapd/ directory
+- Assume documents under the scratchapd/ directory are out of date and do not represent the current state of the codebase
+- After every major feature, ensure the documents under docs/ are up to date
