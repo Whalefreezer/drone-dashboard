@@ -31,7 +31,7 @@ function createRace(
 }
 
 const emptyConfig: BracketAnchorConfig = {
-	bracketId: 'double-elim-6p-v1',
+	formatId: 'double-elim-6p-v1',
 	anchors: [],
 	record: null,
 };
@@ -47,7 +47,7 @@ Deno.test('mapRacesToBracket falls back to sequential ordering without anchors',
 Deno.test('buildAnchorPoints injects fallback anchor at order 1', () => {
 	const races = Array.from({ length: 5 }, (_, index) => createRace(index));
 	const points = buildAnchorPoints(races, {
-		bracketId: 'double-elim-6p-v1',
+		formatId: 'double-elim-6p-v1',
 		anchors: [{ bracketOrder: 10, raceOrder: 12 }],
 		record: null,
 	});
@@ -58,7 +58,7 @@ Deno.test('buildAnchorPoints injects fallback anchor at order 1', () => {
 Deno.test('mapRacesToBracket respects raceOrder anchor', () => {
 	const races = Array.from({ length: 35 }, (_, index) => createRace(index));
 	const config = {
-		bracketId: 'double-elim-6p-v1',
+		formatId: 'double-elim-6p-v1',
 		anchors: [
 			{ bracketOrder: 5, raceOrder: 12 },
 		],
@@ -74,7 +74,7 @@ Deno.test('mapRacesToBracket resolves sourceId anchors', () => {
 	const races = Array.from({ length: 50 }, (_, index) => createRace(index));
 	const target = races[20];
 	const config = {
-		bracketId: 'double-elim-6p-v1',
+		formatId: 'double-elim-6p-v1',
 		anchors: [
 			{ bracketOrder: 12, raceSourceId: target.sourceId },
 		],
@@ -88,7 +88,7 @@ Deno.test('mapRacesToBracket resolves sourceId anchors', () => {
 Deno.test('mapRacesToBracket ignores anchors that do not match races', () => {
 	const races = Array.from({ length: 30 }, (_, index) => createRace(index));
 	const config = {
-		bracketId: 'double-elim-6p-v1',
+		formatId: 'double-elim-6p-v1',
 		anchors: [{ bracketOrder: 4, raceSourceId: 'unknown' }],
 		record: null,
 	};

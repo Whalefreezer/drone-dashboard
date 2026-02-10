@@ -58,7 +58,7 @@ function createNode(
 	};
 }
 
-const emptyAnchors: BracketAnchorConfig = { bracketId: 'test', anchors: [], record: null };
+const emptyAnchors: BracketAnchorConfig = { formatId: 'double-elim-6p-v1', anchors: [], record: null };
 
 Deno.test('buildNextRaceEntries includes predicted nodes after real races', () => {
 	const upcomingRace = createRace(5);

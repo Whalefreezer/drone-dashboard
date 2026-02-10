@@ -2,9 +2,8 @@ import './EliminationDiagram.css';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { bracketDiagramAtom } from './eliminationState.ts';
+import { activeBracketFormatAtom, bracketDiagramAtom } from './eliminationState.ts';
 import type { BracketNodeViewModel } from './eliminationState.ts';
-import { DIAGRAM_DIMENSIONS } from './doubleElimDefinition.ts';
 import { currentRaceAtom } from '../race/race-atoms.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 
@@ -23,6 +22,7 @@ function clamp(value: number, min: number, max: number): number {
 
 export function EliminationDiagram() {
 	const diagram = useAtomValue(bracketDiagramAtom);
+	const activeFormat = useAtomValue(activeBracketFormatAtom);
 	const currentRace = useAtomValue(currentRaceAtom);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const pointerState = useRef<
@@ -370,15 +370,15 @@ export function EliminationDiagram() {
 			.map((edge) => {
 				const source = edge.source.definition.position;
 				const target = edge.target.definition.position;
-				const startX = source.x + DIAGRAM_DIMENSIONS.nodeWidth;
-				const startY = source.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
+				const startX = source.x + activeFormat.diagramDimensions.nodeWidth;
+				const startY = source.y + activeFormat.diagramDimensions.nodeHeight / 2;
 				const endX = target.x;
-				const endY = target.y + DIAGRAM_DIMENSIONS.nodeHeight / 2;
+				const endY = target.y + activeFormat.diagramDimensions.nodeHeight / 2;
 				const midX = startX + (endX - startX) * 0.5;
 				const path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
 				return { edge, d: path };
 			});
-	}, [diagram.edges]);
+	}, [diagram.edges, activeFormat.diagramDimensions.nodeHeight, activeFormat.diagramDimensions.nodeWidth]);
 
 	return (
 		<div
@@ -411,9 +411,9 @@ export function EliminationDiagram() {
 			<div className='elim-diagram-stage' style={stageTransform}>
 				<svg
 					className='elim-diagram-svg'
-					width={DIAGRAM_DIMENSIONS.width}
-					height={DIAGRAM_DIMENSIONS.height}
-					viewBox={`0 0 ${DIAGRAM_DIMENSIONS.width} ${DIAGRAM_DIMENSIONS.height}`}
+					width={activeFormat.diagramDimensions.width}
+					height={activeFormat.diagramDimensions.height}
+					viewBox={`0 0 ${activeFormat.diagramDimensions.width} ${activeFormat.diagramDimensions.height}`}
 					role='img'
 					aria-label='Double elimination bracket'
 				>
@@ -440,7 +440,7 @@ export function EliminationDiagram() {
 						))}
 					</g>
 					<g className='elim-nodes'>
-						{diagram.nodes.map((node) => renderNode(node, currentRace))}
+						{diagram.nodes.map((node) => renderNode(node, currentRace, activeFormat.diagramDimensions))}
 					</g>
 				</svg>
 			</div>
@@ -448,7 +448,11 @@ export function EliminationDiagram() {
 	);
 }
 
-function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null) {
+function renderNode(
+	node: BracketNodeViewModel,
+	currentRace: PBRaceRecord | null,
+	dimensions: { nodeWidth: number; nodeHeight: number },
+) {
 	const { definition } = node;
 	const isCurrentRace = currentRace && node.race?.id === currentRace.id;
 	return (
@@ -462,8 +466,8 @@ function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null
 				y={0}
 				rx={12}
 				ry={12}
-				width={DIAGRAM_DIMENSIONS.nodeWidth}
-				height={DIAGRAM_DIMENSIONS.nodeHeight}
+				width={dimensions.nodeWidth}
+				height={dimensions.nodeHeight}
 				className='elim-node-rect'
 				data-status={node.status}
 				data-current={isCurrentRace ? 'true' : 'false'}
@@ -472,8 +476,8 @@ function renderNode(node: BracketNodeViewModel, currentRace: PBRaceRecord | null
 			<foreignObject
 				x={0}
 				y={0}
-				width={DIAGRAM_DIMENSIONS.nodeWidth}
-				height={DIAGRAM_DIMENSIONS.nodeHeight}
+				width={dimensions.nodeWidth}
+				height={dimensions.nodeHeight}
 			>
 				<div className='elim-node-card' data-status={node.status}>
 					<header>

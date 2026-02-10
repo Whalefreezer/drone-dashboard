@@ -2,8 +2,7 @@ import { atom } from 'jotai';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { pilotsAtom, racesAtom } from '../state/pbAtoms.ts';
 import { raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
-import { bracketAnchorConfigAtom, mapRacesToBracket } from './eliminationState.ts';
-import { BRACKET_NODES } from './doubleElimDefinition.ts';
+import { activeBracketFormatAtom, bracketAnchorConfigAtom, mapRacesToBracket } from './eliminationState.ts';
 import type { FinalsFinalist, FinalsHeat, FinalsParticipant, FinalsState } from './finals-types.ts';
 import {
 	computeFinalsRankings,
@@ -24,6 +23,7 @@ const REDEMPTION_FINAL_ORDER = 29;
  */
 export const finalsStateAtom = atom((get): FinalsState => {
 	const config = get(bracketAnchorConfigAtom);
+	const format = get(activeBracketFormatAtom);
 	const races = get(racesAtom) as PBRaceRecord[];
 	const pilots = get(pilotsAtom);
 
@@ -41,8 +41,22 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
+	// Finals module currently supports only the original 29-race bracket.
+	if (format.id !== 'double-elim-6p-v1') {
+		return {
+			enabled: false,
+			finalists: [],
+			heats: [],
+			participants: [],
+			championId: null,
+			isComplete: false,
+			requiresMoreHeats: false,
+			message: null,
+		};
+	}
+
 	// Map bracket nodes to races
-	const mapping = mapRacesToBracket(races, config);
+	const mapping = mapRacesToBracket(races, config, format.nodes);
 
 	// Get the two final races that feed the finals pool
 	const winnersFinalRace = mapping.get(WINNERS_FINAL_ORDER);

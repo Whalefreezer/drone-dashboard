@@ -1,0 +1,336 @@
+{
+	"nodes": [
+		{
+			"order": 1,
+			"code": "R1-1",
+			"name": "Top 24 - Race 1",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 0 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 10 },
+				{ "positions": [3, 4], "destination": 7 }
+			]
+		},
+		{
+			"order": 2,
+			"code": "R1-2",
+			"name": "Top 24 - Race 2",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 360 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 11 },
+				{ "positions": [3, 4], "destination": 8 }
+			]
+		},
+		{
+			"order": 3,
+			"code": "R1-3",
+			"name": "Top 24 - Race 3",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 720 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 10 },
+				{ "positions": [3, 4], "destination": 7 }
+			]
+		},
+		{
+			"order": 4,
+			"code": "R1-4",
+			"name": "Top 24 - Race 4",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 1080 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 11 },
+				{ "positions": [3, 4], "destination": 8 }
+			]
+		},
+		{
+			"order": 5,
+			"code": "R1-5",
+			"name": "Top 24 - Race 5",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 1440 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 12 },
+				{ "positions": [3, 4], "destination": 9 }
+			]
+		},
+		{
+			"order": 6,
+			"code": "R1-6",
+			"name": "Top 24 - Race 6",
+			"roundId": "round1",
+			"roundLabel": "Round 1",
+			"stage": "winners",
+			"description": "Opening race",
+			"slotCount": 4,
+			"position": { "x": 0, "y": 1800 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 12 },
+				{ "positions": [3, 4], "destination": 9 }
+			]
+		},
+		{
+			"order": 7,
+			"code": "R2-7",
+			"name": "Losers - Race 7",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "redemption",
+			"description": "Losers entry",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 1440 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 13 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 8,
+			"code": "R2-8",
+			"name": "Losers - Race 8",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "redemption",
+			"description": "Losers entry",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 1800 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 14 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 9,
+			"code": "R2-9",
+			"name": "Losers - Race 9",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "redemption",
+			"description": "Losers entry",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 2160 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 15 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 10,
+			"code": "R2-10",
+			"name": "Top 12 - Race 10",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "winners",
+			"description": "Top 12 winners",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 0 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 16 },
+				{ "positions": [3, 4], "destination": 13 }
+			]
+		},
+		{
+			"order": 11,
+			"code": "R2-11",
+			"name": "Top 12 - Race 11",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "winners",
+			"description": "Top 12 winners",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 360 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 16 },
+				{ "positions": [3, 4], "destination": 14 }
+			]
+		},
+		{
+			"order": 12,
+			"code": "R2-12",
+			"name": "Top 12 - Race 12",
+			"roundId": "round2",
+			"roundLabel": "Round 2",
+			"stage": "winners",
+			"description": "Top 12 winners",
+			"slotCount": 4,
+			"position": { "x": 380, "y": 720 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 16 },
+				{ "positions": [3, 4], "destination": 15 }
+			]
+		},
+		{
+			"order": 13,
+			"code": "R3-13",
+			"name": "Losers - Race 13",
+			"roundId": "round3",
+			"roundLabel": "Round 3",
+			"stage": "redemption",
+			"description": "Losers continuation",
+			"slotCount": 4,
+			"position": { "x": 760, "y": 1440 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 17 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 14,
+			"code": "R3-14",
+			"name": "Losers - Race 14",
+			"roundId": "round3",
+			"roundLabel": "Round 3",
+			"stage": "redemption",
+			"description": "Losers continuation",
+			"slotCount": 4,
+			"position": { "x": 760, "y": 1800 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 17 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 15,
+			"code": "R3-15",
+			"name": "Losers - Race 15",
+			"roundId": "round3",
+			"roundLabel": "Round 3",
+			"stage": "redemption",
+			"description": "Losers continuation",
+			"slotCount": 4,
+			"position": { "x": 760, "y": 2160 },
+			"progressionRules": [
+				{ "positions": [1, 2], "destination": 17 },
+				{ "positions": [3, 4], "destination": "out" }
+			]
+		},
+		{
+			"order": 16,
+			"code": "R3-16",
+			"name": "Top 6 - Semi - Race 16",
+			"roundId": "round3",
+			"roundLabel": "Round 3",
+			"stage": "winners",
+			"description": "Top 6 semifinal",
+			"slotCount": 6,
+			"position": { "x": 760, "y": 360 },
+			"progressionRules": [
+				{ "positions": [1, 2, 3], "destination": 19 },
+				{ "positions": [4, 5, 6], "destination": 18 }
+			]
+		},
+		{
+			"order": 17,
+			"code": "R4-17",
+			"name": "Losers - Race 17",
+			"roundId": "round4",
+			"roundLabel": "Round 4",
+			"stage": "redemption",
+			"description": "Losers final",
+			"slotCount": 6,
+			"position": { "x": 1140, "y": 1440 },
+			"progressionRules": [
+				{ "positions": [1, 2, 3], "destination": 18 },
+				{ "positions": [4, 5, 6], "destination": "out" }
+			]
+		},
+		{
+			"order": 18,
+			"code": "R4-18",
+			"name": "Bottom 6 - Semi - Race 18",
+			"roundId": "round4",
+			"roundLabel": "Round 4",
+			"stage": "redemption",
+			"description": "Bottom 6 semifinal",
+			"slotCount": 6,
+			"position": { "x": 1140, "y": 900 },
+			"progressionRules": [
+				{ "positions": [1, 2, 3], "destination": 19 },
+				{ "positions": [4, 5, 6], "destination": "out" }
+			]
+		},
+		{
+			"order": 19,
+			"code": "R5-19",
+			"name": "Top 6 - Finalists - Race 19 (CTA)",
+			"roundId": "round5",
+			"roundLabel": "Round 5",
+			"stage": "winners",
+			"description": "Top 6 finalists",
+			"slotCount": 6,
+			"position": { "x": 1520, "y": 540 },
+			"progressionRules": [
+				{ "positions": [1], "destination": "final" },
+				{ "positions": [2], "destination": "final" },
+				{ "positions": [3], "destination": "final" },
+				{ "positions": [4], "destination": "final" },
+				{ "positions": [5], "destination": "final" },
+				{ "positions": [6], "destination": "final" }
+			]
+		}
+	],
+	"rounds": [
+		{ "id": "round1", "label": "Round 1", "nodeOrders": [1, 2, 3, 4, 5, 6] },
+		{ "id": "round2", "label": "Round 2", "nodeOrders": [10, 11, 12, 7, 8, 9] },
+		{ "id": "round3", "label": "Round 3", "nodeOrders": [16, 13, 14, 15] },
+		{ "id": "round4", "label": "Round 4", "nodeOrders": [17, 18] },
+		{ "id": "round5", "label": "Round 5", "nodeOrders": [19] }
+	],
+	"edges": [
+		{ "from": 1, "to": 10, "type": "advance" },
+		{ "from": 2, "to": 11, "type": "advance" },
+		{ "from": 3, "to": 10, "type": "advance" },
+		{ "from": 4, "to": 11, "type": "advance" },
+		{ "from": 5, "to": 12, "type": "advance" },
+		{ "from": 6, "to": 12, "type": "advance" },
+
+		{ "from": 1, "to": 7, "type": "drop" },
+		{ "from": 2, "to": 8, "type": "drop" },
+		{ "from": 3, "to": 7, "type": "drop" },
+		{ "from": 4, "to": 8, "type": "drop" },
+		{ "from": 5, "to": 9, "type": "drop" },
+		{ "from": 6, "to": 9, "type": "drop" },
+
+		{ "from": 7, "to": 13, "type": "advance" },
+		{ "from": 8, "to": 14, "type": "advance" },
+		{ "from": 9, "to": 15, "type": "advance" },
+
+		{ "from": 10, "to": 16, "type": "advance" },
+		{ "from": 11, "to": 16, "type": "advance" },
+		{ "from": 12, "to": 16, "type": "advance" },
+
+		{ "from": 10, "to": 13, "type": "drop" },
+		{ "from": 11, "to": 14, "type": "drop" },
+		{ "from": 12, "to": 15, "type": "drop" },
+
+		{ "from": 13, "to": 17, "type": "advance" },
+		{ "from": 14, "to": 17, "type": "advance" },
+		{ "from": 15, "to": 17, "type": "advance" },
+
+		{ "from": 16, "to": 19, "type": "advance" },
+		{ "from": 16, "to": 18, "type": "drop" },
+		{ "from": 17, "to": 18, "type": "advance" },
+		{ "from": 18, "to": 19, "type": "advance" }
+	]
+}

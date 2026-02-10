@@ -3,10 +3,8 @@ import { useAtomValue } from 'jotai';
 import { pb } from '../../api/pb.ts';
 import type { PBClientKVRecord, PBRaceRecord, PBRoundRecord } from '../../api/pbTypes.ts';
 import { racesAtom, roundsDataAtom } from '../../state/pbAtoms.ts';
-import { BRACKET_NODES } from '../../bracket/doubleElimDefinition.ts';
-import { mapRacesToBracket } from '../../bracket/eliminationState.ts';
-
-const BRACKET_ID = 'double-elim-6p-v1';
+import { BRACKET_KV_NAMESPACE, type BracketAnchor, ELIMINATION_CONFIG_KV_KEY, mapRacesToBracket } from '../../bracket/eliminationState.ts';
+import { DEFAULT_BRACKET_FORMAT_ID, getBracketFormatById, listBracketFormats } from '../../bracket/formats/registry.ts';
 
 interface AnchorDraft {
 	id: string;
@@ -18,6 +16,11 @@ interface AnchorDraft {
 interface BracketAnchorsSectionProps {
 	kvRecords: PBClientKVRecord[];
 	eventId: string | null;
+}
+
+interface ParsedConfig {
+	formatId: string;
+	anchors: BracketAnchor[];
 }
 
 const EMPTY_DRAFT: AnchorDraft = {
@@ -33,39 +36,59 @@ function createDraftId() {
 		: `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function parseDrafts(record: PBClientKVRecord | null): AnchorDraft[] {
-	if (!record?.value) return [];
+function parseConfig(record: PBClientKVRecord | null): ParsedConfig {
+	if (!record?.value) {
+		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
+	}
 	try {
 		const parsed = JSON.parse(record.value) as unknown;
-		if (!parsed || typeof parsed !== 'object') return [];
-		const anchors = (parsed as { anchors?: unknown }).anchors;
-		if (!Array.isArray(anchors)) return [];
-		return anchors.map((entry, index) => {
-			if (!entry || typeof entry !== 'object') return { ...EMPTY_DRAFT, id: `remote-${index}` };
+		if (!parsed || typeof parsed !== 'object') {
+			return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
+		}
+		const formatIdRaw = (parsed as { formatId?: unknown }).formatId;
+		const requestedFormatId = typeof formatIdRaw === 'string' && formatIdRaw.trim().length > 0 ? formatIdRaw : DEFAULT_BRACKET_FORMAT_ID;
+		const formatId = getBracketFormatById(requestedFormatId).id;
+		const anchorsRaw = (parsed as { anchors?: unknown }).anchors;
+		if (!Array.isArray(anchorsRaw)) {
+			return { formatId, anchors: [] };
+		}
+		const anchors: BracketAnchor[] = [];
+		for (const entry of anchorsRaw) {
+			if (!entry || typeof entry !== 'object') continue;
 			const bracketOrder = (entry as { bracketOrder?: unknown }).bracketOrder;
 			const raceOrder = (entry as { raceOrder?: unknown }).raceOrder;
 			const raceSourceId = (entry as { raceSourceId?: unknown }).raceSourceId;
-			return {
-				id: `remote-${index}`,
-				bracketOrder: typeof bracketOrder === 'number' ? String(bracketOrder) : '',
-				raceOrder: typeof raceOrder === 'number' ? String(raceOrder) : '',
-				raceSourceId: typeof raceSourceId === 'string' ? raceSourceId : '',
-			};
-		});
+			if (typeof bracketOrder !== 'number') continue;
+			anchors.push({
+				bracketOrder,
+				raceOrder: typeof raceOrder === 'number' ? raceOrder : undefined,
+				raceSourceId: typeof raceSourceId === 'string' ? raceSourceId : undefined,
+			});
+		}
+		return { formatId, anchors };
 	} catch {
-		return [];
+		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
 	}
 }
 
-function sanitizeDrafts(drafts: AnchorDraft[]) {
+function anchorsToDrafts(anchors: BracketAnchor[]): AnchorDraft[] {
+	return anchors.map((entry, index) => ({
+		id: `remote-${index}`,
+		bracketOrder: String(entry.bracketOrder),
+		raceOrder: entry.raceOrder != null ? String(entry.raceOrder) : '',
+		raceSourceId: entry.raceSourceId ?? '',
+	}));
+}
+
+function sanitizeDrafts(drafts: AnchorDraft[], maxOrder: number) {
 	const seen = new Set<number>();
-	const anchors: { bracketOrder: number; raceOrder?: number; raceSourceId?: string }[] = [];
+	const anchors: BracketAnchor[] = [];
 	const errors: string[] = [];
 	drafts.forEach((draft, index) => {
 		const row = index + 1;
 		const order = Number.parseInt(draft.bracketOrder, 10);
-		if (!Number.isInteger(order) || order < 1 || order > 29) {
-			errors.push(`Row ${row}: bracket order must be between 1 and 29.`);
+		if (!Number.isInteger(order) || order < 1 || order > maxOrder) {
+			errors.push(`Row ${row}: bracket order must be between 1 and ${maxOrder}.`);
 			return;
 		}
 		if (seen.has(order)) {
@@ -74,7 +97,7 @@ function sanitizeDrafts(drafts: AnchorDraft[]) {
 		}
 		const raceOrder = draft.raceOrder.trim();
 		const raceSourceId = draft.raceSourceId.trim();
-		const entry: { bracketOrder: number; raceOrder?: number; raceSourceId?: string } = {
+		const entry: BracketAnchor = {
 			bracketOrder: order,
 		};
 		if (raceOrder) {
@@ -98,7 +121,7 @@ function sanitizeDrafts(drafts: AnchorDraft[]) {
 	return { anchors, errors };
 }
 
-function canonicalize(anchors: { bracketOrder: number; raceOrder?: number; raceSourceId?: string }[]) {
+function canonicalize(anchors: BracketAnchor[]) {
 	return anchors
 		.slice()
 		.sort((a, b) => a.bracketOrder - b.bracketOrder)
@@ -120,40 +143,52 @@ function formatRaceLabel(race: PBRaceRecord | null, rounds: PBRoundRecord[]) {
 export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSectionProps) {
 	const races = useAtomValue(racesAtom) as PBRaceRecord[];
 	const rounds = useAtomValue(roundsDataAtom);
+	const formats = useMemo(() => listBracketFormats(), []);
 	const existingRecord = useMemo(() => {
 		if (!eventId) return null;
-		return kvRecords.find((record) => record.namespace === 'bracket' && record.key === 'doubleElimAnchors' && record.event === eventId) ??
-			null;
+		return kvRecords.find((record) =>
+			record.namespace === BRACKET_KV_NAMESPACE && record.key === ELIMINATION_CONFIG_KV_KEY && record.event === eventId
+		) ?? null;
 	}, [kvRecords, eventId]);
 
-	const remoteDrafts = useMemo(() => parseDrafts(existingRecord), [existingRecord]);
-	const [drafts, setDrafts] = useState<AnchorDraft[]>(remoteDrafts);
-	useEffect(() => {
-		setDrafts(remoteDrafts);
-	}, [remoteDrafts]);
+	const remoteConfig = useMemo(() => parseConfig(existingRecord), [existingRecord]);
+	const remoteDrafts = useMemo(() => anchorsToDrafts(remoteConfig.anchors), [remoteConfig.anchors]);
 
-	const { anchors: sanitizedAnchors, errors: draftErrors } = useMemo(() => sanitizeDrafts(drafts), [drafts]);
-	const remoteAnchors = useMemo(
-		() => sanitizeDrafts(remoteDrafts).anchors,
-		[remoteDrafts],
+	const [selectedFormatId, setSelectedFormatId] = useState<string>(remoteConfig.formatId);
+	const [drafts, setDrafts] = useState<AnchorDraft[]>(remoteDrafts);
+
+	useEffect(() => {
+		setSelectedFormatId(remoteConfig.formatId);
+		setDrafts(remoteDrafts);
+	}, [remoteConfig.formatId, remoteDrafts]);
+
+	const selectedFormat = useMemo(() => getBracketFormatById(selectedFormatId), [selectedFormatId]);
+	const maxOrder = useMemo(
+		() => Math.max(...selectedFormat.nodes.map((node) => node.order), 1),
+		[selectedFormat.nodes],
+	);
+
+	const { anchors: sanitizedAnchors, errors: draftErrors } = useMemo(
+		() => sanitizeDrafts(drafts, maxOrder),
+		[drafts, maxOrder],
 	);
 	const canonicalCurrent = useMemo(() => canonicalize(sanitizedAnchors), [sanitizedAnchors]);
-	const canonicalRemote = useMemo(() => canonicalize(remoteAnchors), [remoteAnchors]);
-	const isDirty = JSON.stringify(canonicalCurrent) !== JSON.stringify(canonicalRemote);
+	const canonicalRemote = useMemo(() => canonicalize(remoteConfig.anchors), [remoteConfig.anchors]);
+	const isDirty = selectedFormatId !== remoteConfig.formatId || JSON.stringify(canonicalCurrent) !== JSON.stringify(canonicalRemote);
 
 	const preview = useMemo(() => {
 		if (races.length === 0) return [] as Array<{ code: string; order: number; race: PBRaceRecord | null }>;
 		const mapping = mapRacesToBracket(races, {
-			bracketId: BRACKET_ID,
+			formatId: selectedFormatId,
 			anchors: sanitizedAnchors,
 			record: existingRecord,
-		});
-		return BRACKET_NODES.map((node) => ({
+		}, selectedFormat.nodes);
+		return selectedFormat.nodes.map((node) => ({
 			code: node.code,
 			order: node.order,
 			race: mapping.get(node.order) ?? null,
 		}));
-	}, [races, sanitizedAnchors, existingRecord]);
+	}, [races, selectedFormatId, sanitizedAnchors, existingRecord, selectedFormat.nodes]);
 
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
@@ -197,22 +232,21 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 		setOk(null);
 		try {
 			const payload = JSON.stringify({
-				bracket: BRACKET_ID,
+				formatId: selectedFormatId,
 				anchors: canonicalCurrent,
 			});
 			const col = pb.collection('client_kv');
 			if (existingRecord) {
-				if (canonicalCurrent.length === 0) await col.delete(existingRecord.id);
-				else await col.update(existingRecord.id, { value: payload });
-			} else if (canonicalCurrent.length > 0) {
+				await col.update(existingRecord.id, { value: payload });
+			} else {
 				await col.create({
-					namespace: 'bracket',
-					key: 'doubleElimAnchors',
+					namespace: BRACKET_KV_NAMESPACE,
+					key: ELIMINATION_CONFIG_KV_KEY,
 					value: payload,
 					event: eventId,
 				});
 			}
-			setOk('Saved anchors');
+			setOk('Saved elimination config');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Save failed');
 		} finally {
@@ -223,6 +257,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 	async function clearAnchors() {
 		if (!existingRecord) {
 			setDrafts([]);
+			setSelectedFormatId(DEFAULT_BRACKET_FORMAT_ID);
 			return;
 		}
 		setBusy(true);
@@ -231,6 +266,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 		try {
 			await pb.collection('client_kv').delete(existingRecord.id);
 			setDrafts([]);
+			setSelectedFormatId(DEFAULT_BRACKET_FORMAT_ID);
 			setOk('Cleared');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Clear failed');
@@ -241,8 +277,20 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 
 	return (
 		<div className='kv-bracket-anchors'>
-			<div className='muted'>namespace=bracket, key=doubleElimAnchors</div>
+			<div className='muted'>namespace={BRACKET_KV_NAMESPACE}, key={ELIMINATION_CONFIG_KV_KEY}</div>
 			{!eventId && <p className='muted' style={{ color: 'crimson' }}>Select an event to edit anchors.</p>}
+			<div className='kv-anchor-actions'>
+				<label>
+					Format
+					<select
+						value={selectedFormatId}
+						onChange={(event) => setSelectedFormatId(event.currentTarget.value)}
+						disabled={busy}
+					>
+						{formats.map((format) => <option key={format.id} value={format.id}>{format.label}</option>)}
+					</select>
+				</label>
+			</div>
 			<div className='kv-anchor-table-wrapper'>
 				<table className='kv-anchor-table'>
 					<thead>
@@ -266,7 +314,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 									<input
 										type='number'
 										min={1}
-										max={29}
+										max={maxOrder}
 										value={draft.bracketOrder}
 										onChange={(event) => updateDraft(draft.id, { bracketOrder: event.currentTarget.value })}
 									/>
@@ -316,7 +364,16 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			</div>
 			<div className='kv-anchor-actions'>
 				<button type='button' onClick={addDraft}>Add anchor</button>
-				<button type='button' onClick={() => setDrafts(remoteDrafts)} disabled={!isDirty || busy}>Reset</button>
+				<button
+					type='button'
+					onClick={() => {
+						setSelectedFormatId(remoteConfig.formatId);
+						setDrafts(remoteDrafts);
+					}}
+					disabled={!isDirty || busy}
+				>
+					Reset
+				</button>
 				<button type='button' onClick={clearAnchors} disabled={busy || (!existingRecord && drafts.length === 0)}>Clear</button>
 			</div>
 			<div className='kv-anchor-save'>
@@ -325,7 +382,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 					onClick={save}
 					disabled={busy || !eventId || draftErrors.length > 0 || !isDirty}
 				>
-					{busy ? 'Saving…' : 'Save anchors'}
+					{busy ? 'Saving…' : 'Save config'}
 				</button>
 				{err && <span style={{ color: 'crimson' }}>{err}</span>}
 				{!err && ok && <span className='muted'>{ok}</span>}
