@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
-import { pb } from '../../api/pb.ts';
 import { useAtomValue } from 'jotai';
 import {
 	currentEventAtom,
@@ -9,246 +7,52 @@ import {
 	gamePointRecordsAtom,
 	pilotChannelRecordsAtom,
 } from '../../state/pbAtoms.ts';
-
-type PurgeSummary = {
-	events: number;
-	rounds: number;
-	pilots: number;
-	channels: number;
-	tracks: number;
-	races: number;
-	pilotChannels: number;
-	detections: number;
-	laps: number;
-	gamePoints: number;
-	results: number;
-	ingestTargets: number;
-	currentOrders: number;
-	controlStats: number;
-};
+import { usePurgeCacheAction } from '../../admin/tools/usePurgeCacheAction.ts';
+import { useSyncEventPilotsAction } from '../../admin/tools/useSyncEventPilotsAction.ts';
+import { useUnusedPilotsAction } from '../../admin/tools/useUnusedPilotsAction.ts';
 
 function ToolsPage() {
-	const [purging, setPurging] = useState(false);
-	const [purgeResult, setPurgeResult] = useState<PurgeSummary | null>(null);
-	const [purgeError, setPurgeError] = useState<string | null>(null);
-
-	const [syncing, setSyncing] = useState(false);
-	const [syncResult, setSyncResult] = useState<{ added: number; pilotIds: string[] } | null>(null);
-	const [syncError, setSyncError] = useState<string | null>(null);
-	const [syncPreview, setSyncPreview] = useState<{ pilotIds: string[] } | null>(null);
-
-	const [findingUnused, setFindingUnused] = useState(false);
-	const [unusedPilots, setUnusedPilots] = useState<string[] | null>(null);
-	const [unusedError, setUnusedError] = useState<string | null>(null);
-	const [deletingUnused, setDeletingUnused] = useState(false);
-
 	const currentEvent = useAtomValue(currentEventAtom);
 	const eventPilots = useAtomValue(eventPilotsAtom);
 	const detections = useAtomValue(detectionRecordsAtom);
 	const gamePoints = useAtomValue(gamePointRecordsAtom);
 	const pilotChannels = useAtomValue(pilotChannelRecordsAtom);
 
-	async function handlePurge() {
-		if (!confirm('This will permanently delete all FPVTrackside cache data. Are you sure?')) {
-			return;
-		}
+	const {
+		purging,
+		purgeResult,
+		purgeError,
+		handlePurge,
+	} = usePurgeCacheAction();
 
-		setPurging(true);
-		setPurgeResult(null);
-		setPurgeError(null);
+	const {
+		syncing,
+		syncResult,
+		syncError,
+		syncPreview,
+		handlePreviewSync,
+		handleSyncPilots,
+	} = useSyncEventPilotsAction({
+		currentEvent,
+		eventPilots,
+		detections,
+		gamePoints,
+		pilotChannels,
+	});
 
-		try {
-			const response = await pb.send('/ingest/purge', {
-				method: 'POST',
-			});
-
-			setPurgeResult(response as PurgeSummary);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			setPurgeError(message);
-		} finally {
-			setPurging(false);
-		}
-	}
-
-	function handlePreviewSync() {
-		if (!currentEvent) {
-			setSyncError('No current event selected');
-			return;
-		}
-
-		setSyncError(null);
-		setSyncResult(null);
-
-		try {
-			// Collect all pilot IDs from client-side data
-			const pilotIds = new Set<string>();
-
-			// Add pilots from detections
-			detections.forEach((detection) => {
-				if (detection.pilot) pilotIds.add(detection.pilot);
-			});
-
-			// Add pilots from gamePoints
-			gamePoints.forEach((point) => {
-				if (point.pilot) pilotIds.add(point.pilot);
-			});
-
-			// Add pilots from pilotChannels
-			pilotChannels.forEach((pc) => {
-				if (pc.pilot) pilotIds.add(pc.pilot);
-			});
-
-			// Find which pilots are missing from event_pilots
-			const existingPilotIds = new Set(eventPilots.map((ep) => ep.pilot));
-			const missingPilotIds = Array.from(pilotIds).filter((id) => !existingPilotIds.has(id));
-
-			setSyncPreview({ pilotIds: missingPilotIds });
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			setSyncError(message);
-		}
-	}
-
-	async function handleSyncPilots() {
-		if (!currentEvent) {
-			setSyncError('No current event selected');
-			return;
-		}
-
-		if (!confirm('This will add any missing pilots from client-side data to event_pilots. Continue?')) {
-			return;
-		}
-
-		setSyncing(true);
-		setSyncResult(null);
-		setSyncError(null);
-		setSyncPreview(null);
-
-		try {
-			// Collect all pilot IDs from client-side data
-			const pilotIds = new Set<string>();
-
-			// Add pilots from detections
-			detections.forEach((detection) => {
-				if (detection.pilot) pilotIds.add(detection.pilot);
-			});
-
-			// Add pilots from gamePoints
-			gamePoints.forEach((point) => {
-				if (point.pilot) pilotIds.add(point.pilot);
-			});
-
-			// Add pilots from pilotChannels
-			pilotChannels.forEach((pc) => {
-				if (pc.pilot) pilotIds.add(pc.pilot);
-			});
-
-			// Find which pilots are missing from event_pilots
-			const existingPilotIds = new Set(eventPilots.map((ep) => ep.pilot));
-			const missingPilotIds = Array.from(pilotIds).filter((id) => !existingPilotIds.has(id));
-
-			// Create event_pilot records for missing pilots
-			let added = 0;
-			for (const pilotId of missingPilotIds) {
-				try {
-					await pb.collection('event_pilots').create({
-						event: currentEvent.id,
-						pilot: pilotId,
-						removed: false,
-					});
-					added++;
-				} catch (error) {
-					console.error(`Failed to add pilot ${pilotId}:`, error);
-				}
-			}
-
-			setSyncResult({
-				added,
-				pilotIds: missingPilotIds,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			setSyncError(message);
-		} finally {
-			setSyncing(false);
-		}
-	}
-
-	function handleFindUnusedPilots() {
-		setFindingUnused(true);
-		setUnusedPilots(null);
-		setUnusedError(null);
-
-		try {
-			// Collect all pilot IDs that are referenced in data
-			const referencedPilotIds = new Set<string>();
-
-			// Add pilots from detections
-			detections.forEach((detection) => {
-				if (detection.pilot) referencedPilotIds.add(detection.pilot);
-			});
-
-			// Add pilots from gamePoints
-			gamePoints.forEach((point) => {
-				if (point.pilot) referencedPilotIds.add(point.pilot);
-			});
-
-			// Add pilots from pilotChannels
-			pilotChannels.forEach((pc) => {
-				if (pc.pilot) referencedPilotIds.add(pc.pilot);
-			});
-
-			// Find pilots in event_pilots that are not referenced in any data
-			const unused = eventPilots
-				.filter((ep) => ep.pilot && !referencedPilotIds.has(ep.pilot))
-				.map((ep) => ep.pilot);
-
-			setUnusedPilots(unused);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			setUnusedError(message);
-		} finally {
-			setFindingUnused(false);
-		}
-	}
-
-	async function handleDeleteUnusedPilots() {
-		if (!unusedPilots || unusedPilots.length === 0) return;
-
-		if (!confirm(`This will remove ${unusedPilots.length} unused pilot(s) from event_pilots. Are you sure?`)) {
-			return;
-		}
-
-		setDeletingUnused(true);
-		setUnusedError(null);
-
-		try {
-			let deleted = 0;
-			for (const pilotId of unusedPilots) {
-				// Find event_pilot records for this pilot
-				const eventPilotRecords = eventPilots.filter((ep) => ep.pilot === pilotId);
-
-				for (const record of eventPilotRecords) {
-					try {
-						await pb.collection('event_pilots').delete(record.id);
-						deleted++;
-					} catch (error) {
-						console.error(`Failed to delete event_pilot ${record.id}:`, error);
-					}
-				}
-			}
-
-			// Clear the list after deletion
-			setUnusedPilots(null);
-			alert(`Successfully removed ${deleted} event_pilot record(s).`);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			setUnusedError(message);
-		} finally {
-			setDeletingUnused(false);
-		}
-	}
+	const {
+		findingUnused,
+		unusedPilots,
+		unusedError,
+		deletingUnused,
+		handleFindUnusedPilots,
+		handleDeleteUnusedPilots,
+	} = useUnusedPilotsAction({
+		eventPilots,
+		detections,
+		gamePoints,
+		pilotChannels,
+	});
 
 	return (
 		<div className='admin-page' style={{ padding: 16, display: 'grid', gap: 16 }}>
