@@ -1,203 +1,170 @@
 # Drone Dashboard
 
-Real-time FPV drone racing dashboard with a Go backend and a Deno + React + Vite frontend. The backend embeds the production frontend and proxies data from FPVTrackside; it also provides a lightweight PocketBase datastore and admin UI for reliability and tooling.
+Real-time FPV drone racing dashboard with a Go backend and a Deno + React + Vite frontend.
 
 ## Highlights
 
 - Live race views, leaderboards, pilot/channel info, and lap timing
-- PocketBase-powered data store with admin UI at `/_/`
-- Ingest + scheduler to reduce load on FPVTrackside and improve resilience
-- All-in-one binary with embedded static frontend for easy deployment
-- Dev-friendly Deno/Vite setup with fast HMR and comprehensive tests
+- PocketBase-backed datastore with admin UI at `/_/`
+- Ingest + scheduler services to reduce FPVTrackside load and improve resilience
+- Single-binary deploy option with embedded frontend assets
+- Deno/Vite dev workflow with tests and lint/format checks
 
 ## Prerequisites
 
-- Deno v2.1.0+
-- Go v1.21+
-- VS Code with the Deno extension (recommended)
+- Deno `2.1.0+`
+- Go `1.21+`
+- Docker (optional, only needed for Playwright server/e2e runtime)
 
 ## Quick Start
 
-Choose one of the two workflows below.
+### Dev Workflow (recommended)
 
-### 1) Dev Workflow (recommended)
+Run backend and frontend separately.
 
-Run backend and frontend separately with Vite proxying API calls to the backend.
+1. Start backend (from `backend/`):
 
-1. Backend (from `backend/`):
-   ```bash
-   go run main.go -fpvtrackside=http://localhost:8080 -port=3000
-   ```
-   - Admin UI: `http://localhost:3000/_/`
-   - Server logs will print a summary box on startup
+```bash
+go run main.go -fpvtrackside=http://localhost:8080 -port=3000
+```
 
-2. Frontend (from `frontend/`):
-   - Create `frontend/.env` with at least:
-     ```
-     VITE_API_URL=http://localhost:3000
-     ```
-   - Start Vite dev server:
-     ```bash
-     deno task dev
-     ```
-   - App: `http://localhost:5173`
+2. Create `frontend/.env`:
 
-Notes
-- The Vite proxy forwards `/api/*` and `/direct/*` to `VITE_API_URL`.
-- Default `vite.config.ts` falls back to `http://localhost:8090`; set `VITE_API_URL` explicitly to the backend port you chose (typically 3000).
+```bash
+VITE_API_URL=http://localhost:3000
+```
 
-### 2) Single Binary (embedded frontend)
+3. Start frontend (from `frontend/`):
 
-Build the production frontend and bundle it into the backend executable.
+```bash
+deno task dev
+```
+
+4. Open:
+- App: `http://localhost:5173`
+- Admin UI: `http://localhost:3000/_/`
+
+Notes:
+- Vite proxies `/api/*` and `/direct/*` to `VITE_API_URL`.
+- If `VITE_API_URL` is not set, `vite.config.ts` falls back to `http://localhost:8090/`.
+
+### Single Binary Workflow
+
+Build frontend assets, then build/run backend as one executable.
 
 1. Build frontend (from `frontend/`):
-   ```bash
-   deno task build
-   ```
-   This outputs to `backend/static/`.
+
+```bash
+deno task build
+```
+
+This writes production assets to `backend/static/`.
 
 2. Build backend (from `backend/`):
-   ```bash
-   # Cross-platform release builds
-   ./build.sh
 
-   # Or a local binary
-   go build -o drone-dashboard
-   ```
+```bash
+./build.sh
+# or
+go build -o drone-dashboard
+```
 
 3. Run:
-   ```bash
-   ./drone-dashboard -fpvtrackside=http://localhost:8080 -port=3000
-   ```
-   - Dashboard: `http://localhost:3000`
-   - Admin UI: `http://localhost:3000/_/`
 
-## Architecture
-
-- Frontend: Deno + React + Vite (source in `frontend/src/`, public assets in `frontend/public/`). Production build is emitted into `backend/static/` and embedded by the Go binary.
-- Backend: Go HTTP server that embeds static assets and exposes:
-  - `/_/` PocketBase admin UI
-  - `/api/*` PocketBase REST API (used by the app and internal services)
-  - `/direct/*` optional proxy to FPVTrackside (enable with `-direct-proxy`)
-- Ingest + Scheduler: A manager service fetches and caches data from FPVTrackside on appropriate intervals for active races to minimize upstream load.
-- Control Link (Cloud/Pits): Optional WebSocket control plane for multi-site setups; see backend docs.
+```bash
+./drone-dashboard -fpvtrackside=http://localhost:8080 -port=3000
+```
 
 ## Configuration
 
-### Frontend env (create `frontend/.env`)
+### Frontend environment (`frontend/.env`)
 
-- `VITE_API_URL`: URL of the backend (e.g., `http://localhost:3000`)
-- `VITE_USE_PB`: Set `true` to prefer PocketBase collections where supported
-- `VITE_USE_PB_RACE`: Set `true` to subscribe races via PocketBase
-- `VITE_EVENT_ID`: Optional override to pin a specific event id
+- `VITE_API_URL`: backend base URL (for Vite proxy target)
+- `VITE_USE_PB`: prefer PocketBase collections where supported
+- `VITE_USE_PB_RACE`: subscribe to race data via PocketBase
+- `VITE_EVENT_ID`: optional event id override
+- `VITE_DEV_MODE`: enables extra build reporting in Vite config
 
-Vite dev proxy targets `/api` and `/direct` using `VITE_API_URL`. See `frontend/vite.config.ts`.
+### Backend flags
 
-### Backend flags (run `./drone-dashboard -help`)
+Run `go run main.go --help` (or `./drone-dashboard --help`) for full usage.
 
-- `-fpvtrackside`: FPVTrackside base URL (default `http://localhost:8080`)
-- `-port`: HTTP port to serve admin UI, API, and static (default `3000`)
-- `-log-level`: `error|warn|info|debug|trace`
-- `-ingest-enabled`: Enable background scheduler loops (default `true`)
-- `-direct-proxy`: Expose `/direct/*` to FPVTrackside (disabled by default)
-- `-cloud-url`: Cloud WebSocket URL (pits mode)
-- `-auth-token`: Auth token enabling cloud or pits mode
-- `-pits-id`: Identifier for this pits instance (default `default`)
-- `-db-dir`: Directory for SQLite DB files; empty uses in-memory
+- `--fpvtrackside`: FPVTrackside API endpoint (default `http://localhost:8080`)
+- `--port`: server port (default `3000`)
+- `--log-level`: `error|warn|info|debug|trace`
+- `--ingest-enabled`: enable background scheduler loops (default `true`)
+- `--direct-proxy`: enable `/direct/*` proxy to FPVTrackside
+- `--cloud-url`: Cloud WebSocket URL (pits mode)
+- `--auth-token`: auth token for cloud/pits control link
+- `--pits-id`: pits instance identifier
+- `--db-dir`: SQLite data directory (empty means in-memory)
+- `--import-snapshot`: path to a PocketBase snapshot JSON to import on startup
+- `--ui-title`: browser tab title (default `Drone Dashboard`)
 
-Environment variables
+Environment variables:
+- `AUTH_TOKEN`: fallback for `--auth-token`
 - `SUPERUSER_EMAIL`: PocketBase admin email (default `admin@example.com`)
 - `SUPERUSER_PASSWORD`: PocketBase admin password (auto-generated if empty)
 
-Behavior modes
-- Standalone: no `-auth-token` (default). Direct FPVTrackside ingest.
-- Cloud: `-auth-token` provided, no `-cloud-url`. Hosts WS control at `/control`.
-- Pits: `-auth-token` and `-cloud-url` provided. Connects outbound to cloud.
-
-## Trace Debugging
-
-- Every control fetch and scheduler ingest log now carries a `traceId` so you can follow requests across cloud and pits instances.
-- Merge logs locally with the helper script:
-  ```bash
-  deno run -A scripts/trace-log-viewer.ts \
-    --cloud backend/run-cloud/cloud.log \
-    --pits backend/run-pits/pits.log \
-    --trace <traceId>
-  ```
-  The script sorts entries by timestamp, prefixes each line with its source (`[cloud]` or `[pits]`), and optionally filters to a specific trace.
-- The VS Code launch configs write logs to `backend/run-cloud/cloud.log` and `backend/run-pits/pits.log`; use those defaults or point the script to any other captured files (e.g. `go run ... | tee custom.log`).
-
 ## Commands
 
-Frontend (from `frontend/`)
-- `deno task dev`: Start Vite dev server at `http://localhost:5173`
-- `deno task build`: Build to `backend/static/`
-- `deno task preview` or `deno task serve`: Preview/serve production build
-- `deno test` or `deno task test[:watch]`: Run unit/integration tests
-- `deno fmt` / `deno lint`: Format and lint
+### Frontend (`frontend/`)
 
-Backend (from `backend/`)
+- `deno task dev`: start Vite dev server
+- `deno task build`: build production assets into `../backend/static`
+- `deno task preview`: preview production build with Vite
+- `deno task serve`: serve `dist/` via std file server (only if you generated `dist/` manually)
+- `deno task test`: run tests
+- `deno task test:watch`: run tests in watch mode
+- `deno task verify`: run fmt + lint + type-check
+
+### Backend (`backend/`)
+
 - `go run main.go -fpvtrackside=http://localhost:8080 -port=3000`
-- `./build.sh`: Cross-platform binaries into `backend/build/`
-- `go test ./...`: Run Go tests
+- `go test ./...`
+- `go vet ./...`
+- `./build.sh`
 
-### PB Snapshot (offline seed)
-- Generate: in the running app, click the floating "Download PB Snapshot" dev tool to export current PocketBase-backed data to a JSON file. The name looks like `pb-snapshot-<eventId-or-none>-<timestamp>.json`.
-- Import: start the backend with `-import-snapshot=/absolute/or/relative/path/to/pb-snapshot.json`. The importer runs before background schedulers and merges by id (creates missing, updates existing) while preserving relationships.
-- Notes: the snapshot contains `version`, `snapshotTime`, `currentEventId`, and `collections` (events, pilots, channels, rounds, races, pilotChannels, laps, detections, gamePoints, client_kv, ingest_targets, server_settings). The importer sets `isCurrent` to true for `currentEventId` and clears it on others.
+### Repo preflight (from repo root)
+
+```bash
+deno task -c e2e/deno.json preflight
+```
+
+Runs frontend verify, e2e verify, and backend vet checks in parallel.
+
+## PB Snapshot (offline seed)
+
+- Generate: use the floating `Download PB Snapshot` dev tool in the running app.
+- Import: start backend with `--import-snapshot=/path/to/pb-snapshot.json`.
+- Import behavior: upserts by id, preserves relationships, and marks `currentEventId` as current.
+
+## Architecture
+
+- Frontend: `frontend/` (React + Vite + Deno)
+- Backend: `backend/` (Go + PocketBase + embedded static assets)
+- E2E/preflight harness: `e2e/`
+- Docs: `docs/ARCHITECTURE.md`
 
 ## Project Structure
 
-```
+```text
 .
-├── frontend/            # Deno + React + Vite app
-│   ├── src/             # Source code (components, features, state)
-│   ├── public/          # Public assets and MSW mocks
-│   └── dist/            # Production build (not committed)
-├── backend/             # Go server + embedded static
-│   ├── main.go          # Entry point
-│   ├── static/          # Embedded frontend (output from Vite build)
-│   ├── build.sh/.bat    # Cross-platform builds
-│   └── docs/            # Architecture and deployment docs
-├── docs/                # Project-level docs
-├── scripts/             # Auxiliary scripts
+├── frontend/            # React app (Deno + Vite)
+├── backend/             # Go server + PocketBase + embedded static assets
+├── e2e/                 # Playwright/e2e + preflight tooling
+├── docs/                # Project docs
+├── scripts/             # Helper scripts
 └── .github/             # CI/CD config
 ```
 
-## Testing
+## Troubleshooting
 
-Frontend
-- Deno test runner; JSDOM and Testing Library for component tests
-- Tests co-located next to code as `*.test.ts(x)`
-- Run `deno task test` or `deno task test:watch`
-
-Backend
-- Table-driven Go tests; run `go test ./...`
-
-Target high coverage (~80%) where practical.
-
-## Deployment
-
-- Build the frontend (`deno task build`), then produce binaries via `backend/build.sh`.
-- See backend docs for examples and ops guidance:
-  - `backend/README.md`
-  - `backend/docs/deployment-examples.md`
-  - `backend/docs/cloud-config.md`
-  - `backend/docs/pits-config.md`
+- Frontend cannot reach API: verify backend is running and `VITE_API_URL` points to it.
+- Admin login issues: set `SUPERUSER_EMAIL` / `SUPERUSER_PASSWORD` or check backend logs for generated credentials.
+- Need direct FPVTrackside diagnostics: run backend with `--direct-proxy` and use `/direct/*`.
 
 ## Contributing
 
-- Follow the guidelines in `CONTRIBUTING.md` and `CODING_STANDARDS.md`.
-- Use Conventional Commits (e.g., `feat(leaderboard): add position change tags`).
-- Place tests next to code and keep changes focused and minimal.
-
-## Troubleshooting
-
-- Frontend cannot reach API: ensure `VITE_API_URL` points to your backend (port 3000 by default) and that the backend is running.
-- Admin UI credentials: set `SUPERUSER_EMAIL`/`SUPERUSER_PASSWORD` or check logs for the generated password on first run.
-- Direct FPVTrackside fetch: start backend with `-direct-proxy` and use `/direct/*` routes for diagnostics.
-4. Tag maintainers for urgent matters
-
-## Additional Docs
-
-- [Architecture Guide](docs/ARCHITECTURE.md) — quick map of ingestion services, PocketBase collections, and admin tooling touchpoints.
+- Follow `CONTRIBUTING.md` and `CODING_STANDARDS.md`.
+- Use Conventional Commits (for example, `feat(leaderboard): add position change tags`).
+- Keep tests near implementation files and keep changes focused.
