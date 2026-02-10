@@ -3,53 +3,23 @@ import type { RecordSubscription } from 'pocketbase';
 import { batchDebounce } from '../common/utils.ts';
 import type { PBBaseRecord } from './pbTypes.ts';
 import type { CollectionSubscriptionSnapshot, SubscribeOptions, SubscriptionStatus, SubscriptionStatusPayload } from './pbRealtimeTypes.ts';
-
-type AnyRecord = PBBaseRecord & {
-	lastUpdated?: string;
-	updated?: string;
-	created?: string;
-};
-
-interface CollectionListener<TRecord extends PBBaseRecord> {
-	id: number;
-	options: SubscribeOptions<TRecord>;
-	callback: (snapshot: CollectionSubscriptionSnapshot<TRecord>) => void;
-	debouncedNotify: ReturnType<typeof batchDebounce<[CollectionSubscriptionSnapshot<TRecord>]>>;
-	lastSnapshot?: CollectionSubscriptionSnapshot<TRecord>;
-}
-
-interface StatusListener {
-	id: number;
-	callback: (payload: SubscriptionStatusPayload) => void;
-}
-
-interface CollectionState<TRecord extends AnyRecord> {
-	records: Map<string, TRecord>;
-	status: SubscriptionStatus;
-	error: Error | null;
-	lastCursor?: string;
-	lastSyncedAt?: string;
-	listeners: Map<number, CollectionListener<AnyRecord>>;
-	statusListeners: Map<number, StatusListener>;
-	subscribePromise?: Promise<() => void>;
-	unsubscribe?: () => void;
-	initialFetchPromise?: Promise<void>;
-	pendingEvents: Array<RecordSubscription<AnyRecord>>;
-	suspendNotifications: boolean;
-	needsNotify: boolean;
-	awaitingBackfill: boolean;
-	isBackfilling: boolean;
-	invalidatePromise?: Promise<void>;
-}
-
-interface RuntimeConfig {
-	defaultBatchMs: number;
-	fetchBatchSize: number;
-	debugLog: (...args: unknown[]) => void;
-}
+import { buildFilterMap, combineFilters, cursorFilter } from './pbCollectionRuntime.filters.ts';
+import { applyRealtimeEventToState, mergeRecordsIntoState } from './pbCollectionRuntime.reducer.ts';
+import {
+	type AnyRecord,
+	type CollectionListener,
+	type CollectionState,
+	createInitialState,
+	getRecordTimestamp,
+	normalizeRuntimeError,
+	resetRuntimeState,
+	type RuntimeConfig,
+	type StatusListener,
+} from './pbCollectionRuntime.state.ts';
+import { buildSnapshot, buildStatusPayload } from './pbCollectionRuntime.snapshots.ts';
 
 export class PBCollectionRuntime {
-	private readonly state: CollectionState<AnyRecord> = this.createInitialState();
+	private readonly state: CollectionState<AnyRecord> = createInitialState();
 	private listenerSeq = 0;
 	private statusSeq = 0;
 
@@ -82,7 +52,7 @@ export class PBCollectionRuntime {
 		this.state.listeners.set(listenerId, listener as unknown as CollectionListener<AnyRecord>);
 
 		const initialSnapshotPromise = this.start()
-			.then(() => this.buildSnapshot(options))
+			.then(() => buildSnapshot(this.state, options))
 			.then((snapshot) => {
 				listener.lastSnapshot = snapshot;
 				return snapshot;
@@ -118,7 +88,7 @@ export class PBCollectionRuntime {
 		const listener: StatusListener = { id: listenerId, callback };
 		this.state.statusListeners.set(listenerId, listener);
 
-		const initialStatus = this.buildStatusPayload();
+		const initialStatus = buildStatusPayload(this.state);
 		callback(initialStatus);
 
 		return {
@@ -133,11 +103,11 @@ export class PBCollectionRuntime {
 		options: SubscribeOptions<TRecord>,
 	): CollectionSubscriptionSnapshot<TRecord> | undefined {
 		if (this.state.status === 'idle' && this.state.records.size === 0) return undefined;
-		return this.buildSnapshot(options);
+		return buildSnapshot(this.state, options);
 	}
 
 	getCachedStatus(): SubscriptionStatusPayload {
-		return this.buildStatusPayload();
+		return buildStatusPayload(this.state);
 	}
 
 	async invalidate(): Promise<void> {
@@ -165,7 +135,9 @@ export class PBCollectionRuntime {
 
 	clear() {
 		this.state.unsubscribe?.();
-		this.resetState();
+		resetRuntimeState(this.state);
+		this.listenerSeq = 0;
+		this.statusSeq = 0;
 	}
 
 	handleDisconnect() {
@@ -194,7 +166,11 @@ export class PBCollectionRuntime {
 			return;
 		}
 
-		this.applyRealtimeEvent(event);
+		applyRealtimeEventToState(this.state, event, {
+			collection: this.collection,
+			debugLog: this.config.debugLog,
+			notifyListeners: () => this.notifyListeners(),
+		});
 	}
 
 	private async start(): Promise<void> {
@@ -204,14 +180,14 @@ export class PBCollectionRuntime {
 				try {
 					this.handleEvent(event as RecordSubscription<AnyRecord>);
 				} catch (error) {
-					this.state.error = this.normalizeError(error);
+					this.state.error = normalizeRuntimeError(error);
 					this.setStatus('error');
 				}
 			});
 			const connectSubscribePromise = this.pb.realtime.subscribe('PB_CONNECT', () => {
 				this.config.debugLog('PB_CONNECT event observed', { collection: this.collection });
 				this.handleConnectEvent().catch((error) => {
-					this.state.error = this.normalizeError(error);
+					this.state.error = normalizeRuntimeError(error);
 					this.setStatus('error');
 				});
 			});
@@ -243,7 +219,7 @@ export class PBCollectionRuntime {
 					this.state.unsubscribe = unsub;
 				})
 				.catch((error) => {
-					this.state.error = this.normalizeError(error);
+					this.state.error = normalizeRuntimeError(error);
 					this.setStatus('error');
 				});
 		}
@@ -270,15 +246,15 @@ export class PBCollectionRuntime {
 			this.setStatus('ready');
 		} catch (error) {
 			this.config.debugLog('Initial fetch errored', { collection: this.collection, error });
-			this.state.error = this.normalizeError(error);
+			this.state.error = normalizeRuntimeError(error);
 			this.setStatus('error');
 			throw error;
 		}
 	}
 
 	private async fetchForListeners(since?: string): Promise<void> {
-		const filters = this.buildFilters();
-		const cursorFilter = since ? this.cursorFilter(since) : '';
+		const filters = buildFilterMap(this.state.listeners.values());
+		const cursorClause = since ? cursorFilter(since) : '';
 
 		this.state.suspendNotifications = true;
 		this.state.needsNotify = false;
@@ -286,13 +262,17 @@ export class PBCollectionRuntime {
 		try {
 			await Promise.all(
 				Array.from(filters.entries()).map(async ([filter]) => {
-					const finalFilter = this.combineFilters(filter, cursorFilter);
+					const finalFilter = combineFilters(filter, cursorClause);
 					this.config.debugLog('Fetching collection records', {
 						collection: this.collection,
 						filter: finalFilter || null,
 					});
 					const records = await this.fetchCollectionRecords(finalFilter);
-					this.mergeRecords(records);
+					mergeRecordsIntoState(this.state, records, {
+						collection: this.collection,
+						debugLog: this.config.debugLog,
+						notifyListeners: () => this.notifyListeners(),
+					});
 				}),
 			);
 		} finally {
@@ -305,14 +285,13 @@ export class PBCollectionRuntime {
 	}
 
 	private async collectRecordsForInvalidation(): Promise<{ records: Map<string, AnyRecord>; lastCursor?: string }> {
-		const filters = this.buildFilters();
+		const filters = buildFilterMap(this.state.listeners.values());
 		const nextRecords = new Map<string, AnyRecord>();
 		let nextCursor: string | undefined;
-		const cursorFilter = '';
 
 		await Promise.all(
 			Array.from(filters.entries()).map(async ([filter]) => {
-				const finalFilter = this.combineFilters(filter, cursorFilter);
+				const finalFilter = combineFilters(filter, '');
 				this.config.debugLog('Collecting records for invalidation', {
 					collection: this.collection,
 					filter: finalFilter || null,
@@ -321,7 +300,7 @@ export class PBCollectionRuntime {
 				for (const record of records) {
 					const anyRecord = record as AnyRecord;
 					nextRecords.set(anyRecord.id, anyRecord);
-					const ts = this.getRecordTimestamp(anyRecord);
+					const ts = getRecordTimestamp(anyRecord);
 					if (ts && (!nextCursor || ts > nextCursor)) {
 						nextCursor = ts;
 					}
@@ -337,23 +316,6 @@ export class PBCollectionRuntime {
 		return await this.pb.collection(this.collection).getFullList<TRecord>(this.config.fetchBatchSize, query);
 	}
 
-	private mergeRecords<TRecord extends AnyRecord>(records: TRecord[]) {
-		this.config.debugLog('Merging records', { collection: this.collection, count: records.length });
-		for (const record of records) {
-			this.state.records.set(record.id, record);
-			const ts = this.getRecordTimestamp(record);
-			if (ts && (!this.state.lastCursor || ts > this.state.lastCursor)) {
-				this.state.lastCursor = ts;
-			}
-		}
-		this.state.lastSyncedAt = new Date().toISOString();
-		if (this.state.suspendNotifications) {
-			this.state.needsNotify = true;
-		} else {
-			this.notifyListeners();
-		}
-	}
-
 	private flushPendingEvents(suppressNotify = false) {
 		if (this.state.pendingEvents.length === 0) return;
 
@@ -364,7 +326,11 @@ export class PBCollectionRuntime {
 		this.state.needsNotify = false;
 		try {
 			for (const event of events) {
-				this.applyRealtimeEvent(event);
+				applyRealtimeEventToState(this.state, event, {
+					collection: this.collection,
+					debugLog: this.config.debugLog,
+					notifyListeners: () => this.notifyListeners(),
+				});
 			}
 		} finally {
 			this.state.suspendNotifications = false;
@@ -379,14 +345,14 @@ export class PBCollectionRuntime {
 
 	private notifyListeners() {
 		for (const listener of this.state.listeners.values()) {
-			const snapshot = this.buildSnapshot(listener.options as SubscribeOptions<PBBaseRecord>);
+			const snapshot = buildSnapshot(this.state, listener.options as SubscribeOptions<PBBaseRecord>);
 			listener.debouncedNotify(snapshot as CollectionSubscriptionSnapshot<PBBaseRecord>);
 		}
 		this.notifyStatusWatchers();
 	}
 
 	private notifyStatusWatchers() {
-		const payload = this.buildStatusPayload();
+		const payload = buildStatusPayload(this.state);
 		this.config.debugLog('Status updated', {
 			collection: this.collection,
 			status: payload.status,
@@ -397,40 +363,6 @@ export class PBCollectionRuntime {
 		}
 	}
 
-	private buildSnapshot<TRecord extends PBBaseRecord>(
-		options: SubscribeOptions<TRecord>,
-	): CollectionSubscriptionSnapshot<TRecord> {
-		const records = this.recordsForOptions(options) as TRecord[];
-		return {
-			records,
-			status: this.state.status,
-			error: this.state.error,
-			lastSyncedAt: this.state.lastSyncedAt,
-		};
-	}
-
-	private buildStatusPayload(): SubscriptionStatusPayload {
-		return {
-			status: this.state.status,
-			error: this.state.error,
-			lastSyncedAt: this.state.lastSyncedAt,
-		};
-	}
-
-	private recordsForOptions<TRecord extends PBBaseRecord>(options: SubscribeOptions<TRecord>): TRecord[] {
-		const allRecords = Array.from(this.state.records.values()) as TRecord[];
-		if (options.recordFilter) {
-			return allRecords.filter((record) => {
-				try {
-					return options.recordFilter?.(record) ?? true;
-				} catch {
-					return false;
-				}
-			});
-		}
-		return allRecords;
-	}
-
 	private setStatus(status: SubscriptionStatus) {
 		if (this.state.status === status) return;
 		this.state.status = status;
@@ -439,57 +371,6 @@ export class PBCollectionRuntime {
 			this.notifyListeners();
 		} else {
 			this.state.needsNotify = true;
-		}
-	}
-
-	private combineFilters(a: string, b: string): string {
-		const parts = [a?.trim(), b?.trim()].filter((part) => part && part.length > 0) as string[];
-		if (parts.length === 0) return '';
-		if (parts.length === 1) return parts[0]!;
-		return `(${parts.join(') && (')})`;
-	}
-
-	private cursorFilter(since: string): string {
-		const escaped = since.replace(/"/g, '\\"');
-		return `lastUpdated >= "${escaped}"`;
-	}
-
-	private getRecordTimestamp(record: AnyRecord): string | undefined {
-		return record.lastUpdated ?? record.updated ?? record.created ?? undefined;
-	}
-
-	private applyRealtimeEvent(event: RecordSubscription<AnyRecord>) {
-		switch (event.action) {
-			case 'create':
-			case 'update': {
-				this.config.debugLog('Applying record upsert', {
-					collection: this.collection,
-					id: event.record.id,
-					action: event.action,
-				});
-				const record = event.record as AnyRecord;
-				this.state.records.set(record.id, record);
-				const ts = this.getRecordTimestamp(record);
-				if (ts && (!this.state.lastCursor || ts > this.state.lastCursor)) {
-					this.state.lastCursor = ts;
-				}
-				this.state.lastSyncedAt = new Date().toISOString();
-				break;
-			}
-			case 'delete': {
-				this.config.debugLog('Applying record delete', { collection: this.collection, id: event.record.id });
-				this.state.records.delete(event.record.id);
-				this.state.lastSyncedAt = new Date().toISOString();
-				break;
-			}
-			default:
-				return;
-		}
-
-		if (this.state.suspendNotifications) {
-			this.state.needsNotify = true;
-		} else {
-			this.notifyListeners();
 		}
 	}
 
@@ -505,7 +386,7 @@ export class PBCollectionRuntime {
 				this.state.lastSyncedAt = new Date().toISOString();
 				this.setStatus('ready');
 			} catch (error) {
-				this.state.error = this.normalizeError(error);
+				this.state.error = normalizeRuntimeError(error);
 				this.setStatus('error');
 			} finally {
 				this.state.isBackfilling = false;
@@ -519,7 +400,7 @@ export class PBCollectionRuntime {
 	private handleRealtimeErrorEvent(event: RecordSubscription<AnyRecord>) {
 		const messageSource = event.record as unknown as Record<string, unknown> | undefined;
 		const message = typeof messageSource?.message === 'string' ? String(messageSource.message) : undefined;
-		this.state.error = this.normalizeError(message ?? 'Realtime error');
+		this.state.error = normalizeRuntimeError(message ?? 'Realtime error');
 		this.setStatus('error');
 	}
 
@@ -548,7 +429,7 @@ export class PBCollectionRuntime {
 				recordCount: this.state.records.size,
 			});
 		} catch (error) {
-			const normalized = this.normalizeError(error);
+			const normalized = normalizeRuntimeError(error);
 			this.state.error = normalized;
 			this.setStatus('error');
 			this.config.debugLog('Manual invalidation failed', {
@@ -575,74 +456,5 @@ export class PBCollectionRuntime {
 			};
 			poll();
 		});
-	}
-
-	private buildFilters(): Map<string, SubscribeOptions<AnyRecord>> {
-		const listeners = Array.from(this.state.listeners.values());
-		const filters = listeners.length > 0
-			? listeners.reduce<Map<string, SubscribeOptions<AnyRecord>>>((acc, listener) => {
-				const key = listener.options.filter?.trim() ?? '';
-				if (!acc.has(key)) {
-					acc.set(key, listener.options as SubscribeOptions<AnyRecord>);
-				}
-				return acc;
-			}, new Map())
-			: new Map<string, SubscribeOptions<AnyRecord>>();
-
-		if (filters.size === 0) {
-			filters.set('', {});
-		}
-
-		return filters;
-	}
-
-	private resetState() {
-		for (const listener of this.state.listeners.values()) {
-			listener.debouncedNotify.cancel();
-		}
-		this.state.records.clear();
-		this.state.status = 'idle';
-		this.state.error = null;
-		this.state.lastCursor = undefined;
-		this.state.lastSyncedAt = undefined;
-		this.state.listeners.clear();
-		this.state.statusListeners.clear();
-		this.state.subscribePromise = undefined;
-		this.state.unsubscribe = undefined;
-		this.state.initialFetchPromise = undefined;
-		this.state.pendingEvents = [];
-		this.state.suspendNotifications = false;
-		this.state.needsNotify = false;
-		this.state.awaitingBackfill = false;
-		this.state.isBackfilling = false;
-		this.state.invalidatePromise = undefined;
-		this.listenerSeq = 0;
-		this.statusSeq = 0;
-	}
-
-	private createInitialState(): CollectionState<AnyRecord> {
-		return {
-			records: new Map<string, AnyRecord>(),
-			status: 'idle',
-			error: null,
-			lastCursor: undefined,
-			lastSyncedAt: undefined,
-			listeners: new Map(),
-			statusListeners: new Map(),
-			subscribePromise: undefined,
-			unsubscribe: undefined,
-			initialFetchPromise: undefined,
-			pendingEvents: [],
-			suspendNotifications: false,
-			needsNotify: false,
-			awaitingBackfill: false,
-			isBackfilling: false,
-			invalidatePromise: undefined,
-		};
-	}
-
-	private normalizeError(error: unknown): Error {
-		if (error instanceof Error) return error;
-		return new Error(typeof error === 'string' ? error : 'Unknown PocketBase error');
 	}
 }
