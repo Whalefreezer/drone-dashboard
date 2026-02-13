@@ -7,6 +7,7 @@ import { LockedEliminationRankingsSection } from '../../admin/kv/LockedEliminati
 import { NextRaceOverrideSection } from '../../admin/kv/NextRaceOverrideSection.tsx';
 import { LiveStreamLinksSection } from '../../admin/kv/LiveStreamLinksSection.tsx';
 import { BracketAnchorsSection } from '../../admin/kv/BracketAnchorsSection.tsx';
+import { ClosestLapTargetSection } from '../../admin/kv/ClosestLapTargetSection.tsx';
 
 function KVPage() {
 	const kv = useAtomValue(clientKVRecordsAtom);
@@ -25,6 +26,10 @@ function KVPage() {
 			<div className='section-card'>
 				<h2>Next Race Overrides</h2>
 				<NextRaceOverrideSection kvRecords={kv} eventId={ev?.id ?? null} />
+			</div>
+			<div className='section-card'>
+				<h2>Closest Lap Prize Target</h2>
+				<ClosestLapTargetSection />
 			</div>
 			<div className='section-card'>
 				<h2>Double-Elim Anchors</h2>

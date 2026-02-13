@@ -16,6 +16,8 @@ import { pbInvalidateAll } from './api/pb.ts';
 import { Link } from '@tanstack/react-router';
 import { LeaderboardAtomBridge } from './leaderboard/LeaderboardAtomBridge.tsx';
 import { bracketEnabledAtom } from './bracket/eliminationState.ts';
+import { ClosestLapPrize } from './prize/ClosestLapPrize.tsx';
+import { closestLapTargetSecondsAtom } from './state/pbAtoms.ts';
 
 type DebugWindow = Window & {
 	__APP_BOOTSTRAP_LOG?: (
@@ -88,6 +90,8 @@ function App() {
 	const activePane = useAtomValue(activePaneAtom);
 	const [rightPaneView, setRightPaneView] = useAtom(rightPaneViewAtom);
 	const bracketEnabled = useAtomValue(bracketEnabledAtom);
+	const closestLapTargetSeconds = useAtomValue(closestLapTargetSecondsAtom);
+	const prizeEnabled = closestLapTargetSeconds != null;
 
 	// Prevent page scrolling on mobile when viewing brackets
 	useEffect(() => {
@@ -104,6 +108,12 @@ function App() {
 			setRightPaneView('leaderboard');
 		}
 	}, [bracketEnabled, rightPaneView, setRightPaneView]);
+
+	useEffect(() => {
+		if (!prizeEnabled && rightPaneView === 'prize') {
+			setRightPaneView('leaderboard');
+		}
+	}, [prizeEnabled, rightPaneView, setRightPaneView]);
 
 	return (
 		<div className='app-shell'>
@@ -161,6 +171,11 @@ function App() {
 									<BracketView />
 								</GenericSuspense>
 							)}
+							{prizeEnabled && activePane === 'prize' && (
+								<GenericSuspense id='closest-lap-prize'>
+									<ClosestLapPrize />
+								</GenericSuspense>
+							)}
 						</>
 					)
 					: (
@@ -174,7 +189,7 @@ function App() {
 								</div>
 							</div>
 							<div className='app-main-right'>
-								{bracketEnabled && (
+								{(bracketEnabled || prizeEnabled) && (
 									<div className='app-right-pane-toggle'>
 										<button
 											type='button'
@@ -192,21 +207,34 @@ function App() {
 												Brackets
 											</button>
 										)}
+										{prizeEnabled && (
+											<button
+												type='button'
+												className={rightPaneView === 'prize' ? 'active' : ''}
+												onClick={() => setRightPaneView('prize')}
+											>
+												Prize
+											</button>
+										)}
 									</div>
 								)}
-								{rightPaneView === 'leaderboard'
+								{rightPaneView === 'prize' && prizeEnabled
 									? (
-										<GenericSuspense id='leaderboard'>
-											<Leaderboard />
+										<GenericSuspense id='closest-lap-prize'>
+											<ClosestLapPrize />
 										</GenericSuspense>
 									)
-									: (bracketEnabled
+									: (rightPaneView === 'brackets' && bracketEnabled
 										? (
 											<GenericSuspense id='brackets'>
 												<BracketView />
 											</GenericSuspense>
 										)
-										: null)}
+										: (
+											<GenericSuspense id='leaderboard'>
+												<Leaderboard />
+											</GenericSuspense>
+										))}
 							</div>
 						</>
 					)}

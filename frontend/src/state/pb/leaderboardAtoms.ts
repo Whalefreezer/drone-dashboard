@@ -1,7 +1,8 @@
 import { atom } from 'jotai';
 import { allRacesAtom } from '../../race/race-atoms.ts';
 import { parseTimestampMs } from '../../common/time.ts';
-import { clientKVRecordsAtom } from './subscriptionAtoms.ts';
+import { clientKVRecordsAtom, detectionRecordsAtom, lapRecordsAtom, pilotsAtom, roundsDataAtom } from './subscriptionAtoms.ts';
+import type { PBRaceRecord, PBRoundRecord } from '../../api/pbTypes.ts';
 
 /**
  * Leaderboard split index (1-based position) from client_kv
@@ -155,6 +156,128 @@ export const noRacesOverrideAtom = atom((get): NoRacesOverride | null => {
 		}
 	}
 	return null;
+});
+
+export const closestLapTargetSecondsAtom = atom((get): number | null => {
+	const kv = get(clientKVRecordsAtom);
+	const record = kv.find((entry) => entry.namespace === 'leaderboard' && entry.key === 'closestLapTargetSeconds');
+	if (!record?.value) return null;
+	try {
+		const raw = JSON.parse(record.value);
+		const n = Number(raw);
+		if (!Number.isFinite(n) || n <= 0) return null;
+		return n;
+	} catch {
+		return null;
+	}
+});
+
+export interface ClosestLapPrizeRow {
+	pilotId: string;
+	pilotName: string;
+	pilotSourceId: string;
+	closestLapSeconds: number;
+	deltaSeconds: number;
+	raceId: string;
+	raceLabel: string;
+	raceOrder: number;
+	lapNumber: number;
+}
+
+function formatClosestLapRaceLabel(
+	raceId: string,
+	raceById: Map<string, PBRaceRecord>,
+	roundById: Map<string, PBRoundRecord>,
+): string {
+	if (!raceId) return '-';
+	const race = raceById.get(raceId);
+	if (!race) return '-';
+	const round = roundById.get(race.round ?? '');
+	const roundPart = round?.roundNumber != null ? `R${round.roundNumber}` : 'R?';
+	const racePart = race.raceNumber != null ? `${race.raceNumber}` : '?';
+	return `${roundPart}-${racePart}`;
+}
+
+export const closestLapPrizeRowsAtom = atom((get): ClosestLapPrizeRow[] => {
+	const targetSeconds = get(closestLapTargetSecondsAtom);
+	if (targetSeconds == null) return [];
+
+	const laps = get(lapRecordsAtom);
+	const detections = get(detectionRecordsAtom);
+	const pilots = get(pilotsAtom);
+	const races = get(allRacesAtom);
+	const rounds = get(roundsDataAtom);
+
+	const pilotById = new Map(pilots.map((pilot) => [pilot.id, pilot]));
+	const raceById = new Map(races.map((race) => [race.id, race]));
+	const roundById = new Map(rounds.map((round) => [round.id, round]));
+	const detectionById = new Map(
+		detections
+			.filter((detection) => detection.valid && detection.pilot)
+			.map((detection) => [detection.id, detection]),
+	);
+
+	const bestByPilot = new Map<string, ClosestLapPrizeRow>();
+
+	for (const lap of laps) {
+		const lapSeconds = Number(lap.lengthSeconds);
+		if (!Number.isFinite(lapSeconds) || lapSeconds <= 0) continue;
+
+		const detection = detectionById.get(lap.detection);
+		if (!detection || detection.isHoleshot) continue;
+		const pilotId = (detection.pilot ?? '').trim();
+		if (!pilotId) continue;
+
+		const raceId = (lap.race ?? detection.race ?? '').trim();
+		const race = raceById.get(raceId);
+		const raceOrder = race?.raceOrder ?? Number.MAX_SAFE_INTEGER;
+		const lapNumber = lap.lapNumber ?? 0;
+		const deltaSeconds = Math.abs(lapSeconds - targetSeconds);
+
+		const pilot = pilotById.get(pilotId);
+		const pilotName = pilot?.name ?? pilotId;
+		const pilotSourceId = pilot?.sourceId ?? pilotId;
+		const candidate: ClosestLapPrizeRow = {
+			pilotId,
+			pilotName,
+			pilotSourceId,
+			closestLapSeconds: lapSeconds,
+			deltaSeconds,
+			raceId,
+			raceLabel: formatClosestLapRaceLabel(raceId, raceById, roundById),
+			raceOrder,
+			lapNumber,
+		};
+
+		const existing = bestByPilot.get(pilotId);
+		if (!existing) {
+			bestByPilot.set(pilotId, candidate);
+			continue;
+		}
+
+		const isBetter = candidate.deltaSeconds < existing.deltaSeconds ||
+			(candidate.deltaSeconds === existing.deltaSeconds &&
+				candidate.closestLapSeconds < existing.closestLapSeconds) ||
+			(candidate.deltaSeconds === existing.deltaSeconds &&
+				candidate.closestLapSeconds === existing.closestLapSeconds &&
+				candidate.raceOrder < existing.raceOrder) ||
+			(candidate.deltaSeconds === existing.deltaSeconds &&
+				candidate.closestLapSeconds === existing.closestLapSeconds &&
+				candidate.raceOrder === existing.raceOrder &&
+				candidate.lapNumber < existing.lapNumber);
+
+		if (isBetter) {
+			bestByPilot.set(pilotId, candidate);
+		}
+	}
+
+	return [...bestByPilot.values()].sort((a, b) => {
+		if (a.deltaSeconds !== b.deltaSeconds) return a.deltaSeconds - b.deltaSeconds;
+		if (a.closestLapSeconds !== b.closestLapSeconds) return a.closestLapSeconds - b.closestLapSeconds;
+		const byName = a.pilotName.localeCompare(b.pilotName);
+		if (byName !== 0) return byName;
+		return a.pilotId.localeCompare(b.pilotId);
+	});
 });
 
 export interface StreamVideoRange {
