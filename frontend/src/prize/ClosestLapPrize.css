@@ -80,6 +80,10 @@
 	padding-right: 4px;
 }
 
+.closest-lap-table .gt-row {
+	height: 100%;
+}
+
 .closest-lap-table .gt-cell[data-col='pilot'] {
 	white-space: nowrap;
 }

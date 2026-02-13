@@ -97,18 +97,18 @@ build_project() {
 setup_directories() {
 	log "Setting up directory structure on Pi..."
 
-	ssh "${PI_USER}@${PI_HOST}" bash <<'EOF'
+	ssh "${PI_USER}@${PI_HOST}" bash <<EOF
 		set -euo pipefail
 
 		# Create directory structure
-		mkdir -p ~/drone-dashboard/{bin,data}
+		mkdir -p "${PI_DEPLOY_DIR}/bin" "${PI_DEPLOY_DIR}/data"
 
 		# Set proper permissions
-		chmod 755 ~/drone-dashboard
-		chmod 755 ~/drone-dashboard/bin
-		chmod 700 ~/drone-dashboard/data
+		chmod 755 "${PI_DEPLOY_DIR}"
+		chmod 755 "${PI_DEPLOY_DIR}/bin"
+		chmod 700 "${PI_DEPLOY_DIR}/data"
 
-		echo "Directory structure created"
+		echo "Directory structure created at ${PI_DEPLOY_DIR}"
 EOF
 
 	log "Directory structure ready"
@@ -154,11 +154,20 @@ upload_binary() {
 	PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 	BINARY_PATH="${PROJECT_ROOT}/backend/build/drone-dashboard_linux_arm"
 
-	# Upload binary
-	scp "${BINARY_PATH}" "${PI_USER}@${PI_HOST}:${PI_DEPLOY_DIR}/bin/drone-dashboard"
+	# Ensure target directory exists and is writable before attempting upload
+	if ! ssh "${PI_USER}@${PI_HOST}" "mkdir -p '${PI_DEPLOY_DIR}/bin' && test -w '${PI_DEPLOY_DIR}/bin'"; then
+		error "Remote directory is not writable: ${PI_DEPLOY_DIR}/bin"
+		error "Fix on Pi with:"
+		error "  sudo chown -R ${PI_USER}:${PI_USER} ${PI_DEPLOY_DIR}"
+		error "  chmod 755 ${PI_DEPLOY_DIR} ${PI_DEPLOY_DIR}/bin"
+		exit 1
+	fi
 
-	# Make binary executable
-	ssh "${PI_USER}@${PI_HOST}" "chmod +x ${PI_DEPLOY_DIR}/bin/drone-dashboard"
+	# Upload to temporary path first, then atomically replace target.
+	# This avoids failures when an existing destination file has restrictive perms.
+	TMP_REMOTE="${PI_DEPLOY_DIR}/bin/.drone-dashboard.upload.$$"
+	scp "${BINARY_PATH}" "${PI_USER}@${PI_HOST}:${TMP_REMOTE}"
+	ssh "${PI_USER}@${PI_HOST}" "mv -f '${TMP_REMOTE}' '${PI_DEPLOY_DIR}/bin/drone-dashboard' && chmod +x '${PI_DEPLOY_DIR}/bin/drone-dashboard'"
 
 	log "Binary uploaded and permissions set"
 }
