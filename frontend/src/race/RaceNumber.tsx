@@ -23,6 +23,9 @@ export function RaceNumber({ raceId }: RaceNumberProps) {
 	if (!race) return null;
 
 	const round = roundData.find((r) => r.id === (race.round ?? ''));
+	const roundLabel = round?.name || (round?.roundNumber ? `Round ${round.roundNumber}` : 'Round');
+	const raceLabel = race.raceNumber != null ? `Race ${race.raceNumber}` : `Order ${race.raceOrder}`;
+	const displayLabel = `${roundLabel} — ${raceLabel}`;
 
 	return (
 		<div className='race-number'>
@@ -34,10 +37,10 @@ export function RaceNumber({ raceId }: RaceNumberProps) {
 						rel='noreferrer'
 						title={`Watch ${raceStreamLink.label}${raceStreamLink.offsetSeconds > 0 ? ` (+${raceStreamLink.offsetSeconds}s)` : ''}`}
 					>
-						{`${round?.roundNumber ?? '?'}-${race.raceNumber}`}
+						{displayLabel}
 					</a>
 				)
-				: `${round?.roundNumber ?? '?'}-${race.raceNumber}`}
+				: displayLabel}
 		</div>
 	);
 }

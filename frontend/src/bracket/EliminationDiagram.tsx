@@ -76,9 +76,14 @@ export function EliminationDiagram() {
 		const nodeX = targetNode.definition.position.x;
 		const nodeY = targetNode.definition.position.y;
 		const scale = 1.0;
+		const nodeWidth = activeFormat.diagramDimensions.nodeWidth;
+		const containerWidth = containerRef.current?.clientWidth ??
+			(typeof globalThis.innerWidth === 'number' ? globalThis.innerWidth : 0);
 
-		// Position so the node appears centered, biased slightly to the right
-		const x = -(nodeX * scale) + 100;
+		// Center horizontally and apply a small desktop left-of-center bias only when there is ample room.
+		const centeredX = containerWidth > 0 ? (containerWidth - nodeWidth * scale) / 2 : 100;
+		const desktopBias = containerWidth >= 900 ? -80 : 0;
+		const x = -(nodeX * scale) + centeredX + desktopBias;
 		const y = -(nodeY * scale) + 200;
 
 		return { scale, x, y };
