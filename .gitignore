@@ -38,7 +38,7 @@ node_modules/
 # OS specific
 # Task files
 tasks.json
-tasks/ 
+tasks/
 
 pb_data/
 run-cloud/
@@ -58,3 +58,6 @@ __debug_bin*
 /e2e/blob-report/
 /e2e/playwright/.cache/
 /e2e/artifacts/
+
+*.db
+drone-dashboard
