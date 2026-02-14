@@ -63,7 +63,7 @@ export function EliminationDiagram() {
 	// Calculate initial viewport based on current race
 	const getInitialViewport = (): ViewportState => {
 		// Find the node corresponding to the current race
-		const currentNode = currentRace ? diagram.nodes.find((n) => n.race?.id === currentRace.id) : null;
+		const currentNode = currentRace ? diagram.nodes.find((node) => node.raceIds.includes(currentRace.id)) : null;
 
 		// Fallback to first node if no current race
 		const targetNode = currentNode ?? diagram.nodes[0];
@@ -514,7 +514,7 @@ function renderNode(
 	nodeHeight: number,
 ) {
 	const { definition } = node;
-	const isCurrentRace = currentRace && node.race?.id === currentRace.id;
+	const isCurrentRace = currentRace ? node.raceIds.includes(currentRace.id) : false;
 	const heatColumns = Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ');
 	const hasDestinationColumn = node.slots.some((slot) => slot.destinationLabel != null);
 	const slotGridTemplateColumns = `1.4rem 2rem minmax(0, 1fr) ${heatColumns} 1.6rem ${
