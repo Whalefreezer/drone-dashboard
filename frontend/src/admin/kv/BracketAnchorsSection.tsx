@@ -204,6 +204,10 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 		() => parseRunSequenceInput(runSequenceInput, maxOrder),
 		[runSequenceInput, maxOrder],
 	);
+	const effectiveRunSequence = useMemo(
+		() => (sanitizedRunSequence.length > 0 ? sanitizedRunSequence : (selectedFormat.runSequence ?? [])),
+		[sanitizedRunSequence, selectedFormat.runSequence],
+	);
 	const canonicalCurrent = useMemo(() => canonicalize(sanitizedAnchors), [sanitizedAnchors]);
 	const canonicalRemote = useMemo(() => canonicalize(remoteConfig.anchors), [remoteConfig.anchors]);
 	const isDirty = selectedFormatId !== remoteConfig.formatId ||
@@ -217,18 +221,18 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			{
 				formatId: selectedFormatId,
 				anchors: sanitizedAnchors,
-				runSequence: sanitizedRunSequence,
+				runSequence: effectiveRunSequence,
 				record: existingRecord,
 			},
 			selectedFormat.nodes,
-			sanitizedRunSequence,
+			effectiveRunSequence,
 		);
 		return selectedFormat.nodes.map((node) => ({
 			code: node.code,
 			order: node.order,
 			race: mapping.get(node.order) ?? null,
 		}));
-	}, [races, selectedFormatId, sanitizedAnchors, sanitizedRunSequence, existingRecord, selectedFormat.nodes]);
+	}, [races, selectedFormatId, sanitizedAnchors, effectiveRunSequence, existingRecord, selectedFormat.nodes]);
 
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
@@ -274,7 +278,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			const payload = JSON.stringify({
 				formatId: selectedFormatId,
 				anchors: canonicalCurrent,
-				runSequence: sanitizedRunSequence,
+				...(sanitizedRunSequence.length > 0 ? { runSequence: sanitizedRunSequence } : {}),
 			});
 			const col = pb.collection('client_kv');
 			if (existingRecord) {

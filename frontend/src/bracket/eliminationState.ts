@@ -104,6 +104,19 @@ function parseAnchorConfig(
 	}
 }
 
+function resolveRunSequence(
+	config: BracketAnchorConfig,
+	format: BracketFormatDefinition,
+): number[] | undefined {
+	if (config.runSequence && config.runSequence.length > 0) {
+		return config.runSequence;
+	}
+	if (format.runSequence && format.runSequence.length > 0) {
+		return format.runSequence;
+	}
+	return undefined;
+}
+
 export const bracketAnchorConfigAtom = atom((get): BracketAnchorConfig => {
 	const event = get(currentEventAtom);
 	if (!event) return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [], record: null };
@@ -337,7 +350,7 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const channels = get(channelsDataAtom);
 	const pilotById = new Map(pilots.map((pilot) => [pilot.id, pilot]));
 	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
-	const runSequence = config.runSequence ?? format.runSequence;
+	const runSequence = resolveRunSequence(config, format);
 	const expectedHeatCounts = getNodeExpectedHeatCounts(format.nodes, runSequence);
 	const groupedMapping = mapRacesToBracketHeats(races, config, format.nodes, runSequence);
 	const nodeViewModels: BracketNodeViewModel[] = format.nodes.map(
