@@ -33,19 +33,19 @@ export function FinalsModule() {
 				<h3>Finals - Top 6</h3>
 				<div className='finals-header-info'>
 					<span className='finals-heat-count'>
-						{completedHeats} / {Math.max(finals.heats.length, 3)} heats
+						{completedHeats} / {Math.max(finals.heats.length, finals.minHeats)} heats
 					</span>
 					{finals.championId && <span className='finals-champion-badge'>Champion Crowned</span>}
 				</div>
 			</header>
 
-			{finals.message && completedHeats < 3 && (
+			{finals.message && completedHeats < finals.minHeats && (
 				<div className='finals-message finals-message--warning'>
 					{finals.message}
 				</div>
 			)}
 
-			{finals.message && completedHeats >= 3 && finals.championId && (
+			{finals.message && completedHeats >= finals.minHeats && finals.championId && (
 				<div className='finals-message finals-message--success'>
 					{finals.message}
 				</div>

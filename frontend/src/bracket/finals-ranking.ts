@@ -1,8 +1,20 @@
 import type { FinalsHeat, FinalsHeatResult, FinalsParticipant } from './finals-types.ts';
 
-const MIN_HEATS = 3;
-const MAX_HEATS = 7;
-const WINS_REQUIRED = 2;
+const DEFAULT_MIN_HEATS = 3;
+const DEFAULT_MAX_HEATS = 7;
+const DEFAULT_WINS_REQUIRED = 2;
+
+export interface FinalsRules {
+	minHeats: number;
+	maxHeats: number;
+	winsRequired: number;
+}
+
+export const DEFAULT_FINALS_RULES: FinalsRules = {
+	minHeats: DEFAULT_MIN_HEATS,
+	maxHeats: DEFAULT_MAX_HEATS,
+	winsRequired: DEFAULT_WINS_REQUIRED,
+};
 
 export interface RankingInput {
 	pilotId: string;
@@ -27,17 +39,18 @@ export interface RankedParticipant {
  * Computes finals rankings with best-of scoring
  *
  * Rules:
- * - Champion: first pilot to win 2 heats (position 1)
+ * - Champion: first pilot to reach configured win threshold (position 1)
  * - Places 2-6: ranked by best-of scoring (total points minus worst single result)
- * - Minimum 3 heats required before rankings are locked
- * - Best-of scoring only applied if pilot competed in 3+ heats
+ * - Minimum configured heats required before rankings are locked
+ * - Best-of scoring only applied if pilot competed in at least minHeats
  */
 export function computeFinalsRankings(
 	participants: RankingInput[],
 	completedHeats: number,
+	rules: FinalsRules = DEFAULT_FINALS_RULES,
 ): RankedParticipant[] {
-	// Find champion (2 wins)
-	const champion = participants.find((p) => p.wins >= WINS_REQUIRED);
+	// Find champion (wins threshold from rules)
+	const champion = participants.find((p) => p.wins >= rules.winsRequired);
 
 	const ranked: RankedParticipant[] = participants.map((p) => {
 		const isChampion = champion?.pilotId === p.pilotId;
@@ -47,7 +60,7 @@ export function computeFinalsRankings(
 		let bestOfScore = totalPoints;
 		let worstHeatPoints: number | null = null;
 
-		if (p.heatResults.length >= MIN_HEATS) {
+		if (p.heatResults.length >= rules.minHeats) {
 			const points = p.heatResults.map((r) => r.points);
 			const worst = Math.min(...points);
 			worstHeatPoints = worst;
@@ -86,22 +99,23 @@ export function computeFinalsRankings(
  * Determines if more heats are required
  *
  * Rules:
- * - Minimum 3 heats must complete
- * - If no champion after 3 heats, continue up to 7 heats max
+ * - Minimum configured heats must complete
+ * - If no champion after minHeats, continue up to maxHeats
  * - Once a champion is crowned, additional heats may be needed for placement
  */
 export function requiresMoreHeats(
 	participants: RankingInput[],
 	completedHeats: number,
+	rules: FinalsRules = DEFAULT_FINALS_RULES,
 ): boolean {
 	// Always need at least 3 heats
-	if (completedHeats < MIN_HEATS) return true;
+	if (completedHeats < rules.minHeats) return true;
 
 	// Max heats reached
-	if (completedHeats >= MAX_HEATS) return false;
+	if (completedHeats >= rules.maxHeats) return false;
 
 	// No champion yet, need more heats
-	const hasChampion = participants.some((p) => p.wins >= WINS_REQUIRED);
+	const hasChampion = participants.some((p) => p.wins >= rules.winsRequired);
 	if (!hasChampion) return true;
 
 	// Champion exists, check if we still need more heats for placement
@@ -116,28 +130,29 @@ export function getFinalsMessage(
 	participants: RankingInput[],
 	completedHeats: number,
 	totalHeats: number,
+	rules: FinalsRules = DEFAULT_FINALS_RULES,
 ): string | null {
 	if (totalHeats === 0) {
 		return 'Finals have not started yet.';
 	}
 
-	if (completedHeats < MIN_HEATS) {
-		const remaining = MIN_HEATS - completedHeats;
+	if (completedHeats < rules.minHeats) {
+		const remaining = rules.minHeats - completedHeats;
 		return `Finals waiting for results. At least ${remaining} more ${
 			remaining === 1 ? 'heat' : 'heats'
 		} must complete before rankings lock in.`;
 	}
 
-	const champion = participants.find((p) => p.wins >= WINS_REQUIRED);
+	const champion = participants.find((p) => p.wins >= rules.winsRequired);
 	if (champion) {
 		return `${champion.pilotName} is the champion with ${champion.wins} wins!`;
 	}
 
-	if (completedHeats >= MAX_HEATS) {
+	if (completedHeats >= rules.maxHeats) {
 		return 'Finals complete. Maximum heats reached.';
 	}
 
-	return 'Finals in progress. Waiting for a pilot to earn 2 wins.';
+	return `Finals in progress. Waiting for a pilot to earn ${rules.winsRequired} wins.`;
 }
 
 /**

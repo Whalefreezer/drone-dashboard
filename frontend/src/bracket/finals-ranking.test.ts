@@ -242,3 +242,33 @@ Deno.test('getFinalsMessage returns max heats message after 7 heats', () => {
 	const message = getFinalsMessage(participants, 7, 7);
 	assertEquals(message, 'Finals complete. Maximum heats reached.');
 });
+
+Deno.test('computeFinalsRankings supports custom winsRequired (3 for CTA)', () => {
+	const participants = [
+		createParticipant('p1', 'Alice', [
+			{ position: 1, points: 100 },
+			{ position: 1, points: 100 },
+			{ position: 2, points: 80 },
+		]),
+		createParticipant('p2', 'Bob', [
+			{ position: 2, points: 80 },
+			{ position: 2, points: 80 },
+			{ position: 1, points: 100 },
+		]),
+	];
+
+	const ranked = computeFinalsRankings(participants, 3, { minHeats: 3, maxHeats: 13, winsRequired: 3 });
+	assertEquals(ranked[0].isChampion, false);
+});
+
+Deno.test('getFinalsMessage uses custom winsRequired text', () => {
+	const participants = [
+		createParticipant('p1', 'Alice', [
+			{ position: 1, points: 100 },
+			{ position: 2, points: 80 },
+			{ position: 3, points: 60 },
+		]),
+	];
+	const message = getFinalsMessage(participants, 3, 3, { minHeats: 3, maxHeats: 13, winsRequired: 3 });
+	assertEquals(message, 'Finals in progress. Waiting for a pilot to earn 3 wins.');
+});

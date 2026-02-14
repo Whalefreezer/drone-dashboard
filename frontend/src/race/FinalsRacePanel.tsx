@@ -27,7 +27,7 @@ export function FinalsRacePanel() {
 			<div className='finals-race-header'>
 				<h3>Finals - Top 6</h3>
 				<span className='finals-race-progress'>
-					{completedHeats} / {Math.max(finals.heats.length, 3)} heats
+					{completedHeats} / {Math.max(finals.heats.length, finals.minHeats)} heats
 				</span>
 			</div>
 
@@ -37,7 +37,7 @@ export function FinalsRacePanel() {
 				</div>
 			)}
 
-			{finals.message && completedHeats < 3 && (
+			{finals.message && completedHeats < finals.minHeats && (
 				<div className='finals-race-message'>
 					{finals.message}
 				</div>

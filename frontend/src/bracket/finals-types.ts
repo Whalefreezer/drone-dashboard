@@ -29,6 +29,9 @@ export interface FinalsState {
 	finalists: FinalsFinalist[];
 	heats: FinalsHeat[];
 	participants: FinalsParticipant[];
+	minHeats: number;
+	maxHeats: number;
+	winsRequired: number;
 	championId: string | null;
 	isComplete: boolean;
 	requiresMoreHeats: boolean;

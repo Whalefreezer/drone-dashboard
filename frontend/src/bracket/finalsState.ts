@@ -6,17 +6,37 @@ import { activeBracketFormatAtom, bracketAnchorConfigAtom, mapRacesToBracket } f
 import type { FinalsFinalist, FinalsHeat, FinalsParticipant, FinalsState } from './finals-types.ts';
 import {
 	computeFinalsRankings,
-	computeWins,
+	DEFAULT_FINALS_RULES,
 	getFinalsMessage,
 	positionToPoints,
 	type RankingInput,
 	requiresMoreHeats,
 } from './finals-ranking.ts';
 
-// Race 28 is the winners bracket final (top 3 advance to finals)
-// Race 29 is the redemption grand final (top 3 advance to finals)
-const WINNERS_FINAL_ORDER = 28;
-const REDEMPTION_FINAL_ORDER = 29;
+interface FinalsFormatConfig {
+	winnersFinalOrder: number;
+	redemptionFinalOrder: number;
+	minHeats: number;
+	maxHeats: number;
+	winsRequired: number;
+}
+
+const FINALS_CONFIG_BY_FORMAT_ID: Record<string, FinalsFormatConfig> = {
+	'double-elim-6p-v1': {
+		winnersFinalOrder: 28,
+		redemptionFinalOrder: 29,
+		minHeats: DEFAULT_FINALS_RULES.minHeats,
+		maxHeats: DEFAULT_FINALS_RULES.maxHeats,
+		winsRequired: DEFAULT_FINALS_RULES.winsRequired,
+	},
+	'nzo-top24-de-v1': {
+		winnersFinalOrder: 16,
+		redemptionFinalOrder: 18,
+		minHeats: 3,
+		maxHeats: 13,
+		winsRequired: 3,
+	},
+};
 
 /**
  * Atom that computes the complete finals state
@@ -34,6 +54,9 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			finalists: [],
 			heats: [],
 			participants: [],
+			minHeats: DEFAULT_FINALS_RULES.minHeats,
+			maxHeats: DEFAULT_FINALS_RULES.maxHeats,
+			winsRequired: DEFAULT_FINALS_RULES.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -41,13 +64,16 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
-	// Finals module currently supports only the original 29-race bracket.
-	if (format.id !== 'double-elim-6p-v1') {
+	const finalsConfig = FINALS_CONFIG_BY_FORMAT_ID[format.id];
+	if (!finalsConfig) {
 		return {
 			enabled: false,
 			finalists: [],
 			heats: [],
 			participants: [],
+			minHeats: DEFAULT_FINALS_RULES.minHeats,
+			maxHeats: DEFAULT_FINALS_RULES.maxHeats,
+			winsRequired: DEFAULT_FINALS_RULES.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -59,8 +85,8 @@ export const finalsStateAtom = atom((get): FinalsState => {
 	const mapping = mapRacesToBracket(races, config, format.nodes, config.runSequence ?? format.runSequence);
 
 	// Get the two final races that feed the finals pool
-	const winnersFinalRace = mapping.get(WINNERS_FINAL_ORDER);
-	const redemptionFinalRace = mapping.get(REDEMPTION_FINAL_ORDER);
+	const winnersFinalRace = mapping.get(finalsConfig.winnersFinalOrder);
+	const redemptionFinalRace = mapping.get(finalsConfig.redemptionFinalOrder);
 
 	// If either final race doesn't exist, finals are not enabled
 	if (!winnersFinalRace || !redemptionFinalRace) {
@@ -69,6 +95,9 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			finalists: [],
 			heats: [],
 			participants: [],
+			minHeats: finalsConfig.minHeats,
+			maxHeats: finalsConfig.maxHeats,
+			winsRequired: finalsConfig.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -86,6 +115,9 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			finalists: [],
 			heats: [],
 			participants: [],
+			minHeats: finalsConfig.minHeats,
+			maxHeats: finalsConfig.maxHeats,
+			winsRequired: finalsConfig.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -129,6 +161,9 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			finalists,
 			heats: [],
 			participants: [],
+			minHeats: finalsConfig.minHeats,
+			maxHeats: finalsConfig.maxHeats,
+			winsRequired: finalsConfig.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -146,6 +181,9 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			finalists,
 			heats: [],
 			participants: [],
+			minHeats: finalsConfig.minHeats,
+			maxHeats: finalsConfig.maxHeats,
+			winsRequired: finalsConfig.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -222,7 +260,7 @@ export const finalsStateAtom = atom((get): FinalsState => {
 	const completedHeats = finalsHeats.filter((h) => h.isCompleted).length;
 
 	// Compute rankings
-	const ranked = computeFinalsRankings(participantsArray, completedHeats);
+	const ranked = computeFinalsRankings(participantsArray, completedHeats, finalsConfig);
 
 	// Build participants with full info
 	const participants: FinalsParticipant[] = ranked.map((r) => ({
@@ -236,16 +274,19 @@ export const finalsStateAtom = atom((get): FinalsState => {
 	}));
 
 	const championId = participants.find((p) => p.isChampion)?.pilotId ?? null;
-	const needsMoreHeats = requiresMoreHeats(participantsArray, completedHeats);
-	const message = getFinalsMessage(participantsArray, completedHeats, finalsHeats.length);
+	const needsMoreHeats = requiresMoreHeats(participantsArray, completedHeats, finalsConfig);
+	const message = getFinalsMessage(participantsArray, completedHeats, finalsHeats.length, finalsConfig);
 
 	return {
 		enabled: true,
 		finalists,
 		heats: finalsHeats,
 		participants,
+		minHeats: finalsConfig.minHeats,
+		maxHeats: finalsConfig.maxHeats,
+		winsRequired: finalsConfig.winsRequired,
 		championId,
-		isComplete: !needsMoreHeats && completedHeats >= 3,
+		isComplete: !needsMoreHeats && completedHeats >= finalsConfig.minHeats,
 		requiresMoreHeats: needsMoreHeats,
 		message,
 	};
