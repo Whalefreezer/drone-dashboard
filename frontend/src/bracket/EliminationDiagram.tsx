@@ -15,9 +15,16 @@ interface ViewportState {
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 1.6;
+const BASE_NODE_SLOT_COUNT = 4;
+const EXTRA_SLOT_HEIGHT_PX = 30;
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
+}
+
+function getNodeHeight(node: BracketNodeViewModel, defaultNodeHeight: number): number {
+	const extraSlotCount = Math.max(0, node.definition.slotCount - BASE_NODE_SLOT_COUNT);
+	return defaultNodeHeight + extraSlotCount * EXTRA_SLOT_HEIGHT_PX;
 }
 
 export function EliminationDiagram() {
@@ -377,6 +384,29 @@ export function EliminationDiagram() {
 		transformOrigin: '0 0',
 	};
 
+	const nodeHeightByOrder = useMemo(() => {
+		return new Map(
+			diagram.nodes.map((node) => [
+				node.definition.order,
+				getNodeHeight(node, activeFormat.diagramDimensions.nodeHeight),
+			]),
+		);
+	}, [diagram.nodes, activeFormat.diagramDimensions.nodeHeight]);
+
+	const renderedDiagramHeight = useMemo(() => {
+		const maxNodeBottom = diagram.nodes.reduce((maxBottom, node) => {
+			const nodeHeight = nodeHeightByOrder.get(node.definition.order) ?? activeFormat.diagramDimensions.nodeHeight;
+			return Math.max(maxBottom, node.definition.position.y + nodeHeight);
+		}, 0);
+		return Math.max(activeFormat.diagramDimensions.height, maxNodeBottom + activeFormat.diagramDimensions.rowUnit + 300);
+	}, [
+		diagram.nodes,
+		nodeHeightByOrder,
+		activeFormat.diagramDimensions.height,
+		activeFormat.diagramDimensions.nodeHeight,
+		activeFormat.diagramDimensions.rowUnit,
+	]);
+
 	const edgePaths = useMemo(() => {
 		return diagram.edges
 			.filter((edge) => edge.definition.type === 'advance')
@@ -384,14 +414,23 @@ export function EliminationDiagram() {
 				const source = edge.source.definition.position;
 				const target = edge.target.definition.position;
 				const startX = source.x + activeFormat.diagramDimensions.nodeWidth;
-				const startY = source.y + activeFormat.diagramDimensions.nodeHeight / 2;
+				const sourceHeight = nodeHeightByOrder.get(edge.source.definition.order) ??
+					activeFormat.diagramDimensions.nodeHeight;
+				const targetHeight = nodeHeightByOrder.get(edge.target.definition.order) ??
+					activeFormat.diagramDimensions.nodeHeight;
+				const startY = source.y + sourceHeight / 2;
 				const endX = target.x;
-				const endY = target.y + activeFormat.diagramDimensions.nodeHeight / 2;
+				const endY = target.y + targetHeight / 2;
 				const midX = startX + (endX - startX) * 0.5;
 				const path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
 				return { edge, d: path };
 			});
-	}, [diagram.edges, activeFormat.diagramDimensions.nodeHeight, activeFormat.diagramDimensions.nodeWidth]);
+	}, [
+		diagram.edges,
+		activeFormat.diagramDimensions.nodeHeight,
+		activeFormat.diagramDimensions.nodeWidth,
+		nodeHeightByOrder,
+	]);
 
 	return (
 		<div
@@ -424,8 +463,8 @@ export function EliminationDiagram() {
 				<svg
 					className='elim-diagram-svg'
 					width={activeFormat.diagramDimensions.width}
-					height={activeFormat.diagramDimensions.height}
-					viewBox={`0 0 ${activeFormat.diagramDimensions.width} ${activeFormat.diagramDimensions.height}`}
+					height={renderedDiagramHeight}
+					viewBox={`0 0 ${activeFormat.diagramDimensions.width} ${renderedDiagramHeight}`}
 					role='img'
 					aria-label='Double elimination bracket'
 				>
@@ -452,7 +491,14 @@ export function EliminationDiagram() {
 						))}
 					</g>
 					<g className='elim-nodes'>
-						{diagram.nodes.map((node) => renderNode(node, currentRace, activeFormat.diagramDimensions))}
+						{diagram.nodes.map((node) =>
+							renderNode(
+								node,
+								currentRace,
+								activeFormat.diagramDimensions.nodeWidth,
+								nodeHeightByOrder.get(node.definition.order) ?? activeFormat.diagramDimensions.nodeHeight,
+							)
+						)}
 					</g>
 				</svg>
 			</div>
@@ -463,7 +509,8 @@ export function EliminationDiagram() {
 function renderNode(
 	node: BracketNodeViewModel,
 	currentRace: PBRaceRecord | null,
-	dimensions: { nodeWidth: number; nodeHeight: number },
+	nodeWidth: number,
+	nodeHeight: number,
 ) {
 	const { definition } = node;
 	const isCurrentRace = currentRace && node.race?.id === currentRace.id;
@@ -478,8 +525,8 @@ function renderNode(
 				y={0}
 				rx={12}
 				ry={12}
-				width={dimensions.nodeWidth}
-				height={dimensions.nodeHeight}
+				width={nodeWidth}
+				height={nodeHeight}
 				className='elim-node-rect'
 				data-status={node.status}
 				data-current={isCurrentRace ? 'true' : 'false'}
@@ -488,8 +535,8 @@ function renderNode(
 			<foreignObject
 				x={0}
 				y={0}
-				width={dimensions.nodeWidth}
-				height={dimensions.nodeHeight}
+				width={nodeWidth}
+				height={nodeHeight}
 			>
 				<div className='elim-node-card' data-status={node.status}>
 					<header>
