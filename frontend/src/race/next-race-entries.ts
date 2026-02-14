@@ -3,7 +3,6 @@ import type { PBRaceRecord } from '../api/pbTypes.ts';
 import type { BracketNodeDefinition } from '../bracket/doubleElimDefinition.ts';
 import type { BracketDiagramViewModel } from '../bracket/eliminationState.ts';
 import { bracketDiagramAtom, bracketEnabledAtom } from '../bracket/eliminationState.ts';
-import { currentOrderKVAtom } from '../state/pbAtoms.ts';
 import { nextRacesAtom } from './race-atoms.ts';
 
 export interface NextRaceEntry {
@@ -18,7 +17,6 @@ const MAX_NEXT_RACES = 8;
 export function buildNextRaceEntries(
 	nextRaces: PBRaceRecord[],
 	diagram: BracketDiagramViewModel,
-	currentOrder: number,
 	maxEntries: number = MAX_NEXT_RACES,
 ): NextRaceEntry[] {
 	const entries: NextRaceEntry[] = [];
@@ -38,13 +36,30 @@ export function buildNextRaceEntries(
 		}
 	}
 
+	const sequencePositions = new Map<number, number[]>();
+	for (const [index, order] of (diagram.runSequence ?? []).entries()) {
+		const bucket = sequencePositions.get(order) ?? [];
+		bucket.push(index);
+		sequencePositions.set(order, bucket);
+	}
+
+	const getNextSequenceIndex = (order: number, assignedHeatCount: number): number => {
+		const positions = sequencePositions.get(order);
+		if (!positions || positions.length === 0) return Number.POSITIVE_INFINITY;
+		return positions[assignedHeatCount] ?? Number.POSITIVE_INFINITY;
+	};
+
 	const predictedNodes = diagram.nodes
 		.filter((node) =>
 			!node.race &&
-			node.slots.some((slot) => slot.isPredicted) &&
-			node.definition.order > currentOrder
+			node.slots.some((slot) => slot.isPredicted)
 		)
-		.sort((a, b) => a.definition.order - b.definition.order);
+		.sort((a, b) => {
+			const aSeq = getNextSequenceIndex(a.definition.order, a.assignedHeatCount);
+			const bSeq = getNextSequenceIndex(b.definition.order, b.assignedHeatCount);
+			if (aSeq !== bSeq) return aSeq - bSeq;
+			return a.definition.order - b.definition.order;
+		});
 
 	for (const node of predictedNodes) {
 		if (entries.length >= maxEntries) break;
@@ -65,7 +80,6 @@ export function buildNextRaceEntries(
 export const nextRaceEntriesAtom = atom((get): NextRaceEntry[] => {
 	const nextRaces = get(nextRacesAtom);
 	const diagram = get(bracketDiagramAtom);
-	const currentOrder = get(currentOrderKVAtom)?.order ?? 0;
 	if (!get(bracketEnabledAtom)) {
 		return nextRaces.slice(0, MAX_NEXT_RACES).map((race) => ({
 			raceId: race.id,
@@ -74,5 +88,5 @@ export const nextRaceEntriesAtom = atom((get): NextRaceEntry[] => {
 			isPredicted: false,
 		}));
 	}
-	return buildNextRaceEntries(nextRaces, diagram, currentOrder, MAX_NEXT_RACES);
+	return buildNextRaceEntries(nextRaces, diagram, MAX_NEXT_RACES);
 });

@@ -56,7 +56,7 @@ export const finalsStateAtom = atom((get): FinalsState => {
 	}
 
 	// Map bracket nodes to races
-	const mapping = mapRacesToBracket(races, config, format.nodes);
+	const mapping = mapRacesToBracket(races, config, format.nodes, config.runSequence ?? format.runSequence);
 
 	// Get the two final races that feed the finals pool
 	const winnersFinalRace = mapping.get(WINNERS_FINAL_ORDER);

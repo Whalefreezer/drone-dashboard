@@ -7,14 +7,15 @@ not assume additional wiring exists.
 
 1. `frontend/src/bracket/eliminationState.ts` computes the bracket view-model via `bracketDiagramAtom`.
 2. Active bracket format + anchors are read from `client_kv` with `namespace=bracket`, `key=eliminationConfig`.
-3. `formatId` selects the bracket definition (for example `double-elim-6p-v1` or `nzo-top24-de-v1`), and `anchors` map race order to bracket
-   order.
+3. `formatId` selects the bracket definition (for example `double-elim-6p-v1` or `nzo-top24-de-v1`), `anchors` map race order to bracket
+   order, and optional `runSequence` maps multiple Trackside heats to one logical bracket race.
 4. After nodes load real race data, `applyPredictedAssignments` injects prediction slots. A prediction is created when:
    - The source node’s status is `completed`.
    - The slot has a `pilotId`.
    - The bracket edge type determines whether to advance winners (`isWinner`) or eliminated pilots (`isEliminated`).
 5. Predicted slots get the `isPredicted` flag, empty channel, no finish position, and a synthetic `id`. Real slots keep their live data.
 6. `raceBracketSlotsAtom` exposes the resolved slot list for any race (actual or predicted) so UI components reuse a single source of truth.
+7. For multi-heat nodes, slots now expose `heatPoints[]` and `totalPoints` using elimination scoring (`10,7,4,3,2,1` for positions `1..6`).
 
 ## Slot Shape
 

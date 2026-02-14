@@ -42,6 +42,7 @@ const bracketDataSchema = z.object({
 	nodes: z.array(bracketNodeSchema).min(1),
 	rounds: z.array(bracketRoundSchema).min(1),
 	edges: z.array(bracketEdgeSchema),
+	runSequence: z.array(z.number().int().positive()).optional(),
 });
 
 export function parseBracketFormatDefinition(raw: unknown, id: string, label: string): BracketFormatDefinition {
@@ -53,6 +54,7 @@ export function parseBracketFormatDefinition(raw: unknown, id: string, label: st
 		nodes: parsed.nodes,
 		rounds: parsed.rounds,
 		edges: parsed.edges,
+		runSequence: parsed.runSequence,
 		diagramDimensions: computeDiagramDimensions(parsed.nodes),
 	};
 }
@@ -61,6 +63,7 @@ function validateBracketData(data: {
 	nodes: BracketNodeDefinition[];
 	rounds: BracketRoundDefinition[];
 	edges: BracketEdgeDefinition[];
+	runSequence?: number[];
 }) {
 	const nodeOrderSet = new Set<number>();
 	for (const node of data.nodes) {
@@ -101,6 +104,14 @@ function validateBracketData(data: {
 		}
 		if (!nodeOrderSet.has(edge.to)) {
 			throw new Error(`Edge destination ${edge.to} does not exist in nodes`);
+		}
+	}
+
+	if (data.runSequence) {
+		for (const order of data.runSequence) {
+			if (!nodeOrderSet.has(order)) {
+				throw new Error(`runSequence includes missing node order ${order}`);
+			}
 		}
 	}
 }

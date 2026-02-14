@@ -181,9 +181,23 @@
 	overflow-y: auto;
 }
 
+.elim-node-heats-header {
+	display: grid;
+	gap: 0.3rem;
+	justify-content: end;
+	font-size: 0.62rem;
+	font-weight: 700;
+	color: #93c5fd;
+	padding-right: 0.3rem;
+}
+
+.elim-node-heats-header span:last-child {
+	color: #fcd34d;
+}
+
 .elim-node-slot {
 	display: grid;
-	grid-template-columns: 1.4rem 2rem 1fr auto;
+	grid-template-columns: 1.4rem 2rem 1fr 1.3rem 1.3rem 1.3rem 1.6rem auto;
 	gap: 0.35rem;
 	align-items: center;
 	font-size: 0.72rem;
@@ -243,6 +257,25 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	color: #ffffff;
+}
+
+.elim-node-slot .slot-heat-points {
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: #bfdbfe;
+	font-weight: 600;
+}
+
+.elim-node-slot .slot-total-points {
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: #fde68a;
+	font-weight: 700;
+}
+
+.elim-node-slot[data-predicted='true'] .slot-heat-points,
+.elim-node-slot[data-predicted='true'] .slot-total-points {
+	color: rgba(226, 232, 240, 0.78);
 }
 
 .elim-node-slot .slot-destination {

@@ -44,6 +44,8 @@ function createNode(
 		isEliminated: false,
 		isPredicted: false,
 		destinationLabel: null,
+		heatPoints: [null],
+		totalPoints: null,
 	};
 	const slots = slotOverrides.length > 0
 		? slotOverrides.map((override, idx) => ({ ...baseSlot, id: `${baseSlot.id}-${idx}`, ...override }))
@@ -51,9 +53,12 @@ function createNode(
 	return {
 		definition,
 		race,
+		raceIds: race ? [race.id] : [],
 		status: race ? 'scheduled' : 'unassigned',
 		headline: definition.name,
 		subline: definition.code,
+		expectedHeatCount: 1,
+		assignedHeatCount: race ? 1 : 0,
 		slots,
 	};
 }
@@ -68,8 +73,6 @@ Deno.test('buildNextRaceEntries includes predicted nodes after real races', () =
 		name: 'Predicted Pilot',
 		isPredicted: true,
 	}], null);
-	// Ensure predicted node order is higher than current order
-	predictedNode.definition = { ...predictedNode.definition, order: upcomingRace.raceOrder + 1 };
 
 	const diagram: BracketDiagramViewModel = {
 		nodes: [realNode, predictedNode],
@@ -78,7 +81,7 @@ Deno.test('buildNextRaceEntries includes predicted nodes after real races', () =
 		anchors: emptyAnchors,
 	};
 
-	const entries = buildNextRaceEntries([upcomingRace], diagram, upcomingRace.raceOrder);
+	const entries = buildNextRaceEntries([upcomingRace], diagram);
 	assertEquals(entries.length, 2);
 	assertEquals(entries[0].raceId, upcomingRace.id);
 	assertEquals(entries[0].isPredicted, false);
@@ -90,7 +93,6 @@ Deno.test('buildNextRaceEntries includes predicted nodes after real races', () =
 Deno.test('buildNextRaceEntries respects max entry cap', () => {
 	const raceOne = createRace(10);
 	const predictedNode = createNode(1, [{ pilotId: 'pilot-2', name: 'P2', isPredicted: true }], null);
-	predictedNode.definition = { ...predictedNode.definition, order: raceOne.raceOrder + 1 };
 	const diagram: BracketDiagramViewModel = {
 		nodes: [
 			createNode(0, [{ pilotId: 'pilot-1', name: 'P1' }], raceOne),
@@ -101,7 +103,28 @@ Deno.test('buildNextRaceEntries respects max entry cap', () => {
 		anchors: emptyAnchors,
 	};
 
-	const entries = buildNextRaceEntries([raceOne], diagram, 9, 1);
+	const entries = buildNextRaceEntries([raceOne], diagram, 1);
 	assertEquals(entries.length, 1);
 	assertEquals(entries[0].raceId, raceOne.id);
+});
+
+Deno.test('buildNextRaceEntries orders predicted nodes by run sequence', () => {
+	const nodeForRace10 = createNode(0, [{ pilotId: 'pilot-10', name: 'P10', isPredicted: true }], null);
+	nodeForRace10.definition = { ...nodeForRace10.definition, order: 10 };
+	nodeForRace10.assignedHeatCount = 0;
+	const nodeForRace11 = createNode(1, [{ pilotId: 'pilot-11', name: 'P11', isPredicted: true }], null);
+	nodeForRace11.definition = { ...nodeForRace11.definition, order: 11 };
+	nodeForRace11.assignedHeatCount = 0;
+
+	const diagram: BracketDiagramViewModel = {
+		nodes: [nodeForRace11, nodeForRace10],
+		edges: [],
+		rounds: [],
+		anchors: emptyAnchors,
+		runSequence: [11, 10],
+	};
+
+	const entries = buildNextRaceEntries([], diagram);
+	assertEquals(entries[0].raceId, 'predicted-race-11');
+	assertEquals(entries[1].raceId, 'predicted-race-10');
 });

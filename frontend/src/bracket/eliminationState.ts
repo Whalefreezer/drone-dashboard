@@ -3,7 +3,7 @@ import { atomFamily } from 'jotai/utils';
 import { z } from 'zod';
 import { channelsDataAtom, clientKVRecordsAtom, currentEventAtom, pilotsAtom, racesAtom } from '../state/pbAtoms.ts';
 import type { PBClientKVRecord, PBRaceRecord } from '../api/pbTypes.ts';
-import { racePilotChannelsAtom, racePilotFinishElapsedMsAtom, raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
+import { racePilotChannelsAtom, raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
 import { DOUBLE_ELIM_6P_V1_FORMAT } from './formats/double-elim-6p-v1.ts';
 import { DEFAULT_BRACKET_FORMAT_ID, getBracketFormatById } from './formats/registry.ts';
 import type { BracketEdgeDefinition, BracketFormatDefinition, BracketNodeDefinition } from './formats/types.ts';
@@ -18,12 +18,14 @@ const eliminationConfigSchema = z.object({
 		raceOrder: z.number().int().optional(),
 		raceSourceId: z.string().trim().min(1).optional(),
 	})).default([]),
+	runSequence: z.array(z.number().int().positive()).optional(),
 	notes: z.string().optional(),
 });
 
 export interface BracketAnchorConfig {
 	formatId: string;
 	anchors: BracketAnchor[];
+	runSequence?: number[];
 	record: PBClientKVRecord | null;
 }
 
@@ -44,6 +46,8 @@ export interface BracketNodeSlot {
 	isEliminated: boolean;
 	isPredicted: boolean;
 	destinationLabel: string | null;
+	heatPoints: Array<number | null>;
+	totalPoints: number | null;
 }
 
 export type NodeStatus = 'unassigned' | 'scheduled' | 'active' | 'completed';
@@ -51,9 +55,12 @@ export type NodeStatus = 'unassigned' | 'scheduled' | 'active' | 'completed';
 export interface BracketNodeViewModel {
 	definition: BracketNodeDefinition;
 	race: PBRaceRecord | null;
+	raceIds: string[];
 	status: NodeStatus;
 	headline: string;
 	subline: string;
+	expectedHeatCount: number;
+	assignedHeatCount: number;
 	slots: BracketNodeSlot[];
 }
 
@@ -69,6 +76,7 @@ export interface BracketDiagramViewModel {
 	edges: BracketEdgeViewModel[];
 	rounds: { id: string; label: string; centerX: number }[];
 	anchors: BracketAnchorConfig;
+	runSequence?: number[];
 }
 
 export const bracketEnabledAtom = atom((get): boolean => {
@@ -87,6 +95,7 @@ function parseAnchorConfig(
 		return {
 			formatId: getBracketFormatById(parsed.formatId).id,
 			anchors: parsed.anchors ?? [],
+			runSequence: parsed.runSequence,
 			record,
 		};
 	} catch (error) {
@@ -114,6 +123,58 @@ export const activeBracketFormatAtom = atom((get): BracketFormatDefinition => {
 interface AnchorPoint {
 	bracketOrder: number;
 	raceIndex: number;
+}
+
+const POINTS_BY_POSITION = new Map<number, number>([
+	[1, 10],
+	[2, 7],
+	[3, 4],
+	[4, 3],
+	[5, 2],
+	[6, 1],
+]);
+
+function pointsForPosition(position: number | null | undefined): number | null {
+	if (position == null) return null;
+	return POINTS_BY_POSITION.get(position) ?? null;
+}
+
+function getNodeExpectedHeatCounts(
+	nodes: BracketNodeDefinition[],
+	runSequence?: number[],
+): Map<number, number> {
+	const counts = new Map<number, number>(nodes.map((node) => [node.order, 0]));
+	if (!runSequence || runSequence.length === 0) {
+		return new Map(nodes.map((node) => [node.order, 1]));
+	}
+	for (const order of runSequence) {
+		counts.set(order, (counts.get(order) ?? 0) + 1);
+	}
+	for (const order of counts.keys()) {
+		if ((counts.get(order) ?? 0) < 1) {
+			counts.set(order, 1);
+		}
+	}
+	return counts;
+}
+
+function resolveSequenceStartRaceIndex(
+	sortedRaces: PBRaceRecord[],
+	runSequence: number[],
+	config: BracketAnchorConfig,
+): number {
+	if (sortedRaces.length === 0 || runSequence.length === 0) {
+		return 0;
+	}
+	const anchorPoints = buildAnchorPoints(sortedRaces, config)
+		.filter((point) => runSequence.includes(point.bracketOrder));
+	for (const anchor of anchorPoints) {
+		const sequenceIdx = runSequence.indexOf(anchor.bracketOrder);
+		if (sequenceIdx < 0) continue;
+		const start = anchor.raceIndex - sequenceIdx;
+		if (start >= 0) return start;
+	}
+	return 0;
 }
 
 export function buildAnchorPoints(
@@ -149,22 +210,37 @@ export function buildAnchorPoints(
 	return points;
 }
 
-export function mapRacesToBracket(
+export function mapRacesToBracketHeats(
 	races: PBRaceRecord[],
 	config: BracketAnchorConfig,
 	nodes: BracketNodeDefinition[] = DOUBLE_ELIM_6P_V1_FORMAT.nodes,
-): Map<number, PBRaceRecord | null> {
+	runSequence?: number[],
+): Map<number, PBRaceRecord[]> {
 	const sortedRaces = [...races].sort((a, b) => a.raceOrder - b.raceOrder);
+	const mapping = new Map<number, PBRaceRecord[]>(nodes.map((node) => [node.order, []]));
 	if (sortedRaces.length === 0) {
-		return new Map(nodes.map((def) => [def.order, null]));
+		return mapping;
+	}
+	if (runSequence && runSequence.length > 0) {
+		const startRaceIndex = resolveSequenceStartRaceIndex(sortedRaces, runSequence, config);
+		for (let sequenceIndex = 0; sequenceIndex < runSequence.length; sequenceIndex++) {
+			const race = sortedRaces[startRaceIndex + sequenceIndex] ?? null;
+			if (!race) break;
+			const bracketOrder = runSequence[sequenceIndex];
+			const bucket = mapping.get(bracketOrder) ?? [];
+			bucket.push(race);
+			mapping.set(bracketOrder, bucket);
+		}
+		return mapping;
 	}
 	const anchorPoints = buildAnchorPoints(sortedRaces, config);
 	if (anchorPoints.length === 0) {
-		return new Map(
-			nodes.map((def, idx) => [def.order, sortedRaces[idx] ?? null]),
-		);
+		nodes.forEach((node, idx) => {
+			const race = sortedRaces[idx] ?? null;
+			mapping.set(node.order, race ? [race] : []);
+		});
+		return mapping;
 	}
-	const mapping = new Map<number, PBRaceRecord | null>();
 	let currentAnchor = anchorPoints[0];
 	const orderedNodes = [...nodes].sort((a, b) => a.order - b.order);
 	for (const node of orderedNodes) {
@@ -173,9 +249,19 @@ export function mapRacesToBracket(
 		}
 		const offset = node.order - currentAnchor.bracketOrder;
 		const race = sortedRaces[currentAnchor.raceIndex + offset] ?? null;
-		mapping.set(node.order, race ?? null);
+		mapping.set(node.order, race ? [race] : []);
 	}
 	return mapping;
+}
+
+export function mapRacesToBracket(
+	races: PBRaceRecord[],
+	config: BracketAnchorConfig,
+	nodes: BracketNodeDefinition[] = DOUBLE_ELIM_6P_V1_FORMAT.nodes,
+	runSequence?: number[],
+): Map<number, PBRaceRecord | null> {
+	const grouped = mapRacesToBracketHeats(races, config, nodes, runSequence);
+	return new Map(nodes.map((node) => [node.order, grouped.get(node.order)?.[0] ?? null]));
 }
 
 function getDestinationLabel(
@@ -208,6 +294,40 @@ function getSlotOutcome(
 	return { isWinner: false, isEliminated: false };
 }
 
+function buildChannelLabel(
+	channel: {
+		shortBand?: string;
+		number?: number;
+		channelDisplayName?: string;
+	} | null,
+): string {
+	if (!channel) return '—';
+	const compact = `${channel.shortBand ?? ''}${channel.number ?? ''}`.trim();
+	if (compact) return compact;
+	return channel.channelDisplayName ?? '—';
+}
+
+function createPlaceholderSlot(
+	definitionOrder: number,
+	index: number,
+	heatCount: number,
+): BracketNodeSlot {
+	return {
+		id: `${definitionOrder}-placeholder-${index}`,
+		pilotId: null,
+		name: 'Awaiting assignment',
+		channelLabel: '—',
+		channelId: null,
+		position: null,
+		isWinner: false,
+		isEliminated: false,
+		isPredicted: false,
+		destinationLabel: null,
+		heatPoints: Array.from({ length: heatCount }).map(() => null),
+		totalPoints: null,
+	};
+}
+
 export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const config = get(bracketAnchorConfigAtom);
 	const format = get(activeBracketFormatAtom);
@@ -215,83 +335,155 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 	const races = get(racesAtom) as PBRaceRecord[];
 	const pilots = get(pilotsAtom);
 	const channels = get(channelsDataAtom);
-	const mapping = mapRacesToBracket(races, config, format.nodes);
+	const pilotById = new Map(pilots.map((pilot) => [pilot.id, pilot]));
+	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
+	const runSequence = config.runSequence ?? format.runSequence;
+	const expectedHeatCounts = getNodeExpectedHeatCounts(format.nodes, runSequence);
+	const groupedMapping = mapRacesToBracketHeats(races, config, format.nodes, runSequence);
 	const nodeViewModels: BracketNodeViewModel[] = format.nodes.map(
 		(definition) => {
-			const race = mapping.get(definition.order) ?? null;
-			if (!race) {
-				return createEmptyNode(definition);
+			const assignedRaces = groupedMapping.get(definition.order) ?? [];
+			const expectedHeatCount = expectedHeatCounts.get(definition.order) ?? 1;
+			if (assignedRaces.length === 0) {
+				return createEmptyNode(definition, expectedHeatCount);
 			}
-			const statusInfo = get(raceStatusAtom(race.id));
-			const status: NodeStatus = statusInfo?.isActive
+
+			const statuses = assignedRaces.map((race) => get(raceStatusAtom(race.id)));
+			const activeRace = assignedRaces.find((race, idx) => statuses[idx]?.isActive) ?? null;
+			const fallbackRace = assignedRaces[assignedRaces.length - 1] ?? null;
+			const completedHeats = statuses.filter((status) => status?.isCompleted === true).length;
+			const hasActive = statuses.some((status) => status?.isActive === true);
+			const hasStarted = statuses.some((status) =>
+				status?.hasStarted === true || status?.isActive === true || status?.isCompleted === true
+			);
+			const isCompleted = completedHeats >= expectedHeatCount && expectedHeatCount > 0;
+			const status: NodeStatus = hasActive
 				? 'active'
-				: statusInfo?.isCompleted
+				: isCompleted
 				? 'completed'
-				: statusInfo?.hasStarted
+				: hasStarted || assignedRaces.length > 0
 				? 'scheduled'
-				: 'scheduled';
-			const pilotChannels = get(racePilotChannelsAtom(race.id));
-			const sortedRows = get(raceSortedRowsAtom(race.id));
-			const positionByPilot = new Map<string, number>();
-			sortedRows.forEach((row) => {
-				if (row.pilotChannel.pilotId) {
-					positionByPilot.set(row.pilotChannel.pilotId, row.position);
+				: 'unassigned';
+
+			const byPilot = new Map<string, {
+				pilotId: string;
+				name: string;
+				channelId: string | null;
+				channelLabel: string;
+				heatPoints: Array<number | null>;
+				totalPoints: number;
+				latestHeatIndex: number;
+				latestHeatPosition: number | null;
+			}>();
+
+			for (let heatIndex = 0; heatIndex < expectedHeatCount; heatIndex++) {
+				const heatRace = assignedRaces[heatIndex] ?? null;
+				if (!heatRace) continue;
+				const heatStatus = statuses[heatIndex];
+				const pilotChannels = get(racePilotChannelsAtom(heatRace.id));
+				for (const pc of pilotChannels) {
+					if (!pc.pilotId) continue;
+					if (!byPilot.has(pc.pilotId)) {
+						const pilot = pilotById.get(pc.pilotId);
+						const channel = pc.channelId ? channelById.get(pc.channelId) ?? null : null;
+						byPilot.set(pc.pilotId, {
+							pilotId: pc.pilotId,
+							name: pilot?.name ?? '—',
+							channelId: pc.channelId ?? null,
+							channelLabel: buildChannelLabel(channel),
+							heatPoints: Array.from({ length: expectedHeatCount }).map(() => null),
+							totalPoints: 0,
+							latestHeatIndex: heatIndex,
+							latestHeatPosition: null,
+						});
+					} else {
+						const entry = byPilot.get(pc.pilotId)!;
+						if (heatIndex >= entry.latestHeatIndex) {
+							const channel = pc.channelId ? channelById.get(pc.channelId) ?? null : null;
+							entry.channelId = pc.channelId ?? entry.channelId;
+							entry.channelLabel = buildChannelLabel(channel ?? (entry.channelId ? channelById.get(entry.channelId) ?? null : null));
+							entry.latestHeatIndex = heatIndex;
+						}
+					}
 				}
+
+				const sortedRows = get(raceSortedRowsAtom(heatRace.id));
+				for (const row of sortedRows) {
+					const pilotId = row.pilotChannel.pilotId;
+					if (!pilotId) continue;
+					if (!byPilot.has(pilotId)) {
+						const pilot = pilotById.get(pilotId);
+						byPilot.set(pilotId, {
+							pilotId,
+							name: pilot?.name ?? '—',
+							channelId: null,
+							channelLabel: '—',
+							heatPoints: Array.from({ length: expectedHeatCount }).map(() => null),
+							totalPoints: 0,
+							latestHeatIndex: heatIndex,
+							latestHeatPosition: null,
+						});
+					}
+					const pilot = byPilot.get(pilotId)!;
+					if (heatStatus?.isCompleted === true) {
+						const heatPoints = pointsForPosition(row.position);
+						pilot.heatPoints[heatIndex] = heatPoints;
+						if (heatPoints != null) {
+							pilot.totalPoints += heatPoints;
+						}
+					}
+					pilot.latestHeatPosition = row.position;
+				}
+			}
+
+			const rankedPilots = [...byPilot.values()].sort((a, b) => {
+				if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+				const aBest = Math.max(...a.heatPoints.map((value) => value ?? 0));
+				const bBest = Math.max(...b.heatPoints.map((value) => value ?? 0));
+				if (bBest !== aBest) return bBest - aBest;
+				const aPosition = a.latestHeatPosition ?? Number.POSITIVE_INFINITY;
+				const bPosition = b.latestHeatPosition ?? Number.POSITIVE_INFINITY;
+				if (aPosition !== bPosition) return aPosition - bPosition;
+				return a.name.localeCompare(b.name);
 			});
-			const raceCompleted = statusInfo?.isCompleted === true;
-			const slots: BracketNodeSlot[] = pilotChannels.map((pc) => {
-				const pilot = pilots.find((p) => p.id === pc.pilotId);
-				const channel = channels.find((c) => c.id === pc.channelId);
-				const position = pc.pilotId ? positionByPilot.get(pc.pilotId) ?? null : null;
-				const finishElapsed = pc.pilotId ? get(racePilotFinishElapsedMsAtom([race.id, pc.pilotId])) : null;
-				const finished = finishElapsed != null || raceCompleted;
-				const displayPosition = finished && position != null ? position : null;
+
+			const slots: BracketNodeSlot[] = rankedPilots.map((pilot, idx) => {
+				const displayPosition = status === 'completed' ? idx + 1 : null;
 				const outcome = getSlotOutcome(definition, format.edges, displayPosition);
-				const channelLabel = channel
-					? (() => {
-						const compact = `${channel.shortBand ?? ''}${channel.number ?? ''}`
-							.trim();
-						if (compact) return compact;
-						return channel.channelDisplayName ?? '';
-					})()
-					: '';
+				const hasPoints = pilot.heatPoints.some((value) => value != null);
 				const destinationLabel = getDestinationLabel(definition, format.nodes, displayPosition);
 				return {
-					id: pc.id,
-					pilotId: pc.pilotId,
-					name: pilot?.name ?? '—',
-					channelLabel: channelLabel || '—',
-					channelId: pc.channelId ?? null,
+					id: `${definition.order}-${pilot.pilotId}`,
+					pilotId: pilot.pilotId,
+					name: pilot.name,
+					channelLabel: pilot.channelLabel || '—',
+					channelId: pilot.channelId,
 					position: displayPosition,
 					isWinner: outcome.isWinner,
 					isEliminated: outcome.isEliminated,
 					isPredicted: false,
 					destinationLabel,
+					heatPoints: pilot.heatPoints,
+					totalPoints: hasPoints ? pilot.totalPoints : null,
 				};
 			});
+
 			while (slots.length < definition.slotCount) {
-				slots.push({
-					id: `${definition.order}-placeholder-${slots.length}`,
-					pilotId: null,
-					name: 'Awaiting assignment',
-					channelLabel: '—',
-					channelId: null,
-					position: null,
-					isWinner: false,
-					isEliminated: false,
-					isPredicted: false,
-					destinationLabel: null,
-				});
+				slots.push(createPlaceholderSlot(definition.order, slots.length, expectedHeatCount));
 			}
 			const raceLabel = definition.name;
 			const headline = raceLabel;
 			const subline = definition.code;
+			const currentRace = activeRace ?? fallbackRace;
 			return {
 				definition,
-				race,
+				race: currentRace,
+				raceIds: assignedRaces.map((race) => race.id),
 				status,
 				headline,
 				subline,
+				expectedHeatCount,
+				assignedHeatCount: assignedRaces.length,
 				slots,
 			};
 		},
@@ -325,18 +517,23 @@ export const bracketDiagramAtom = atom((get): BracketDiagramViewModel => {
 		edges,
 		rounds: roundsView,
 		anchors: config,
+		runSequence,
 	};
 });
 
 function createEmptyNode(
 	definition: BracketNodeDefinition,
+	expectedHeatCount: number,
 ): BracketNodeViewModel {
 	return {
 		definition,
 		race: null,
+		raceIds: [],
 		status: 'unassigned',
 		headline: definition.name,
 		subline: definition.code,
+		expectedHeatCount,
+		assignedHeatCount: 0,
 		slots: Array.from({ length: definition.slotCount }).map((_, idx) => ({
 			id: `${definition.order}-empty-${idx}`,
 			pilotId: null,
@@ -348,6 +545,8 @@ function createEmptyNode(
 			isEliminated: false,
 			isPredicted: false,
 			destinationLabel: null,
+			heatPoints: Array.from({ length: expectedHeatCount }).map(() => null),
+			totalPoints: null,
 		})),
 	};
 }
@@ -380,6 +579,8 @@ export function applyPredictedAssignments(
 				isEliminated: false,
 				isPredicted: true,
 				destinationLabel: null,
+				heatPoints: Array.from({ length: target.expectedHeatCount }).map(() => null),
+				totalPoints: null,
 			});
 		}
 		predictions.set(target.definition.order, bucket);
@@ -410,7 +611,7 @@ export const raceBracketSlotsAtom = atomFamily((raceId: string) =>
 			return [];
 		}
 		const diagram = get(bracketDiagramAtom);
-		const node = diagram.nodes.find((n) => n.race?.id === raceId) ??
+		const node = diagram.nodes.find((n) => n.raceIds.includes(raceId)) ??
 			diagram.nodes.find((n) => `predicted-race-${n.definition.order}` === raceId) ??
 			null;
 		return node?.slots ?? [];

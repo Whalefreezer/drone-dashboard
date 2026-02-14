@@ -43,6 +43,7 @@ export interface BracketFormatDefinition {
 	nodes: BracketNodeDefinition[];
 	rounds: BracketRoundDefinition[];
 	edges: BracketEdgeDefinition[];
+	runSequence?: number[];
 	diagramDimensions: DiagramDimensions;
 }
 

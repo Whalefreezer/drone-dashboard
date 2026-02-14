@@ -484,6 +484,19 @@ function renderNode(
 						<div className='elim-node-title'>{node.headline}</div>
 						<div className='elim-node-sub'>{node.subline}</div>
 					</header>
+					{node.expectedHeatCount > 0 && (
+						<div
+							className='elim-node-heats-header'
+							style={{
+								gridTemplateColumns: `${Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ')} 1.6rem`,
+							}}
+						>
+							{Array.from({ length: node.expectedHeatCount }).map((_, index) => (
+								<span key={`${definition.order}-h-${index}`}>H{index + 1}</span>
+							))}
+							<span>Σ</span>
+						</div>
+					)}
 					<ul>
 						{node.slots.map((slot) => (
 							<li
@@ -492,10 +505,19 @@ function renderNode(
 								data-winner={slot.isWinner ? 'true' : 'false'}
 								data-eliminated={slot.isEliminated ? 'true' : 'false'}
 								data-predicted={slot.isPredicted ? 'true' : 'false'}
+								style={{
+									gridTemplateColumns: `1.4rem 2rem 1fr ${
+										Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ')
+									} 1.6rem auto`,
+								}}
 							>
 								<span className='slot-position'>{slot.position ?? '–'}</span>
 								<span className='slot-channel'>{slot.channelLabel}</span>
 								<span className='slot-name' title={slot.name}>{slot.name}</span>
+								{slot.heatPoints.map((heatPoints, heatIndex) => (
+									<span key={`${slot.id}-heat-${heatIndex}`} className='slot-heat-points'>{heatPoints ?? '·'}</span>
+								))}
+								<span className='slot-total-points'>{slot.totalPoints ?? '·'}</span>
 								{slot.destinationLabel && <span className='slot-destination'>{slot.destinationLabel}</span>}
 							</li>
 						))}

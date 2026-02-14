@@ -21,6 +21,7 @@ interface BracketAnchorsSectionProps {
 interface ParsedConfig {
 	formatId: string;
 	anchors: BracketAnchor[];
+	runSequence: number[];
 }
 
 const EMPTY_DRAFT: AnchorDraft = {
@@ -38,19 +39,24 @@ function createDraftId() {
 
 function parseConfig(record: PBClientKVRecord | null): ParsedConfig {
 	if (!record?.value) {
-		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
+		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [], runSequence: [] };
 	}
 	try {
 		const parsed = JSON.parse(record.value) as unknown;
 		if (!parsed || typeof parsed !== 'object') {
-			return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
+			return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [], runSequence: [] };
 		}
 		const formatIdRaw = (parsed as { formatId?: unknown }).formatId;
 		const requestedFormatId = typeof formatIdRaw === 'string' && formatIdRaw.trim().length > 0 ? formatIdRaw : DEFAULT_BRACKET_FORMAT_ID;
 		const formatId = getBracketFormatById(requestedFormatId).id;
+		const runSequenceRaw = (parsed as { runSequence?: unknown }).runSequence;
+		const runSequence = Array.isArray(runSequenceRaw)
+			? runSequenceRaw
+				.filter((entry): entry is number => typeof entry === 'number' && Number.isInteger(entry) && entry > 0)
+			: [];
 		const anchorsRaw = (parsed as { anchors?: unknown }).anchors;
 		if (!Array.isArray(anchorsRaw)) {
-			return { formatId, anchors: [] };
+			return { formatId, anchors: [], runSequence };
 		}
 		const anchors: BracketAnchor[] = [];
 		for (const entry of anchorsRaw) {
@@ -65,10 +71,30 @@ function parseConfig(record: PBClientKVRecord | null): ParsedConfig {
 				raceSourceId: typeof raceSourceId === 'string' ? raceSourceId : undefined,
 			});
 		}
-		return { formatId, anchors };
+		return { formatId, anchors, runSequence };
 	} catch {
-		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [] };
+		return { formatId: DEFAULT_BRACKET_FORMAT_ID, anchors: [], runSequence: [] };
 	}
+}
+
+function parseRunSequenceInput(value: string, maxOrder: number): { runSequence: number[]; errors: string[] } {
+	const trimmed = value.trim();
+	if (!trimmed) return { runSequence: [], errors: [] };
+	const tokens = trimmed
+		.split(/[\n,\s]+/g)
+		.map((entry) => entry.trim())
+		.filter((entry) => entry.length > 0);
+	const runSequence: number[] = [];
+	const errors: string[] = [];
+	for (const [idx, token] of tokens.entries()) {
+		const order = Number.parseInt(token, 10);
+		if (!Number.isInteger(order) || order < 1 || order > maxOrder) {
+			errors.push(`Run sequence item ${idx + 1}: must be an integer between 1 and ${maxOrder}.`);
+			continue;
+		}
+		runSequence.push(order);
+	}
+	return { runSequence, errors };
 }
 
 function anchorsToDrafts(anchors: BracketAnchor[]): AnchorDraft[] {
@@ -156,11 +182,13 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 
 	const [selectedFormatId, setSelectedFormatId] = useState<string>(remoteConfig.formatId);
 	const [drafts, setDrafts] = useState<AnchorDraft[]>(remoteDrafts);
+	const [runSequenceInput, setRunSequenceInput] = useState<string>(remoteConfig.runSequence.join(','));
 
 	useEffect(() => {
 		setSelectedFormatId(remoteConfig.formatId);
 		setDrafts(remoteDrafts);
-	}, [remoteConfig.formatId, remoteDrafts]);
+		setRunSequenceInput(remoteConfig.runSequence.join(','));
+	}, [remoteConfig.formatId, remoteDrafts, remoteConfig.runSequence]);
 
 	const selectedFormat = useMemo(() => getBracketFormatById(selectedFormatId), [selectedFormatId]);
 	const maxOrder = useMemo(
@@ -172,23 +200,35 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 		() => sanitizeDrafts(drafts, maxOrder),
 		[drafts, maxOrder],
 	);
+	const { runSequence: sanitizedRunSequence, errors: runSequenceErrors } = useMemo(
+		() => parseRunSequenceInput(runSequenceInput, maxOrder),
+		[runSequenceInput, maxOrder],
+	);
 	const canonicalCurrent = useMemo(() => canonicalize(sanitizedAnchors), [sanitizedAnchors]);
 	const canonicalRemote = useMemo(() => canonicalize(remoteConfig.anchors), [remoteConfig.anchors]);
-	const isDirty = selectedFormatId !== remoteConfig.formatId || JSON.stringify(canonicalCurrent) !== JSON.stringify(canonicalRemote);
+	const isDirty = selectedFormatId !== remoteConfig.formatId ||
+		JSON.stringify(canonicalCurrent) !== JSON.stringify(canonicalRemote) ||
+		JSON.stringify(sanitizedRunSequence) !== JSON.stringify(remoteConfig.runSequence);
 
 	const preview = useMemo(() => {
 		if (races.length === 0) return [] as Array<{ code: string; order: number; race: PBRaceRecord | null }>;
-		const mapping = mapRacesToBracket(races, {
-			formatId: selectedFormatId,
-			anchors: sanitizedAnchors,
-			record: existingRecord,
-		}, selectedFormat.nodes);
+		const mapping = mapRacesToBracket(
+			races,
+			{
+				formatId: selectedFormatId,
+				anchors: sanitizedAnchors,
+				runSequence: sanitizedRunSequence,
+				record: existingRecord,
+			},
+			selectedFormat.nodes,
+			sanitizedRunSequence,
+		);
 		return selectedFormat.nodes.map((node) => ({
 			code: node.code,
 			order: node.order,
 			race: mapping.get(node.order) ?? null,
 		}));
-	}, [races, selectedFormatId, sanitizedAnchors, existingRecord, selectedFormat.nodes]);
+	}, [races, selectedFormatId, sanitizedAnchors, sanitizedRunSequence, existingRecord, selectedFormat.nodes]);
 
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
@@ -223,7 +263,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			setErr('Select an event before saving.');
 			return;
 		}
-		if (draftErrors.length > 0) {
+		if (draftErrors.length > 0 || runSequenceErrors.length > 0) {
 			setErr('Resolve validation errors before saving.');
 			return;
 		}
@@ -234,6 +274,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			const payload = JSON.stringify({
 				formatId: selectedFormatId,
 				anchors: canonicalCurrent,
+				runSequence: sanitizedRunSequence,
 			});
 			const col = pb.collection('client_kv');
 			if (existingRecord) {
@@ -258,6 +299,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 		if (!existingRecord) {
 			setDrafts([]);
 			setSelectedFormatId(DEFAULT_BRACKET_FORMAT_ID);
+			setRunSequenceInput('');
 			return;
 		}
 		setBusy(true);
@@ -267,6 +309,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			await pb.collection('client_kv').delete(existingRecord.id);
 			setDrafts([]);
 			setSelectedFormatId(DEFAULT_BRACKET_FORMAT_ID);
+			setRunSequenceInput('');
 			setOk('Cleared');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Clear failed');
@@ -369,6 +412,7 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 					onClick={() => {
 						setSelectedFormatId(remoteConfig.formatId);
 						setDrafts(remoteDrafts);
+						setRunSequenceInput(remoteConfig.runSequence.join(','));
 					}}
 					disabled={!isDirty || busy}
 				>
@@ -376,11 +420,23 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 				</button>
 				<button type='button' onClick={clearAnchors} disabled={busy || (!existingRecord && drafts.length === 0)}>Clear</button>
 			</div>
+			<div className='kv-anchor-actions'>
+				<label style={{ width: '100%' }}>
+					Run sequence
+					<textarea
+						value={runSequenceInput}
+						onChange={(event) => setRunSequenceInput(event.currentTarget.value)}
+						rows={3}
+						placeholder='e.g. 1,2,3,1,2,3'
+						style={{ width: '100%', marginTop: '0.35rem' }}
+					/>
+				</label>
+			</div>
 			<div className='kv-anchor-save'>
 				<button
 					type='button'
 					onClick={save}
-					disabled={busy || !eventId || draftErrors.length > 0 || !isDirty}
+					disabled={busy || !eventId || draftErrors.length > 0 || runSequenceErrors.length > 0 || !isDirty}
 				>
 					{busy ? 'Saving…' : 'Save config'}
 				</button>
@@ -390,6 +446,11 @@ export function BracketAnchorsSection({ kvRecords, eventId }: BracketAnchorsSect
 			{draftErrors.length > 0 && (
 				<ul className='kv-anchor-errors'>
 					{draftErrors.map((message, idx) => <li key={idx}>{message}</li>)}
+				</ul>
+			)}
+			{runSequenceErrors.length > 0 && (
+				<ul className='kv-anchor-errors'>
+					{runSequenceErrors.map((message, idx) => <li key={idx}>{message}</li>)}
 				</ul>
 			)}
 			{preview.length > 0 && (
