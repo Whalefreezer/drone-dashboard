@@ -1,6 +1,6 @@
 import './EliminationDiagram.css';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { activeBracketFormatAtom, bracketDiagramAtom } from './eliminationState.ts';
 import type { BracketNodeViewModel } from './eliminationState.ts';
@@ -95,6 +95,11 @@ export function EliminationDiagram() {
 		const initial = getInitialViewport();
 		return vp.scale === initial.scale && vp.x === initial.x && vp.y === initial.y;
 	};
+	const checkIfAtDefaultRef = useRef(checkIfAtDefault);
+
+	useEffect(() => {
+		checkIfAtDefaultRef.current = checkIfAtDefault;
+	}, [checkIfAtDefault]);
 
 	// Auto-follow current race when at default position
 	useEffect(() => {
@@ -193,7 +198,7 @@ export function EliminationDiagram() {
 		setIsDragging(false);
 	};
 
-	const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+	const handleWheel = useCallback((event: WheelEvent) => {
 		event.preventDefault();
 		const container = containerRef.current;
 		if (!container) return;
@@ -205,8 +210,6 @@ export function EliminationDiagram() {
 		}
 
 		const rect = container.getBoundingClientRect();
-		const offsetX = (event.clientX - rect.left - viewport.x) / viewport.scale;
-		const offsetY = (event.clientY - rect.top - viewport.y) / viewport.scale;
 
 		// Calculate zoom based on deltaY magnitude
 		// Smaller deltas (touchpad) will zoom less, larger deltas (mouse wheel) will zoom more
@@ -215,14 +218,24 @@ export function EliminationDiagram() {
 		const scaleFactor = Math.exp(delta);
 
 		setViewport((prev) => {
+			const offsetX = (event.clientX - rect.left - prev.x) / prev.scale;
+			const offsetY = (event.clientY - rect.top - prev.y) / prev.scale;
 			const newScale = clamp(prev.scale * scaleFactor, MIN_SCALE, MAX_SCALE);
 			const newX = event.clientX - rect.left - offsetX * newScale;
 			const newY = event.clientY - rect.top - offsetY * newScale;
 			const newViewport = { scale: newScale, x: newX, y: newY };
-			setIsAtDefault(checkIfAtDefault(newViewport));
+			setIsAtDefault(checkIfAtDefaultRef.current(newViewport));
 			return newViewport;
 		});
-	};
+	}, []);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+
+		container.addEventListener('wheel', handleWheel, { passive: false });
+		return () => container.removeEventListener('wheel', handleWheel);
+	}, [handleWheel]);
 
 	const handleReset = () => {
 		// Cancel any ongoing momentum
@@ -388,7 +401,6 @@ export function EliminationDiagram() {
 			onPointerMove={handlePointerMove}
 			onPointerUp={handlePointerUp}
 			onPointerCancel={handlePointerUp}
-			onWheel={handleWheel}
 			onTouchStart={handleTouchStart}
 			onTouchMove={handleTouchMove}
 			onTouchEnd={handleTouchEnd}

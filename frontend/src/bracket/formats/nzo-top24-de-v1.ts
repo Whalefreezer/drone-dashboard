@@ -18,7 +18,7 @@ const nodes = parsed.nodes.map((node) => ({
 
 const diagramDimensions = {
 	...computeDiagramDimensions(nodes, 760, 90),
-	nodeWidth: 500,
+	nodeWidth: 400,
 };
 
 export const NZO_TOP24_DE_V1_FORMAT = {
