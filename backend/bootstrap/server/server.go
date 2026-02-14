@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"math/big"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -26,6 +28,24 @@ import (
 
 func RegisterServe(app *pocketbase.PocketBase, static fs.FS, ingestService *ingest.Service, manager *scheduler.Manager, flags config.Flags) {
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		staticHandler := apis.Static(static, true)
+		var frontendDevProxy *httputil.ReverseProxy
+		if strings.TrimSpace(flags.FrontendDevURL) != "" {
+			devURL, err := url.Parse(flags.FrontendDevURL)
+			if err != nil {
+				return fmt.Errorf("invalid frontend-dev-url %q: %w", flags.FrontendDevURL, err)
+			}
+			frontendDevProxy = httputil.NewSingleHostReverseProxy(devURL)
+			frontendDevProxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+				slog.Warn("frontend.dev_proxy.error",
+					"target", flags.FrontendDevURL,
+					"path", r.URL.Path,
+					"err", err,
+				)
+				http.Error(w, "frontend dev server unavailable", http.StatusBadGateway)
+			}
+		}
+
 		if err := ensureSuperuser(app); err != nil {
 			return fmt.Errorf("failed to ensure superuser: %w", err)
 		}
@@ -79,7 +99,10 @@ func RegisterServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		})
 
 		se.Router.Any("/{path...}", func(c *core.RequestEvent) error {
-			staticHandler := apis.Static(static, true)
+			if frontendDevProxy != nil && shouldProxyFrontendPath(c.Request.URL.Path) {
+				frontendDevProxy.ServeHTTP(c.Response, c.Request)
+				return nil
+			}
 			return staticHandler(c)
 		})
 
@@ -87,6 +110,9 @@ func RegisterServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 			slog.Info("Cloud mode: waiting for pits connection; WS control on /control")
 		} else {
 			slog.Debug("Pointing to FPVTrackside API", "url", flags.FPVTrackside)
+			if frontendDevProxy != nil {
+				slog.Info("Frontend dev proxy enabled", "target", flags.FrontendDevURL)
+			}
 			if flags.DirectProxy {
 				slog.Info("Direct proxy enabled", "route", "/direct/*", "target", flags.FPVTrackside)
 			} else {
@@ -96,6 +122,25 @@ func RegisterServe(app *pocketbase.PocketBase, static fs.FS, ingestService *inge
 		printDashboardBox(flags)
 		return se.Next()
 	})
+}
+
+func shouldProxyFrontendPath(path string) bool {
+	if path == "/health" {
+		return false
+	}
+	if strings.HasPrefix(path, "/api") {
+		return false
+	}
+	if strings.HasPrefix(path, "/_/") || path == "/_" {
+		return false
+	}
+	if strings.HasPrefix(path, "/direct/") {
+		return false
+	}
+	if strings.HasPrefix(path, "/control") {
+		return false
+	}
+	return true
 }
 
 func printDashboardBox(flags config.Flags) {

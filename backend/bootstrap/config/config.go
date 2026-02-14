@@ -18,6 +18,7 @@ import (
 
 type Flags struct {
 	FPVTrackside    string
+	FrontendDevURL  string
 	Port            int
 	LogLevel        string
 	IngestEnabled   bool
@@ -37,6 +38,7 @@ func ParseFlags() Flags {
 	fs.SetOutput(io.Discard)
 
 	fs.StringVar(&out.FPVTrackside, "fpvtrackside", "http://localhost:8080", "FPVTrackside API endpoint")
+	fs.StringVar(&out.FrontendDevURL, "frontend-dev-url", "", "Proxy frontend requests to this dev server URL (e.g. http://localhost:5173)")
 	fs.IntVar(&out.Port, "port", 3000, "Server port")
 	fs.StringVar(&out.LogLevel, "log-level", "info", "Log level: error|warn|info|debug|trace")
 	fs.BoolVar(&out.IngestEnabled, "ingest-enabled", true, "Enable background scheduler loops")
@@ -123,6 +125,7 @@ Usage: %s [OPTIONS]
 
 Options:
   --fpvtrackside string    Set the FPVTrackside API endpoint (default: http://localhost:8080)
+  --frontend-dev-url str   Proxy frontend requests to dev server (default: disabled)
   --port int               Set the server port (default: 3000)
   --log-level string       Log level: error|warn|info|debug|trace
   --ingest-enabled bool    Enable background scheduler loops (default: true)
@@ -162,6 +165,9 @@ Examples:
 
   # Standalone with custom FPVTrackside endpoint
   drone-dashboard -fpvtrackside="http://localhost:8000" -port=4000
+
+  # Dev mode: backend on :3000, frontend proxied from Vite on :5173
+  drone-dashboard -frontend-dev-url="http://localhost:5173"
 
   # Cloud mode - acts as server for pits
   drone-dashboard -auth-token="your-token-here"

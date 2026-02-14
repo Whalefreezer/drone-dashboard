@@ -2,6 +2,7 @@
 
 FPVTRACKSIDE_URL ?= http://localhost:8080
 BACKEND_PORT ?= 3000
+FRONTEND_DEV_URL ?= http://localhost:5173
 SUPERUSER_EMAIL ?= admin@example.com
 SUPERUSER_PASSWORD ?= dev-password
 DB_DIR ?= .tmp/dev-pocketbase
@@ -10,9 +11,10 @@ help:
 	@echo 'Available targets:'
 	@echo '  make dev         - Run backend and frontend dev servers in parallel'
 	@echo '                   - Override backend source with FPVTRACKSIDE_URL=<url>'
+	@echo '                   - Frontend is proxied through backend at FRONTEND_DEV_URL=<url>'
 	@echo '  make fe-dev      - Run frontend dev server (frontend/)'
 	@echo '  make be-dev      - Run backend server (backend/)'
-	@echo '                   - Optional vars: FPVTRACKSIDE_URL, BACKEND_PORT, SUPERUSER_EMAIL, SUPERUSER_PASSWORD, DB_DIR'
+	@echo '                   - Optional vars: FPVTRACKSIDE_URL, BACKEND_PORT, FRONTEND_DEV_URL, SUPERUSER_EMAIL, SUPERUSER_PASSWORD, DB_DIR'
 	@echo '  make build       - Build frontend assets then backend binary'
 	@echo '  make fe-build    - Build frontend assets into backend/static'
 	@echo '  make be-build    - Build backend binary in backend/'
@@ -29,7 +31,7 @@ fe-dev:
 be-dev:
 	mkdir -p $(DB_DIR)
 	cd backend && SUPERUSER_EMAIL=$(SUPERUSER_EMAIL) SUPERUSER_PASSWORD=$(SUPERUSER_PASSWORD) \
-		go run main.go -fpvtrackside=$(FPVTRACKSIDE_URL) -port=$(BACKEND_PORT) -db-dir=$(abspath $(DB_DIR))
+		go run main.go -fpvtrackside=$(FPVTRACKSIDE_URL) -frontend-dev-url=$(FRONTEND_DEV_URL) -port=$(BACKEND_PORT) -db-dir=$(abspath $(DB_DIR))
 
 build: fe-build be-build
 
