@@ -184,11 +184,10 @@
 .elim-node-heats-header {
 	display: grid;
 	gap: 0.3rem;
-	justify-content: end;
+	align-items: center;
 	font-size: 0.62rem;
 	font-weight: 700;
 	color: #93c5fd;
-	padding-right: 0.3rem;
 }
 
 .elim-node-heats-header span:last-child {

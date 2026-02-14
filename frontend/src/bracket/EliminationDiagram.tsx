@@ -17,6 +17,7 @@ const MIN_SCALE = 0.1;
 const MAX_SCALE = 1.6;
 const BASE_NODE_SLOT_COUNT = 4;
 const EXTRA_SLOT_HEIGHT_PX = 30;
+const DESTINATION_COLUMN_WIDTH = '8.5rem';
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -514,6 +515,11 @@ function renderNode(
 ) {
 	const { definition } = node;
 	const isCurrentRace = currentRace && node.race?.id === currentRace.id;
+	const heatColumns = Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ');
+	const hasDestinationColumn = node.slots.some((slot) => slot.destinationLabel != null);
+	const slotGridTemplateColumns = `1.4rem 2rem minmax(0, 1fr) ${heatColumns} 1.6rem ${
+		hasDestinationColumn ? DESTINATION_COLUMN_WIDTH : '0'
+	}`;
 	return (
 		<g
 			key={definition.order}
@@ -547,13 +553,17 @@ function renderNode(
 						<div
 							className='elim-node-heats-header'
 							style={{
-								gridTemplateColumns: `${Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ')} 1.6rem`,
+								gridTemplateColumns: slotGridTemplateColumns,
 							}}
 						>
+							<span aria-hidden='true' />
+							<span aria-hidden='true' />
+							<span aria-hidden='true' />
 							{Array.from({ length: node.expectedHeatCount }).map((_, index) => (
 								<span key={`${definition.order}-h-${index}`}>H{index + 1}</span>
 							))}
 							<span>Σ</span>
+							<span aria-hidden='true' />
 						</div>
 					)}
 					<ul>
@@ -565,9 +575,7 @@ function renderNode(
 								data-eliminated={slot.isEliminated ? 'true' : 'false'}
 								data-predicted={slot.isPredicted ? 'true' : 'false'}
 								style={{
-									gridTemplateColumns: `1.4rem 2rem 1fr ${
-										Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ')
-									} 1.6rem auto`,
+									gridTemplateColumns: slotGridTemplateColumns,
 								}}
 							>
 								<span className='slot-position'>{slot.position ?? '–'}</span>
