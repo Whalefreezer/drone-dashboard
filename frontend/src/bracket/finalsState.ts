@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
-import { pilotsAtom, racesAtom } from '../state/pbAtoms.ts';
+import { pilotsAtom, raceProcessedLapsAtom, racesAtom } from '../state/pbAtoms.ts';
 import { raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
 import { activeBracketFormatAtom, bracketAnchorConfigAtom, bracketDiagramAtom, mapRacesToBracketHeats } from './eliminationState.ts';
 import type { FinalsFinalist, FinalsHeat, FinalsParticipant, FinalsState } from './finals-types.ts';
@@ -16,6 +16,7 @@ import {
 interface FinalsFormatConfig {
 	winnersFinalOrder: number;
 	redemptionFinalOrder: number;
+	finalsRaceNumber?: number;
 	minHeats: number;
 	maxHeats: number;
 	winsRequired: number;
@@ -32,11 +33,32 @@ const FINALS_CONFIG_BY_FORMAT_ID: Record<string, FinalsFormatConfig> = {
 	'nzo-top24-de-v1': {
 		winnersFinalOrder: 16,
 		redemptionFinalOrder: 18,
+		finalsRaceNumber: 19,
 		minHeats: 3,
 		maxHeats: 13,
 		winsRequired: 3,
 	},
 };
+
+const TEMP_DISABLE_NZO_CTA_DISPLAY = true;
+
+let lastNzoFinalsDebugSignature = '';
+
+export function selectFinalsRaceCandidates(
+	sortedRaces: PBRaceRecord[],
+	redemptionFinalRaceOrder: number,
+	finalsRaceNumber?: number,
+): PBRaceRecord[] {
+	const racesAfterRedemption = sortedRaces.filter((race) => race.raceOrder > redemptionFinalRaceOrder);
+	if (finalsRaceNumber == null) {
+		return racesAfterRedemption;
+	}
+	const numberedFinals = racesAfterRedemption.filter((race) => race.raceNumber === finalsRaceNumber);
+	if (numberedFinals.length > 0) {
+		return numberedFinals;
+	}
+	return racesAfterRedemption;
+}
 
 /**
  * Atom that computes the complete finals state
@@ -75,6 +97,22 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			minHeats: DEFAULT_FINALS_RULES.minHeats,
 			maxHeats: DEFAULT_FINALS_RULES.maxHeats,
 			winsRequired: DEFAULT_FINALS_RULES.winsRequired,
+			championId: null,
+			isComplete: false,
+			requiresMoreHeats: false,
+			message: null,
+		};
+	}
+
+	if (TEMP_DISABLE_NZO_CTA_DISPLAY && format.id === 'nzo-top24-de-v1') {
+		return {
+			enabled: false,
+			finalists: [],
+			heats: [],
+			participants: [],
+			minHeats: finalsConfig.minHeats,
+			maxHeats: finalsConfig.maxHeats,
+			winsRequired: finalsConfig.winsRequired,
 			championId: null,
 			isComplete: false,
 			requiresMoreHeats: false,
@@ -191,21 +229,94 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
-	// Finals heats are races after the redemption final
-	const finalsRaces = sortedRaces.slice(redemptionFinalIndex + 1);
+	// Finals heats are races after the redemption final.
+	// Some formats (e.g., NZO CTA) identify finals heats by a fixed race number.
+	const finalsRaces = selectFinalsRaceCandidates(
+		sortedRaces,
+		lastRedemptionFinalRace.raceOrder,
+		finalsConfig.finalsRaceNumber,
+	);
 
 	// Filter to only include heats with at least some finalists participating
 	const finalistIds = new Set(finalists.map((f) => f.pilotId));
 	const finalsHeats: FinalsHeat[] = [];
+	let finalsBlockStarted = false;
+	const finalsTrace: Array<{
+		raceId: string;
+		raceOrder: number;
+		raceNumber: number;
+		hasStarted: boolean;
+		isActive: boolean;
+		isCompleted: boolean;
+		hasFinalists: boolean;
+		hasFinalistLapData: boolean;
+		included: boolean;
+		reason: string;
+	}> = [];
 
 	for (let i = 0; i < finalsRaces.length; i++) {
 		const race = finalsRaces[i];
 		const status = get(raceStatusAtom(race.id));
 		const rows = get(raceSortedRowsAtom(race.id));
+		const processedLaps = get(raceProcessedLapsAtom(race.id));
+		const hasStarted = status?.hasStarted === true || status?.isActive === true || status?.isCompleted === true;
+
+		// Ignore future scheduled finals races that already have pilot assignments.
+		if (!hasStarted) {
+			finalsTrace.push({
+				raceId: race.id,
+				raceOrder: race.raceOrder,
+				raceNumber: race.raceNumber,
+				hasStarted: status?.hasStarted === true,
+				isActive: status?.isActive === true,
+				isCompleted: status?.isCompleted === true,
+				hasFinalists: false,
+				hasFinalistLapData: false,
+				included: false,
+				reason: finalsBlockStarted ? 'stop-after-block-unstarted-race' : 'skip-unstarted-race',
+			});
+			if (finalsBlockStarted) break;
+			continue;
+		}
 
 		// Check if this race has any finalists
 		const hasFinalists = rows.some((row) => row.pilotChannel.pilotId && finalistIds.has(row.pilotChannel.pilotId));
-		if (!hasFinalists) continue;
+		const hasFinalistLapData = processedLaps.some((lap) => lap.pilotId && finalistIds.has(lap.pilotId));
+		if (!hasFinalists) {
+			finalsTrace.push({
+				raceId: race.id,
+				raceOrder: race.raceOrder,
+				raceNumber: race.raceNumber,
+				hasStarted: status?.hasStarted === true,
+				isActive: status?.isActive === true,
+				isCompleted: status?.isCompleted === true,
+				hasFinalists: false,
+				hasFinalistLapData,
+				included: false,
+				reason: finalsBlockStarted ? 'stop-after-block-non-finalist-race' : 'skip-non-finalist-race',
+			});
+			if (finalsBlockStarted) break;
+			continue;
+		}
+
+		// Guard against races marked completed without any real finalist lap/detection data.
+		if (status?.isCompleted === true && !hasFinalistLapData) {
+			finalsTrace.push({
+				raceId: race.id,
+				raceOrder: race.raceOrder,
+				raceNumber: race.raceNumber,
+				hasStarted: status?.hasStarted === true,
+				isActive: status?.isActive === true,
+				isCompleted: true,
+				hasFinalists: true,
+				hasFinalistLapData: false,
+				included: false,
+				reason: finalsBlockStarted ? 'stop-after-block-completed-without-laps' : 'skip-completed-without-laps',
+			});
+			if (finalsBlockStarted) break;
+			continue;
+		}
+		finalsBlockStarted = true;
 
 		const results = rows
 			.filter((row) => row.pilotChannel.pilotId && finalistIds.has(row.pilotChannel.pilotId))
@@ -227,6 +338,44 @@ export const finalsStateAtom = atom((get): FinalsState => {
 			isActive: status?.isActive === true,
 			results,
 		});
+		finalsTrace.push({
+			raceId: race.id,
+			raceOrder: race.raceOrder,
+			raceNumber: race.raceNumber,
+			hasStarted: status?.hasStarted === true,
+			isActive: status?.isActive === true,
+			isCompleted: status?.isCompleted === true,
+			hasFinalists: true,
+			hasFinalistLapData,
+			included: true,
+			reason: 'included',
+		});
+	}
+
+	if (import.meta.env.DEV && format.id === 'nzo-top24-de-v1') {
+		const debugPayload = {
+			formatId: format.id,
+			redemptionFinalRaceOrder: lastRedemptionFinalRace.raceOrder,
+			configuredFinalsRaceNumber: finalsConfig.finalsRaceNumber ?? null,
+			selectedFinalsCandidates: finalsRaces.map((race) => ({
+				raceId: race.id,
+				raceOrder: race.raceOrder,
+				raceNumber: race.raceNumber,
+			})),
+			evaluatedRaces: finalsTrace,
+			includedHeats: finalsHeats.map((heat) => ({
+				raceId: heat.raceId,
+				raceOrder: heat.raceOrder,
+				heatNumber: heat.heatNumber,
+				isActive: heat.isActive,
+				isCompleted: heat.isCompleted,
+			})),
+		};
+		const signature = JSON.stringify(debugPayload);
+		if (signature !== lastNzoFinalsDebugSignature) {
+			lastNzoFinalsDebugSignature = signature;
+			console.debug('[finals][nzo] CTA heat selection trace', debugPayload);
+		}
 	}
 
 	// Build participant data
