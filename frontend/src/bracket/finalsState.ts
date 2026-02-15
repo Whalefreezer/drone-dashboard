@@ -2,7 +2,7 @@ import { atom } from 'jotai';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { pilotsAtom, racesAtom } from '../state/pbAtoms.ts';
 import { raceSortedRowsAtom, raceStatusAtom } from '../race/race-atoms.ts';
-import { activeBracketFormatAtom, bracketAnchorConfigAtom, mapRacesToBracket } from './eliminationState.ts';
+import { activeBracketFormatAtom, bracketAnchorConfigAtom, bracketDiagramAtom, mapRacesToBracketHeats } from './eliminationState.ts';
 import type { FinalsFinalist, FinalsHeat, FinalsParticipant, FinalsState } from './finals-types.ts';
 import {
 	computeFinalsRankings,
@@ -44,6 +44,7 @@ const FINALS_CONFIG_BY_FORMAT_ID: Record<string, FinalsFormatConfig> = {
 export const finalsStateAtom = atom((get): FinalsState => {
 	const config = get(bracketAnchorConfigAtom);
 	const format = get(activeBracketFormatAtom);
+	const bracketDiagram = get(bracketDiagramAtom);
 	const races = get(racesAtom) as PBRaceRecord[];
 	const pilots = get(pilotsAtom);
 
@@ -81,15 +82,15 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
-	// Map bracket nodes to races
-	const mapping = mapRacesToBracket(races, config, format.nodes, config.runSequence ?? format.runSequence);
+	// Map bracket nodes to all assigned heats for each order
+	const mapping = mapRacesToBracketHeats(races, config, format.nodes, config.runSequence ?? format.runSequence);
 
 	// Get the two final races that feed the finals pool
-	const winnersFinalRace = mapping.get(finalsConfig.winnersFinalOrder);
-	const redemptionFinalRace = mapping.get(finalsConfig.redemptionFinalOrder);
+	const winnersFinalRaces = mapping.get(finalsConfig.winnersFinalOrder) ?? [];
+	const redemptionFinalRaces = mapping.get(finalsConfig.redemptionFinalOrder) ?? [];
 
 	// If either final race doesn't exist, finals are not enabled
-	if (!winnersFinalRace || !redemptionFinalRace) {
+	if (winnersFinalRaces.length === 0 || redemptionFinalRaces.length === 0) {
 		return {
 			enabled: false,
 			finalists: [],
@@ -105,11 +106,11 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
-	// Check if both final races are completed
-	const winnersStatus = get(raceStatusAtom(winnersFinalRace.id));
-	const redemptionStatus = get(raceStatusAtom(redemptionFinalRace.id));
+	// Check if all feeder heats are completed before finals can start
+	const winnersHeatsComplete = winnersFinalRaces.every((race) => get(raceStatusAtom(race.id))?.isCompleted === true);
+	const redemptionHeatsComplete = redemptionFinalRaces.every((race) => get(raceStatusAtom(race.id))?.isCompleted === true);
 
-	if (!winnersStatus?.isCompleted || !redemptionStatus?.isCompleted) {
+	if (!winnersHeatsComplete || !redemptionHeatsComplete) {
 		return {
 			enabled: false,
 			finalists: [],
@@ -125,33 +126,31 @@ export const finalsStateAtom = atom((get): FinalsState => {
 		};
 	}
 
-	// Extract top 3 from each final race
-	const winnersRows = get(raceSortedRowsAtom(winnersFinalRace.id));
-	const redemptionRows = get(raceSortedRowsAtom(redemptionFinalRace.id));
+	// Extract top 3 finalists from the completed bracket nodes (supports multi-heat feeders like NZO race 18)
+	const winnersNode = bracketDiagram.nodes.find((node) => node.definition.order === finalsConfig.winnersFinalOrder);
+	const redemptionNode = bracketDiagram.nodes.find((node) => node.definition.order === finalsConfig.redemptionFinalOrder);
 
-	const winnerFinalists: FinalsFinalist[] = winnersRows
-		.filter((row) => row.position >= 1 && row.position <= 3 && row.pilotChannel.pilotId)
-		.map((row) => {
-			const pilot = pilots.find((p) => p.id === row.pilotChannel.pilotId);
-			return {
-				pilotId: row.pilotChannel.pilotId!,
-				pilotName: pilot?.name ?? 'Unknown',
+	const winnerFinalists: FinalsFinalist[] = winnersNode
+		? winnersNode.slots
+			.filter((slot) => slot.position != null && slot.position >= 1 && slot.position <= 3 && slot.pilotId != null)
+			.map((slot) => ({
+				pilotId: slot.pilotId!,
+				pilotName: slot.name,
 				sourceRace: 'winners' as const,
-				sourcePosition: row.position,
-			};
-		});
+				sourcePosition: slot.position!,
+			}))
+		: [];
 
-	const redemptionFinalists: FinalsFinalist[] = redemptionRows
-		.filter((row) => row.position >= 1 && row.position <= 3 && row.pilotChannel.pilotId)
-		.map((row) => {
-			const pilot = pilots.find((p) => p.id === row.pilotChannel.pilotId);
-			return {
-				pilotId: row.pilotChannel.pilotId!,
-				pilotName: pilot?.name ?? 'Unknown',
+	const redemptionFinalists: FinalsFinalist[] = redemptionNode
+		? redemptionNode.slots
+			.filter((slot) => slot.position != null && slot.position >= 1 && slot.position <= 3 && slot.pilotId != null)
+			.map((slot) => ({
+				pilotId: slot.pilotId!,
+				pilotName: slot.name,
 				sourceRace: 'redemption' as const,
-				sourcePosition: row.position,
-			};
-		});
+				sourcePosition: slot.position!,
+			}))
+		: [];
 
 	const finalists = [...winnerFinalists, ...redemptionFinalists];
 
@@ -173,7 +172,8 @@ export const finalsStateAtom = atom((get): FinalsState => {
 
 	// Find finals heats (races that come after the redemption final)
 	const sortedRaces = [...races].sort((a, b) => a.raceOrder - b.raceOrder);
-	const redemptionFinalIndex = sortedRaces.findIndex((r) => r.id === redemptionFinalRace.id);
+	const lastRedemptionFinalRace = redemptionFinalRaces[redemptionFinalRaces.length - 1];
+	const redemptionFinalIndex = sortedRaces.findIndex((r) => r.id === lastRedemptionFinalRace.id);
 
 	if (redemptionFinalIndex === -1) {
 		return {
