@@ -24,6 +24,8 @@ interface UseLeaderboardAutoScrollResult<Row> {
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 const INITIAL_FRAME_INTERVAL = 1000 / 60; // Assume 60 Hz until measured
+const START_AUTOSCROLL_OVERFLOW_PX = 24;
+const STOP_AUTOSCROLL_OVERFLOW_PX = 8;
 
 // Common monitor refresh rates (Hz) -> frame intervals (ms)
 const COMMON_REFRESH_RATES = [
@@ -74,6 +76,7 @@ export function useLeaderboardAutoScroll<Row extends object>(
 	const scrollTargetRef = useRef<HTMLElement | null>(null);
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [isOverflowing, setIsOverflowing] = useState(false);
+	const isOverflowingRef = useRef(false);
 
 	const shouldAutoScroll = allowAutoScroll && !prefersReducedMotion && isOverflowing && rows.length > 0;
 	const duplicationMultiplier = shouldAutoScroll ? 2 : 1;
@@ -124,10 +127,22 @@ export function useLeaderboardAutoScroll<Row extends object>(
 		baseContentHeightRef.current = baseHeight;
 		const cycleHeight = baseHeight;
 		cycleHeightRef.current = cycleHeight;
+		const overflowPx = baseHeight - viewportHeight;
+		let nextIsOverflowing = isOverflowingRef.current;
 
-		const needsScroll = viewportHeight > 0 && allowAutoScroll && baseHeight - viewportHeight > 1;
-		// Defer state update to avoid infinite loop during layout phase
-		queueMicrotask(() => setIsOverflowing(needsScroll));
+		if (!allowAutoScroll || viewportHeight <= 0) {
+			nextIsOverflowing = false;
+		} else if (isOverflowingRef.current) {
+			nextIsOverflowing = overflowPx > STOP_AUTOSCROLL_OVERFLOW_PX;
+		} else {
+			nextIsOverflowing = overflowPx > START_AUTOSCROLL_OVERFLOW_PX;
+		}
+
+		if (nextIsOverflowing !== isOverflowingRef.current) {
+			isOverflowingRef.current = nextIsOverflowing;
+			// Defer state update to avoid infinite loop during layout phase
+			queueMicrotask(() => setIsOverflowing(nextIsOverflowing));
+		}
 	}, [allowAutoScroll, duplicationMultiplier]);
 
 	useIsomorphicLayoutEffect(() => {
@@ -196,6 +211,10 @@ export function useLeaderboardAutoScroll<Row extends object>(
 			cancel();
 		}
 	}, [cancel, resetCounters, shouldAutoScroll]);
+
+	useEffect(() => {
+		isOverflowingRef.current = isOverflowing;
+	}, [isOverflowing]);
 
 	useEffect(() => {
 		isActiveRef.current = shouldAutoScroll && !isInteractionPaused;
