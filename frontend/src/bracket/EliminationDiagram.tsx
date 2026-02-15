@@ -16,15 +16,22 @@ interface ViewportState {
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 1.6;
 const BASE_NODE_SLOT_COUNT = 4;
-const EXTRA_SLOT_HEIGHT_PX = 30;
-const DESTINATION_COLUMN_WIDTH = '8.5rem';
+const EXTRA_SLOT_HEIGHT_PX = 40;
+const DESTINATION_COLUMN_WIDTH = '12rem';
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
 }
 
-function getNodeHeight(node: BracketNodeViewModel, defaultNodeHeight: number): number {
-	const extraSlotCount = Math.max(0, node.definition.slotCount - BASE_NODE_SLOT_COUNT);
+function getNodeHeight(
+	node: BracketNodeViewModel,
+	defaultNodeHeight: number,
+): number {
+	const displayedSlotCount = Math.max(
+		node.definition.slotCount,
+		node.slots.length,
+	);
+	const extraSlotCount = Math.max(0, displayedSlotCount - BASE_NODE_SLOT_COUNT);
 	return defaultNodeHeight + extraSlotCount * EXTRA_SLOT_HEIGHT_PX;
 }
 
@@ -33,20 +40,18 @@ export function EliminationDiagram() {
 	const activeFormat = useAtomValue(activeBracketFormatAtom);
 	const currentRace = useAtomValue(currentRaceAtom);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const pointerState = useRef<
-		{
-			id: number | null;
-			startX: number;
-			startY: number;
-			originX: number;
-			originY: number;
-			lastX: number;
-			lastY: number;
-			lastTime: number;
-			velocityX: number;
-			velocityY: number;
-		}
-	>({
+	const pointerState = useRef<{
+		id: number | null;
+		startX: number;
+		startY: number;
+		originX: number;
+		originY: number;
+		lastX: number;
+		lastY: number;
+		lastTime: number;
+		velocityX: number;
+		velocityY: number;
+	}>({
 		id: null,
 		startX: 0,
 		startY: 0,
@@ -106,7 +111,9 @@ export function EliminationDiagram() {
 	// Track if viewport is at default position
 	const checkIfAtDefault = (vp: ViewportState): boolean => {
 		const initial = getInitialViewport();
-		return vp.scale === initial.scale && vp.x === initial.x && vp.y === initial.y;
+		return (
+			vp.scale === initial.scale && vp.x === initial.x && vp.y === initial.y
+		);
 	};
 	const checkIfAtDefaultRef = useRef(checkIfAtDefault);
 
@@ -134,7 +141,10 @@ export function EliminationDiagram() {
 	const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
 		if (event.button !== 0) return;
 		// Don't capture pointer if clicking on buttons
-		if (event.target instanceof HTMLElement && event.target.tagName === 'BUTTON') {
+		if (
+			event.target instanceof HTMLElement &&
+			event.target.tagName === 'BUTTON'
+		) {
 			return;
 		}
 		const container = containerRef.current;
@@ -275,7 +285,10 @@ export function EliminationDiagram() {
 		setIsAtDefault(true);
 	};
 
-	const startMomentum = (initialVelocityX: number, initialVelocityY: number) => {
+	const startMomentum = (
+		initialVelocityX: number,
+		initialVelocityY: number,
+	) => {
 		let velocityX = initialVelocityX;
 		let velocityY = initialVelocityY;
 		const friction = 0.95; // Deceleration factor (iOS-like)
@@ -317,7 +330,9 @@ export function EliminationDiagram() {
 		return Math.sqrt(dx * dx + dy * dy);
 	};
 
-	const getTouchCenter = (touches: React.TouchList): { x: number; y: number } => {
+	const getTouchCenter = (
+		touches: React.TouchList,
+	): { x: number; y: number } => {
 		return {
 			x: (touches[0].clientX + touches[1].clientX) / 2,
 			y: (touches[0].clientY + touches[1].clientY) / 2,
@@ -358,7 +373,11 @@ export function EliminationDiagram() {
 			// Calculate scale change
 			const distance = getTouchDistance(event.touches);
 			const scaleFactor = distance / pinchState.initialDistance;
-			const newScale = clamp(pinchState.initialScale * scaleFactor, MIN_SCALE, MAX_SCALE);
+			const newScale = clamp(
+				pinchState.initialScale * scaleFactor,
+				MIN_SCALE,
+				MAX_SCALE,
+			);
 
 			// Get current center point
 			const currentCenter = getTouchCenter(event.touches);
@@ -401,10 +420,14 @@ export function EliminationDiagram() {
 
 	const renderedDiagramHeight = useMemo(() => {
 		const maxNodeBottom = diagram.nodes.reduce((maxBottom, node) => {
-			const nodeHeight = nodeHeightByOrder.get(node.definition.order) ?? activeFormat.diagramDimensions.nodeHeight;
+			const nodeHeight = nodeHeightByOrder.get(node.definition.order) ??
+				activeFormat.diagramDimensions.nodeHeight;
 			return Math.max(maxBottom, node.definition.position.y + nodeHeight);
 		}, 0);
-		return Math.max(activeFormat.diagramDimensions.height, maxNodeBottom + activeFormat.diagramDimensions.rowUnit + 300);
+		return Math.max(
+			activeFormat.diagramDimensions.height,
+			maxNodeBottom + activeFormat.diagramDimensions.rowUnit + 300,
+		);
 	}, [
 		diagram.nodes,
 		nodeHeightByOrder,
@@ -455,7 +478,11 @@ export function EliminationDiagram() {
 				<div className='elim-diagram-controls'>
 					{!isAtDefault && (
 						<>
-							<button type='button' className='elim-reset-btn' onClick={handleReset}>
+							<button
+								type='button'
+								className='elim-reset-btn'
+								onClick={handleReset}
+							>
 								Reset view
 							</button>
 							<div className='elim-diagram-zoom'>
@@ -502,7 +529,8 @@ export function EliminationDiagram() {
 								node,
 								currentRace,
 								activeFormat.diagramDimensions.nodeWidth,
-								nodeHeightByOrder.get(node.definition.order) ?? activeFormat.diagramDimensions.nodeHeight,
+								nodeHeightByOrder.get(node.definition.order) ??
+									activeFormat.diagramDimensions.nodeHeight,
 							)
 						)}
 					</g>
@@ -520,8 +548,12 @@ function renderNode(
 ) {
 	const { definition } = node;
 	const isCurrentRace = currentRace ? node.raceIds.includes(currentRace.id) : false;
-	const heatColumns = Array.from({ length: node.expectedHeatCount }).map(() => '1.3rem').join(' ');
-	const hasDestinationColumn = node.slots.some((slot) => slot.destinationLabel != null);
+	const heatColumns = Array.from({ length: node.expectedHeatCount })
+		.map(() => '1.3rem')
+		.join(' ');
+	const hasDestinationColumn = node.slots.some(
+		(slot) => slot.destinationLabel != null,
+	);
 	const slotGridTemplateColumns = `1.4rem 2rem minmax(0, 1fr) ${heatColumns} 1.6rem ${
 		hasDestinationColumn ? DESTINATION_COLUMN_WIDTH : '0'
 	}`;
@@ -543,12 +575,7 @@ function renderNode(
 				data-current={isCurrentRace ? 'true' : 'false'}
 				filter='url(#shadow)'
 			/>
-			<foreignObject
-				x={0}
-				y={0}
-				width={nodeWidth}
-				height={nodeHeight}
-			>
+			<foreignObject x={0} y={0} width={nodeWidth} height={nodeHeight}>
 				<div className='elim-node-card' data-status={node.status}>
 					<header>
 						<div className='elim-node-title'>{node.headline}</div>
@@ -564,9 +591,13 @@ function renderNode(
 							<span aria-hidden='true' />
 							<span aria-hidden='true' />
 							<span aria-hidden='true' />
-							{Array.from({ length: node.expectedHeatCount }).map((_, index) => (
-								<span key={`${definition.order}-h-${index}`}>H{index + 1}</span>
-							))}
+							{Array.from({ length: node.expectedHeatCount }).map(
+								(_, index) => (
+									<span key={`${definition.order}-h-${index}`}>
+										H{index + 1}
+									</span>
+								),
+							)}
 							<span>Σ</span>
 							<span aria-hidden='true' />
 						</div>
@@ -585,12 +616,25 @@ function renderNode(
 							>
 								<span className='slot-position'>{slot.position ?? '–'}</span>
 								<span className='slot-channel'>{slot.channelLabel}</span>
-								<span className='slot-name' title={slot.name}>{slot.name}</span>
+								<span className='slot-name' title={slot.name}>
+									{slot.name}
+								</span>
 								{slot.heatPoints.map((heatPoints, heatIndex) => (
-									<span key={`${slot.id}-heat-${heatIndex}`} className='slot-heat-points'>{heatPoints ?? '·'}</span>
+									<span
+										key={`${slot.id}-heat-${heatIndex}`}
+										className='slot-heat-points'
+									>
+										{heatPoints ?? '·'}
+									</span>
 								))}
-								<span className='slot-total-points'>{slot.totalPoints ?? '·'}</span>
-								{slot.destinationLabel && <span className='slot-destination'>{slot.destinationLabel}</span>}
+								<span className='slot-total-points'>
+									{slot.totalPoints ?? '·'}
+								</span>
+								{slot.destinationLabel && (
+									<span className='slot-destination'>
+										{slot.destinationLabel}
+									</span>
+								)}
 							</li>
 						))}
 					</ul>
