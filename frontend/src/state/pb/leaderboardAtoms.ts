@@ -24,11 +24,15 @@ export const leaderboardSplitAtom = atom((get) => {
 });
 
 /**
- * Locked elimination positions from client_kv
- * namespace: 'leaderboard', key: 'lockedPositions'
- * value: JSON array of { pilotId, pilotSourceId, displayName, position, note? }
+ * Parsed locked elimination entries with note metadata.
  */
-export const leaderboardLockedPositionsAtom = atom((get): Map<string, number> => {
+export interface LockedPositionMetadata {
+	position: number;
+	note: string | null;
+	isDone: boolean;
+}
+
+export const leaderboardLockedEntriesAtom = atom((get): Map<string, LockedPositionMetadata> => {
 	const kv = get(clientKVRecordsAtom);
 	const record = kv.find((entry) => entry.namespace === 'leaderboard' && entry.key === 'lockedPositions');
 	if (!record?.value) return new Map();
@@ -37,19 +41,39 @@ export const leaderboardLockedPositionsAtom = atom((get): Map<string, number> =>
 		const parsed = JSON.parse(record.value);
 		if (!Array.isArray(parsed)) return new Map();
 
-		const map = new Map<string, number>();
+		const map = new Map<string, LockedPositionMetadata>();
 		for (const entry of parsed) {
 			if (!entry || typeof entry !== 'object') continue;
 			const pilotId = typeof entry.pilotId === 'string' ? entry.pilotId.trim() : '';
 			const position = typeof entry.position === 'number' ? entry.position : null;
+			const note = typeof entry.note === 'string' ? entry.note.trim() : '';
+			const doneFlag = typeof entry.done === 'boolean' ? entry.done : false;
+			const isDone = doneFlag || /\bdone\b/i.test(note);
 			if (pilotId && position != null && Number.isFinite(position) && position > 0) {
-				map.set(pilotId, position);
+				map.set(pilotId, {
+					position,
+					note: note || null,
+					isDone,
+				});
 			}
 		}
 		return map;
 	} catch {
 		return new Map();
 	}
+});
+
+/**
+ * Locked elimination positions from client_kv
+ * namespace: 'leaderboard', key: 'lockedPositions'
+ * value: JSON array of { pilotId, pilotSourceId, displayName, position, note? }
+ */
+export const leaderboardLockedPositionsAtom = atom((get): Map<string, number> => {
+	const entries = get(leaderboardLockedEntriesAtom);
+	if (entries.size === 0) return new Map();
+	return new Map(
+		Array.from(entries.entries()).map(([pilotId, metadata]) => [pilotId, metadata.position]),
+	);
 });
 
 export const leaderboardHasLockedPositionsAtom = atom((get): boolean => {

@@ -1,19 +1,38 @@
 import { atom } from 'jotai';
 import { racePilotChannelsAtom } from '../race/race-atoms.ts';
-import { previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
+import { pilotEliminatedInfoAtom, pilotRacesUntilNextAtom, previousRaceIdsAtom } from './leaderboard-context-atoms.ts';
 import { sortPilotIds } from './leaderboard-sorter.ts';
 import { defaultSortConfigCurrent, defaultSortConfigPrevious } from './sorting-helpers.ts';
-import { leaderboardLockedPositionsAtom, pilotsAtom } from '../state/pbAtoms.ts';
+import { leaderboardLockedEntriesAtom, leaderboardLockedPositionsAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import { favoritePilotIdsSetAtom } from '../state/favorites-atoms.ts';
 
 export const leaderboardPilotIdsAtom = atom((get): string[] => {
 	const pilots = get(pilotsAtom);
 	const ids = pilots.map((pilot) => pilot.id);
 	const sorted = sortPilotIds(ids, get, defaultSortConfigCurrent);
+	const lockedPositions = get(leaderboardLockedPositionsAtom);
+	const sortDoneToBottom = (orderedIds: string[]): string[] => {
+		const indexById = new Map<string, number>(orderedIds.map((id, index) => [id, index]));
+		return [...orderedIds].sort((a, b) => {
+			const aRacesUntilNext = get(pilotRacesUntilNextAtom(a));
+			const bRacesUntilNext = get(pilotRacesUntilNextAtom(b));
+			const aIsEliminated = !!get(pilotEliminatedInfoAtom(a));
+			const bIsEliminated = !!get(pilotEliminatedInfoAtom(b));
+			const aHasLockedPosition = lockedPositions.has(a);
+			const bHasLockedPosition = lockedPositions.has(b);
+
+			const aIsDone = aRacesUntilNext === -1 && (aIsEliminated || aHasLockedPosition);
+			const bIsDone = bRacesUntilNext === -1 && (bIsEliminated || bHasLockedPosition);
+
+			if (aIsDone && !bIsDone) return 1;
+			if (!aIsDone && bIsDone) return -1;
+			return (indexById.get(a) ?? 0) - (indexById.get(b) ?? 0);
+		});
+	};
 
 	// Apply locked position ordering if locked positions exist
-	const lockedPositions = get(leaderboardLockedPositionsAtom);
-	if (lockedPositions.size === 0) return sorted;
+	if (lockedPositions.size === 0) return sortDoneToBottom(sorted);
+	const lockedEntries = get(leaderboardLockedEntriesAtom);
 
 	// Create a map of computed positions for unlocked pilots
 	const computedPositions = new Map<string, number>();
@@ -24,8 +43,14 @@ export const leaderboardPilotIdsAtom = atom((get): string[] => {
 	});
 
 	// Sort all pilots by their effective position (locked or computed)
-	// When positions are tied, non-locked pilots rank above locked pilots
-	return ids.sort((a, b) => {
+	// `done` pilots from locked elimination rankings are always shown last.
+	// When positions are tied, non-locked pilots rank above locked pilots.
+	const ordered = ids.sort((a, b) => {
+		const aIsDone = lockedEntries.get(a)?.isDone === true;
+		const bIsDone = lockedEntries.get(b)?.isDone === true;
+		if (aIsDone && !bIsDone) return 1;
+		if (!aIsDone && bIsDone) return -1;
+
 		const posA = lockedPositions.get(a) ?? computedPositions.get(a) ?? 9999;
 		const posB = lockedPositions.get(b) ?? computedPositions.get(b) ?? 9999;
 
@@ -40,6 +65,7 @@ export const leaderboardPilotIdsAtom = atom((get): string[] => {
 
 		return 0;
 	});
+	return sortDoneToBottom(ordered);
 });
 
 export const previousLeaderboardPilotIdsAtom = atom((get): string[] => {
