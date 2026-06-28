@@ -6,7 +6,7 @@ const CURSOR_HIDE_DELAY = 3000; // milliseconds
  * Custom hook to automatically hide the mouse cursor after a period of inactivity.
  */
 export function useIdleCursor(): void {
-	const cursorHideTimeoutRef = useRef<number | null>(null);
+	const cursorHideTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
 	useEffect(() => {
 		const handleMouseMove = () => {

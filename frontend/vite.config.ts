@@ -1,5 +1,4 @@
 import { defineConfig, loadEnv, UserConfig } from 'vite';
-import deno from '@deno/vite-plugin';
 import react from '@vitejs/plugin-react-swc';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { resolve } from 'node:path';
@@ -12,7 +11,6 @@ export default defineConfig(({ mode }: { mode: string }) => {
 
 	return {
 		plugins: [
-			deno(),
 			react(),
 			tanstackRouter({
 				addExtensions: true,

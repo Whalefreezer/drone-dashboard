@@ -16,7 +16,7 @@ export function useInactivityPause(
 	{ delayMs, disabled = false, onResume }: UseInactivityPauseOptions,
 ): UseInactivityPauseResult {
 	const [isPaused, setIsPaused] = useState(false);
-	const timeoutRef = useRef<number | null>(null);
+	const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 	const firstPauseRef = useRef(false);
 
 	const clearTimer = useCallback(() => {

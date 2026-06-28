@@ -30,7 +30,6 @@
 	},
 	"imports": {
 		"@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.49",
-		"@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.4",
 		"@react-spring/web": "npm:@react-spring/web@^10.0.1",
 		"@tanstack/query-core": "npm:@tanstack/query-core@^5.75.0",
 		"@tanstack/react-router": "npm:@tanstack/react-router@^1.131.35",

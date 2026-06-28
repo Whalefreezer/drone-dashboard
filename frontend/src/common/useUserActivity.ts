@@ -10,7 +10,7 @@ type ActivityType = 'mousemove' | 'mousedown' | 'mouseup' | 'click' | 'keydown' 
  */
 export function useUserActivity(delay: number = IDLE_DELAY): boolean {
 	const [isActive, setIsActive] = useState(true);
-	const timeoutRef = useRef<number | null>(null);
+	const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
 	useEffect(() => {
 		const handleActivity = () => {

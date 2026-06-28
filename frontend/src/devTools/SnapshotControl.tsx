@@ -70,7 +70,7 @@ function SnapshotControl() {
 	const [isCapturing, setIsCapturing] = useState(false);
 	const [statusMessage, setStatusMessage] = useState<string | null>(null);
 	const [isVisible, setIsVisible] = useState(false); // Visibility state
-	const hideTimeoutRef = useRef<number | null>(null); // Ref for timeout ID
+	const hideTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
 	const currentEvent = useAtomValue(currentEventAtom);
 	const raceIds = useAtomValue(eventRaceIdsAtom);

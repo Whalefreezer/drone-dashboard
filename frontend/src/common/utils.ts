@@ -207,7 +207,7 @@ export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
 	func: T,
 	delay: number,
 ): T & { cancel: () => void } {
-	let timeoutId: number | null = null;
+	let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
 
 	function debounced(this: unknown, ...args: Parameters<T>): void {
 		if (timeoutId !== null) {
@@ -242,7 +242,7 @@ export function batchDebounce<TArgs extends unknown[], TReturn = void>(
 	func: (calls: TArgs[]) => TReturn,
 	delay: number,
 ): ((...args: TArgs) => void) & { cancel: () => void } {
-	let timeoutId: number | null = null;
+	let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
 	let collectedCalls: TArgs[] = [];
 
 	function debounced(...args: TArgs): void {
