@@ -1,8 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { worker } from './browser.ts';
 import { DEFAULT_SCENARIO_NAME, getHandlersByScenarioName, scenarioNames } from './scenarios/index.ts';
-import ScenarioSelector from './ScenarioSelector.tsx';
 
 /**
  * Enables MSW mocking based on the `?dev=1` URL flag.
@@ -21,6 +19,10 @@ export async function enableMocking(): Promise<void> {
 	bootstrapLog?.('enableMocking invoked', { useMocks });
 
 	if (useMocks) {
+		const [{ worker }, { default: ScenarioSelector }] = await Promise.all([
+			import('./browser.ts'),
+			import('./ScenarioSelector.tsx'),
+		]);
 		const selectedScenario = localStorage.getItem('mswScenario') as
 			| typeof scenarioNames[number]
 			| null;
