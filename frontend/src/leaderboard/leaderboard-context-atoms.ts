@@ -1,15 +1,16 @@
 import { Atom, atom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
-import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom } from '../race/race-atoms.ts';
+import { allRacesAtom, currentRaceAtom, lastRaceAtom, racePilotChannelsAtom, standingsRacesAtom } from '../race/race-atoms.ts';
 import { bracketsDataAtom, channelsDataAtom, leaderboardNextRaceOverridesAtom, noRacesOverrideAtom, pilotsAtom } from '../state/pbAtoms.ts';
 import type { BracketPilot } from '../bracket/bracket-types.ts';
 import type { PBChannelRecord, PBRaceRecord } from '../api/pbTypes.ts';
 import { withCompare } from '../state/jotai-utils.ts';
 import { bracketEnabledAtom, raceBracketSlotsAtom } from '../bracket/eliminationState.ts';
 
-// Race ID sets shared across leaderboard and metric selectors
+// Race ID sets shared across leaderboard and metric selectors.
+// Practice rounds are excluded so warm-up laps never reach the standings.
 export const currentRaceIdsAtom = withCompare(atom((get): string[] => {
-	const races = get(allRacesAtom);
+	const races = get(standingsRacesAtom);
 	return races.map((r) => r.id);
 }));
 
