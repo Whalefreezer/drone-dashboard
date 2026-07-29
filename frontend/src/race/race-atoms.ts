@@ -13,6 +13,7 @@ import { deepEqualAtomFamily } from '../state/jotai-utils.ts';
 import { computeRaceStatus, RaceStatus } from './race-types.ts';
 import type { PBRaceRecord } from '../api/pbTypes.ts';
 import { EventType } from '../api/pbTypes.ts';
+import { selectStandingsRaces } from './standings-races.ts';
 import { sortPilotIds } from '../leaderboard/leaderboard-sorter.ts';
 import { type EagerGetter, NullHandling, SortDirection, type SortGroup } from '../leaderboard/sorting-types.ts';
 import { parseTimestampMsWithDefault } from '../common/time.ts';
@@ -350,6 +351,16 @@ export const allRacesAtom = atom((get): PBRaceRecord[] => {
 		return a.raceOrder - b.raceOrder;
 	});
 });
+
+/**
+ * Races that count toward the standings: every valid race except those
+ * belonging to a practice round.
+ *
+ * Practice races are intentionally still present in `allRacesAtom`, so they
+ * keep showing up in the schedule and lap views - they are only withheld from
+ * the leaderboard metrics.
+ */
+export const standingsRacesAtom = atom((get): PBRaceRecord[] => selectStandingsRaces(get(allRacesAtom), get(roundsDataAtom)));
 
 /**
  * Current race detection - PB native
